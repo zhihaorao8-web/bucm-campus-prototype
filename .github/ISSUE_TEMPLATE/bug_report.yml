@@ -1,0 +1,18 @@
+name: 问题记录
+description: 记录可复现的问题；请勿上传学校账号、会话或真实个人课表
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 问题与复现步骤
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 应用版本、Android API与WebView版本
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 脱敏证据
+      description: 仅提供错误码和合成示例；不要粘贴密码、Cookie、令牌、学号或个人课表。

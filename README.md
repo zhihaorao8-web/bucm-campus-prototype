@@ -28,14 +28,16 @@ build.py                     轻量APK构建脚本
 
 ## 本地构建
 
-需要Windows、Python 3、JDK 17+、Android SDK Platform 35和Build Tools 35.0.0。DOM测试另需Node.js。当前不是Gradle工程，不依赖Maven或第三方Java库。
+需要Python 3.10+、JDK 17+、Android SDK Platform 35和Build Tools 35.0.0，支持Windows与Linux。DOM测试另需Node.js。当前不是Gradle工程，不依赖Maven或第三方Java库。
 
 ```powershell
-python build.py --sdk C:\path\to\Android\Sdk --work .\build\local
-node tests/extract-test.cjs
+python scripts/check.py
+python build.py --sdk C:\path\to\Android\Sdk --work .\build\local --output .\dist
 ```
 
 构建会运行Java解析检查、生成并签署开发APK、验证签名。后续覆盖安装需沿用相同的本地开发密钥；密钥位于指定work目录且被Git忽略，不用于正式发布。
+
+GitHub Actions自动执行离线检查与APK构建，并保留临时开发签名的产物。CI不登录学校，不使用真实课程。详见[开发和CI说明](docs/DEVELOPMENT.md)。
 
 ## 真机验证
 
@@ -48,6 +50,6 @@ CI或自动测试不得使用真实账号，亦不应保存认证会话。
 
 ## 版本
 
-当前Git基线：`v0.1.4`。历史变化见[CHANGELOG](CHANGELOG.md)。0.1.0–0.1.3仅有此前本地迭代，不补造其Git历史。
+当前维护版：`v0.1.5`；首个Git验证基线：`v0.1.4`。历史变化见[CHANGELOG](CHANGELOG.md)，分支、标签和发布规范见[版本管理](docs/VERSIONING.md)。0.1.0–0.1.3仅有此前本地迭代，不补造其Git历史。
 
 源码独立编写，参考过THUInfo与ZZUPocket的接入思路，未复制其应用源码。

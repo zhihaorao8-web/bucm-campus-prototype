@@ -22,6 +22,7 @@ public class MainActivity extends Activity {
     ArrayList<ScheduleParser.Candidate> candidates=new ArrayList<>(); int candidateIndex,editingIndex=-1;String source="",probe="本次启动尚未重新读取学校页面";
     LocalDate term=LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
     boolean browser=false,agendaVisible=false;
+    String appVersion(){try{return getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(PackageManager.NameNotFoundException e){return "unknown";}}
     @Override public void onCreate(Bundle b){super.onCreate(b);load();ReminderReceiver.reschedule(this);home();}
     void load(){try{lessons=new JSONArray(getPreferences(0).getString("lessons","[]"));term=LocalDate.parse(getPreferences(0).getString("term",term.toString()));}catch(Exception e){probe="本地缓存读取失败，请重新导入";}}
     int dp(int v){return (int)(v*getResources().getDisplayMetrics().density+.5f);}
@@ -46,7 +47,7 @@ public class MainActivity extends Activity {
         button(body,"诊断（不含账号、Cookie 或课表原文）",()->diagnostics());
         button(body,"退出学校会话",()->new AlertDialog.Builder(this).setMessage("将删除本应用的学校 Cookie、网页存储和浏览缓存。本地课表继续保留；学校服务端的会话可能仍存在。")
             .setPositiveButton("清除本机会话",(d,w)->{CookieManager.getInstance().removeAllCookies(null);CookieManager.getInstance().flush();WebStorage.getInstance().deleteAllData();if(web!=null){web.clearCache(true);web.clearHistory();web.loadUrl("about:blank");}probe="已清除本应用的学校会话";home();}).setNegativeButton("取消",null).show());
-        body.addView(text("验证版 0.1.3 · Android 8+\n登录仅在学校页面完成。课表和会话仅存本机，无开发者服务器。课表候选需本人核对。",12));
+        body.addView(text("验证版 "+appVersion()+" · Android 8+\n登录仅在学校页面完成。课表和会话仅存本机，无开发者服务器。课表候选需本人核对。",12));
     }
     boolean school(Uri u){String h=u.getHost();return "https".equals(u.getScheme())&&h!=null&&(h.equals("bucm.edu.cn")||h.endsWith(".bucm.edu.cn"));}
     boolean trusted(Uri u){String h=u.getHost();return school(u)||("https".equals(u.getScheme())&&h!=null&&(h.equals("open.weixin.qq.com")||h.equals("work.weixin.qq.com")||h.equals("login.work.weixin.qq.com")||h.equals("open.work.weixin.qq.com")));}
@@ -158,7 +159,7 @@ public class MainActivity extends Activity {
     }
     void diagnostics(){
         String host=web==null||web.getUrl()==null?"未打开":String.valueOf(Uri.parse(web.getUrl()).getHost());
-        String report="版本：0.1.3\nAndroid API："+Build.VERSION.SDK_INT+"\nWebView："+(WebView.getCurrentWebViewPackage()==null?"未知":WebView.getCurrentWebViewPackage().versionName)+"\n当前站点："+host+"\n读取状态："+probe+"\n保存规则："+lessons.length()+"\n通知权限："+(Build.VERSION.SDK_INT<33||checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED)+"\n准时提醒权限："+ReminderReceiver.exactAllowed(this)+"\n学期起点已核对："+getPreferences(0).getBoolean("termVerified",false)+"\n已登记课程提醒："+getPreferences(0).getInt("alarmCount",0)+"\n测试登记："+getPreferences(0).getLong("testScheduledAt",0)+"\n接收器执行："+getPreferences(0).getLong("lastAlarmReceivedAt",0)+"\n通知提交："+getPreferences(0).getLong("lastNotificationSentAt",0)+"\n提醒错误："+getPreferences(0).getString("lastReminderError","")+"\n说明：未记录账号、URL查询参数、Cookie、令牌或课程原文。";
+        String report="版本："+appVersion()+"\nAndroid API："+Build.VERSION.SDK_INT+"\nWebView："+(WebView.getCurrentWebViewPackage()==null?"未知":WebView.getCurrentWebViewPackage().versionName)+"\n当前站点："+host+"\n读取状态："+probe+"\n保存规则："+lessons.length()+"\n通知权限："+(Build.VERSION.SDK_INT<33||checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED)+"\n准时提醒权限："+ReminderReceiver.exactAllowed(this)+"\n学期起点已核对："+getPreferences(0).getBoolean("termVerified",false)+"\n已登记课程提醒："+getPreferences(0).getInt("alarmCount",0)+"\n测试登记："+getPreferences(0).getLong("testScheduledAt",0)+"\n接收器执行："+getPreferences(0).getLong("lastAlarmReceivedAt",0)+"\n通知提交："+getPreferences(0).getLong("lastNotificationSentAt",0)+"\n提醒错误："+getPreferences(0).getString("lastReminderError","")+"\n说明：未记录账号、URL查询参数、Cookie、令牌或课程原文。";
         new AlertDialog.Builder(this).setTitle("脱敏诊断").setMessage(report).setPositiveButton("复制",(d,w)->{((android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("课表验证诊断",report));}).setNegativeButton("关闭",null).show();
     }
     @Override public void onBackPressed(){if(browser&&web!=null&&web.canGoBack())web.goBack();else home();}
