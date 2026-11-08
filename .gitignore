@@ -1,0 +1,42 @@
+# Local build tools, outputs and signing material
+/build/
+/dist/
+/work/
+/.gradle/
+/.idea/
+/local.properties
+*.apk
+*.aab
+*.idsig
+*.dex
+*.class
+*.jar
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+__pycache__/
+*.pyc
+
+# Secrets and device/session captures
+.env
+.env.*
+!.env.example
+/private/
+/screenshots/
+/captures/
+*.har
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.log
+
+# Original local-only feasibility artifacts (never publish real course data)
+/课表来源验证.png
+/课表提取验证样本.json
+/数据提取可行性验证.md
+/ADB安装排查.md
+/USB连接验证.md

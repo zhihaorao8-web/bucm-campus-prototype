@@ -1,0 +1,59 @@
+package cn.bucm.campusprobe;
+
+import java.util.*;
+import java.util.regex.*;
+
+/** Conservative parser: returns candidates, never invents period-to-clock mappings. */
+public final class ScheduleParser {
+    public static final class Candidate {
+        public String name="", place="", raw="", weeks="", periods="", time="";
+        public int day;
+    }
+    public static int weekday(String s) {
+        String[] names={"一","二","三","四","五","六","日"};
+        for(int i=0;i<7;i++) if(s.matches("(?s).*?(?:星期|周|礼拜)\\s*"+names[i]+".*")) return i+1;
+        if(s.contains("星期天")||s.contains("周天")) return 7;
+        return 0;
+    }
+    public static Candidate parse(String text,int day,String rowLabel) {
+        Candidate c=new Candidate(); c.day=day;c.raw=text.trim();
+        String s=text.replace('（','(').replace('）',')').replace('－','-').replace('～','-').replace('—','-').replace('，',',');
+        String[] lines=s.split("[\\r\\n]+");
+        for(String line:lines) {line=line.trim();if(!line.isEmpty()){c.name=line.split("\\t+| {2,}")[0].trim();break;}}
+        String[] words=c.name.split("\\s+");
+        if(words.length>=2&&words[0].equals(words[1]))c.name=words[0];
+        Matcher w=Pattern.compile("([0-9][0-9\\s,、\\-]*)(?:周)(?:\\s*[（(]?(单|双)[）)]?)?").matcher(s);
+        if(w.find()) c.weeks=w.group(1).trim()+(w.group(2)==null?"":w.group(2));
+        if(c.weeks.isEmpty()) {
+            w=Pattern.compile("(?:周次|教学周)\\s*[:：]?\\s*([0-9][0-9\\s,、\\-]*)(单|双)?").matcher(s);
+            if(w.find())c.weeks=w.group(1).trim()+(w.group(2)==null?"":w.group(2));
+        }
+        Matcher p=Pattern.compile("(?:第\\s*)?([0-9]+(?:\\s*[-,、]\\s*[0-9]+)*)\\s*节").matcher(s);
+        if(p.find())c.periods=p.group(1);else c.periods=rowLabel;
+        Matcher t=Pattern.compile("([012]?\\d:[0-5]\\d)\\s*[-至]\\s*([012]?\\d:[0-5]\\d)").matcher(s);
+        if(t.find())c.time=t.group(1)+"-"+t.group(2);
+        for(String line:lines) if(line.matches(".*(?:地点|教室|上课地点)\\s*[:：].*"))c.place=line.replaceFirst("^.*?(?:地点|教室)\\s*[:：]","").trim();
+        if(c.place.isEmpty())for(String word:s.split("\\s+"))if(word.matches("[^:：]+[0-9]+室"))c.place=word;
+        return c;
+    }
+    public static SortedSet<Integer> weeks(String input) {
+        if(input==null||input.trim().isEmpty())throw new IllegalArgumentException("请填写实际周次");
+        String s=input.replace("周","").replace("第","").replace("(","").replace(")","").replace("（","").replace("）","").replace(" ","").replace('，',',').replace('、',',').replace('－','-').replace('～','-').replace('—','-');
+        boolean odd=s.contains("单"),even=s.contains("双");
+        if(odd&&even)throw new IllegalArgumentException("单双周不能同时指定");
+        s=s.replace("单","").replace("双","");
+        if(!s.matches("\\d+(?:-\\d+)?(?:,\\d+(?:-\\d+)?)*"))throw new IllegalArgumentException("周次格式示例：1-16单 或 1-8,10-16");
+        SortedSet<Integer> result=new TreeSet<>();
+        for(String part:s.split(",")) {
+            String[] range=part.split("-");int a=Integer.parseInt(range[0]),b=range.length==1?a:Integer.parseInt(range[1]);
+            if(a<1||b>30||a>b)throw new IllegalArgumentException("周次必须在1至30之间，且起始不大于结束");
+            for(int n=a;n<=b;n++)if((!odd||n%2==1)&&(!even||n%2==0))result.add(n);
+        }
+        if(result.isEmpty())throw new IllegalArgumentException("所选周次没有实际课程");
+        return result;
+    }
+    public static int minutes(String s) {
+        if(!s.matches("(?:[01]?\\d|2[0-3]):[0-5]\\d"))throw new IllegalArgumentException("时间格式为 HH:mm");
+        String[] a=s.split(":");return Integer.parseInt(a[0])*60+Integer.parseInt(a[1]);
+    }
+}

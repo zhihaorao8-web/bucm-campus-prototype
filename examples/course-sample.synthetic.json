@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "description": "完全合成的字段示例，不是实际学校或个人课表，不代表已通过的内置解析输出。",
+  "rules": [
+    {
+      "courseName": "示例课程A",
+      "instructor": "示例教师",
+      "weekday": 1,
+      "weeksExpression": "2-6",
+      "periods": [1, 2, 3],
+      "location": "示例教学楼101室"
+    }
+  ]
+}
