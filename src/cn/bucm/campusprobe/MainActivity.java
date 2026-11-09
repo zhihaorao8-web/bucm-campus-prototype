@@ -22,6 +22,9 @@ public class MainActivity extends Activity {
     ArrayList<ScheduleParser.Candidate> candidates=new ArrayList<>(); int candidateIndex,editingIndex=-1;String source="",probe="本次启动尚未重新读取学校页面";
     LocalDate term=LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
     boolean browser=false,agendaVisible=false;
+    boolean exportDownloading=false;
+    boolean exportFlow=false,exportRequested=false;int exportSteps=0;
+    String exportSemester="";
     String appVersion(){try{return getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(PackageManager.NameNotFoundException e){return "unknown";}}
     @Override public void onCreate(Bundle b){super.onCreate(b);load();ReminderReceiver.reschedule(this);home();}
     void load(){try{lessons=new JSONArray(getPreferences(0).getString("lessons","[]"));term=LocalDate.parse(getPreferences(0).getString("term",term.toString()));}catch(Exception e){probe="本地缓存读取失败，请重新导入";}}
@@ -37,17 +40,19 @@ public class MainActivity extends Activity {
     void button(LinearLayout box,String label,Runnable action){Button b=new Button(this);b.setText(label);b.setAllCaps(false);b.setTextColor(GREEN);box.addView(b,new LinearLayout.LayoutParams(-1,-2));b.setOnClickListener(v->action.run());}
     void note(String s){new AlertDialog.Builder(this).setMessage(s).setPositiveButton("知道了",null).show();}
     void home(){
+        stopExport();
         shell("把课表留在手机里");scroll();
-        body.addView(text("官方页面认证 → 核对课表 → 离线查看",15));
-        body.addView(text(lessons.length()==0?"尚无已确认课程":"已保存 "+lessons.length()+" 条课程规则 · 支持离线",18));
+        body.addView(text("官方页面认证 → 自动导入课表 → 离线查看",15));
+        body.addView(text(lessons.length()==0?"尚无已导入课程":"已保存 "+lessons.length()+" 条排课规则 · 支持离线",18));
         body.addView(text("导入状态："+getPreferences(0).getString("savedStatus","未导入")+"\n"+probe,13));
         button(body,"1  打开官方认证 / WebVPN",()->open(VPN));
+        button(body,"自动进入课表并读取官方导出",()->beginExport(true));
         button(body,"2  数字北中医门户",()->open(PORTAL));
         button(body,"3  本地课表与提醒",()->agenda());
         button(body,"诊断（不含账号、Cookie 或课表原文）",()->diagnostics());
         button(body,"退出学校会话",()->new AlertDialog.Builder(this).setMessage("将删除本应用的学校 Cookie、网页存储和浏览缓存。本地课表继续保留；学校服务端的会话可能仍存在。")
             .setPositiveButton("清除本机会话",(d,w)->{CookieManager.getInstance().removeAllCookies(null);CookieManager.getInstance().flush();WebStorage.getInstance().deleteAllData();if(web!=null){web.clearCache(true);web.clearHistory();web.loadUrl("about:blank");}probe="已清除本应用的学校会话";home();}).setNegativeButton("取消",null).show());
-        body.addView(text("验证版 "+appVersion()+" · Android 8+\n登录仅在学校页面完成。课表和会话仅存本机，无开发者服务器。课表候选需本人核对。",12));
+        body.addView(text("验证版 "+appVersion()+" · Android 8+\n本人在学校页面登录，按已配置学期和作息自动导入。数据仅存本机。新学期首次设置一次起点。",12));
     }
     boolean school(Uri u){String h=u.getHost();return "https".equals(u.getScheme())&&h!=null&&(h.equals("bucm.edu.cn")||h.endsWith(".bucm.edu.cn"));}
     boolean trusted(Uri u){String h=u.getHost();return school(u)||("https".equals(u.getScheme())&&h!=null&&(h.equals("open.weixin.qq.com")||h.equals("work.weixin.qq.com")||h.equals("login.work.weixin.qq.com")||h.equals("open.work.weixin.qq.com")));}
@@ -55,17 +60,19 @@ public class MainActivity extends Activity {
         shell("学校官方页面");browser=true;
         status=text("请本人完成认证，再从学校导航进入课表。",12);root.addView(status);
         LinearLayout nav=new LinearLayout(this);root.addView(nav);
-        Button back=new Button(this);back.setText("返回");nav.addView(back);back.setOnClickListener(v->{if(web.canGoBack())web.goBack();else home();});
+        Button back=new Button(this);back.setText("返回");nav.addView(back);back.setOnClickListener(v->{stopExport();if(web.canGoBack())web.goBack();else home();});
         Button menu=new Button(this);menu.setText("入口");nav.addView(menu);menu.setOnClickListener(v->new AlertDialog.Builder(this).setItems(new String[]{"WebVPN","数字北中医","教务（校内直连）"},(d,n)->web.loadUrl(new String[]{VPN,PORTAL,JW}[n])).show());
         Button read=new Button(this);read.setText("读取课表");nav.addView(read);read.setOnClickListener(v->extract());
+        Button export=new Button(this);export.setText("自动导入");nav.addView(export);export.setOnClickListener(v->beginExport(false));
         if(web==null){
             web=new WebView(this);WebView.setWebContentsDebuggingEnabled(false);
+            web.setDownloadListener((downloadUrl,agent,disposition,mime,length)->receiveExport(downloadUrl,agent));
             web.getSettings().setJavaScriptEnabled(true);web.getSettings().setDomStorageEnabled(true);web.getSettings().setAllowFileAccess(false);web.getSettings().setAllowContentAccess(false);
             web.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);web.getSettings().setSupportZoom(true);web.getSettings().setBuiltInZoomControls(true);web.getSettings().setDisplayZoomControls(false);
             web.getSettings().setSupportMultipleWindows(true);
             web.setWebChromeClient(new WebChromeClient(){
                 @Override public boolean onCreateWindow(WebView origin,boolean dialog,boolean userGesture,Message message){
-                    if(!userGesture)return false;
+                    if(!userGesture&&!exportFlow)return false;
                     WebView child=new WebView(MainActivity.this);
                     child.setWebViewClient(new WebViewClient(){
                         boolean handled=false;
@@ -92,30 +99,112 @@ public class MainActivity extends Activity {
         root.addView(web,new LinearLayout.LayoutParams(-1,0,1));web.onResume();
         if(!url.isEmpty())web.loadUrl(url);
     }
+    void stopExport(){exportFlow=false;if(web!=null)web.getSettings().setJavaScriptCanOpenWindowsAutomatically(false);}
+    void beginExport(boolean openPage){exportFlow=true;exportRequested=false;exportSteps=0;exportSemester="";if(openPage)open(web!=null&&web.getUrl()!=null&&school(Uri.parse(web.getUrl()))?"":VPN);exportStep();}
+    void exportStep(){
+        if(!exportFlow||web==null||exportRequested||exportDownloading)return;
+        web.getSettings().setJavaScriptCanOpenWindowsAutomatically(true);
+        if(++exportSteps>120){stopExport();status.setText("自动导航已暂停，请完成学校登录后点击“自动导出”继续。");return;}
+        if(web.getUrl()==null||!school(Uri.parse(web.getUrl()))){stopExport();return;}
+        try{
+            java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();try(java.io.InputStream in=getAssets().open("export-nav.js")){byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}
+            web.evaluateJavascript(new String(out.toByteArray(),java.nio.charset.StandardCharsets.UTF_8),value->{
+                if(!exportFlow)return;
+                try{
+                    JSONObject result=new JSONObject((String)new JSONTokener(value).nextValue());String state=result.getString("state");
+                    if(state.equals("exportClicked")){exportSemester=result.optString("semester");exportRequested=true;status.setText("已点击学校官方导出，正在等待文件……");web.postDelayed(()->{if(exportFlow&&!exportDownloading){stopExport();status.setText("尚未收到导出文件，请检查学校页面或手动点击学校“导出”。");}},15000);return;}
+                    if(state.equals("blocked")||state.equals("ambiguous")||state.equals("filterMissing")){stopExport();status.setText("无法唯一确认学校导出入口或全部周次，请手动进入学期理论课表后重试。");return;}
+                    status.setText(state.equals("login")?"请本人完成学校认证，完成后自动继续。":state.equals("waiting")?"正在等待学校页面加载，完成认证后将继续……":"正在从学校导航进入学期课表……");
+                    web.postDelayed(()->exportStep(),1500);
+                }catch(Exception e){stopExport();status.setText("自动导航未成功，请手动打开学期课表后重试。");}
+            });
+        }catch(Exception e){stopExport();note("自动导出脚本加载失败。");}
+    }
+    void receiveExport(String url,String agent){
+        if(exportDownloading)return;
+        if(!SchoolExport.allowed(url)){note("导出地址不在学校HTTPS范围内，已停止。");return;}
+        exportDownloading=true;status.setText("正在接收学校导出文件，仅在内存中处理……");
+        String pageSemester=exportFlow?exportSemester:"";
+        new Thread(()->{
+            try{
+                byte[] bytes=SchoolExport.download(url,agent,value->CookieManager.getInstance().getCookie(value));
+                ExportWorkbook.Result result=ExportWorkbook.read(bytes);
+                runOnUiThread(()->{exportDownloading=false;stopExport();if(!browser)return;source=Uri.parse(url).getHost();try{String semester=result.semesterId;if(!semester.isEmpty()&&!pageSemester.isEmpty()&&!semester.equals(pageSemester))throw new IllegalArgumentException("页面与导出文件学期不一致");if(semester.isEmpty())semester=pageSemester;importCourses(result.candidates,semester,result.hasUnscheduledSection);}catch(Exception e){note("未自动保存："+e.getMessage());}});
+            }catch(Exception|LinkageError e){String kind=e.getClass().getSimpleName();runOnUiThread(()->{exportDownloading=false;stopExport();probe="官方导出未读取成功（"+kind+"）";status.setText(probe+"，未保存课程；可重试或使用页面读取。");});}
+        },"school-course-export").start();
+    }
+    void importCourses(List<ScheduleParser.Candidate> imported,String semester,boolean hasUnscheduled){
+        try{
+            String id=AcademicTerm.find(semester);
+            if(id.isEmpty()){configureSemester(imported,"",hasUnscheduled);return;}
+            JSONObject starts=new JSONObject(getPreferences(0).getString("semesterStarts","{}"));
+            LocalDate monday=starts.has(id)?LocalDate.parse(starts.getString(id)):AcademicTerm.knownStart(id);
+            if(monday==null){configureSemester(imported,id,hasUnscheduled);return;}
+            CourseImportPlan plan=CourseImportPlan.create(imported,monday);
+            JSONArray next=new JSONArray();
+            for(int i=0;i<lessons.length();i++){
+                JSONObject old=new JSONObject(lessons.getJSONObject(i).toString());
+                if(old.optBoolean("automaticImport")&&id.equals(old.optString("semesterId")))continue;
+                if(!old.has("termStart")){
+                    if(!getPreferences(0).getBoolean("termVerified",false))throw new IllegalArgumentException("旧课表尚未绑定学期起点，请先设置旧课表学期");
+                    old.put("termStart",term.toString());
+                }
+                next.put(old);
+            }
+            for(CourseImportPlan.Entry entry:plan.entries){
+                ScheduleParser.Candidate c=entry.course;CourseTimes.Timing time=entry.timing;
+                JSONObject o=new JSONObject();o.put("name",c.name);o.put("place",c.place);o.put("day",c.day);o.put("weeks",c.weeks);o.put("start",time.start());o.put("end",time.end());o.put("source",source);
+                o.put("semesterId",id);o.put("termStart",monday.toString());o.put("automaticImport",true);o.put("importKey",entry.key);o.put("sourceOccurrences",entry.occurrences);o.put("timeRuleSource","user-2026-11-09");o.put("teachingMinutes",time.teachingMinutes());
+                o.put("deliveryMode",c.day>=6?"online":"unspecified");o.put("deliveryModeSource",c.day>=6?"user-weekend-rule":"school-page");
+                JSONArray periods=new JSONArray();for(int p:time.periods)periods.put(p);o.put("periods",periods);
+                JSONArray segments=new JSONArray();for(CourseTimes.Segment segment:time.segments){JSONObject part=new JSONObject();part.put("start",segment.start);part.put("end",segment.end);segments.put(part);}o.put("segments",segments);next.put(o);
+            }
+            starts.put(id,monday.toString());
+            String summary="已自动导入 "+plan.entries.size()+" 条排课规则（"+plan.sourceCount+" 段来源，合并 "+plan.duplicates+" 项完全重复）\n学期："+id+"；第1周周一："+monday+"\n时间按用户提供的学校作息识别，无需逐门确认。"+(hasUnscheduled?"\n另有无课表课程区域，因无排课时间未排入日历。":"");
+            boolean saved=getPreferences(0).edit().putString("lessons",next.toString()).putString("term",monday.toString()).putBoolean("termVerified",true).putString("semesterStarts",starts.toString()).putString("savedStatus","自动识别导入 · "+LocalDate.now()).putString("autoImportSummary",summary).commit();
+            if(!saved)throw new IllegalArgumentException("本机写入失败，请重试");
+            lessons=next;term=monday;probe=summary;ReminderReceiver.reschedule(this);home();
+        }catch(Exception e){probe="自动导入未完成";note("未自动保存本批课程："+e.getMessage());}
+    }
+    void configureSemester(List<ScheduleParser.Candidate> imported,String detected,boolean hasUnscheduled){
+        LinearLayout box=new LinearLayout(this);box.setOrientation(1);box.setPadding(dp(20),dp(8),dp(20),dp(8));
+        box.addView(text(detected.isEmpty()?"学校文件未明确标识学期，请设置一次学期信息。":"这个学期首次导入，请设置一次第1周周一。",14));
+        EditText id=new EditText(this);id.setHint("学期，如2027-2028-1");id.setText(detected);id.setEnabled(detected.isEmpty());box.addView(id);
+        EditText date=new EditText(this);date.setHint("第1周周一，YYYY-MM-DD");box.addView(date);
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("设置学期起点（每学期一次）").setView(box).setPositiveButton("保存设置并自动导入",null).setNegativeButton("稍后设置",null).create();
+        dialog.setOnShowListener(v->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(w->{try{
+            String semester=AcademicTerm.find(id.getText().toString().trim());if(semester.isEmpty())throw new IllegalArgumentException("请填写有效学期");
+            LocalDate monday=LocalDate.parse(date.getText().toString().trim());if(monday.getDayOfWeek()!=DayOfWeek.MONDAY)throw new IllegalArgumentException("起点必须为周一");
+            JSONObject starts=new JSONObject(getPreferences(0).getString("semesterStarts","{}"));starts.put(semester,monday.toString());
+            if(!getPreferences(0).edit().putString("semesterStarts",starts.toString()).commit())throw new IllegalArgumentException("设置保存失败");
+            dialog.dismiss();importCourses(imported,semester,hasUnscheduled);
+        }catch(Exception e){date.setError("请核对学期和日期："+e.getMessage());}}));dialog.show();
+    }
     void extract(){
+        stopExport();
         if(web==null||web.getUrl()==null||!school(Uri.parse(web.getUrl()))){note("请先进入学校域名内的本人课表页面。");return;}
-        new AlertDialog.Builder(this).setMessage("读取当前页的可见课表表格供本机核对。不会读取密码、Cookie、输入框或上传数据。确认这是本人课表后继续。").setPositiveButton("读取",(d,w)->{
+        {
             try{java.io.ByteArrayOutputStream scriptBytes=new java.io.ByteArrayOutputStream();try(java.io.InputStream in=getAssets().open("extract.js")){byte[] buf=new byte[4096];int count;while((count=in.read(buf))!=-1)scriptBytes.write(buf,0,count);}String js=new String(scriptBytes.toByteArray(),java.nio.charset.StandardCharsets.UTF_8);
                 source=Uri.parse(web.getUrl()).getHost();web.evaluateJavascript(js,value->{
                     try{Object decoded=new JSONTokener(value).nextValue();JSONObject result=new JSONObject((String)decoded);JSONArray tables=result.getJSONArray("tables");
                         if(tables.length()==0){probe="未识别课表；跨域框架数："+result.optInt("blockedFrames");note("没有发现可识别的周课表。可能尚未登录、页面不是课表、使用跨域框架或采用不同布局。旧课表未改动。\n请打开具体课表页面再试；此结果不代表接口已打通。");return;}
-                        if(tables.length()>1){new AlertDialog.Builder(this).setTitle("发现多份课表，选择一份").setItems(tableLabels(tables),(dialog,n)->selectTable(tables,n)).show();}else selectTable(tables,0);
+                        String semester=result.optString("semester");if(tables.length()>1){new AlertDialog.Builder(this).setTitle("发现多份课表，请指定导入来源").setItems(tableLabels(tables),(dialog,n)->selectTable(tables,n,semester)).show();}else selectTable(tables,0,semester);
                     }catch(Exception e){probe="课表结构读取失败";note("未读取成功，旧课表未改动。请确认当前页为周课表。");}
                 });
             }catch(Exception e){note("读取器加载失败");}
-        }).setNegativeButton("取消",null).show();
+        }
     }
     String[] tableLabels(JSONArray tables){String[] a=new String[tables.length()];for(int i=0;i<a.length;i++)a[i]="表格 "+(i+1)+" · "+tables.optJSONObject(i).optJSONArray("candidates").length()+" 个候选单元格";return a;}
-    void selectTable(JSONArray tables,int n){
-        try{candidates.clear();JSONArray a=tables.getJSONObject(n).getJSONArray("candidates");for(int i=0;i<a.length();i++){JSONObject o=a.getJSONObject(i);candidates.add(ScheduleParser.parse(o.getString("text"),o.getInt("day"),o.optString("rowLabel")));}
-            editingIndex=-1;candidateIndex=0;probe="已识别 "+candidates.size()+" 个候选，等待人工核对";review();
+    void selectTable(JSONArray tables,int n,String semester){
+        try{candidates.clear();JSONArray a=tables.getJSONObject(n).getJSONArray("candidates");for(int i=0;i<a.length();i++){JSONObject o=a.getJSONObject(i);candidates.addAll(ScheduleParser.parseAll(o.getString("text"),o.getInt("day"),o.optString("rowLabel")));}
+            editingIndex=-1;candidateIndex=0;importCourses(new ArrayList<>(candidates),semester,false);
         }catch(Exception e){note("表格读取失败，旧课表未改动。");}
     }
     EditText field(String label,String value){body.addView(text(label,13));EditText e=new EditText(this);e.setText(value);e.setTextColor(INK);e.setSingleLine(true);body.addView(e,new LinearLayout.LayoutParams(-1,-2));return e;}
     void review(){
         if(candidateIndex>=candidates.size()){probe="候选核对结束";home();return;}
         ScheduleParser.Candidate c=candidates.get(candidateIndex);shell("核对课程 "+(candidateIndex+1)+" / "+candidates.size());scroll();
-        body.addView(text("下面均为候选信息。周次、时间与学期起点须与学校课表核对。",13));
+        body.addView(text("每个候选是一段排课，同名课程可能有多段。周次、时间与学期起点须与学校课表核对。",13));
         body.addView(text("原单元格：\n"+c.raw+"\n行标题 / 节次："+c.periods,13));
         EditText name=field("课程名称",c.name),place=field("地点",c.place),day=field("星期（1=周一，7=周日）",String.valueOf(c.day)),weeks=field("上课周次，例如 1-16单、1-8,10-16",c.weeks);
         EditText first=field("本地课表的第1周周一（YYYY-MM-DD，必须核对）",getPreferences(0).getBoolean("termVerified",false)?term.toString():"");
@@ -151,18 +240,20 @@ public class MainActivity extends Activity {
             ReminderReceiver.test(this);note("已登记测试提醒。请返回桌面并等待约1分钟；系统省电可能造成延迟。测试不修改课程，关闭提醒会取消此次测试。");
         });
         ArrayList<ReminderReceiver.Occurrence> events=ReminderReceiver.occurrences(this);long now=System.currentTimeMillis();int shown=0;
-        for(ReminderReceiver.Occurrence o:events)if(o.end>now&&shown++<50){body.addView(text(o.label,17));body.addView(text(o.place+"\n"+Instant.ofEpochMilli(o.start).atZone(ZoneId.of("Asia/Shanghai")).format(DateTimeFormatter.ofPattern("MM-dd E HH:mm",Locale.CHINA))+" — "+Instant.ofEpochMilli(o.end).atZone(ZoneId.of("Asia/Shanghai")).format(DateTimeFormatter.ofPattern("HH:mm")),14));}
+        for(ReminderReceiver.Occurrence o:events)if(o.end>now&&shown++<50){body.addView(text(o.label,17));body.addView(text(o.place+"\n"+Instant.ofEpochMilli(o.start).atZone(ZoneId.of("Asia/Shanghai")).format(DateTimeFormatter.ofPattern("MM-dd E HH:mm",Locale.CHINA))+" — "+Instant.ofEpochMilli(o.end).atZone(ZoneId.of("Asia/Shanghai")).format(DateTimeFormatter.ofPattern("HH:mm"))+(o.teachingTimes.isEmpty()?"":"\n实际授课："+o.teachingTimes),14));}
         if(shown==0)body.addView(text("没有未来课程。请核对学期起点和周次。",15));
         button(body,"查看全部课程规则",()->{StringBuilder s=new StringBuilder();for(int i=0;i<lessons.length();i++){JSONObject o=lessons.optJSONObject(i);s.append(o.optString("name")).append(" · 周").append(o.optInt("day")).append(" · ").append(o.optString("weeks")).append("周 · ").append(o.optString("start")).append("\n");}note(s.length()==0?"暂无课程":s.toString());});
         button(body,"清空本地课表",()->new AlertDialog.Builder(this).setMessage("删除全部本地课程并取消其提醒？").setPositiveButton("删除",(d,w)->{lessons=new JSONArray();getPreferences(0).edit().putString("lessons","[]").putString("savedStatus","未导入").apply();ReminderReceiver.reschedule(this);agenda();}).setNegativeButton("取消",null).show());
         button(body,"返回首页",()->home());
     }
     void diagnostics(){
+        int automatic=0,multipleSegments=0,evening=0,missingTimes=0;for(int i=0;i<lessons.length();i++){JSONObject o=lessons.optJSONObject(i);if(o==null||!o.optBoolean("automaticImport"))continue;automatic++;JSONArray parts=o.optJSONArray("segments");if(parts!=null&&parts.length()>1)multipleSegments++;if(o.optString("start").equals("18:00")&&o.optString("end").equals("20:25"))evening++;if(parts==null||parts.length()==0||o.optString("start").isEmpty()||o.optString("end").isEmpty())missingTimes++;}
         String host=web==null||web.getUrl()==null?"未打开":String.valueOf(Uri.parse(web.getUrl()).getHost());
         String report="版本："+appVersion()+"\nAndroid API："+Build.VERSION.SDK_INT+"\nWebView："+(WebView.getCurrentWebViewPackage()==null?"未知":WebView.getCurrentWebViewPackage().versionName)+"\n当前站点："+host+"\n读取状态："+probe+"\n保存规则："+lessons.length()+"\n通知权限："+(Build.VERSION.SDK_INT<33||checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED)+"\n准时提醒权限："+ReminderReceiver.exactAllowed(this)+"\n学期起点已核对："+getPreferences(0).getBoolean("termVerified",false)+"\n已登记课程提醒："+getPreferences(0).getInt("alarmCount",0)+"\n测试登记："+getPreferences(0).getLong("testScheduledAt",0)+"\n接收器执行："+getPreferences(0).getLong("lastAlarmReceivedAt",0)+"\n通知提交："+getPreferences(0).getLong("lastNotificationSentAt",0)+"\n提醒错误："+getPreferences(0).getString("lastReminderError","")+"\n说明：未记录账号、URL查询参数、Cookie、令牌或课程原文。";
-        new AlertDialog.Builder(this).setTitle("脱敏诊断").setMessage(report).setPositiveButton("复制",(d,w)->{((android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("课表验证诊断",report));}).setNegativeButton("关闭",null).show();
+        report+="\n自动导入规则："+automatic+"\n多段授课规则："+multipleSegments+"\n晚间统一时段规则："+evening+"\n自动导入缺少时间字段："+missingTimes;final String diagnosticReport=report;
+        new AlertDialog.Builder(this).setTitle("脱敏诊断").setMessage(diagnosticReport).setPositiveButton("复制",(d,w)->{((android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("课表验证诊断",diagnosticReport));}).setNegativeButton("关闭",null).show();
     }
-    @Override public void onBackPressed(){if(browser&&web!=null&&web.canGoBack())web.goBack();else home();}
+    @Override public void onBackPressed(){stopExport();if(browser&&web!=null&&web.canGoBack())web.goBack();else home();}
     @Override protected void onPause(){super.onPause();CookieManager.getInstance().flush();if(web!=null)web.onPause();}
     void editExisting(){
         if(lessons.length()==0){note("暂无已保存课程。");return;}

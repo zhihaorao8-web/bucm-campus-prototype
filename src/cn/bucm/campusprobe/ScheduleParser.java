@@ -9,20 +9,31 @@ public final class ScheduleParser {
         public String name="", place="", raw="", weeks="", periods="", time="";
         public int day;
     }
+    private static String normalize(String text) {
+        return text.replace('（','(').replace('）',')').replace('－','-').replace('～','-').replace('—','-').replace('，',',');
+    }
     public static int weekday(String s) {
         String[] names={"一","二","三","四","五","六","日"};
         for(int i=0;i<7;i++) if(s.matches("(?s).*?(?:星期|周|礼拜)\\s*"+names[i]+".*")) return i+1;
         if(s.contains("星期天")||s.contains("周天")) return 7;
         return 0;
     }
+    /** Split only explicit block boundaries; same-name schedules remain separate. */
+    public static List<Candidate> parseAll(String text,int day,String rowLabel) {
+        List<Candidate> result=new ArrayList<>();
+        for(String block:text.split("(?m)^\\s*[-_=─━—]{3,}\\s*$|\\r?\\n[\\t ]*\\r?\\n+")) {
+            if(!block.trim().isEmpty())result.add(parse(block,day,rowLabel));
+        }
+        return result;
+    }
     public static Candidate parse(String text,int day,String rowLabel) {
         Candidate c=new Candidate(); c.day=day;c.raw=text.trim();
-        String s=text.replace('（','(').replace('）',')').replace('－','-').replace('～','-').replace('—','-').replace('，',',');
+        String s=normalize(text).replace("([周])","(周)");
         String[] lines=s.split("[\\r\\n]+");
         for(String line:lines) {line=line.trim();if(!line.isEmpty()){c.name=line.split("\\t+| {2,}")[0].trim();break;}}
         String[] words=c.name.split("\\s+");
         if(words.length>=2&&words[0].equals(words[1]))c.name=words[0];
-        Matcher w=Pattern.compile("([0-9][0-9\\s,、\\-]*)(?:周)(?:\\s*[（(]?(单|双)[）)]?)?").matcher(s);
+        Matcher w=Pattern.compile("([0-9][0-9\\s,、\\-]*)(?:\\(周\\)|周)(?:\\s*[(]?(单|双)(?:周)?[)]?)?").matcher(s);
         if(w.find()) c.weeks=w.group(1).trim()+(w.group(2)==null?"":w.group(2));
         if(c.weeks.isEmpty()) {
             w=Pattern.compile("(?:周次|教学周)\\s*[:：]?\\s*([0-9][0-9\\s,、\\-]*)(单|双)?").matcher(s);
@@ -34,6 +45,23 @@ public final class ScheduleParser {
         if(t.find())c.time=t.group(1)+"-"+t.group(2);
         for(String line:lines) if(line.matches(".*(?:地点|教室|上课地点)\\s*[:：].*"))c.place=line.replaceFirst("^.*?(?:地点|教室)\\s*[:：]","").trim();
         if(c.place.isEmpty())for(String word:s.split("\\s+"))if(word.matches("[^:：]+[0-9]+室"))c.place=word;
+        if(c.place.isEmpty()) {
+            // School blocks place the unlabelled location after the schedule line.
+            // Require one remaining line and location wording; do not guess from instructors or notes.
+            for(int i=0;i<lines.length;i++) {
+                if(!lines[i].trim().matches("[0-9][0-9,、\\s-]*\\(周\\)(?:\\((?:单|双)(?:周)?\\))?\\[[0-9\\s,-]+节\\]"))continue;
+                String location="";int count=0;
+                for(int j=i+1;j<lines.length;j++)if(!lines[j].trim().isEmpty()){location=lines[j].trim();count++;}
+                boolean locationFormat=location.matches(".*(?:楼|室|馆|场|区|厅).*")||location.matches("[\\p{IsHan}]{1,4}[0-9]{2,4}教");
+                if(count==1&&locationFormat&&!location.matches("^(?:备注|说明|教师|周次|课程|时间)[:：].*"))c.place=location;
+            }
+        }
+        if(!c.place.isEmpty()) {
+            for(String original:text.split("[\\r\\n]+")) {
+                String value=original.replaceFirst("^.*?(?:地点|教室)\\s*[:：]","").trim();
+                if(normalize(value).equals(c.place)){c.place=value;break;}
+            }
+        }
         return c;
     }
     public static SortedSet<Integer> weeks(String input) {

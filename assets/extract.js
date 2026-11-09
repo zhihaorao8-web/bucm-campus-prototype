@@ -1,9 +1,12 @@
 (function(){
   // Invoked explicitly by the student on a school page. No passwords, cookies,
   // input values, tokens, or arbitrary page HTML are returned.
-  var out={tables:[],blockedFrames:0};
+  var out={tables:[],blockedFrames:0,semester:''},semesterIds=[];
   function walk(doc,depth){
     if(depth>3)return;
+    var selected=[];
+    Array.from(doc.querySelectorAll('select')).forEach(function(s){var o=s.options&&s.options[s.selectedIndex];if(o)selected=selected.concat((String(s.value)+' '+o.textContent).match(/20\d{2}-20\d{2}-[12]/g)||[]);});
+    semesterIds=semesterIds.concat(selected.length?selected:(((doc.title||'')+' '+(doc.body&&doc.body.innerText||'')).match(/20\d{2}-20\d{2}-[12]/g)||[]));
     Array.from(doc.querySelectorAll('table')).slice(0,60).forEach(function(table){
       if(table.querySelector('table') || table.closest('form') && table.querySelector('input[type=password]'))return;
       var rows=Array.from(table.rows).slice(0,100), grid=[], origins=[];
@@ -27,13 +30,12 @@
         if(cell.r<=headerRow||!headers[cell.c]||!cell.text||cell.cs>1)return;
         if(/^(?:无|暂无|[-—\s]+)$/.test(cell.text))return;
         var label=grid[cell.r]&&grid[cell.r][0]?grid[cell.r][0].text:'';
-        // Shared cells may contain several courses; never merge them silently.
-        var blocks=cell.text.split(/\n\s*\n+/).filter(function(t){return t.trim();});
-        blocks.forEach(function(t){candidates.push({day:headers[cell.c],text:t,rowLabel:label});});
+        // Preserve source cells; the Java parser splits explicit schedule blocks.
+        candidates.push({day:headers[cell.c],text:cell.text,rowLabel:label});
       });
       if(candidates.length)out.tables.push({candidates:candidates.slice(0,150)});
     });
     Array.from(doc.querySelectorAll('iframe,frame')).slice(0,15).forEach(function(f){try{walk(f.contentDocument,depth+1);}catch(e){out.blockedFrames++;}});
   }
-  walk(document,0);return JSON.stringify(out);
+  walk(document,0);semesterIds=Array.from(new Set(semesterIds));if(semesterIds.length===1)out.semester=semesterIds[0];return JSON.stringify(out);
 })();

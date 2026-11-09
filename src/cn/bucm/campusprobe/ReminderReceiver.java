@@ -14,13 +14,15 @@ public class ReminderReceiver extends BroadcastReceiver {
         if(exactAllowed(c))am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,when,intent);
         else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,when,intent);
     }
-    public static class Occurrence {public long start,end;public String label,place;}
+    public static class Occurrence {public long start,end;public String label,place,teachingTimes="";}
     static SharedPreferences prefs(Context c){return c.getSharedPreferences("MainActivity",0);}
     public static ArrayList<Occurrence> occurrences(Context c){
         ArrayList<Occurrence> list=new ArrayList<>();try{
             SharedPreferences p=prefs(c);JSONArray a=new JSONArray(p.getString("lessons","[]"));LocalDate term=LocalDate.parse(p.getString("term",LocalDate.now().toString()));
             for(int i=0;i<a.length();i++){JSONObject o=a.getJSONObject(i);for(int week:ScheduleParser.weeks(o.getString("weeks"))){
-                LocalDate date=term.plusDays((week-1)*7+o.getInt("day")-1);Occurrence event=new Occurrence();event.label=o.getString("name");event.place=o.optString("place");
+                LocalDate courseTerm=LocalDate.parse(o.optString("termStart",term.toString()));LocalDate date=courseTerm.plusDays((week-1)*7+o.getInt("day")-1);Occurrence event=new Occurrence();event.label=o.getString("name");event.place=o.optString("place");
+                if("online".equals(o.optString("deliveryMode")))event.place="线上课程"+(event.place.isEmpty()?"":" · "+event.place);
+                JSONArray segments=o.optJSONArray("segments");if(segments!=null){StringBuilder times=new StringBuilder();for(int j=0;j<segments.length();j++){if(j>0)times.append("、");JSONObject segment=segments.getJSONObject(j);times.append(segment.getString("start")).append("–").append(segment.getString("end"));}event.teachingTimes=times.toString();}
                 event.start=date.atStartOfDay(ZoneId.of("Asia/Shanghai")).plusMinutes(ScheduleParser.minutes(o.getString("start"))).toInstant().toEpochMilli();event.end=date.atStartOfDay(ZoneId.of("Asia/Shanghai")).plusMinutes(ScheduleParser.minutes(o.getString("end"))).toInstant().toEpochMilli();list.add(event);
             }}
         }catch(Exception e){list.clear();}list.sort((a,b)->Long.compare(a.start,b.start));return list;

@@ -6,6 +6,7 @@
 - Node.js 22运行DOM合成测试。
 - 构建APK另需Android SDK Platform 35和Build Tools 35.0.0。
 - 支持Windows与Linux构建脚本；不依赖Gradle。Android Studio的AVD可用于安装APK和手动验证，但当前目录不是可直接Gradle同步的Android Studio工程。
+- XLS依赖先运行`python scripts/dependencies.py`准备，来源固定为公开Maven Central，版本及SHA-256见`dependencies.lock.json`。JAR只放在被忽略的`build/deps/`；之后的离线检查与构建均校验其摘要，缺失或摘要不符即失败，不自动改版本。
 
 SDK安装示例：
 
@@ -20,6 +21,12 @@ python scripts/check.py
 ```
 
 检查Java周次与时间校验、DOM星期列/合并单元格/登录表格排除/框架处理，以及示例数据的合成标记。它不访问学校，不要求Android SDK，不证明学校实时接口仍有效。
+
+还检查合成二进制XLS的网格、合并单元格、无课表课程边界、行式明细、缺失地点、规模限制及公式拒绝，以及自动导航的官方标签、全部周次筛选、登录暂停和域名限制。真实导出文件不作为测试输入。
+
+`CourseTimeTest`覆盖用户作息的白天连排分段、非连续节次、全部晚间组合/第12节占位、跨午休或晚餐拒绝、学期识别、周一起点、整批校验和去重。它不将真实课表写入测试或CI。AVD本地自动导入属于用户授权会话中的验证，不能以合成测试通过代替学校全学期准确性核验。
+
+打包会把依赖的基础class送入D8，排除多版本JAR的`META-INF/versions/`与`module-info.class`，并将原始LICENSE/NOTICE放入APK的`assets/third-party/`。只读取HSSF二进制XLS，不执行公式或宏，不支持XLSX、加密工作簿或任意网页转表格。
 
 ## 构建
 
