@@ -8,6 +8,7 @@
 
 ## Flutter第一版 0.1（预发布）
 
+- `v0.1`已于2026-11-09发布为[GitHub Pre-release](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.1)，对应源码`06fcd928826d2361d9c0f15c4012fa309fbf7de9`。[发布源码CI](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/42624590207)全部通过，用时16分26秒，含静态分析、合成测试、release打包与产物上传。首次NDK/CMake安装及编译造成较长等待，最终没有打包失败。附件为本机开发签名APK（56,263,075字节）与SHA256SUMS.txt；GitHub记录的APK摘要与本地一致：`a767f542fbfcda9bef1ab3153b850a6123b5fd21159a600c7e5ac89b41bf6c89`。学校完整学期准确性验证边界不变。
 - 已替换为用户提供的蓝紫玻璃学士帽启动图标；五档传统图标、Android自适应圆形/圆角方形预览检查通过。在本任务独立空白Android 16 AVD安装并启动含新图标的正常包名release APK，应用列表图标显示正确。版本仍为0.1/7，R8启用，签名与ZIP完整性检查通过；本地APK约53.7MiB，使用开发签名。用户已恢复提交与发布任务；最终同步与发布状态以Git和Release记录为准。
 - 发布CI曾因Windows长路径、镜像下载内容校验失败而停止；已分别启用SDK克隆长路径和CI官方包源，保留所有锁定版本及SHA-256，不跳过完整性校验。最终远程结果需核对修复提交对应的Actions记录。
 - Flutter 3.47.9 / Dart 3.13.7工程、Riverpod状态、原子替换的本机JSON缓存、官方可见WebView导入页面已实现。
