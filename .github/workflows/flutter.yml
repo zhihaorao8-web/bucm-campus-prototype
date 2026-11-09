@@ -34,7 +34,7 @@ jobs:
       - name: Prepare pinned Flutter SDK
         shell: pwsh
         run: |
-          git clone --depth 1 --branch 3.47.9 https://github.com/flutter/flutter.git build/flutter-ci
+          git -c core.longpaths=true clone --depth 1 --branch 3.47.9 https://github.com/flutter/flutter.git build/flutter-ci
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $revision = git -C build/flutter-ci rev-parse HEAD
           if ($revision -ne 'c197ca5199e9ee5661e865596c9c07294dfab51c') { throw 'Flutter revision mismatch' }
