@@ -18,6 +18,9 @@ jobs:
     runs-on: windows-latest
     env:
       PUB_HOSTED_URL: https://pub.dev
+      # Kotlin incremental compilation on Windows requires package sources and
+      # the Android project to share a drive (runner profile is on C:, repo D:).
+      PUB_CACHE: ${{ github.workspace }}\build\pub-cache
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
