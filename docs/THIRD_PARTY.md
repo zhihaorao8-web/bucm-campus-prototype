@@ -1,6 +1,6 @@
 # XLS读取依赖
 
-项目仍使用轻量Java构建，不迁移Gradle。学校实际导出为BIFF/OLE二进制XLS，使用Apache POI的HSSF读取，不包含POI的OOXML模块。固定的5.5.1版本支持现有Java 8目标；不自动升级依赖。
+根目录原型仍使用轻量Java构建；新增mobile/使用Flutter/Gradle，并通过过渡适配层复用这些依赖。学校实际导出为BIFF/OLE二进制XLS，使用Apache POI的HSSF读取，不包含POI的OOXML模块。固定的5.5.1版本支持现有Java 8目标；不自动升级依赖。Flutter依赖版本和摘要见mobile/pubspec.lock，插件许可由Flutter许可注册提供；HSSF原始许可同样打包到Flutter APK。
 
 公开依赖从Maven Central获取，版本和SHA-256锁定在`dependencies.lock.json`，缓存于`build/deps/`，不提交二进制JAR。构建与离线检查每次验证摘要。CI只获取公开依赖和使用合成工作簿，不访问学校。
 

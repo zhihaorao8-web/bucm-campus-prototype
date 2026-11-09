@@ -34,6 +34,23 @@ __pycache__/
 *.sqlite3
 *.log
 
+# Flutter generated caches and Android local configuration
+**/.dart_tool/
+**/.flutter-plugins*
+**/build/
+**/local.properties
+**/.gradle/
+**/.idea/
+**/android/.kotlin/
+/mobile/android/app/src/main/assets/
+/mobile/android/app/libs/
+/mobile/android/app/src/main/java/cn/bucm/campusprobe/
+/mobile/.metadata
+*.iml
+/.hallmark/
+/mobile/assets/
+!/mobile/android/gradle/wrapper/gradle-wrapper.jar
+
 # Original local-only feasibility artifacts (never publish real course data)
 /课表来源验证.png
 /课表提取验证样本.json

@@ -30,13 +30,14 @@ def main():
                     str(ROOT / 'src/cn/bucm/campusprobe/CourseImportPlan.java'),
                     str(ROOT / 'src/cn/bucm/campusprobe/AcademicTerm.java'),
                     *map(str,(ROOT/'tests').glob('*.java'))], check=True)
-    for test in ('ParserTest','ExportTest','CourseTimeTest'):
+    for test in ('ParserTest','ExportTest','CourseTimeTest','TeacherTest'):
         subprocess.run([str(java / ('java' + EXE)), '-cp', str(classes)+os.pathsep+deps,test], check=True)
     node = shutil.which('node')
     if not node:
         raise SystemExit('Node.js is required for DOM extraction checks.')
     subprocess.run([node, str(ROOT / 'tests/extract-test.cjs')], check=True)
     subprocess.run([node, str(ROOT / 'tests/export-nav-test.cjs')], check=True)
+    subprocess.run([node, str(ROOT / 'tests/coverage-check-test.cjs')], check=True)
     for path in (ROOT / 'examples').glob('*.json'):
         sample = json.loads(path.read_text(encoding='utf-8'))
         if sample.get('synthetic') is not True:

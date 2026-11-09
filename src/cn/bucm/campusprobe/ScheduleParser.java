@@ -6,7 +6,7 @@ import java.util.regex.*;
 /** Conservative parser: returns candidates, never invents period-to-clock mappings. */
 public final class ScheduleParser {
     public static final class Candidate {
-        public String name="", place="", raw="", weeks="", periods="", time="";
+        public String name="", teacher="", place="", raw="", weeks="", periods="", time="";
         public int day;
     }
     private static String normalize(String text) {
@@ -61,6 +61,18 @@ public final class ScheduleParser {
                 String value=original.replaceFirst("^.*?(?:地点|教室)\\s*[:：]","").trim();
                 if(normalize(value).equals(c.place)){c.place=value;break;}
             }
+        }
+        // Keep teacher text; accept a label or the sole line before the schedule.
+        for(String line:lines)if(line.trim().matches("^(?:教师|任课教师|授课教师)\\s*[:：].+"))
+            c.teacher=line.trim().replaceFirst("^(?:教师|任课教师|授课教师)\\s*[:：]\\s*", "");
+        if(c.teacher.isEmpty()) {
+            List<String> before=new ArrayList<>();
+            for(String line:lines) {
+                line=line.trim();
+                if(line.matches(".*[0-9].*(?:\\(周\\)|周次|教学周|周).*"))break;
+                if(!line.isEmpty())before.add(line);
+            }
+            if(before.size()==2&&!before.get(1).matches(".*(?:地点|教室|备注|说明|学期|节次|第.*节).*"))c.teacher=before.get(1);
         }
         return c;
     }
