@@ -1,7 +1,9 @@
 allprojects {
     repositories {
-        maven("https://maven.aliyun.com/repository/google")
-        maven("https://maven.aliyun.com/repository/central")
+        if (System.getenv("CI") != "true") {
+            maven("https://maven.aliyun.com/repository/google")
+            maven("https://maven.aliyun.com/repository/central")
+        }
         google()
         mavenCentral()
     }
