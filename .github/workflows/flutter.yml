@@ -17,7 +17,7 @@ jobs:
   android:
     runs-on: windows-latest
     env:
-      PUB_HOSTED_URL: https://pub.flutter-io.cn
+      PUB_HOSTED_URL: https://pub.dev
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -50,6 +50,10 @@ jobs:
       - name: Flutter analysis and synthetic tests
         working-directory: mobile
         run: |
+          # The local lock uses the China mirror. On hosted CI use the official
+          # endpoint, retaining every locked version and SHA-256 verbatim.
+          $lock = (Get-Content pubspec.lock -Raw).Replace('https://pub.flutter-io.cn', 'https://pub.dev')
+          [System.IO.File]::WriteAllText((Join-Path $PWD 'pubspec.lock'), $lock)
           flutter pub get --enforce-lockfile
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           flutter analyze --no-pub
