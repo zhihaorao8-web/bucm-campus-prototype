@@ -8,6 +8,9 @@ import 'package:campus_schedule/ui/app_shell.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'package:campus_schedule/ui/glass_navigation.dart';
 import 'schedule_test.dart' show MemoryRepository, sample;
+import 'support/memory_appearance.dart';
+import 'package:campus_schedule/application/appearance_controller.dart';
+import 'package:campus_schedule/platform/app_platform.dart';
 
 Widget app(
   MemoryRepository repo, {
@@ -16,7 +19,20 @@ Widget app(
   bool highContrast = false,
   bool reduceMotion = false,
 }) => ProviderScope(
-  overrides: [repositoryProvider.overrideWithValue(repo)],
+  overrides: [
+    repositoryProvider.overrideWithValue(repo),
+    appearanceRepositoryProvider.overrideWithValue(
+      MemoryAppearanceRepository(),
+    ),
+    appInfoProvider.overrideWith(
+      (ref) async => const AppPlatformInfo(
+        version: 'test',
+        build: '7',
+        sdk: 36,
+        systemAccent: 0xff00897b,
+      ),
+    ),
+  ],
   child: MaterialApp(
     theme: appTheme(dark ? Brightness.dark : Brightness.light),
     locale: const Locale('zh', 'CN'),
@@ -142,6 +158,16 @@ void main() {
       );
       expect(selected.properties.selected, isTrue);
       final footer = find.textContaining('课程按北京时间显示');
+      await tester.scrollUntilVisible(
+        footer,
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byKey(const PageStorageKey('settings-page')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       await tester.ensureVisible(footer);
       await tester.pumpAndSettle();
       expect(

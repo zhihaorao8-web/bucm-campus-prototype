@@ -1,9 +1,11 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../application/appearance_controller.dart';
 
 /// A bounded backdrop blur: content stays sharp, only the floating dock is frosted.
-class GlassNavigation extends StatelessWidget {
+class GlassNavigation extends ConsumerWidget {
   const GlassNavigation({
     super.key,
     required this.selected,
@@ -18,35 +20,55 @@ class GlassNavigation extends StatelessWidget {
     Icons.tune_outlined,
   ];
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(currentAppearanceProvider);
+    final floating = settings.floating;
+    final glass =
+        floating &&
+        settings.glass &&
+        settings.blur &&
+        !MediaQuery.highContrastOf(context);
+    final radius = floating ? 40.0 : 0.0;
     final theme = Theme.of(context), colors = Theme.of(context).colorScheme;
     final dark = theme.brightness == Brightness.dark;
-    final opaque = MediaQuery.highContrastOf(context);
+    final opaque =
+        MediaQuery.highContrastOf(context) || !settings.blur || !floating;
     final motion = !MediaQuery.disableAnimationsOf(context);
     final height =
         70.0 + (MediaQuery.textScalerOf(context).scale(13) - 13).clamp(0, 24);
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.only(bottom: 12),
+      minimum: EdgeInsets.only(bottom: floating ? 12 : 0),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+        padding: EdgeInsets.fromLTRB(
+          floating ? 24 : 0,
+          floating ? 12 : 0,
+          floating ? 24 : 0,
+          0,
+        ),
         child: Center(
           heightFactor: 1,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
+            constraints: BoxConstraints(
+              maxWidth: floating ? 400 : double.infinity,
+            ),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(40),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: dark ? .28 : .10),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(radius),
+                boxShadow: floating
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: dark ? .28 : .10,
+                          ),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ]
+                    : [],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(40),
+                borderRadius: BorderRadius.circular(radius),
                 child: BackdropFilter(
                   key: const ValueKey('dock-blur'),
                   enabled: !opaque,
@@ -57,13 +79,28 @@ class GlassNavigation extends StatelessWidget {
                           .withValues(
                             alpha: opaque
                                 ? 1
-                                : dark
-                                ? .78
-                                : .72,
+                                : glass
+                                ? (dark ? .78 : .72)
+                                : .95,
                           ),
-                      borderRadius: BorderRadius.circular(40),
+                      gradient: glass
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white.withValues(
+                                  alpha: dark ? .08 : .24,
+                                ),
+                                Colors.transparent,
+                                Colors.white.withValues(alpha: .04),
+                              ],
+                            )
+                          : null,
+                      borderRadius: BorderRadius.circular(radius),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: dark ? .16 : .85),
+                        color: Colors.white.withValues(
+                          alpha: glass ? (dark ? .16 : .85) : 0,
+                        ),
                         width: .7,
                       ),
                     ),

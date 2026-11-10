@@ -13,6 +13,9 @@ import 'package:campus_schedule/ui/app_shell.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'schedule_test.dart' show MemoryRepository;
 import 'week_grid_test.dart' show weeklyPreviewData;
+import 'support/memory_appearance.dart';
+import 'package:campus_schedule/application/appearance_controller.dart';
+import 'package:campus_schedule/platform/app_platform.dart';
 
 void main() {
   testWidgets('capture synthetic UI previews', (tester) async {
@@ -50,6 +53,17 @@ void main() {
           key: boundary,
           child: ProviderScope(
             overrides: [
+              appearanceRepositoryProvider.overrideWithValue(
+                MemoryAppearanceRepository(),
+              ),
+              appInfoProvider.overrideWith(
+                (ref) async => const AppPlatformInfo(
+                  version: 'test',
+                  build: '7',
+                  sdk: 36,
+                  systemAccent: 0xff00897b,
+                ),
+              ),
               repositoryProvider.overrideWithValue(
                 MemoryRepository(data ?? const ScheduleData()),
               ),
@@ -106,10 +120,32 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('tab-2')));
     await tester.pumpAndSettle();
     await capture('settings');
+    await tester.tap(find.text('外观设置'));
+    await tester.pumpAndSettle();
+    await capture('appearance');
+    final effects = find.byKey(const ValueKey('appearance-模糊'));
+    await tester.scrollUntilVisible(
+      effects,
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('settings-route-外观设置')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await Scrollable.ensureVisible(tester.element(effects), alignment: .3);
+    await tester.pumpAndSettle();
+    await capture('appearance-effects');
     await setup(dark: true);
     await tester.tap(find.text('先体验合成示例'));
     await tester.pumpAndSettle();
     await capture('dark');
+    await tester.tap(find.byKey(const ValueKey('tab-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('外观设置'));
+    await tester.pumpAndSettle();
+    await capture('appearance-dark');
     await setup(scale: 1.5, width: 320);
     await tester.ensureVisible(find.text('先体验合成示例'));
     await tester.tap(find.text('先体验合成示例'));

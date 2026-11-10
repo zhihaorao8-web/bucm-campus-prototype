@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_miuix/miuix.dart';
 import '../application/schedule_controller.dart';
+import '../application/appearance_controller.dart';
 import '../data/demo_schedule.dart';
 import '../domain/schedule.dart';
 import '../platform/school_adapter.dart';
@@ -11,6 +12,7 @@ import 'import_page.dart';
 import 'week_grid.dart';
 import 'weekday_tabs.dart';
 import 'glass_navigation.dart';
+import 'appearance_page.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -22,6 +24,7 @@ class _AppShellState extends ConsumerState<AppShell>
     with WidgetsBindingObserver {
   int tab = 0, week = 0, day = schoolNow().weekday;
   bool daily = false, demo = false, busy = false;
+  double tabDrag = 0;
   String? selectedSemester;
   DateTime now = schoolNow();
   late final Timer ticker;
@@ -118,13 +121,14 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   Widget build(BuildContext context) {
     final stored = ref.watch(scheduleProvider);
+    final appearance = ref.watch(currentAppearanceProvider);
     return Scaffold(
       body: MiuixScaffold(
         topBar: MiuixTopAppBar(
           key: ValueKey('topbar-$tab'),
           title: ['今日', '课表', '设置'][tab],
           scrollBehavior: scrollBehaviors[tab],
-          blurred: !MediaQuery.highContrastOf(context),
+          blurred: appearance.blur && !MediaQuery.highContrastOf(context),
           blurRadius: 44,
           blurTintAlpha: Theme.of(context).brightness == Brightness.dark
               ? .82
@@ -155,56 +159,78 @@ class _AppShellState extends ConsumerState<AppShell>
         content: (insets) => MiuixScrollBehaviorListener(
           key: ValueKey('scroll-page-$tab'),
           behavior: scrollBehaviors[tab],
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1000),
-              child: stored.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(semanticsLabel: '正在读取本地课表'),
-                ),
-                error: (error, stack) => Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('本地课表暂时无法读取。文件已保留，请重试。'),
-                      const SizedBox(height: 16),
-                      MiuixButton(
-                        colors: MiuixButtonDefaults.buttonColorsPrimary(
-                          context,
-                        ),
-                        onPressed: () => ref.invalidate(scheduleProvider),
-                        child: const Text('重新读取'),
-                      ),
-                    ],
+          child: GestureDetector(
+            onHorizontalDragStart: appearance.swipePages
+                ? (_) => tabDrag = 0
+                : null,
+            onHorizontalDragUpdate: appearance.swipePages
+                ? (event) => tabDrag += event.delta.dx
+                : null,
+            onHorizontalDragEnd: appearance.swipePages
+                ? (event) {
+                    final velocity = event.primaryVelocity ?? 0;
+                    if (tabDrag.abs() > 64 || velocity.abs() > 450) {
+                      final direction = tabDrag.abs() > 16 ? tabDrag : velocity;
+                      setState(
+                        () =>
+                            tab = (tab + (direction < 0 ? 1 : -1)).clamp(0, 2),
+                      );
+                    }
+                  }
+                : null,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1000),
+                child: stored.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(
+                      semanticsLabel: '正在读取本地课表',
+                    ),
                   ),
+                  error: (error, stack) => Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('本地课表暂时无法读取。文件已保留，请重试。'),
+                        const SizedBox(height: 16),
+                        MiuixButton(
+                          colors: MiuixButtonDefaults.buttonColorsPrimary(
+                            context,
+                          ),
+                          onPressed: () => ref.invalidate(scheduleProvider),
+                          child: const Text('重新读取'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  data: (saved) {
+                    final data = demo ? demoSchedule(now) : saved;
+                    final semester = data.semesters.contains(selectedSemester)
+                        ? selectedSemester
+                        : data.semesters.firstOrNull;
+                    final courses = data.courses
+                        .where((c) => c.semester == semester)
+                        .toList();
+                    return tab == 2
+                        ? settings(data, insets)
+                        : courses.isEmpty
+                        ? ListView(
+                            key: PageStorageKey('empty-page-$tab'),
+                            controller: pageControllers[tab],
+                            padding: pagePadding(insets),
+                            children: [
+                              EmptySchedule(
+                                onImport: openImport,
+                                onDemo: startDemo,
+                              ),
+                            ],
+                          )
+                        : tab == 0
+                        ? home(data, courses, semester!, insets)
+                        : timetable(data, courses, semester!, insets);
+                  },
                 ),
-                data: (saved) {
-                  final data = demo ? demoSchedule(now) : saved;
-                  final semester = data.semesters.contains(selectedSemester)
-                      ? selectedSemester
-                      : data.semesters.firstOrNull;
-                  final courses = data.courses
-                      .where((c) => c.semester == semester)
-                      .toList();
-                  return tab == 2
-                      ? settings(data, insets)
-                      : courses.isEmpty
-                      ? ListView(
-                          key: PageStorageKey('empty-page-$tab'),
-                          controller: pageControllers[tab],
-                          padding: pagePadding(insets),
-                          children: [
-                            EmptySchedule(
-                              onImport: openImport,
-                              onDemo: startDemo,
-                            ),
-                          ],
-                        )
-                      : tab == 0
-                      ? home(data, courses, semester!, insets)
-                      : timetable(data, courses, semester!, insets);
-                },
               ),
             ),
           ),
@@ -553,6 +579,20 @@ class _AppShellState extends ConsumerState<AppShell>
     padding: pagePadding(insets),
     children: [
       if (demo) demoNotice(),
+      sectionLabel('外观'),
+      MiuixCard(
+        cornerRadius: 24,
+        insideMargin: EdgeInsets.zero,
+        child: MiuixArrowPreference(
+          title: '外观设置',
+          summary: '主题、颜色、底栏与界面缩放',
+          startAction: const Icon(Icons.palette_outlined),
+          onClick: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const AppearancePage()),
+          ),
+        ),
+      ),
+      const SizedBox(height: 24),
       MiuixCard(
         cornerRadius: 24,
         insideMargin: EdgeInsets.zero,

@@ -1,0 +1,89 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_miuix/miuix.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../application/appearance_controller.dart';
+
+class SettingsScaffold extends ConsumerStatefulWidget {
+  const SettingsScaffold({
+    super.key,
+    required this.title,
+    required this.children,
+  });
+  final String title;
+  final List<Widget> children;
+  @override
+  ConsumerState<SettingsScaffold> createState() => _SettingsScaffoldState();
+}
+
+class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
+  final behavior = miuixScrollBehavior(snapOnRelease: false);
+  double drag = 0;
+  @override
+  void dispose() {
+    behavior.state.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(currentAppearanceProvider);
+    return Scaffold(
+      body: Stack(
+        children: [
+          MiuixScaffold(
+            topBar: MiuixTopAppBar(
+              title: widget.title,
+              scrollBehavior: behavior,
+              blurred: settings.blur && !MediaQuery.highContrastOf(context),
+              navigationIcon: IconButton(
+                tooltip: '返回',
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.maybePop(context),
+              ),
+            ),
+            content: (insets) => MiuixScrollBehaviorListener(
+              behavior: behavior,
+              child: ListView(
+                key: ValueKey('settings-route-${widget.title}'),
+                padding: EdgeInsets.fromLTRB(
+                  16 + insets.left,
+                  insets.top + 16,
+                  16 + insets.right,
+                  insets.bottom + 32,
+                ),
+                children: widget.children,
+              ),
+            ),
+          ),
+          if (settings.swipeBack && Navigator.canPop(context))
+            Positioned(
+              left: 0,
+              top: MediaQuery.paddingOf(context).top + 64,
+              bottom: 0,
+              width: 18,
+              child: GestureDetector(
+                key: const ValueKey('edge-back-gesture'),
+                behavior: HitTestBehavior.translucent,
+                onHorizontalDragStart: (_) => drag = 0,
+                onHorizontalDragUpdate: (value) => drag += value.delta.dx,
+                onHorizontalDragEnd: (value) {
+                  if (drag > 64 || (value.primaryVelocity ?? 0) > 450) {
+                    Navigator.maybePop(context);
+                  }
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+Widget settingsGroup(List<Widget> children) => Padding(
+  padding: const EdgeInsets.only(bottom: 16),
+  child: MiuixCard(
+    cornerRadius: 24,
+    insideMargin: EdgeInsets.zero,
+    child: Column(children: children),
+  ),
+);

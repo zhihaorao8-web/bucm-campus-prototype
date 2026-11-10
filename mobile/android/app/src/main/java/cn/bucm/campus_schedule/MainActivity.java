@@ -18,6 +18,29 @@ public class MainActivity extends FlutterActivity {
     @Override public void configureFlutterEngine(@NonNull FlutterEngine engine) {
         super.configureFlutterEngine(engine);
         android.webkit.WebView.setWebContentsDebuggingEnabled(false);
+        // Read-only app/theme metadata, separate from school authentication.
+        new MethodChannel(engine.getDartExecutor().getBinaryMessenger(),"cn.bucm.campus/app")
+            .setMethodCallHandler((call,reply)->{
+                if(call.method.equals("info")) {
+                    try {
+                        android.content.pm.PackageInfo info=getPackageManager().getPackageInfo(getPackageName(),0);
+                        Map<String,Object> data=new HashMap<>();
+                        data.put("name",getApplicationInfo().loadLabel(getPackageManager()).toString());
+                        data.put("version",info.versionName);
+                        data.put("build",android.os.Build.VERSION.SDK_INT>=28?info.getLongVersionCode():info.versionCode);
+                        data.put("sdk",android.os.Build.VERSION.SDK_INT);
+                        if(android.os.Build.VERSION.SDK_INT>=31)
+                            data.put("accent",((long)getResources().getColor(android.R.color.system_accent1_500,getTheme()))&0xffffffffL);
+                        reply.success(data);
+                    }catch(Exception error){reply.error("APP_INFO","无法读取应用信息",null);}
+                } else if(call.method.equals("openProjectLink")) {
+                    String target=String.valueOf(call.arguments);
+                    if(!target.equals("repository")&&!target.equals("developer")){reply.error("UNTRUSTED_LINK","未知项目链接",null);return;}
+                    String url="https://github.com/zhihaorao8-web"+(target.equals("repository")?"/bucm-campus-prototype":"");
+                    try {startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url)));reply.success(null);}
+                    catch(android.content.ActivityNotFoundException error){reply.error("NO_BROWSER","未找到可用浏览器，可复制地址",null);}
+                } else reply.notImplemented();
+            });
         new MethodChannel(engine.getDartExecutor().getBinaryMessenger(),"cn.bucm.campus/school")
             .setMethodCallHandler((call,reply)->{
                 if(call.method.equals("clearSession")) {

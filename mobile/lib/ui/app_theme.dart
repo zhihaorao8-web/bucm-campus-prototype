@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_miuix/miuix.dart';
+import '../application/appearance_controller.dart';
 
 /// HyperOS / MIUIX surfaces and typography, shared with Flutter route overlays.
 abstract final class AppColors {
@@ -35,29 +37,48 @@ abstract final class AppColors {
   }
 }
 
-ThemeData appTheme(Brightness brightness) {
+ThemeData appTheme(
+  Brightness brightness, {
+  AppearanceSettings settings = const AppearanceSettings(),
+  int? systemAccent,
+}) {
   final dark = brightness == Brightness.dark;
   final miuix = dark ? darkColorScheme() : lightColorScheme();
-  final colors =
-      ColorScheme.fromSeed(
-        seedColor: miuix.primary,
-        brightness: brightness,
-      ).copyWith(
-        primary: miuix.primary,
-        onPrimary: miuix.onPrimary,
-        surface: miuix.surface,
-        onSurface: miuix.onSurface,
-        surfaceContainer: miuix.surfaceContainer,
-        surfaceContainerHighest: miuix.secondaryVariant,
-        onSurfaceVariant: dark
-            ? const Color(0xFFABABAB)
-            : const Color(0xFF757575),
-        outlineVariant: miuix.dividerLine,
-        primaryContainer: dark
-            ? const Color(0xFF182D4D)
-            : const Color(0xFFEAF2FF),
-        onPrimaryContainer: miuix.primary,
-      );
+  final seed = Color(
+    settings.monet && systemAccent != null ? systemAccent : settings.accent,
+  );
+  final generated = ColorScheme.fromSeed(
+    seedColor: seed,
+    brightness: brightness,
+    dynamicSchemeVariant: settings.variant,
+    contrastLevel: settings.contrast,
+  );
+  final customized =
+      settings.monet ||
+      settings.accent != 0xff3482ff ||
+      settings.variant != DynamicSchemeVariant.tonalSpot ||
+      settings.contrast != 0;
+  final colors = customized
+      ? generated
+      : ColorScheme.fromSeed(
+          seedColor: miuix.primary,
+          brightness: brightness,
+        ).copyWith(
+          primary: miuix.primary,
+          onPrimary: miuix.onPrimary,
+          surface: miuix.surface,
+          onSurface: miuix.onSurface,
+          surfaceContainer: miuix.surfaceContainer,
+          surfaceContainerHighest: miuix.secondaryVariant,
+          onSurfaceVariant: dark
+              ? const Color(0xFFABABAB)
+              : const Color(0xFF757575),
+          outlineVariant: miuix.dividerLine,
+          primaryContainer: dark
+              ? const Color(0xFF182D4D)
+              : const Color(0xFFEAF2FF),
+          onPrimaryContainer: miuix.primary,
+        );
   final text = Typography.material2021().black
       .apply(bodyColor: colors.onSurface, displayColor: colors.onSurface)
       .copyWith(
@@ -94,6 +115,15 @@ ThemeData appTheme(Brightness brightness) {
       );
   return ThemeData(
     useMaterial3: true,
+    pageTransitionsTheme: PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: settings.predictiveBack
+            ? const PredictiveBackPageTransitionsBuilder()
+            : const ZoomPageTransitionsBuilder(),
+        TargetPlatform.iOS: const CupertinoPageTransitionsBuilder(),
+        TargetPlatform.macOS: const CupertinoPageTransitionsBuilder(),
+      },
+    ),
     brightness: brightness,
     colorScheme: colors,
     scaffoldBackgroundColor: colors.surface,
@@ -157,6 +187,25 @@ class MiuixThemeBridge extends StatelessWidget {
     final base = MiuixThemeData.of(theme.brightness);
     return MiuixTheme(
       data: base.copyWith(
+        colors: base.colors.copy(
+          primary: theme.colorScheme.primary,
+          onPrimary: theme.colorScheme.onPrimary,
+          primaryVariant: theme.colorScheme.primaryContainer,
+          onPrimaryVariant: theme.colorScheme.onPrimaryContainer,
+          primaryContainer: theme.colorScheme.primaryContainer,
+          onPrimaryContainer: theme.colorScheme.onPrimaryContainer,
+          background: theme.colorScheme.surface,
+          onBackground: theme.colorScheme.onSurface,
+          surface: theme.colorScheme.surface,
+          onSurface: theme.colorScheme.onSurface,
+          surfaceContainer: theme.colorScheme.surfaceContainer,
+          onSurfaceContainer: theme.colorScheme.onSurface,
+          secondaryVariant: theme.colorScheme.surfaceContainerHighest,
+          onSurfaceVariantSummary: theme.colorScheme.onSurfaceVariant,
+          onSurfaceVariantActions: theme.colorScheme.onSurfaceVariant,
+          dividerLine: theme.colorScheme.outlineVariant,
+          outline: theme.colorScheme.outline,
+        ),
         textStyles: base.textStyles.copy(
           main: text.bodyLarge,
           paragraph: text.bodyLarge,
