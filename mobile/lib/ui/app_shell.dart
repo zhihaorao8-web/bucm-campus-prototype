@@ -246,6 +246,8 @@ class _AppShellState extends ConsumerState<AppShell>
                   value: s,
                   child: Text(
                     '$s 学期',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ),
@@ -394,77 +396,81 @@ class _AppShellState extends ConsumerState<AppShell>
     final monday = calendarAdd(first.termStart, (selectedWeek - 1) * 7);
     final selectedDate = calendarAdd(monday, day - 1);
     final events = occurrencesOn(courses, selectedDate);
-    return ListView(
-      key: const PageStorageKey('timetable-page'),
-      controller: pageControllers[1],
-      padding: pagePadding(insets),
-      children: [
-        if (demo) demoNotice(),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: termSelector(data, semester),
-        ),
-        Row(
-          children: [
-            IconButton(
-              tooltip: '上一周',
-              onPressed: selectedWeek > 1
-                  ? () => setState(() => week = selectedWeek - 1)
-                  : null,
-              icon: const Icon(Icons.chevron_left),
+    final header = <Widget>[
+      if (demo) demoNotice(),
+      Row(
+        children: [
+          Expanded(child: termSelector(data, semester)),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 116,
+            child: MiuixTabRow(
+              tabs: const ['周', '日'],
+              minWidth: 46,
+              maxWidth: 46,
+              itemSpacing: 4,
+              selectedTabIndex: daily ? 1 : 0,
+              onTabSelected: (value) => setState(() => daily = value == 1),
             ),
-            Expanded(
-              child: Center(
-                child: Text(
-                  '第 $selectedWeek 周',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () => setState(() {
-                week = currentWeek.clamp(1, maximum);
-                day = now.weekday;
-              }),
-              child: const Text('本周'),
-            ),
-            IconButton(
-              tooltip: '下一周',
-              onPressed: selectedWeek < maximum
-                  ? () => setState(() => week = selectedWeek + 1)
-                  : null,
-              icon: const Icon(Icons.chevron_right),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${shortDate(monday)} 至 ${shortDate(calendarAdd(monday, 6))}',
-              ),
-            ),
-            SizedBox(
-              width: 128,
-              child: MiuixTabRow(
-                tabs: const ['周', '日'],
-                minWidth: 52,
-                maxWidth: 52,
-                itemSpacing: 4,
-                selectedTabIndex: daily ? 1 : 0,
-                onTabSelected: (value) => setState(() => daily = value == 1),
-              ),
-            ),
-          ],
-        ),
-        if (currentWeek < 1 || currentWeek > maximum)
-          const Padding(
-            padding: EdgeInsets.only(top: 12),
-            child: Text('当前日期不在已导入的教学周范围内'),
           ),
-        if (daily) ...[
-          const SizedBox(height: 24),
+        ],
+      ),
+      Row(
+        children: [
+          IconButton(
+            tooltip: '上一周',
+            onPressed: selectedWeek > 1
+                ? () => setState(() => week = selectedWeek - 1)
+                : null,
+            icon: const Icon(Icons.chevron_left),
+          ),
+          Expanded(
+            child: Column(
+              children: [
+                Text(
+                  '第 $selectedWeek 周',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Text(
+                  '${monday.month}/${monday.day} – ${calendarAdd(monday, 6).month}/${calendarAdd(monday, 6).day}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => setState(() {
+              week = currentWeek.clamp(1, maximum);
+              day = now.weekday;
+            }),
+            child: const Text('本周'),
+          ),
+          IconButton(
+            tooltip: '下一周',
+            onPressed: selectedWeek < maximum
+                ? () => setState(() => week = selectedWeek + 1)
+                : null,
+            icon: const Icon(Icons.chevron_right),
+          ),
+        ],
+      ),
+      if (currentWeek < 1 || currentWeek > maximum)
+        const Padding(
+          padding: EdgeInsets.only(top: 8),
+          child: Text('当前日期不在已导入的教学周范围内'),
+        ),
+    ];
+    if (daily) {
+      return ListView(
+        key: const PageStorageKey('timetable-page'),
+        controller: pageControllers[1],
+        padding: pagePadding(insets),
+        children: [
+          ...header,
+          const SizedBox(height: 16),
           MiuixTabRow(
             tabs: [for (final name in weekdays) '周$name'],
             selectedTabIndex: day - 1,
@@ -487,16 +493,58 @@ class _AppShellState extends ConsumerState<AppShell>
                 (other) => other != event && event.overlaps(other),
               ),
             ),
-        ] else ...[
-          const SizedBox(height: 12),
-          Text(
-            '左右滑动查看整周，点击课程查看详情',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          WeekGrid(courses: courses, monday: monday, today: now),
         ],
+      );
+    }
+    final padding = pagePadding(insets, horizontal: 8);
+    return CustomScrollView(
+      key: const PageStorageKey('timetable-page'),
+      controller: pageControllers[1],
+      slivers: [
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            padding.left + 8,
+            padding.top,
+            padding.right + 8,
+            4,
+          ),
+          sliver: SliverList.list(children: header),
+        ),
+        SliverLayoutBuilder(
+          builder: (context, constraints) {
+            // Fit the whole teaching day above the glass dock on normal phones.
+            // Large text/short viewports may scroll vertically, never horizontally.
+            final available =
+                constraints.viewportMainAxisExtent -
+                constraints.precedingScrollExtent -
+                padding.bottom;
+            final height = available < WeekGrid.minimumHeight(context)
+                ? WeekGrid.minimumHeight(context)
+                : available;
+            return SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                padding.left,
+                0,
+                padding.right,
+                padding.bottom,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: SizedBox(
+                  height: height,
+                  child: WeekGrid(
+                    courses: courses,
+                    monday: monday,
+                    today: now,
+                    onSelectDay: (value) => setState(() {
+                      day = value;
+                      daily = true;
+                    }),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
       ],
     );
   }

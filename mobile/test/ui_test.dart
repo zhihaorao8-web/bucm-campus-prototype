@@ -7,7 +7,7 @@ import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/ui/app_shell.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'package:campus_schedule/ui/glass_navigation.dart';
-import 'schedule_test.dart' show MemoryRepository;
+import 'schedule_test.dart' show MemoryRepository, sample;
 
 Widget app(
   MemoryRepository repo, {
@@ -38,13 +38,13 @@ void main() {
   testWidgets(
     'switching tabs preserves each page position without transferring scroll offset',
     (tester) async {
-      tester.view.physicalSize = const Size(390, 844);
+      tester.view.physicalSize = const Size(390, 640);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(app(MemoryRepository(const ScheduleData())));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('先体验合成示例'));
+      await tester.pumpWidget(
+        app(MemoryRepository(ScheduleData(courses: [sample()])), scale: 1.5),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('tab-1')));
       await tester.pumpAndSettle();
@@ -55,7 +55,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<ListView>(
+            .widget<ScrollView>(
               find.byKey(const PageStorageKey('timetable-page')),
             )
             .controller!
@@ -75,7 +75,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<ListView>(
+            .widget<ScrollView>(
               find.byKey(const PageStorageKey('timetable-page')),
             )
             .controller!

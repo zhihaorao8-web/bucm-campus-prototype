@@ -12,6 +12,7 @@ import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/ui/app_shell.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'schedule_test.dart' show MemoryRepository;
+import 'week_grid_test.dart' show weeklyPreviewData;
 
 void main() {
   testWidgets('capture synthetic UI previews', (tester) async {
@@ -39,6 +40,7 @@ void main() {
       bool dark = false,
       double scale = 1,
       double width = 390,
+      ScheduleData? data,
     }) async {
       await tester.pumpWidget(const SizedBox());
       tester.view.physicalSize = Size(width, 844);
@@ -49,7 +51,7 @@ void main() {
           child: ProviderScope(
             overrides: [
               repositoryProvider.overrideWithValue(
-                MemoryRepository(const ScheduleData()),
+                MemoryRepository(data ?? const ScheduleData()),
               ),
             ],
             child: MaterialApp(
@@ -95,7 +97,10 @@ void main() {
     await tester.tap(find.text('课表').last);
     await tester.pumpAndSettle();
     await capture('week');
-    await tester.drag(find.byType(ListView).first, const Offset(0, -360));
+    await tester.drag(
+      find.byKey(const PageStorageKey('timetable-page')),
+      const Offset(0, -360),
+    );
     await tester.pumpAndSettle();
     await capture('week-scrolled');
     await tester.tap(find.byKey(const ValueKey('tab-2')));
@@ -110,6 +115,16 @@ void main() {
     await tester.tap(find.text('先体验合成示例'));
     await tester.pumpAndSettle();
     await capture('large-text');
+    for (final dark in [false, true]) {
+      await setup(dark: dark, data: weeklyPreviewData(schoolNow()));
+      await tester.tap(find.byKey(const ValueKey('tab-1')));
+      await tester.pumpAndSettle();
+      await capture(dark ? 'week-overview-dark' : 'week-overview');
+    }
+    await setup(scale: 1.5, width: 320, data: weeklyPreviewData(schoolNow()));
+    await tester.tap(find.byKey(const ValueKey('tab-1')));
+    await tester.pumpAndSettle();
+    await capture('week-overview-large-text');
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   }, skip: !const bool.fromEnvironment('CAPTURE_PREVIEW'));

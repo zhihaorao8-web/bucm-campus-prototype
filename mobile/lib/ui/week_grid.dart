@@ -42,142 +42,254 @@ List<EventPlacement> layoutEvents(List<Occurrence> events) {
   return output;
 }
 
+// Five teaching blocks share the available height. Rest time is compressed,
+// while each actual teaching segment keeps its own position and detail entry.
 class WeekGrid extends StatelessWidget {
   const WeekGrid({
     super.key,
     required this.courses,
     required this.monday,
     required this.today,
+    this.onSelectDay,
   });
   final List<Course> courses;
   final DateTime monday, today;
-  static const minuteHeight = 1.15;
+  final ValueChanged<int>? onSelectDay;
+  static double minimumHeight(BuildContext context) =>
+      40 + 32 + 5 * 56 * MediaQuery.textScalerOf(context).scale(12) / 12;
+  static const blocks = [
+    (510, 600),
+    (630, 720),
+    (810, 900),
+    (930, 1020),
+    (1080, 1225),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final scale = MediaQuery.textScalerOf(context);
     final placements = [
-      for (var d = 0; d < 7; d++)
+      for (var d = 0; d < 5; d++)
         layoutEvents(occurrencesOn(courses, calendarAdd(monday, d))),
     ];
-    final all = placements.expand((p) => p).toList();
-    final lanes = all.fold<int>(1, (n, p) => math.max(n, p.lanes));
-    final startMinute =
-        all.fold<int>(
-          480,
-          (n, p) => math.min(n, clockMinutes(p.event.segment.start)),
-        ) ~/
-        60 *
-        60;
-    final endMinute =
-        ((all.fold<int>(
-                  1260,
-                  (n, p) => math.max(n, clockMinutes(p.event.segment.end)),
-                ) +
-                59) ~/
-            60) *
-        60;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final minimumColumn = math.max(116.0, lanes * 56.0 + 4);
-        final width = math.max(constraints.maxWidth, 7 * minimumColumn + 52);
-        final col = (width - 52) / 7;
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SizedBox(
-            width: width,
-            child: Column(
-              children: [
-                Row(
+        const header = 40.0, rest = 16.0;
+        final gutter = math.max(40.0, scale.scale(9) * 5 + 4);
+        final height = constraints.hasBoundedHeight
+            ? constraints.maxHeight
+            : minimumHeight(context);
+        final row = (height - header - rest * 2) / 5;
+        final col = (constraints.maxWidth - gutter) / 5;
+        double blockTop(int i) =>
+            i * row + (i >= 2 ? rest : 0) + (i >= 4 ? rest : 0);
+        double position(int minute) {
+          for (var i = 0; i < blocks.length; i++) {
+            final (start, end) = blocks[i];
+            if (minute <= end) {
+              return blockTop(i) +
+                  ((minute - start) / (end - start)).clamp(0, 1) * row;
+            }
+          }
+          return height - header;
+        }
+
+        String clock(int minute) =>
+            '${(minute ~/ 60).toString().padLeft(2, '0')}:${(minute % 60).toString().padLeft(2, '0')}';
+        return SizedBox(
+          key: const ValueKey('week-overview'),
+          height: height,
+          child: Column(
+            children: [
+              SizedBox(
+                height: header,
+                child: Row(
                   children: [
-                    const SizedBox(width: 52),
-                    for (var d = 0; d < 7; d++)
-                      SizedBox(
-                        width: col,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Column(
-                            children: [
-                              Text('周${weekdays[d]}'),
-                              const SizedBox(height: 4),
-                              Text(
-                                shortDate(calendarAdd(monday, d)),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color:
-                                      calendarDays(
-                                            calendarAdd(monday, d),
-                                            today,
-                                          ) ==
-                                          0
-                                      ? colors.primary
-                                      : colors.onSurface,
+                    SizedBox(
+                      width: gutter,
+                      child: Text(
+                        '${monday.month}月',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    for (var d = 0; d < 5; d++)
+                      Expanded(
+                        child: Semantics(
+                          label:
+                              '周${weekdays[d]}，${shortDate(calendarAdd(monday, d))}，查看日课表',
+                          button: onSelectDay != null,
+                          child: InkWell(
+                            key: ValueKey('week-day-$d'),
+                            onTap: onSelectDay == null
+                                ? null
+                                : () => onSelectDay!(d + 1),
+                            child: Center(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '周${weekdays[d]}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color:
+                                            calendarDays(
+                                                  calendarAdd(monday, d),
+                                                  today,
+                                                ) ==
+                                                0
+                                            ? colors.primary
+                                            : colors.onSurface,
+                                      ),
+                                    ),
+                                    Text(
+                                      col < 40
+                                          ? '${calendarAdd(monday, d).day}'
+                                          : '${calendarAdd(monday, d).month}/${calendarAdd(monday, d).day}',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color:
+                                            calendarDays(
+                                                  calendarAdd(monday, d),
+                                                  today,
+                                                ) ==
+                                                0
+                                            ? colors.primary
+                                            : colors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                   ],
                 ),
-                SizedBox(
-                  height: (endMinute - startMinute) * minuteHeight,
+              ),
+              Expanded(
+                child: Material(
+                  color: colors.surface,
                   child: Stack(
                     children: [
-                      for (
-                        var hour = startMinute ~/ 60;
-                        hour < endMinute ~/ 60;
-                        hour++
-                      )
+                      for (var i = 0; i < 5; i++)
                         Positioned(
-                          top: (hour * 60 - startMinute) * minuteHeight,
+                          top: blockTop(i),
                           left: 0,
                           right: 0,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: 52,
-                                child: Text(
-                                  '${hour.toString().padLeft(2, '0')}:00',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: colors.onSurfaceVariant,
+                          height: row,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                top: BorderSide(
+                                  color: colors.outlineVariant.withValues(
+                                    alpha: .45,
                                   ),
                                 ),
                               ),
-                              Expanded(
-                                child: Divider(
-                                  height: 1,
-                                  color: colors.outlineVariant,
+                            ),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: SizedBox(
+                                width: gutter,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${i + 1}',
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      '${clock(blocks[i].$1)}\n${clock(blocks[i].$2)}',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        height: 1.3,
+                                        color: colors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      for (var day = 0; day < 7; day++)
-                        for (final p in placements[day])
+                      for (var d = 0; d <= 5; d++)
+                        Positioned(
+                          left: gutter + d * col,
+                          top: 0,
+                          bottom: 0,
+                          child: VerticalDivider(
+                            width: 1,
+                            thickness: .5,
+                            color: colors.outlineVariant.withValues(alpha: .45),
+                          ),
+                        ),
+                      for (final (index, label) in [(2, '午休'), (4, '晚休')])
+                        Positioned(
+                          top: blockTop(index) - rest,
+                          left: 0,
+                          right: 0,
+                          height: rest,
+                          child: ColoredBox(
+                            color: colors.surfaceContainerHighest.withValues(
+                              alpha: .4,
+                            ),
+                            child: Center(
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      for (var d = 0; d < 5; d++)
+                        for (final p in placements[d])
                           Positioned(
-                            left: 52 + day * col + p.lane * (col - 4) / p.lanes,
-                            width: (col - 4) / p.lanes - 3,
+                            left:
+                                gutter + d * col + p.lane * col / p.lanes + 1.5,
+                            width: math.max(1, col / p.lanes - 3),
                             top:
-                                (clockMinutes(p.event.segment.start) -
-                                    startMinute) *
-                                minuteHeight,
-                            height:
-                                (clockMinutes(p.event.segment.end) -
-                                        clockMinutes(p.event.segment.start)) *
-                                    minuteHeight -
-                                3,
+                                position(clockMinutes(p.event.segment.start)) +
+                                2,
+                            height: math.max(
+                              1,
+                              position(clockMinutes(p.event.segment.end)) -
+                                  position(
+                                    clockMinutes(p.event.segment.start),
+                                  ) -
+                                  4,
+                            ),
                             child: Semantics(
+                              key: ValueKey(
+                                'week-event-${p.event.course.id}-${p.event.segment.start}',
+                              ),
                               button: true,
                               label:
-                                  '${p.event.course.name}，${p.event.segment.start}到${p.event.segment.end}，${courseLocation(p.event.course)}${p.lanes > 1 ? '，时段重叠' : ''}',
+                                  '${p.event.course.name}，周${weekdays[d]}，${p.event.segment.start}到${p.event.segment.end}，${courseLocation(p.event.course)}，${p.event.course.teacher}${p.lanes > 1 ? '，时段重叠' : ''}',
+                              excludeSemantics: true,
                               child: Material(
                                 color: AppColors.course(
                                   context,
                                   p.event.course.name,
                                 ),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(7),
                                 clipBehavior: Clip.antiAlias,
                                 child: InkWell(
                                   onTap: () => showCourseDetails(
@@ -185,60 +297,97 @@ class WeekGrid extends StatelessWidget {
                                     p.event.course,
                                   ),
                                   child: Padding(
-                                    padding: const EdgeInsets.all(8),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 3,
+                                      vertical: 5,
+                                    ),
                                     child: LayoutBuilder(
                                       builder: (context, box) {
-                                        final scale = MediaQuery.textScalerOf(
-                                          context,
-                                        );
-                                        final titleHeight =
-                                            scale.scale(13) * 1.4;
-                                        final locationHeight =
-                                            scale.scale(12) * 1.5;
-                                        final showLocation =
-                                            box.maxHeight >=
-                                            titleHeight * 2 +
-                                                locationHeight +
-                                                4;
-                                        final lines = math.min(
-                                          3,
-                                          math.max(
-                                            1,
+                                        final line = scale.scale(12) * 1.25;
+                                        final showPlace =
+                                            box.maxHeight >= line * 3 + 3 &&
+                                            box.maxWidth >= 22;
+                                        final showTeacher =
+                                            box.maxHeight >= line * 4 + 6 &&
+                                            box.maxWidth >= 44;
+                                        final lines =
                                             ((box.maxHeight -
-                                                        (showLocation
-                                                            ? locationHeight + 4
+                                                        (showPlace
+                                                            ? line + 3
+                                                            : 0) -
+                                                        (showTeacher
+                                                            ? line + 3
                                                             : 0)) /
-                                                    titleHeight)
-                                                .floor(),
-                                          ),
-                                        );
-                                        return Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              p.event.course.name,
-                                              maxLines: lines,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w700,
-                                                height: 1.4,
-                                              ),
-                                            ),
-                                            if (showLocation) ...[
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                courseLocation(p.event.course),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  height: 1.5,
+                                                    line)
+                                                .floor()
+                                                .clamp(1, 4);
+                                        final ink =
+                                            MediaQuery.highContrastOf(context)
+                                            ? colors.onSurface
+                                            : HSLColor.fromColor(
+                                                    AppColors.course(
+                                                      context,
+                                                      p.event.course.name,
+                                                    ),
+                                                  )
+                                                  .withSaturation(.4)
+                                                  .withLightness(
+                                                    dark ? .78 : .4,
+                                                  )
+                                                  .toColor();
+                                        return ClipRect(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Flexible(
+                                                child: Text(
+                                                  p.event.course.name,
+                                                  maxLines: lines,
+                                                  overflow: TextOverflow.clip,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    height: 1.25,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: ink,
+                                                  ),
                                                 ),
                                               ),
+                                              if (showPlace) ...[
+                                                const SizedBox(height: 3),
+                                                Text(
+                                                  '@${courseLocation(p.event.course)}',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    height: 1.25,
+                                                    color: ink,
+                                                  ),
+                                                ),
+                                              ],
+                                              if (showTeacher &&
+                                                  p
+                                                      .event
+                                                      .course
+                                                      .teacher
+                                                      .isNotEmpty) ...[
+                                                const SizedBox(height: 3),
+                                                Text(
+                                                  p.event.course.teacher,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    height: 1.25,
+                                                    color: ink,
+                                                  ),
+                                                ),
+                                              ],
                                             ],
-                                          ],
+                                          ),
                                         );
                                       },
                                     ),
@@ -250,8 +399,8 @@ class WeekGrid extends StatelessWidget {
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
