@@ -39,6 +39,24 @@ class _ClassroomBrowserState extends State<ClassroomBrowser> {
           icon: const Icon(Icons.arrow_back),
         ),
         actions: [
+          PopupMenuButton<String>(
+            tooltip: '学校访问方式',
+            onSelected: (url) async {
+              await controller?.loadUrl(
+                urlRequest: URLRequest(url: WebUri(url)),
+              );
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'https://webvpn.bucm.edu.cn/',
+                child: Text('校外访问（学校 WebVPN）'),
+              ),
+              PopupMenuItem(
+                value: 'https://i.bucm.edu.cn/',
+                child: Text('数字北中医（直接访问）'),
+              ),
+            ],
+          ),
           IconButton(
             tooltip: '返回课程',
             onPressed: () => Navigator.of(context).pop(),
@@ -50,13 +68,20 @@ class _ClassroomBrowserState extends State<ClassroomBrowser> {
         child: Column(
           children: [
             if (loading) const LinearProgressIndicator(),
+            if (widget.windowId == null)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text(
+                  '校外请在学校 WebVPN 登录，从“数字北中医”进入轻新课堂；也可在 WebVPN 地址栏选择 https，输入 qhz.bucm.edu.cn/cc/ 后跳转。校内可从右上角切换直接访问。',
+                ),
+              ),
             if (problem != null)
               Padding(padding: const EdgeInsets.all(12), child: Text(problem!)),
             Expanded(
               child: InAppWebView(
                 windowId: widget.windowId,
                 initialUrlRequest: widget.windowId == null
-                    ? URLRequest(url: WebUri('https://i.bucm.edu.cn/'))
+                    ? URLRequest(url: WebUri('https://webvpn.bucm.edu.cn/'))
                     : null,
                 initialSettings: InAppWebViewSettings(
                   javaScriptEnabled: true,
@@ -91,7 +116,7 @@ class _ClassroomBrowserState extends State<ClassroomBrowser> {
                   if (mounted) setState(() => loading = false);
                 },
                 onCreateWindow: (_, action) async {
-                  if (action.hasGesture != true || widget.depth >= 4) {
+                  if (action.hasGesture != true || widget.depth >= 8) {
                     return false;
                   }
                   unawaited(

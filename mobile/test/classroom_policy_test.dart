@@ -2,6 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:campus_schedule/platform/classroom_policy.dart';
 
 void main() {
+  test('school VPN documents retain strict HTTPS navigation boundary', () {
+    expect(
+      classroomNavigation('https://webvpn.bucm.edu.cn/https/synthetic/cc/'),
+      isTrue,
+    );
+    for (final url in [
+      'http://webvpn.bucm.edu.cn/',
+      'https://webvpn.bucm.edu.cn.evil.test/',
+      'https://user@webvpn.bucm.edu.cn/',
+      'https://webvpn.bucm.edu.cn:8880/',
+    ]) {
+      expect(classroomNavigation(url), isFalse);
+    }
+  });
   test('classroom separates media ports from authentication navigation', () {
     expect(classroomNavigation('https://qhz.bucm.edu.cn/cc/'), isTrue);
     expect(classroomNavigation('https://cas.bucm.edu.cn/'), isTrue);
