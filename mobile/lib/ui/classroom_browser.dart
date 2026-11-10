@@ -151,6 +151,8 @@ class _ClassroomBrowserState extends State<ClassroomBrowser> {
                             ? URLRequest(url: WebUri(entry!))
                             : null,
                         initialSettings: InAppWebViewSettings(
+                          preferredContentMode:
+                              UserPreferredContentMode.DESKTOP,
                           javaScriptEnabled: true,
                           domStorageEnabled: true,
                           supportMultipleWindows: true,
@@ -167,14 +169,24 @@ class _ClassroomBrowserState extends State<ClassroomBrowser> {
                           mixedContentMode:
                               MixedContentMode.MIXED_CONTENT_NEVER_ALLOW,
                         ),
-                        onWebViewCreated: (web) => controller = web,
-                        shouldOverrideUrlLoading: (_, action) async =>
-                            classroomNavigation(
-                              action.request.url?.toString() ?? '',
-                            )
-                            ? NavigationActionPolicy.ALLOW
-                            : NavigationActionPolicy.CANCEL,
-                        onLoadStart: (_, _) {
+                        onWebViewCreated: (web) {
+                          controller = web;
+                        },
+                        shouldOverrideUrlLoading: (_, action) async {
+                          final allow = classroomNavigation(
+                            action.request.url?.toString() ?? '',
+                          );
+                          if (!allow && mounted) {
+                            setState(() {
+                              loading = false;
+                              problem = '已阻止非学校或非 HTTPS 跳转，请从右上角切换学校 WebVPN。';
+                            });
+                          }
+                          return allow
+                              ? NavigationActionPolicy.ALLOW
+                              : NavigationActionPolicy.CANCEL;
+                        },
+                        onLoadStart: (_, url) {
                           if (mounted) {
                             setState(() {
                               loading = true;
