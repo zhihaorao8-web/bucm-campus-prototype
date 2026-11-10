@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import '../domain/schedule.dart';
 import 'app_theme.dart';
+import 'classroom_browser.dart';
 
 String courseLocation(Course course) => course.place.isNotEmpty
     ? course.place
@@ -69,6 +70,22 @@ void showCourseDetails(BuildContext context, Course course) {
                 ),
               ),
             const Divider(),
+            SizedBox(
+              width: double.infinity,
+              child: MiuixButton(
+                onPressed: course.dataSource == 'synthetic'
+                    ? null
+                    : () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const ClassroomBrowser(),
+                          ),
+                        );
+                      },
+                child: const Text('打开轻新课堂'),
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
               '时间按你确认的作息规则显示。${course.deliverySource == 'user-weekend-rule' ? '周末线上授课标记来自你的说明；原始地点保持不变。' : ''}',
               style: TextStyle(
