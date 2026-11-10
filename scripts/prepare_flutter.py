@@ -18,6 +18,9 @@ def main():
     for name in ('extract.js', 'export-nav.js', 'coverage-check.js'):
         (app / 'assets').mkdir(exist_ok=True)
         shutil.copyfile(ROOT / 'assets' / name, app / 'assets' / name)
+    # Shared user-supplied artwork; generated Flutter assets remain ignored.
+    shutil.copyfile(ROOT / 'design/branding/app-icon.png', app / 'assets/app-icon.png')
+    shutil.copyfile(ROOT / 'design/branding/developer-avatar.png', app / 'assets/developer-avatar.png')
     parser_folder = target / 'src/main/java/cn/bucm/campusprobe'
     parser_folder.mkdir(parents=True, exist_ok=True)
     for name in ('ScheduleParser', 'CourseTimes', 'CourseImportPlan', 'AcademicTerm', 'ExportWorkbook', 'SchoolExport'):

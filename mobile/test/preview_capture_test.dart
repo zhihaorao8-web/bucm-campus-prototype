@@ -91,6 +91,13 @@ void main() {
     }
 
     Future<void> capture(String name) async {
+      final images = tester.widgetList<Image>(find.byType(Image)).toList();
+      await tester.runAsync(() async {
+        for (final image in images) {
+          await precacheImage(image.image, boundary.currentContext!);
+        }
+      });
+      await tester.pump();
       final render =
           boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
       await tester.runAsync(() async {
@@ -120,6 +127,29 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('tab-2')));
     await tester.pumpAndSettle();
     await capture('settings');
+    final about = find.byKey(const ValueKey('project-info-entry'));
+    await tester.scrollUntilVisible(
+      about,
+      180,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const PageStorageKey('settings-page')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await Scrollable.ensureVisible(tester.element(about), alignment: .5);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('项目信息'));
+    await tester.pumpAndSettle();
+    await capture('project-info');
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pumpAndSettle();
+    await Scrollable.ensureVisible(
+      tester.element(find.text('外观设置')),
+      alignment: .5,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('外观设置'));
     await tester.pumpAndSettle();
     await capture('appearance');
@@ -142,6 +172,29 @@ void main() {
     await tester.pumpAndSettle();
     await capture('dark');
     await tester.tap(find.byKey(const ValueKey('tab-2')));
+    await tester.pumpAndSettle();
+    final darkAbout = find.byKey(const ValueKey('project-info-entry'));
+    await tester.scrollUntilVisible(
+      darkAbout,
+      180,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const PageStorageKey('settings-page')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await Scrollable.ensureVisible(tester.element(darkAbout), alignment: .5);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('项目信息'));
+    await tester.pumpAndSettle();
+    await capture('project-info-dark');
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pumpAndSettle();
+    await Scrollable.ensureVisible(
+      tester.element(find.text('外观设置')),
+      alignment: .5,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('外观设置'));
     await tester.pumpAndSettle();

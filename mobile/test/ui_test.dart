@@ -157,7 +157,7 @@ void main() {
         find.byKey(const ValueKey('tab-2')),
       );
       expect(selected.properties.selected, isTrue);
-      final footer = find.textContaining('课程按北京时间显示');
+      final footer = find.text('项目信息');
       await tester.scrollUntilVisible(
         footer,
         200,

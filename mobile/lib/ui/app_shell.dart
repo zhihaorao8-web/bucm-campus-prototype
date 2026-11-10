@@ -13,6 +13,7 @@ import 'week_grid.dart';
 import 'weekday_tabs.dart';
 import 'glass_navigation.dart';
 import 'appearance_page.dart';
+import 'project_info_page.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -578,7 +579,6 @@ class _AppShellState extends ConsumerState<AppShell>
     controller: pageControllers[2],
     padding: pagePadding(insets),
     children: [
-      if (demo) demoNotice(),
       sectionLabel('外观'),
       MiuixCard(
         cornerRadius: 24,
@@ -593,38 +593,6 @@ class _AppShellState extends ConsumerState<AppShell>
         ),
       ),
       const SizedBox(height: 24),
-      MiuixCard(
-        cornerRadius: 24,
-        insideMargin: EdgeInsets.zero,
-        child: Column(
-          children: [
-            MiuixArrowPreference(
-              title: '导入或刷新课表',
-              summary: '在学校官方页面完成登录',
-              startAction: const Icon(Icons.sync_outlined),
-              enabled: !busy && !demo,
-              onClick: openImport,
-            ),
-            MiuixArrowPreference(
-              title: '体验合成示例',
-              summary: '不修改本人课表',
-              startAction: const Icon(Icons.science_outlined),
-              onClick: startDemo,
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 28),
-      sectionLabel('导入结果'),
-      MiuixCard(
-        cornerRadius: 24,
-        insideMargin: const EdgeInsets.all(20),
-        child: Text(
-          data.summary.isEmpty ? '尚未导入课表' : data.summary,
-          style: Theme.of(context).textTheme.bodyLarge,
-        ),
-      ),
-      const SizedBox(height: 28),
       sectionLabel('登录与隐私'),
       MiuixCard(
         cornerRadius: 24,
@@ -675,10 +643,17 @@ class _AppShellState extends ConsumerState<AppShell>
         ),
       ),
       const SizedBox(height: 24),
-      Text(
-        '课程按北京时间显示。当前为非官方 Android 开发预览版，完整学期准确性仍需单独核验。',
-        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+      MiuixCard(
+        cornerRadius: 24,
+        insideMargin: EdgeInsets.zero,
+        child: MiuixArrowPreference(
+          key: const ValueKey('project-info-entry'),
+          title: '项目信息',
+          summary: '应用版本、开发者与源代码',
+          startAction: const Icon(Icons.info_outline),
+          onClick: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const ProjectInfoPage()),
+          ),
         ),
       ),
     ],

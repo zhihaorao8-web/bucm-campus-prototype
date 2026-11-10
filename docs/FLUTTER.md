@@ -82,6 +82,10 @@ cd mobile/android
 
 ## 验证与隐私
 
+外观偏好位于独立`appearance-v1.json`（schema 1），以临时文件flush/rename原子保存并串行处理修改；清空课程不删除外观偏好，退出学校会话不删除离线课表。应用主题、Material 3风格/对比度、顶/底栏模糊、悬浮/普通底栏、玻璃高光、主页面横滑与80%–120%整体缩放均读取该状态。系统字号在整体缩放之外继续生效。系统Monet种子通过只读原生通道读取Android 12及以上动态强调色，无动态色时提供手动选择；不读取壁纸图像。子页面的预测性返回动画要求Android 14及以上及系统手势支持，左边缘返回仅作用于新增设置子页，不拦截学校WebView的网页手势。
+
+项目信息版本来自Android实际包信息（最终由根Manifest构建），不从Dart写死版本。`prepare_flutter.py`同步`design/branding/`下的应用图标与GitHub开发者头像到被忽略的Flutter资产目录；头像离线显示，不需要运行时网络请求。开发者显示名Muzhi、账号zhihaorao8-web，外部主页/仓库以固定HTTPS地址交给浏览器，原生通道拒绝未知链接目标，不扩大学校下载域名白名单。预览与测试需等待两张图片实际解码后检查，避免把空占位误认为成功绘制。
+
 `python scripts/check.py`检查旧解析器及新增教师原文、DOM范围控件；`flutter test`检查单双周、分段、冲突布局、同学期替换、重复批次拒绝、本机缓存重读、写入失败状态保留、域名、小屏大字与深浅色。全部用合成数据，不访问学校。
 
 `flutter test integration_test/school_adapter_test.dart -d emulator-5554`在Android上实际验证方法通道，仍只使用合成课程，不打开学校页面。可选预览测试`flutter test test/preview_capture_test.dart --dart-define=CAPTURE_PREVIEW=true`使用本机Windows中文字体和SDK图标字体渲染合成PNG到`dist/flutter-preview/`，默认在普通测试与CI跳过；不会捕获真实学校页面。
