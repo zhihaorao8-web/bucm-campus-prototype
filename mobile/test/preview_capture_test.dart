@@ -120,11 +120,17 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tab-1')));
       await tester.pumpAndSettle();
       await capture(dark ? 'week-overview-dark' : 'week-overview');
+      await tester.tap(find.text('日'));
+      await tester.pumpAndSettle();
+      await capture(dark ? 'daily-dark' : 'daily');
     }
     await setup(scale: 1.5, width: 320, data: weeklyPreviewData(schoolNow()));
     await tester.tap(find.byKey(const ValueKey('tab-1')));
     await tester.pumpAndSettle();
     await capture('week-overview-large-text');
+    await tester.tap(find.text('日'));
+    await tester.pumpAndSettle();
+    await capture('daily-large-text');
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   }, skip: !const bool.fromEnvironment('CAPTURE_PREVIEW'));

@@ -9,6 +9,7 @@ import '../platform/school_adapter.dart';
 import 'course_widgets.dart';
 import 'import_page.dart';
 import 'week_grid.dart';
+import 'weekday_tabs.dart';
 import 'glass_navigation.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -472,14 +473,9 @@ class _AppShellState extends ConsumerState<AppShell>
         children: [
           ...header,
           const SizedBox(height: 16),
-          MiuixTabRow(
-            tabs: [for (final name in weekdays) '周$name'],
-            selectedTabIndex: day - 1,
-            contentAlignment: Alignment.centerLeft,
-            minWidth: 56,
-            maxWidth: 56,
-            itemSpacing: 4,
-            onTabSelected: (index) => setState(() => day = index + 1),
+          WeekdayTabs(
+            day: day,
+            onSelected: (value) => setState(() => day = value),
           ),
           const SizedBox(height: 24),
           if (events.isEmpty)
