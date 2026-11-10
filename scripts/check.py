@@ -38,6 +38,7 @@ def main():
     subprocess.run([node, str(ROOT / 'tests/extract-test.cjs')], check=True)
     subprocess.run([node, str(ROOT / 'tests/export-nav-test.cjs')], check=True)
     subprocess.run([node, str(ROOT / 'tests/coverage-check-test.cjs')], check=True)
+    subprocess.run([node, str(ROOT / 'tests/classroom-test.cjs')], check=True)
     for path in (ROOT / 'examples').glob('*.json'):
         sample = json.loads(path.read_text(encoding='utf-8'))
         if sample.get('synthetic') is not True:

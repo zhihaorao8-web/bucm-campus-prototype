@@ -1,0 +1,31 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const source = fs.readFileSync(require('node:path').join(__dirname, '../assets/classroom.js'), 'utf8');
+const row = {id:'synthetic-course', name:'合成课程', teacherName:'合成教师', course_num:'S001', className:'合成班', xq_code:'2030203101', token:'DO_NOT_EXPORT'};
+function run(component, command = {action:'snapshot'}, extra={}) {
+  const context = {location:{protocol:'https:',port:'',hostname:'qhz.bucm.edu.cn',pathname:'/coursePlatform/'}, document:{querySelector:()=>({__vue__:component}), querySelectorAll:()=>[]}, window:{}, ...extra};
+  return JSON.parse(vm.runInNewContext(source.replace('__CLASSROOM_COMMAND__',JSON.stringify(command)),context));
+}
+const catalog = {courseList:[row],xqCode:row.xq_code,seeCourseDetail(v){this.selected=v.id;}};
+const result=run(catalog);
+assert.equal(result.state,'catalog');
+assert.equal(result.semester,'2030-2031-1');
+assert.equal(result.courses[0].teacher,'合成教师');
+assert.equal(JSON.stringify(result).includes('DO_NOT_EXPORT'),false);
+run(catalog,{action:'choose',id:row.id,semester:'2030-2031-1'});
+assert.equal(catalog.selected,row.id);
+assert.equal(run(catalog,{action:'choose',id:row.id,semester:'2031-2032-1'}).state,'missing');
+assert.equal(run(catalog,{}, {location:{protocol:'https:',port:'',hostname:'qhz.bucm.edu.cn.evil.test',pathname:'/coursePlatform/'}}).state,'navigate');
+assert.equal(run(catalog,{}, {location:{protocol:'https:',port:'',hostname:'webvpn.bucm.edu.cn',pathname:'/https/other/coursePlatform/'}}).state,'navigate');
+const published={rpId:'synthetic-video',rpName:'2030-09-02 08:30–10:00',date_time:'2030-09-02',roomName:'合成教室',shareType:1};
+const videos={paramsData:row,tableData:[published,{...published,rpId:'private',shareType:2}],page:1,pageSize:10,total:20,handleCurrentChange(n){this.page=n;},seeDetail(i,v){this.played=v.rpId;}};
+assert.equal(run(videos).records[1].published,false);
+assert.equal(run(videos,{action:'play',id:'private'}).state,'missing');
+assert.equal(videos.played,undefined);
+run(videos,{action:'play',id:'synthetic-video'});
+assert.equal(videos.played,'synthetic-video');
+assert.equal(run(videos,{action:'page',page:3}).state,'missing');
+const pending={ref:videos.tableData};
+assert.equal(run(videos,{}, {window:{__campusClassroomPending:pending}}).state,'loading');
+console.log('Classroom synthetic DOM checks passed; no school session used.');
