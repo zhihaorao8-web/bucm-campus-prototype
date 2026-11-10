@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../domain/schedule.dart';
 import 'app_theme.dart';
 import 'course_widgets.dart';
+import 'course_colors.dart';
 
 class EventPlacement {
   const EventPlacement(this.event, this.lane, this.lanes);
@@ -74,6 +75,20 @@ class WeekGrid extends StatelessWidget {
       for (var d = 0; d < 5; d++)
         layoutEvents(occurrencesOn(courses, calendarAdd(monday, d))),
     ];
+    final all = placements.expand((day) => day).toList();
+    final colorIndices = adjacentCourseColors([
+      for (final p in all)
+        Rect.fromLTRB(
+          p.event.date.weekday - 1 + p.lane / p.lanes,
+          clockMinutes(p.event.segment.start).toDouble(),
+          p.event.date.weekday - 1 + (p.lane + 1) / p.lanes,
+          clockMinutes(p.event.segment.end).toDouble(),
+        ),
+    ]);
+    final cardColors = {
+      for (var i = 0; i < all.length; i++)
+        all[i]: AppColors.courseAt(context, colorIndices[i]),
+    };
     return LayoutBuilder(
       builder: (context, constraints) {
         const header = 40.0, rest = 16.0;
@@ -285,10 +300,7 @@ class WeekGrid extends StatelessWidget {
                                   '${p.event.course.name}，周${weekdays[d]}，${p.event.segment.start}到${p.event.segment.end}，${courseLocation(p.event.course)}，${p.event.course.teacher}${p.lanes > 1 ? '，时段重叠' : ''}',
                               excludeSemantics: true,
                               child: Material(
-                                color: AppColors.course(
-                                  context,
-                                  p.event.course.name,
-                                ),
+                                color: cardColors[p],
                                 borderRadius: BorderRadius.circular(7),
                                 clipBehavior: Clip.antiAlias,
                                 child: InkWell(
@@ -324,12 +336,7 @@ class WeekGrid extends StatelessWidget {
                                         final ink =
                                             MediaQuery.highContrastOf(context)
                                             ? colors.onSurface
-                                            : HSLColor.fromColor(
-                                                    AppColors.course(
-                                                      context,
-                                                      p.event.course.name,
-                                                    ),
-                                                  )
+                                            : HSLColor.fromColor(cardColors[p]!)
                                                   .withSaturation(.4)
                                                   .withLightness(
                                                     dark ? .78 : .4,

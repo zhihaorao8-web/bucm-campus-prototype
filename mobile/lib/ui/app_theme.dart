@@ -20,11 +20,18 @@ abstract final class AppColors {
     Color(0xFF382828),
     Color(0xFF2E283C),
   ];
-  static Color course(BuildContext context, String key) {
+  static Color courseAt(BuildContext context, int index) {
     final colors = Theme.of(context).brightness == Brightness.dark
         ? courseDark
         : courseLight;
-    return colors[key.codeUnits.fold<int>(0, (a, b) => a + b) % colors.length];
+    if (index < colors.length) return colors[index];
+    // Dense conflict graphs can need extra colors; never wrap to a used one.
+    return HSLColor.fromAHSL(
+      1,
+      ((index - colors.length) * 137.508) % 360,
+      .45,
+      Theme.of(context).brightness == Brightness.dark ? .18 : .94,
+    ).toColor();
   }
 }
 

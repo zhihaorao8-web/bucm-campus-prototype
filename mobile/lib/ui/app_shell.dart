@@ -358,9 +358,10 @@ class _AppShellState extends ConsumerState<AppShell>
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Text('今天没有排课，留一点时间给自己。'),
           ),
-        for (final event in today)
+        for (final (index, event) in today.indexed)
           CourseRow(
             event: event,
+            colorIndex: index % 5,
             now: now,
             conflict: today.any(
               (other) =>
@@ -486,9 +487,10 @@ class _AppShellState extends ConsumerState<AppShell>
               padding: EdgeInsets.symmetric(vertical: 40),
               child: Center(child: Text('这一天没有排课')),
             ),
-          for (final event in events)
+          for (final (index, event) in events.indexed)
             CourseRow(
               event: event,
+              colorIndex: index % 5,
               conflict: events.any(
                 (other) => other != event && event.overlaps(other),
               ),

@@ -97,10 +97,12 @@ class CourseRow extends StatelessWidget {
     required this.event,
     this.conflict = false,
     this.now,
+    this.colorIndex = 0,
   });
   final Occurrence event;
   final bool conflict;
   final DateTime? now;
+  final int colorIndex;
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -112,7 +114,7 @@ class CourseRow extends StatelessWidget {
         insideMargin: const EdgeInsets.all(20),
         onPressed: () => showCourseDetails(context, event.course),
         colors: MiuixCardColors(
-          color: AppColors.course(context, event.course.name),
+          color: AppColors.courseAt(context, colorIndex),
           contentColor: colors.onSurface,
         ),
         child: Row(

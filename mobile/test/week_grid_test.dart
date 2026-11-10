@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_miuix/miuix.dart';
 import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/ui/week_grid.dart';
+import 'package:campus_schedule/ui/course_widgets.dart';
 import 'schedule_test.dart' show MemoryRepository;
 import 'ui_test.dart' show app;
 
@@ -48,6 +50,73 @@ ScheduleData weeklyPreviewData(DateTime now) {
 }
 
 void main() {
+  for (final dark in [false, true]) {
+    testWidgets(
+      'adjacent same-name cards have different ${dark ? 'dark' : 'light'} colors',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final data = weeklyPreviewData(schoolNow());
+        final sameNames = ScheduleData(
+          courses: [
+            for (final c in data.courses)
+              Course.fromJson({...c.toJson(), 'name': '同名合成课程'}),
+          ],
+        );
+        await tester.pumpWidget(app(MemoryRepository(sameNames), dark: dark));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('tab-1')));
+        await tester.pumpAndSettle();
+        Color? color(String id, String start) => tester
+            .widget<Material>(
+              find
+                  .descendant(
+                    of: find.byKey(ValueKey('week-event-$id-$start')),
+                    matching: find.byType(Material),
+                  )
+                  .first,
+            )
+            .color;
+        final morning = [
+          for (var d = 1; d <= 5; d++) color('morning-$d', '08:30'),
+        ];
+        for (var d = 0; d < 2; d++) {
+          expect(morning[d], isNot(morning[d + 1]));
+        }
+        expect(morning[2], isNot(color('conflict', '08:30')));
+        expect(color('conflict', '08:30'), isNot(morning[3]));
+        expect(morning[3], isNot(morning[4]));
+        expect(morning[1], isNot(color('split', '13:30')));
+        expect(color('split', '13:30'), isNot(color('split', '15:30')));
+        expect(color('split', '15:30'), isNot(color('evening-2', '18:00')));
+        await tester.tap(find.byKey(const ValueKey('week-day-1')));
+        await tester.pumpAndSettle();
+        final rows = find.byType(CourseRow);
+        expect(rows.evaluate().length, greaterThanOrEqualTo(2));
+        final rowColors = [
+          for (var i = 0; i < rows.evaluate().length; i++)
+            tester
+                .widget<MiuixCard>(
+                  find
+                      .descendant(
+                        of: rows.at(i),
+                        matching: find.byType(MiuixCard),
+                      )
+                      .first,
+                )
+                .colors!
+                .color,
+        ];
+        for (var i = 1; i < rowColors.length; i++) {
+          expect(rowColors[i], isNot(rowColors[i - 1]));
+        }
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
   for (final size in [const Size(390, 844), const Size(360, 800)]) {
     testWidgets(
       'working week including Friday evening fits $size without scrolling',
