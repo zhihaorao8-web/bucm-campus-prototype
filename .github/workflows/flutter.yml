@@ -65,7 +65,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build release-mode preview APK
         working-directory: mobile
-        run: flutter build apk --release
+        run: flutter build apk --release --verbose
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: campus-flutter-release-preview-${{ github.sha }}

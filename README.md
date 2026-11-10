@@ -1,8 +1,8 @@
 # BUCM Campus Prototype
 
-## Flutter 第一版 0.1（预发布）
+## Flutter 第一版 0.2（预发布）
 
-当前Flutter版本按用户指定为`0.1`（Android内部版本号7），下载见[GitHub预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.1)。release模式APK沿用本机开发签名，不代表已建立生产签名流程。已有`v0.1.4`、`v0.1.5`历史标签保持不变。
+当前Flutter版本按用户指定为`0.2`（Android内部版本号8），下载见[GitHub预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.2)。release模式APK沿用本机开发签名，不代表已建立生产签名流程。已有`v0.1.4`、`v0.1.5`历史标签保持不变。
 
 用户已确认迁移至Flutter，优先Android，只做课表与今日速览。新工程位于`mobile/`：官方页面登录、官方XLS自动导入与DOM备用读取、离线缓存、周/日课表、冲突并排、课程详情、下一节课和深浅色界面。应用不保存密码；会话失效需本人重新登录。不包含直播、图书馆、提醒或社区。
 
@@ -63,6 +63,6 @@ CI或自动测试不得使用真实账号，亦不应保存认证会话。
 
 ## 版本
 
-当前Flutter维护版：`0.1`；此前Java原型维护版：`v0.1.5`；首个Git验证基线：`v0.1.4`。历史变化见[CHANGELOG](CHANGELOG.md)，分支、标签和发布规范见[版本管理](docs/VERSIONING.md)。Java原型0.1.0–0.1.3仅有此前本地迭代，不补造其Git历史。
+当前Flutter维护版：`0.2`；此前Java原型维护版：`v0.1.5`；首个Git验证基线：`v0.1.4`。历史变化见[CHANGELOG](CHANGELOG.md)，分支、标签和发布规范见[版本管理](docs/VERSIONING.md)。Java原型0.1.0–0.1.3仅有此前本地迭代，不补造其Git历史。
 
 源码独立编写，参考过THUInfo与ZZUPocket的接入思路，未复制其应用源码。

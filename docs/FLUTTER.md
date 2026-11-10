@@ -48,7 +48,7 @@ $env:JAVA_HOME='D:\AndroidStudio\jbr'
 
 `prepare_flutter.py`只同步公开JS、6个解析Java源文件、SHA-256验证过的HSSF依赖和第三方许可；生成文件不入Git。解析器唯一维护源仍在根`src/`。修改它们后先运行`python scripts/check.py`，再重新prepare。Flutter应用依赖锁文件、宿主和Gradle wrapper应提交，SDK、缓存、JAR、密钥和APK不提交。
 
-应用版本从根`AndroidManifest.xml`读取；prepare同步pubspec，Android构建也直接读取根版本。用户本次指定Android显示版本`0.1`、内部code递增为7；pubspec为满足SemVer规范写作`0.1.0+7`。新增`v0.1`预发布标签，已有`v0.1.4`/`v0.1.5`不修改。
+应用版本从根`AndroidManifest.xml`读取；prepare同步pubspec，Android构建也直接读取根版本。用户最新指定Android显示版本`0.2`、内部code递增为8；pubspec为满足SemVer规范写作`0.2.0+8`。新增`v0.2`预发布标签，已有`v0.1`及Java历史标签不修改。
 
 本次APK使用`flutter build apk --release`，启用release构建优化；构建时重新生成release模式插件注册表，避免此前测试注册表残留。为兼容已安装的同签名预览，仍使用本机既有开发签名。发布包标记为预发布，不将开发密钥提交到Git或Release附件。其他机器的开发密钥不同，不能保证覆盖安装；正式生产发布仍需单独配置签名。
 
