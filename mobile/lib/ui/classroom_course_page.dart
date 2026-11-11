@@ -10,12 +10,18 @@ import '../domain/schedule.dart';
 import '../platform/classroom_access.dart';
 import '../platform/classroom_policy.dart';
 import '../platform/classroom_player.dart';
+import '../platform/classroom_session_cache.dart';
 import 'classroom_player_page.dart';
 
 enum _Purpose { browse, records, playback }
 
 class _SchoolTab {
-  _SchoolTab({this.windowId, required this.purpose});
+  _SchoolTab({
+    this.windowId,
+    required this.purpose,
+    InAppWebViewKeepAlive? retained,
+  }) : retained = retained ?? InAppWebViewKeepAlive();
+  final InAppWebViewKeepAlive retained;
   final int? windowId;
   _Purpose purpose;
   InAppWebViewController? controller;
@@ -66,11 +72,63 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   String? entrySource;
   bool automaticEntry = true, automaticPath = false;
   Timer? poll;
+  final cache = ClassroomSessionCache.shared;
+  late final int cacheRevision;
+  DateTime? fetchedAt;
+  double lastOffset = 0;
+  bool restored = false, validateRestored = false, freshReadPending = false;
+
+  // Dispose only after the old platform widgets have detached.
+  void releaseTabs(Iterable<_SchoolTab> removed) {
+    final handles = removed.map((tab) => tab.retained).toList();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final handle in handles) {
+        cache.release(handle);
+      }
+    });
+  }
+
+  void clearTabs() {
+    releaseTabs(tabs);
+    tabs.clear();
+  }
+
+  void trimTabs(int length) {
+    releaseTabs(tabs.skip(length));
+    tabs.removeRange(length, tabs.length);
+  }
+
   bool get synthetic => widget.course.dataSource == 'synthetic';
 
   @override
   void initState() {
     super.initState();
+    scroll.addListener(() {
+      if (scroll.hasClients) lastOffset = scroll.offset;
+    });
+    cacheRevision = cache.revision;
+    final recent = synthetic ? null : cache.take(widget.course);
+    if (recent != null) {
+      entry = recent.entry;
+      recordings = recent.records;
+      selected = recent.records.course;
+      fetchedAt = recent.fetchedAt;
+      restored = true;
+      validateRestored = true;
+      rememberedAttempted = true;
+      tabs.add(
+        _SchoolTab(purpose: _Purpose.records, retained: recent.view)
+          ..routed = true,
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && scroll.hasClients) {
+          scroll.jumpTo(
+            recent.offset.clamp(0.0, scroll.position.maxScrollExtent),
+          );
+        }
+      });
+      return;
+    }
     if (!synthetic) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(connect());
@@ -88,6 +146,31 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
           .catchError((Object _) {}),
     );
     poll?.cancel();
+    final index = recordTab;
+    _SchoolTab? retained;
+    if (!synthetic &&
+        !busy &&
+        !loading &&
+        !showWeb &&
+        recordings != null &&
+        selected != null &&
+        fetchedAt != null &&
+        entry != null &&
+        index < tabs.length &&
+        tabs[index].purpose == _Purpose.records) {
+      retained = tabs[index];
+      final saved = ClassroomSession(
+        view: retained.retained,
+        records: recordings!,
+        entry: entry!,
+        fetchedAt: fetchedAt!,
+        offset: lastOffset,
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        cache.put(widget.course, saved, revision: cacheRevision);
+      });
+    }
+    releaseTabs(tabs.where((tab) => tab != retained));
     scroll.dispose();
     super.dispose();
   }
@@ -95,6 +178,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   Future<void> connect([
     ClassroomAccess mode = ClassroomAccess.automatic,
   ]) async {
+    fetchedAt = null;
+    freshReadPending = true;
+    restored = false;
     automaticEntry = true;
     automaticPath = mode == ClassroomAccess.automatic;
     playbackGeneration++;
@@ -117,7 +203,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
           );
     if (!mounted || ticket != generation) return;
     setState(() {
-      tabs.clear();
+      clearTabs();
       catalog = null;
       recordings = null;
       selected = null;
@@ -150,6 +236,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   }
 
   void requireAuthentication(_SchoolTab tab) {
+    fetchedAt = null;
+    freshReadPending = false;
+    restored = false;
     setState(() {
       recordings = null;
       catalog = null;
@@ -244,6 +333,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
         return;
       }
       if (data['state'] == 'forbidden' || data['state'] == 'error') {
+        fetchedAt = null;
+        freshReadPending = false;
         setState(() {
           busy = false;
           message = data['state'] == 'forbidden'
@@ -310,6 +401,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
             page.course.id != selected!.id ||
             page.course.semester != widget.course.semester) {
           setState(() {
+            fetchedAt = null;
             message = '请先返回选择课表对应的学校课程。';
             busy = false;
           });
@@ -321,6 +413,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
         }
         setState(() {
           recordings = page;
+          if (freshReadPending) {
+            fetchedAt = DateTime.now();
+            freshReadPending = false;
+          }
           recordTab = tabs.indexOf(tab);
           showWeb = false;
           busy = false;
@@ -363,6 +459,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
       scheduleRead(tab);
     } catch (_) {
       if (mounted && ticket == generation) {
+        fetchedAt = null;
+        freshReadPending = false;
         setState(() {
           busy = false;
           message = '学校页面结构暂不支持读取，请在官方页面检查登录、权限及当前学期后重试。';
@@ -408,10 +506,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   }
 
   Future<void> choose(_SchoolTab tab, ClassroomCourse course) async {
+    freshReadPending = true;
+    fetchedAt = null;
     final index = tabs.indexOf(tab);
-    while (tabs.length > index + 1) {
-      tabs.removeLast();
-    }
+    trimTabs(index + 1);
     active = index;
     selected = course;
     await navigateOfficial(tab, {
@@ -422,6 +520,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   }
 
   Future<void> changeCourse() async {
+    fetchedAt = null;
+    freshReadPending = true;
+    restored = false;
     final tab = tabs[recordTab];
     active = recordTab;
     recordings = null;
@@ -433,6 +534,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   }
 
   Future<void> changePage(int page) async {
+    if (tabs[recordTab].controller == null) return;
+    fetchedAt = null;
+    freshReadPending = true;
+    restored = false;
     final tab = tabs[recordTab];
     setState(() {
       busy = true;
@@ -457,7 +562,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
     if (busy || !record.published || tabs.isEmpty) return;
     final tab = tabs[recordTab];
     final view = tab.controller?.getViewId();
-    if (view is! int) return;
+    if (view is! int && view is! String) return;
     final operation = ++playbackGeneration;
     poll?.cancel();
     ClassroomPlayerState? prepared;
@@ -496,7 +601,12 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
               ClassroomPlayerPage(title: record.label, controller: controller),
         ),
       );
+      if (controller.state.error != null || controller.failure != null) {
+        fetchedAt = null;
+      }
     } catch (error) {
+      fetchedAt = null;
+      freshReadPending = false;
       if (mounted && operation == playbackGeneration) {
         final detail = error is TimeoutException
             ? '学校视频加载超时，请稍后重试。'
@@ -538,7 +648,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
         }
         if (mounted) {
           setState(() => busy = false);
-          if (handedToPlayer) scheduleRead(tab, restart: true);
+          if (handedToPlayer && fetchedAt != null) {
+            scheduleRead(tab, restart: true);
+          }
         }
       }
     }
@@ -556,7 +668,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
         tab.purpose = _Purpose.records;
         scheduleRead(tab, restart: true);
       } catch (_) {
-        tabs.clear();
+        clearTabs();
         recordings = null;
         catalog = null;
         selected = null;
@@ -564,12 +676,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
       if (!mounted) return;
     }
     if (recordings != null) {
-      while (tabs.length > recordTab + 1) {
-        tabs.removeLast();
-      }
+      trimTabs(recordTab + 1);
       active = recordTab;
     } else {
-      tabs.clear();
+      clearTabs();
       active = 0;
       catalog = null;
       selected = null;
@@ -653,6 +763,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
                     child: Offstage(
                       offstage: tabs[active] != tab,
                       child: InAppWebView(
+                        keepAlive: tab.retained,
                         windowId: tab.windowId,
                         initialUrlRequest: tab.windowId == null
                             ? URLRequest(url: WebUri(entry!))
@@ -676,7 +787,30 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
                           mixedContentMode:
                               MixedContentMode.MIXED_CONTENT_NEVER_ALLOW,
                         ),
-                        onWebViewCreated: (web) => tab.controller = web,
+                        onWebViewCreated: (web) async {
+                          tab.controller = web;
+                          if (!validateRestored) return;
+                          validateRestored = false;
+                          final ticket = generation;
+                          var valid = false;
+                          try {
+                            final data = await script(tab, {
+                              'action': 'snapshot',
+                            });
+                            final page = data['state'] == 'records'
+                                ? RecordingPage.fromJson(data)
+                                : null;
+                            valid =
+                                page != null &&
+                                page.course.id == selected?.id &&
+                                page.course.semester == widget.course.semester;
+                          } catch (_) {
+                            /* Reconnect if the retained document was lost. */
+                          }
+                          if (mounted && ticket == generation && !valid) {
+                            await connect();
+                          }
+                        },
                         shouldOverrideUrlLoading: (_, action) async {
                           final target = action.request.url?.toString() ?? '';
                           final allowed = classroomNavigation(target);
@@ -899,6 +1033,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
                         ? '已标记 ${shortDate(widget.date!)} 的授课记录'
                         : '本页没有 ${shortDate(widget.date!)} 的录播，可查看其他记录或翻页。',
                   ),
+                Text(restored ? '已使用缓存 · 可刷新' : '已更新列表 · 可刷新'),
                 Row(
                   children: [
                     TextButton(

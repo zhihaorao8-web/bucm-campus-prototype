@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/schedule_controller.dart';
 import '../domain/schedule.dart';
 import '../platform/school_adapter.dart';
+import '../platform/classroom_session_cache.dart';
 
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key});
@@ -23,6 +24,12 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   bool running = false, busy = false, waitingFile = false;
   int steps = 0, generation = 0;
   Timer? timer;
+  @override
+  void initState() {
+    super.initState();
+    ClassroomSessionCache.shared.clear();
+  }
+
   @override
   void dispose() {
     timer?.cancel();

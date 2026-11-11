@@ -11,6 +11,8 @@ import androidx.media3.common.*;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
 import io.flutter.embedding.engine.FlutterEngine;
+import com.pichillilorenzo.flutter_inappwebview_android.InAppWebViewFlutterPlugin;
+import com.pichillilorenzo.flutter_inappwebview_android.webview.in_app_webview.FlutterWebView;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.view.TextureRegistry;
 import cn.bucm.campusprobe.ClassroomMediaTransport;
@@ -49,9 +51,20 @@ final class ClassroomPlayback {
             try {
                 if(call.method.equals("begin")) {
                     cancelPreparation();closeGroup();
-                    Number id=call.argument("view");String record=call.argument("record");
+                    Object id=call.argument("view");String record=call.argument("record");
                     if(id==null||record==null||record.isEmpty()||record.length()>500)throw new IllegalArgumentException();
-                    WebView view=find(engine.getPlatformViewsControllerDelegator().getPlatformViewById(id.intValue()));
+                    WebView view=null;
+                    if(id instanceof Number) {
+                        view=find(engine.getPlatformViewsControllerDelegator().getPlatformViewById(((Number)id).intValue()));
+                    } else if(id instanceof String && ((String)id).length()<=100) {
+                        // KeepAlive getViewId is a local plugin handle, not a platform int.
+                        // The official-origin check below also applies to restored views.
+                        InAppWebViewFlutterPlugin plugin=(InAppWebViewFlutterPlugin)engine.getPlugins().get(InAppWebViewFlutterPlugin.class);
+                        if(plugin!=null && plugin.inAppWebViewManager!=null) {
+                            FlutterWebView retained=plugin.inAppWebViewManager.keepAliveWebViews.get((String)id);
+                            if(retained!=null)view=retained.webView;
+                        }
+                    }
                     if(view==null){reply.error("NO_VIEW","无法读取当前学校页面，请重新打开",null);return;}
                     if(!official(view.getUrl())){reply.error("UNTRUSTED_PAGE","请先进入学校课程平台",null);return;}
                     preparingView=view;preparingRecord=record;

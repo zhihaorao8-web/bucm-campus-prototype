@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import '../domain/schedule.dart';
+import 'classroom_session_cache.dart';
 
 bool schoolUrl(String value) {
   final uri = Uri.tryParse(value);
@@ -78,5 +79,8 @@ class SchoolAdapter {
     return ParsedBatch(jsonDecode(value!) as Map<String, dynamic>);
   }
 
-  Future<void> clearSession() => channel.invokeMethod<void>('clearSession');
+  Future<void> clearSession() {
+    ClassroomSessionCache.shared.clear();
+    return channel.invokeMethod<void>('clearSession');
+  }
 }
