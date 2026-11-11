@@ -47,6 +47,9 @@ android {
 
 // scripts/prepare_flutter.py copies only the tested UI-independent parsers.
 dependencies {
+    // AndroidX Media3, Apache-2.0; see docs/THIRD_PARTY.md.
+    implementation("androidx.media3:media3-exoplayer:1.11.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
     implementation(fileTree("libs") { include("*.jar") })
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

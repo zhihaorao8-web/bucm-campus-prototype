@@ -15,9 +15,12 @@ import cn.bucm.campusprobe.*;
 /** Visible Flutter WebView owns authentication. This adapter never returns cookies. */
 public class MainActivity extends FlutterActivity {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
+    private ClassroomPlayback playback;
     @Override public void configureFlutterEngine(@NonNull FlutterEngine engine) {
         super.configureFlutterEngine(engine);
         android.webkit.WebView.setWebContentsDebuggingEnabled(false);
+        try { playback=new ClassroomPlayback(this,engine); }
+        catch(java.io.IOException error) { throw new IllegalStateException("Missing public player adapter asset"); }
         // Read-only app/theme metadata, separate from school authentication.
         new MethodChannel(engine.getDartExecutor().getBinaryMessenger(),"cn.bucm.campus/app")
             .setMethodCallHandler((call,reply)->{
@@ -44,6 +47,7 @@ public class MainActivity extends FlutterActivity {
         new MethodChannel(engine.getDartExecutor().getBinaryMessenger(),"cn.bucm.campus/school")
             .setMethodCallHandler((call,reply)->{
                 if(call.method.equals("clearSession")) {
+                    if(playback!=null)playback.clear();
                     CookieManager.getInstance().removeAllCookies(done->{
                         CookieManager.getInstance().flush();WebStorage.getInstance().deleteAllData();reply.success(null);
                     });return;
@@ -121,5 +125,6 @@ public class MainActivity extends FlutterActivity {
         }
         return out;
     }
-    @Override protected void onDestroy(){worker.shutdown();super.onDestroy();}
+    @Override protected void onPause(){if(playback!=null)playback.pause();super.onPause();}
+    @Override protected void onDestroy(){if(playback!=null)playback.destroy();worker.shutdown();super.onDestroy();}
 }

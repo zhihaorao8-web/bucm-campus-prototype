@@ -26,6 +26,8 @@ def main():
     for name in ('ScheduleParser', 'CourseTimes', 'CourseImportPlan', 'AcademicTerm', 'ExportWorkbook', 'SchoolExport', 'ClassroomMediaTransport'):
         shutil.copyfile(ROOT / 'src/cn/bucm/campusprobe' / (name + '.java'), parser_folder / (name + '.java'))
     native_assets = target / 'src/main/assets'
+    native_assets.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(ROOT / 'assets/classroom-player.js', native_assets / 'classroom-player.js')
     license_path = native_assets / 'third-party'
     license_path.mkdir(parents=True, exist_ok=True)
     shutil.copytree(ROOT / 'assets/third-party', license_path, dirs_exist_ok=True)

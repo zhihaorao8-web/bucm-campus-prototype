@@ -2,6 +2,8 @@
 
 轻新课堂内置播放器的公开参考项目、来源链接、许可证及实际使用状态另见[播放器选型与来源](research/QINGXIN_NATIVE_PLAYER.md)。2026-11-11仅完成调研，尚未新增播放器依赖或复制上游代码；后续实际集成须更新此说明并保留随包许可。
 
+2026-11-11后续播放桥接已固定引入`androidx.media3:media3-exoplayer:1.11.1`及`media3-exoplayer-hls:1.11.1`（Apache-2.0）；[上游该版本LICENSE](https://github.com/androidx/media/blob/1.11.1/LICENSE)原文保存在`assets/third-party/Media3-1.11.1/LICENSE`，准备脚本随包复制至原生资产。播放桥接、学校传输和元数据脚本为本项目自行实现；Flutter video_player、Chewie及media_kit目前仅设计/API参考，未复制其代码或安装其播放器包。
+
 根目录原型仍使用轻量Java构建；新增mobile/使用Flutter/Gradle，并通过过渡适配层复用这些依赖。学校实际导出为BIFF/OLE二进制XLS，使用Apache POI的HSSF读取，不包含POI的OOXML模块。固定的5.5.1版本支持现有Java 8目标；不自动升级依赖。Flutter依赖版本和摘要见mobile/pubspec.lock，插件许可由Flutter许可注册提供；HSSF原始许可同样打包到Flutter APK。
 
 公开依赖从Maven Central获取，版本和SHA-256锁定在`dependencies.lock.json`，缓存于`build/deps/`，不提交二进制JAR。构建与离线检查每次验证摘要。CI只获取公开依赖和使用合成工作簿，不访问学校。

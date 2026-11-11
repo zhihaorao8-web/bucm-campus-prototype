@@ -30,6 +30,8 @@ public final class ClassroomMediaTest {
     }
     public static void main(String[] args)throws Exception {
         check(ClassroomMediaTransport.allowed(MEDIA));check(ClassroomMediaTransport.allowed(QHZ));
+        check(ClassroomMediaTransport.allowed("https://webvpn.bucm.edu.cn"+ClassroomMediaTransport.VPN_MEDIA+"synthetic/segment.ts"));
+        check(!ClassroomMediaTransport.allowed("https://webvpn.bucm.edu.cn"+ClassroomMediaTransport.VPN_MEDIA+"%2e%2e/other"));
         for(String bad:new String[]{"http://qxkt4.bucm.edu.cn:8880/x","https://qxkt4.bucm.edu.cn/x","https://qhz.bucm.edu.cn:8880/x","https://qhz.bucm.edu.cn.evil.test/x","https://u:p@qhz.bucm.edu.cn/x","https://webvpn.bucm.edu.cn/https/arbitrary/x","file:///x","https://qhz.bucm.edu.cn/a/../x","https://qhz.bucm.edu.cn/%2e%2e/x",MEDIA+"#secret"}) check(!ClassroomMediaTransport.allowed(bad));
         // Range ignored by server: skip the prefix and cap reads to requested size.
         Fake f=new Fake(MEDIA,new byte[]{0,1,2,3,4});
@@ -52,6 +54,9 @@ public final class ClassroomMediaTest {
             Fake redir=new Fake(MEDIA,new byte[0]);redir.status=302;redir.location=target;
             ClassroomMediaTransport r=transport(redir);failure("UNTRUSTED",()->r.open(MEDIA,"","Synthetic",0,-1));check(redir.disconnected);
         }
+        String vpn="https://webvpn.bucm.edu.cn"+ClassroomMediaTransport.VPN_MEDIA+"synthetic/index.m3u8";
+        Fake escape=new Fake(vpn,new byte[0]);escape.status=302;escape.location=MEDIA;
+        failure("UNTRUSTED",()->transport(escape).open(vpn,"https://webvpn.bucm.edu.cn/","Synthetic",0,-1));
         for(int code:new int[]{401,403,500}) {
             Fake denied=new Fake(MEDIA,new byte[0]);denied.status=code;
             ClassroomMediaTransport r=transport(denied);failure(code==401?"AUTHENTICATION":code==403?"FORBIDDEN":"HTTP",()->r.open(MEDIA,"","Synthetic",0,-1));

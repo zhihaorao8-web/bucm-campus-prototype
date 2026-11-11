@@ -16,6 +16,7 @@ public final class ClassroomMediaTransport implements Closeable {
         public Failure(String code) { super(code); this.code=code; }
     }
     private static final long MAX_RESPONSE=64L*1024*1024;
+    public static final String VPN_MEDIA="/https-8880/77726476706e69737468656265737421e1ef4a88737e6a457d05c7a99c406d3652/";
     private final Cookies cookies;
     private final Connections connections;
     private volatile boolean closed;
@@ -41,9 +42,10 @@ public final class ClassroomMediaTransport implements Closeable {
             String lower=path.toLowerCase(Locale.ROOT);
             if(lower.contains("%2e")||lower.contains("%2f")||lower.contains("%5c")||!u.normalize().getRawPath().equals(path)) return false;
             return ("qxkt4.bucm.edu.cn".equals(host)&&u.getPort()==8880)||
-                ("qhz.bucm.edu.cn".equals(host)&&(u.getPort()==-1||u.getPort()==443));
-            // WebVPN media mappings are added only after their actual destination
-            // is observed in an authorized session; no wildcard tunnel access.
+                ("qhz.bucm.edu.cn".equals(host)&&(u.getPort()==-1||u.getPort()==443))||
+                ("webvpn.bucm.edu.cn".equals(host)&&(u.getPort()==-1||u.getPort()==443)&&path.startsWith(VPN_MEDIA));
+            // Exact public host/port mapping observed in the authorized session;
+            // it is not a login token and does not allow arbitrary VPN targets.
         } catch(Exception error) { return false; }
     }
     private void checkOpen() throws Failure { if(closed) throw new Failure("CANCELLED"); }
@@ -54,10 +56,11 @@ public final class ClassroomMediaTransport implements Closeable {
         if(referer!=null&&!referer.isEmpty()&&!officialPage(referer)) throw new Failure("UNTRUSTED");
         if(agent==null||agent.length()>1024||agent.contains("\r")||agent.contains("\n")) throw new Failure("HEADERS");
         String next=address;
+        boolean vpn=address!=null&&address.startsWith("https://webvpn.bucm.edu.cn/");
         try {
             for(int redirects=0;redirects<=5;redirects++) {
                 checkOpen();
-                if(!allowed(next)) throw new Failure("UNTRUSTED");
+                if(!allowed(next)||(vpn&&!"webvpn.bucm.edu.cn".equals(new URI(next).getHost()))) throw new Failure("UNTRUSTED");
                 HttpURLConnection c=connections.open(new URL(next));
                 connection=c;
                 checkOpen();
