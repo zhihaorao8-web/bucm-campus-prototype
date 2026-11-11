@@ -21,11 +21,13 @@ void main() {
     expect(classroomNavigation('https://cas.bucm.edu.cn/'), isTrue);
     expect(classroomNavigation('https://qxkt4.bucm.edu.cn:8880/vod/'), isFalse);
     expect(classroomMedia('https://qxkt4.bucm.edu.cn:8880/vod/'), isTrue);
+    expect(classroomMedia('https://qxkt2.bucm.edu.cn:8880/vod/'), isTrue);
     for (final url in [
       'http://qxkt4.bucm.edu.cn:8880/vod/',
       'https://qxkt4.bucm.edu.cn.evil.test:8880/',
       'https://user@qxkt4.bucm.edu.cn:8880/',
       'https://qxkt4.bucm.edu.cn:8881/',
+      'https://qxkt3.bucm.edu.cn:8880/vod/',
     ]) {
       expect(classroomMedia(url), isFalse);
     }

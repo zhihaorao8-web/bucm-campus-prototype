@@ -9,6 +9,8 @@ import '../domain/classroom.dart';
 import '../domain/schedule.dart';
 import '../platform/classroom_access.dart';
 import '../platform/classroom_policy.dart';
+import '../platform/classroom_player.dart';
+import 'classroom_player_page.dart';
 
 enum _Purpose { browse, records, playback }
 
@@ -51,6 +53,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
       section = 0,
       generation = 0,
       attempts = 0;
+  int playbackGeneration = 0;
   bool showWeb = false,
       busy = false,
       loading = false,
@@ -59,32 +62,15 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   Timer? poll;
   bool get synthetic => widget.course.dataSource == 'synthetic';
 
-  // Explicit diagnostic builds only; never emits URLs, account or course data.
-  void verifyPlayback(_SchoolTab tab) {
-    if (!const bool.fromEnvironment('CLASSROOM_VERIFY')) return;
-    poll?.cancel();
-    var samples = 0;
-    poll = Timer.periodic(const Duration(seconds: 2), (timer) async {
-      if (!mounted ||
-          !showWeb ||
-          !tabs.contains(tab) ||
-          tab.purpose != _Purpose.playback ||
-          samples++ >= 8) {
-        timer.cancel();
-        return;
-      }
-      try {
-        final data = await script(tab, {'action': 'playbackStatus'});
-        debugPrint('CLASSROOM_VERIFY ${jsonEncode(data['videos'])}');
-      } catch (_) {
-        timer.cancel();
-      }
-    });
-  }
-
   @override
   void dispose() {
     generation++;
+    playbackGeneration++;
+    unawaited(
+      classroomPlaybackChannel
+          .invokeMethod<void>('cancel')
+          .catchError((Object _) {}),
+    );
     poll?.cancel();
     scroll.dispose();
     super.dispose();
@@ -93,6 +79,12 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   Future<void> connect([
     ClassroomAccess mode = ClassroomAccess.automatic,
   ]) async {
+    playbackGeneration++;
+    unawaited(
+      classroomPlaybackChannel
+          .invokeMethod<void>('cancel')
+          .catchError((Object _) {}),
+    );
     final ticket = ++generation;
     poll?.cancel();
     setState(() {
@@ -291,7 +283,6 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
           loading = false;
           message = '正在使用学校官方播放器。';
         });
-        verifyPlayback(tab);
       } else {
         scheduleRead(tab, restart: true);
       }
@@ -348,6 +339,97 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
           busy = false;
           message = '录播分页未能加载，请重新读取。';
         });
+      }
+    }
+  }
+
+  Future<void> playNative(ClassroomRecording record) async {
+    if (busy || !record.published || tabs.isEmpty) return;
+    final tab = tabs[recordTab];
+    final view = tab.controller?.getViewId();
+    if (view is! int) return;
+    final operation = ++playbackGeneration;
+    poll?.cancel();
+    ClassroomPlayerState? prepared;
+    var handedToPlayer = false;
+    tab.purpose = _Purpose.playback;
+    setState(() {
+      busy = true;
+      message = '正在准备课堂视频…';
+    });
+    try {
+      await classroomPlaybackChannel.invokeMethod<void>('begin', {
+        'view': view,
+        'record': record.id,
+      });
+      if (!mounted || operation != playbackGeneration) return;
+      final response = await script(tab, {'action': 'play', 'id': record.id});
+      if (response['state'] != 'opening') throw const FormatException();
+      final data = await classroomPlaybackChannel
+          .invokeMapMethod<Object?, Object?>('prepare')
+          .timeout(const Duration(seconds: 25));
+      prepared = ClassroomPlayerState(data!);
+      if (!mounted || operation != playbackGeneration) return;
+      await script(tab, {'action': 'returnRecords'});
+      tab.purpose = _Purpose.records;
+      if (!mounted || operation != playbackGeneration) return;
+      setState(() {
+        busy = false;
+        showWeb = false;
+        message = null;
+      });
+      handedToPlayer = true;
+      final controller = ClassroomPlayerController(prepared);
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              ClassroomPlayerPage(title: record.label, controller: controller),
+        ),
+      );
+    } catch (error) {
+      if (mounted && operation == playbackGeneration) {
+        final detail = error is TimeoutException
+            ? '学校视频加载超时，请稍后重试。'
+            : switch (error is PlatformException ? error.code : '') {
+                'NO_VIEW' => '未能读取当前学校页面，请重新打开课程页面。',
+                'UNTRUSTED_PAGE' => '请先在官方页面进入学校课程平台。',
+                'PREPARE' => '学校播放页面尚未就绪，请刷新录播列表后重试。',
+                'POLICY' => '学校媒体或水印配置未能完整读取，请检查官方登录状态。',
+                'WATERMARK' => '学校水印配置未能完整读取，请稍后重试。',
+                'MEDIA_BOUNDARY' => '学校媒体的访问路径尚未匹配，请返回后重试。',
+                'MEDIA_NETWORK' => '学校媒体请求失败，请检查网络后重试。',
+                'OFFICIAL_STOP' => '学校页面未能停止播放，请关闭后重新连接。',
+                'SCRIPT' => '当前学校页面暂不支持读取播放信息，请刷新后重试。',
+                'MEDIA' => '学校媒体暂时无法初始化，请返回后重试。',
+                _ => '未能准备课堂视频，请检查官方登录状态后重试。',
+              };
+        setState(() {
+          busy = false;
+          message = detail;
+        });
+      }
+    } finally {
+      if (!handedToPlayer && prepared != null) {
+        await classroomPlaybackChannel
+            .invokeMethod<void>('dispose', {'session': prepared.session})
+            .catchError((Object _) {});
+      }
+      await classroomPlaybackChannel
+          .invokeMethod<void>('cancel')
+          .catchError((Object _) {});
+      if (mounted && operation == playbackGeneration && tabs.contains(tab)) {
+        if (tab.purpose == _Purpose.playback) {
+          try {
+            await script(tab, {'action': 'returnRecords'});
+          } catch (_) {
+            /* Visible reconnection remains available. */
+          }
+          tab.purpose = _Purpose.records;
+        }
+        if (mounted) {
+          setState(() => busy = false);
+          if (handedToPlayer) scheduleRead(tab, restart: true);
+        }
       }
     }
   }
@@ -510,8 +592,6 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
                               tabs[active] == tab) {
                             setState(() => loading = false);
                             scheduleRead(tab, restart: true);
-                            if (tab.purpose == _Purpose.playback)
-                              verifyPlayback(tab);
                           }
                         },
                         onCreateWindow: (_, action) async {
@@ -692,10 +772,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
                       trailing: const Icon(Icons.play_circle_outline),
                       onTap: busy || !record.published
                           ? null
-                          : () => navigateOfficial(tabs[recordTab], {
-                              'action': 'play',
-                              'id': record.id,
-                            }, _Purpose.playback),
+                          : () => playNative(record),
                     ),
                   ),
                 Row(

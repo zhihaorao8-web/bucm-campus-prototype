@@ -25,12 +25,12 @@
           try {
             var payload = JSON.parse(request.responseText);
             var data = payload.data;
-            if (request.status !== 200 || !payload.meta || payload.meta.success !== true || !data || !['0', '1'].includes(String(data.waterMark))) { state.error = true; return; }
+            if (request.status !== 200 || !payload.meta || payload.meta.success !== true || !data || !['0', '1'].includes(String(data.waterMark))) { state.error = 'watermark'; return; }
             var enabled = String(data.waterMark) === '1';
             var text = data.waterMarkContent;
-            if (enabled && (typeof text !== 'string' || !text.trim() || text.length > 500)) { state.error = true; return; }
+            if (enabled && (typeof text !== 'string' || !text.trim() || text.length > 500)) { state.error = 'watermark'; return; }
             state.watermark = {enabled: enabled, text: enabled ? text : ''};
-          } catch (_) { state.error = true; }
+          } catch (_) { state.error = 'watermark'; }
         });
       }
       return state.open.apply(request, arguments);
@@ -52,11 +52,12 @@
       if (component.listenTimeInterval) clearInterval(component.listenTimeInterval);
       var player = component.jydH5PlayerObj;
       if (player) {
-        if (typeof player.stopVideo === 'function') player.stopVideo();
-        if (typeof player.disconnectStream === 'function') player.disconnectStream();
+        try { if (typeof player.stopVideo === 'function') player.stopVideo(); } catch (_) { /* Some school layouts have no initialized decoder. */ }
+        try { if (typeof player.disconnectStream === 'function') player.disconnectStream(); } catch (_) { /* DOM pause and route teardown still apply. */ }
       }
     }
     Array.from(document.querySelectorAll('video')).forEach(function (v) { v.pause(); });
+    if (Array.from(document.querySelectorAll('video')).some(function (v) { return !v.paused; })) throw new Error('stop');
   }
   function clear() {
     if (XMLHttpRequest.prototype.open === state.wrapper) XMLHttpRequest.prototype.open = state.open;
@@ -64,11 +65,11 @@
   }
   if (command.action === 'abort') { try { stop(); } finally { clear(); } return result('stopped'); }
   if (command.action !== 'capture') return result('missing');
-  if (state.error) return result('policy');
+  if (state.error) return result('policy-' + state.error);
   if (!component || !state.watermark) return result('loading');
   if (state.sources) {
     // Shut down the official decoder BEFORE returning media to the native player.
-    try { stop(); } catch (_) { clear(); return result('policy'); }
+    try { stop(); } catch (_) { clear(); return result('policy-stop'); }
     var payload = JSON.stringify({state: 'ready', sources: state.sources, watermark: state.watermark});
     clear();
     return payload;
@@ -81,19 +82,23 @@
     state.pending = true;
     Promise.all(available.map(async function (f) {
       var url = new URL(info[f[1]]);
-      if (url.protocol !== 'https:' || url.hostname !== 'qxkt4.bucm.edu.cn' || url.port !== '8880' || url.username || url.password) throw new Error('boundary');
+      var mappings = {
+        'qxkt4.bucm.edu.cn': '/https-8880/77726476706e69737468656265737421e1ef4a88737e6a457d05c7a99c406d3652/',
+        'qxkt2.bucm.edu.cn': '/https-8880/77726476706e69737468656265737421e1ef4a88757e6a457d05c7a99c406d3643/'
+      };
+      if (url.protocol !== 'https:' || !Object.prototype.hasOwnProperty.call(mappings, url.hostname) || url.port !== '8880' || url.username || url.password) throw new Error('boundary');
       // WebVPN's official fetch wrapper supplies the actual tunnel URL. Do not
       // invent an encrypted mapping or fall back to direct media off campus.
       var response = await fetch(url.href, {credentials: 'include', signal: AbortSignal.timeout(8000)});
       if (!response.ok) throw new Error('media');
       var actual = new URL(response.url);
-      var expected = '/https-8880/77726476706e69737468656265737421e1ef4a88737e6a457d05c7a99c406d3652/';
+      var expected = mappings[url.hostname];
       if (location.hostname === 'webvpn.bucm.edu.cn' && (actual.protocol !== 'https:' || actual.hostname !== 'webvpn.bucm.edu.cn' || actual.port || !actual.pathname.startsWith(expected))) throw new Error('boundary');
       // Body is unused. Native HLS parsing/streaming starts only after teardown.
       if (response.body) await response.body.cancel();
       return {kind: f[0], url: actual.href};
     })).then(function (sources) { if (window[key] === state) state.sources = sources; })
-      .catch(function () { if (window[key] === state) state.error = true; });
+      .catch(function (error) { if (window[key] === state) state.error = ['boundary', 'media'].includes(error.message) ? error.message : 'network'; });
   }
   return result('loading');
 })();

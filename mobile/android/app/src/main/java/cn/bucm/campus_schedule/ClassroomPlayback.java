@@ -52,7 +52,8 @@ final class ClassroomPlayback {
                     Number id=call.argument("view");String record=call.argument("record");
                     if(id==null||record==null||record.isEmpty()||record.length()>500)throw new IllegalArgumentException();
                     WebView view=find(engine.getPlatformViewsControllerDelegator().getPlatformViewById(id.intValue()));
-                    if(view==null||!official(view.getUrl()))throw new IllegalArgumentException();
+                    if(view==null){reply.error("NO_VIEW","无法读取当前学校页面，请重新打开",null);return;}
+                    if(!official(view.getUrl())){reply.error("UNTRUSTED_PAGE","请先进入学校课程平台",null);return;}
                     preparingView=view;preparingRecord=record;
                     final int ticket=generation;
                     evaluate(view,"install",record,data->{
@@ -103,7 +104,10 @@ final class ClassroomPlayback {
             if(ticket!=generation||pending==null)return;
             String state=data.optString("state");
             if(state.equals("loading")){handler.postDelayed(()->capture(ticket,attempt+1),300);return;}
-            if(!state.equals("ready")){failPreparation("POLICY");return;}
+            if(!state.equals("ready")){
+                String code=state.equals("policy-watermark")?"WATERMARK":state.equals("policy-boundary")?"MEDIA_BOUNDARY":state.equals("policy-network")||state.equals("policy-media")?"MEDIA_NETWORK":state.equals("policy-stop")?"OFFICIAL_STOP":"SCRIPT";
+                failPreparation(code);return;
+            }
             try {
                 Group prepared=new Group(data,view.getUrl(),view.getSettings().getUserAgentString());
                 group=prepared;
@@ -150,7 +154,9 @@ final class ClassroomPlayback {
             for(int i=0;i<sources.length();i++){
                 JSONObject s=sources.getJSONObject(i);String kind=s.getString("kind"),url=s.getString("url");
                 if(!Arrays.asList("ppt","teacher","student").contains(kind)||urls.containsKey(kind)||!ClassroomMediaTransport.allowed(url)||
-                    (origin.getHost().equals("webvpn.bucm.edu.cn")&&!Uri.parse(url).getHost().equals("webvpn.bucm.edu.cn")))throw new IllegalArgumentException();
+                    (origin.getHost().equals("webvpn.bucm.edu.cn")&&!Uri.parse(url).getHost().equals("webvpn.bucm.edu.cn"))) {
+                    throw new IllegalArgumentException();
+                }
                 urls.put(kind,url);
             }
             JSONObject mark=data.getJSONObject("watermark");
@@ -172,17 +178,19 @@ final class ClassroomPlayback {
                 s.player.setVolume(audible?1:0);
             }
         }
-        Stream master(){return streams.containsKey("teacher")?streams.get("teacher"):streams.get(main);}
-        void pause(){want=false;for(Stream s:streams.values())s.player.pause();}
+        Stream master(){return streams.containsKey("teacher")?streams.get("teacher"):streams.containsKey("student")?streams.get("student"):streams.get(main);}
+        void pause(){want=false;activity.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);for(Stream s:streams.values())s.player.pause();}
         void seek(long ms){long end=duration();long target=Math.max(0,end>0?Math.min(ms,end):ms);for(Stream s:streams.values())s.player.seekTo(target);}
         long duration(){long result=Long.MAX_VALUE;for(Stream s:streams.values()){long d=s.player.getDuration();if(d>0)result=Math.min(result,d);}return result==Long.MAX_VALUE?0:result;}
-        boolean ended(){return master()!=null&&master().player.getPlaybackState()==Player.STATE_ENDED;}
+        boolean ended(){for(Stream s:streams.values())if(s.player.getPlaybackState()==Player.STATE_ENDED)return true;return false;}
         Map<String,Object> snapshot() {
             boolean ready=error==null&&!streams.isEmpty();
             for(Stream s:streams.values())ready&=s.player.getPlaybackState()==Player.STATE_READY;
             Stream clock=master();
             if(clock!=null&&ready&&want)for(Stream s:streams.values())if(s!=clock&&Math.abs(s.player.getCurrentPosition()-clock.player.getCurrentPosition())>400)s.player.seekTo(clock.player.getCurrentPosition());
             for(Stream s:streams.values())s.player.setPlayWhenReady(ready&&want);
+            if(ready&&want)activity.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            else activity.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             Map<String,Object> result=new HashMap<>();
             result.put("session",id);result.put("main",main);result.put("small",small);result.put("available",new ArrayList<>(urls.keySet()));
             result.put("playing",ready&&want);result.put("wanted",want);result.put("buffering",!ready&&error==null&&!ended());
@@ -204,13 +212,19 @@ final class ClassroomPlayback {
         Stream(Group owner,String kind,long position) {
             this.kind=kind;
             surface=engine.getRenderer().createSurfaceProducer();surface.setSize(1280,720);
-            player=new ExoPlayer.Builder(activity).build();
+            try {player=new ExoPlayer.Builder(activity).build();}
+            catch(RuntimeException failure){surface.release();throw failure;}
+            try {
             player.setVideoSurface(surface.getSurface());
             surface.setCallback(new TextureRegistry.SurfaceProducer.Callback(){
                 @Override public void onSurfaceAvailable(){player.setVideoSurface(surface.getSurface());}
                 @Override public void onSurfaceCleanup(){owner.pause();player.clearVideoSurface();}
             });
             player.addListener(new Player.Listener(){
+                @Override public void onPlaybackStateChanged(int state){if(state==Player.STATE_ENDED)owner.pause();}
+                @Override public void onPlayWhenReadyChanged(boolean playing,int reason){
+                    if(!playing&&reason==Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS)owner.pause();
+                }
                 @Override public void onVideoSizeChanged(VideoSize size){if(size.width>0&&size.height>0)surface.setSize(size.width,size.height);}
                 @Override public void onPlayerError(PlaybackException failure){
                     owner.error="PLAYBACK";
@@ -221,6 +235,7 @@ final class ClassroomPlayback {
             });
             player.setMediaSource(new HlsMediaSource.Factory(()->new ClassroomDataSource(owner.referer,owner.agent)).createMediaSource(MediaItem.fromUri(owner.urls.get(kind))));
             player.setPlaybackSpeed(owner.speed);player.seekTo(position);player.prepare();
+            }catch(RuntimeException failure){surface.setCallback(null);player.release();surface.release();throw failure;}
         }
         void close(){surface.setCallback(null);player.release();surface.release();}
     }

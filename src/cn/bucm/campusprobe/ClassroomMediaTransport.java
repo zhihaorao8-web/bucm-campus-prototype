@@ -17,6 +17,7 @@ public final class ClassroomMediaTransport implements Closeable {
     }
     private static final long MAX_RESPONSE=64L*1024*1024;
     public static final String VPN_MEDIA="/https-8880/77726476706e69737468656265737421e1ef4a88737e6a457d05c7a99c406d3652/";
+    public static final String VPN_MEDIA2="/https-8880/77726476706e69737468656265737421e1ef4a88757e6a457d05c7a99c406d3643/";
     private final Cookies cookies;
     private final Connections connections;
     private volatile boolean closed;
@@ -40,10 +41,12 @@ public final class ClassroomMediaTransport implements Closeable {
             String host=u.getHost(), path=u.getRawPath();
             if(host==null||path==null||!path.startsWith("/")) return false;
             String lower=path.toLowerCase(Locale.ROOT);
-            if(lower.contains("%2e")||lower.contains("%2f")||lower.contains("%5c")||!u.normalize().getRawPath().equals(path)) return false;
-            return ("qxkt4.bucm.edu.cn".equals(host)&&u.getPort()==8880)||
+            if(lower.contains("%2e")||lower.contains("%2f")||lower.contains("%5c")) return false;
+            // Preserve empty path segments; reject traversal without rewriting.
+            for(String part:path.split("/",-1))if(part.equals(".")||part.equals(".."))return false;
+            return (("qxkt4.bucm.edu.cn".equals(host)||"qxkt2.bucm.edu.cn".equals(host))&&u.getPort()==8880)||
                 ("qhz.bucm.edu.cn".equals(host)&&(u.getPort()==-1||u.getPort()==443))||
-                ("webvpn.bucm.edu.cn".equals(host)&&(u.getPort()==-1||u.getPort()==443)&&path.startsWith(VPN_MEDIA));
+                ("webvpn.bucm.edu.cn".equals(host)&&(u.getPort()==-1||u.getPort()==443)&&(path.startsWith(VPN_MEDIA)||path.startsWith(VPN_MEDIA2)));
             // Exact public host/port mapping observed in the authorized session;
             // it is not a login token and does not allow arbitrary VPN targets.
         } catch(Exception error) { return false; }

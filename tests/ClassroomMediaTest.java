@@ -30,7 +30,12 @@ public final class ClassroomMediaTest {
     }
     public static void main(String[] args)throws Exception {
         check(ClassroomMediaTransport.allowed(MEDIA));check(ClassroomMediaTransport.allowed(QHZ));
+        check(ClassroomMediaTransport.allowed("https://qxkt2.bucm.edu.cn:8880//synthetic//index.m3u8"));
+        check(ClassroomMediaTransport.allowed("https://webvpn.bucm.edu.cn"+ClassroomMediaTransport.VPN_MEDIA2+"/synthetic//index.m3u8"));
         check(ClassroomMediaTransport.allowed("https://webvpn.bucm.edu.cn"+ClassroomMediaTransport.VPN_MEDIA+"synthetic/segment.ts"));
+        check(ClassroomMediaTransport.allowed("https://qxkt2.bucm.edu.cn:8880/synthetic/index.m3u8"));
+        check(ClassroomMediaTransport.allowed("https://webvpn.bucm.edu.cn"+ClassroomMediaTransport.VPN_MEDIA2+"synthetic/segment.ts"));
+        check(!ClassroomMediaTransport.allowed("https://qxkt3.bucm.edu.cn:8880/synthetic/index.m3u8"));
         check(!ClassroomMediaTransport.allowed("https://webvpn.bucm.edu.cn"+ClassroomMediaTransport.VPN_MEDIA+"%2e%2e/other"));
         for(String bad:new String[]{"http://qxkt4.bucm.edu.cn:8880/x","https://qxkt4.bucm.edu.cn/x","https://qhz.bucm.edu.cn:8880/x","https://qhz.bucm.edu.cn.evil.test/x","https://u:p@qhz.bucm.edu.cn/x","https://webvpn.bucm.edu.cn/https/arbitrary/x","file:///x","https://qhz.bucm.edu.cn/a/../x","https://qhz.bucm.edu.cn/%2e%2e/x",MEDIA+"#secret"}) check(!ClassroomMediaTransport.allowed(bad));
         // Range ignored by server: skip the prefix and cap reads to requested size.
