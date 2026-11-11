@@ -23,7 +23,7 @@ def main():
     shutil.copyfile(ROOT / 'design/branding/developer-avatar.png', app / 'assets/developer-avatar.png')
     parser_folder = target / 'src/main/java/cn/bucm/campusprobe'
     parser_folder.mkdir(parents=True, exist_ok=True)
-    for name in ('ScheduleParser', 'CourseTimes', 'CourseImportPlan', 'AcademicTerm', 'ExportWorkbook', 'SchoolExport'):
+    for name in ('ScheduleParser', 'CourseTimes', 'CourseImportPlan', 'AcademicTerm', 'ExportWorkbook', 'SchoolExport', 'ClassroomMediaTransport'):
         shutil.copyfile(ROOT / 'src/cn/bucm/campusprobe' / (name + '.java'), parser_folder / (name + '.java'))
     native_assets = target / 'src/main/assets'
     license_path = native_assets / 'third-party'

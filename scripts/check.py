@@ -25,12 +25,13 @@ def main():
                     '-classpath',deps,'-d', str(classes),
                     str(ROOT / 'src/cn/bucm/campusprobe/ScheduleParser.java'),
                     str(ROOT / 'src/cn/bucm/campusprobe/SchoolExport.java'),
+                    str(ROOT / 'src/cn/bucm/campusprobe/ClassroomMediaTransport.java'),
                     str(ROOT / 'src/cn/bucm/campusprobe/ExportWorkbook.java'),
                     str(ROOT / 'src/cn/bucm/campusprobe/CourseTimes.java'),
                     str(ROOT / 'src/cn/bucm/campusprobe/CourseImportPlan.java'),
                     str(ROOT / 'src/cn/bucm/campusprobe/AcademicTerm.java'),
                     *map(str,(ROOT/'tests').glob('*.java'))], check=True)
-    for test in ('ParserTest','ExportTest','CourseTimeTest','TeacherTest'):
+    for test in ('ParserTest','ExportTest','CourseTimeTest','TeacherTest','ClassroomMediaTest'):
         subprocess.run([str(java / ('java' + EXE)), '-cp', str(classes)+os.pathsep+deps,test], check=True)
     node = shutil.which('node')
     if not node:
