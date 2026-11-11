@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import '../application/classroom_import_progress.dart';
 import '../data/classroom_links.dart';
 import '../data/classroom_library.dart';
 import '../domain/classroom.dart';
@@ -15,6 +16,7 @@ import '../platform/classroom_player.dart';
 import '../platform/classroom_session_cache.dart';
 import 'classroom_player_page.dart';
 import 'classroom_recording_timeline.dart';
+import 'course_widgets.dart' show showCourseInformation;
 
 enum _Purpose { browse, records, playback }
 
@@ -109,9 +111,14 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   final importPages = <RecordingPage>[];
   final skipped = <String>[];
   final completedArchives = <String, ClassroomArchive>{};
+  late final importProgress = ClassroomImportProgress(
+    widget.importCourses ?? [widget.course],
+  );
+  List<int>? retryQueue;
+  final completedTasksKey = GlobalKey();
   bool get bulk => widget.importCourses != null;
   Course get localCourse =>
-      bulk ? widget.importCourses![importIndex] : widget.course;
+      bulk ? importProgress.items[importIndex].course : widget.course;
   bool get browserVisible =>
       showWeb && (authVisible || (!bulk && queuedPlayback == null));
 
@@ -156,6 +163,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     });
     libraryRevision = library.revision;
     if (bulk) {
+      importProgress.update(0, ImportTaskStatus.running);
       final workspace = cache.takeWorkspace();
       cache.clear();
       cacheRevision = cache.revision;
@@ -258,7 +266,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       });
       return;
     }
-    if (importIndex + 1 == widget.importCourses!.length) {
+    if (retryQueue != null
+        ? retryQueue!.isEmpty
+        : importIndex + 1 == importProgress.items.length) {
       setState(() {
         importFinished = true;
         busy = false;
@@ -269,7 +279,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       return;
     }
     setState(() {
-      importIndex++;
+      importIndex = retryQueue == null
+          ? importIndex + 1
+          : retryQueue!.removeAt(0);
+      importProgress.update(importIndex, ImportTaskStatus.running);
       selected = null;
       recordings = null;
       catalog = null;
@@ -316,6 +329,13 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           fetchedAt = null;
           busy = false;
           message = '本门课程未能完整导入，已完成的课程保留。可重试当前课程。';
+          if (bulk) {
+            importProgress.update(
+              importIndex,
+              ImportTaskStatus.failed,
+              message,
+            );
+          }
         });
       }
     } finally {
@@ -330,6 +350,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     if (libraryRevision != library.revision) throw const FormatException();
     if (!bulk) archive = saved;
     imported++;
+    if (bulk) importProgress.update(importIndex, ImportTaskStatus.completed);
     await nextImport(tab);
   }
 
@@ -339,6 +360,11 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   ) async {
     if (matches.isEmpty) {
       if (bulk) {
+        importProgress.update(
+          importIndex,
+          ImportTaskStatus.unmatched,
+          '学校该学期未找到精确同名课程',
+        );
         skipped.add(localCourse.name);
         await nextImport(tab);
       }
@@ -657,11 +683,15 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       showWeb = true;
       busy = false;
       message = readProgress.timeoutMessage;
+      if (bulk) {
+        importProgress.update(importIndex, ImportTaskStatus.failed, message);
+      }
     });
     return false;
   }
 
   Future<void> retryCurrent() async {
+    if (bulk) importProgress.update(importIndex, ImportTaskStatus.running);
     importPages.clear();
     importMatches = null;
     importSources.clear();
@@ -796,6 +826,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       busy = false;
       authVisible = showWeb = true;
       message = '学校服务暂时无法连接。可稍后点击继续导入重新加载，或返回学校入口检查；已导入内容保留。';
+      if (bulk) {
+        importProgress.update(importIndex, ImportTaskStatus.failed, message);
+      }
     });
   }
 
@@ -825,6 +858,13 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       if (data['state'] == 'forbidden' || data['state'] == 'error') {
         fetchedAt = null;
         freshReadPending = false;
+        if (bulk) {
+          importProgress.update(
+            importIndex,
+            ImportTaskStatus.failed,
+            '学校请求失败或当前账号没有权限',
+          );
+        }
         setState(() {
           busy = false;
           message = data['state'] == 'forbidden'
@@ -974,6 +1014,13 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           return;
         }
         if (state == 'blocked' || state == 'untrusted') {
+          if (bulk) {
+            importProgress.update(
+              importIndex,
+              ImportTaskStatus.failed,
+              '学校入口路径或跳转未通过校验',
+            );
+          }
           setState(() {
             busy = false;
             authVisible = showWeb = true;
@@ -1015,6 +1062,13 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         setState(() {
           busy = false;
           message = '学校页面结构暂不支持读取，请在官方页面检查登录、权限及当前学期后重试。';
+          if (bulk) {
+            importProgress.update(
+              importIndex,
+              ImportTaskStatus.failed,
+              message,
+            );
+          }
         });
       }
     }
@@ -1807,6 +1861,24 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     );
   }
 
+  Future<void> retryFailedImports() async {
+    final failed = importProgress.failures;
+    if (failed.isEmpty) return;
+    retryQueue = [...failed];
+    setState(() {
+      importIndex = retryQueue!.removeAt(0);
+      importFinished = false;
+    });
+    await retryCurrent();
+  }
+
+  Future<void> skipFailedImport() async {
+    if (tabs.isEmpty) return;
+    generation++;
+    poll?.cancel();
+    await nextImport(tabs[active]);
+  }
+
   Widget importNative() => Scaffold(
     appBar: AppBar(title: const Text('统一导入录播')),
     body: SafeArea(
@@ -1818,18 +1890,38 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 12),
-          Text(importFinished ? '导入完成' : '正在导入：${localCourse.name}'),
+          Text(
+            importFinished
+                ? (importProgress.failures.isEmpty ? '导入完成' : '本轮处理结束')
+                : '当前课程：${localCourse.name}',
+          ),
           const SizedBox(height: 12),
           LinearProgressIndicator(
             value: importFinished
                 ? 1
-                : importIndex / widget.importCourses!.length,
+                : importIndex / importProgress.items.length,
           ),
           const SizedBox(height: 12),
-          Text('已关联 $imported / 共 ${widget.importCourses!.length} 个课表课程项'),
           Text(
-            '已导入 ${completedArchives.length} 门学校课程 · 待确认 ${skipped.length} 项',
+            '已完成 ${importProgress.count(ImportTaskStatus.completed)} / 共 ${importProgress.items.length} 组同名课程 · 共 ${importProgress.totalLocalItems} 个课表项',
           ),
+          Text(
+            '已取得 ${completedArchives.length} 个学校来源 · 未匹配 ${importProgress.count(ImportTaskStatus.unmatched)} 组 · 失败 ${importProgress.failures.length} 组',
+          ),
+          if (importFinished &&
+              importProgress.count(ImportTaskStatus.completed) > 0)
+            TextButton(
+              onPressed: () {
+                final target = completedTasksKey.currentContext;
+                if (target != null) {
+                  Scrollable.ensureVisible(
+                    target,
+                    duration: const Duration(milliseconds: 200),
+                  );
+                }
+              },
+              child: const Text('查看已导入课程'),
+            ),
           if (!importFinished && importPages.isNotEmpty)
             Text('已取得 ${importPages.length} 页录播'),
           if (message != null)
@@ -1841,10 +1933,61 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Text('同学期同名课程的回放全部汇总，教师仅用于展示来源。未匹配项请检查课程名称或学校学期。'),
           ),
-          if (skipped.isNotEmpty) ...[
-            const Text('以下课程需要手动确认：'),
-            ...skipped.toSet().map((name) => Text('• $name')),
-          ],
+          for (final status in [
+            ImportTaskStatus.running,
+            ImportTaskStatus.failed,
+            ImportTaskStatus.unmatched,
+            ImportTaskStatus.pending,
+            ImportTaskStatus.completed,
+          ])
+            if (importProgress.count(status) > 0) ...[
+              Padding(
+                key: status == ImportTaskStatus.completed
+                    ? completedTasksKey
+                    : null,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  '${importTaskStatusLabel(status)}（${importProgress.count(status)}）',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              for (final item in importProgress.items.where(
+                (item) => item.status == status,
+              ))
+                ListTile(
+                  title: Text(item.course.name),
+                  subtitle: Text(
+                    '${item.courses.length}个课表项 · ${item.reason ?? (status == ImportTaskStatus.running && !busy ? '已暂停，可继续导入' : importTaskStatusLabel(status))}',
+                  ),
+                  trailing:
+                      importFinished && status == ImportTaskStatus.completed
+                      ? const Icon(Icons.chevron_right)
+                      : null,
+                  onTap: !importFinished || status != ImportTaskStatus.completed
+                      ? null
+                      : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ClassroomCoursePage(
+                              course: item.course,
+                              library: library,
+                              onDetails: (context) =>
+                                  showCourseInformation(context, item.course),
+                            ),
+                          ),
+                        ),
+                ),
+            ],
+          if (importFinished && importProgress.failures.isNotEmpty)
+            OutlinedButton(
+              onPressed: retryFailedImports,
+              child: const Text('只重试失败项'),
+            ),
+          if (importFinished &&
+              importProgress.count(ImportTaskStatus.completed) > 0)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('点击上方已完成课程可查看已导入录播。'),
+            ),
           if (importFinished)
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
@@ -1855,6 +1998,12 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
               OutlinedButton(
                 onPressed: retryCurrent,
                 child: const Text('继续导入'),
+              ),
+            if (importProgress.items[importIndex].status ==
+                ImportTaskStatus.failed)
+              TextButton(
+                onPressed: skipFailedImport,
+                child: const Text('保留失败项，继续其他课程'),
               ),
             TextButton(
               onPressed: () => setState(() {

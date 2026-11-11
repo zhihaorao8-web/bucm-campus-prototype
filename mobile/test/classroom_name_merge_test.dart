@@ -125,7 +125,14 @@ void main() {
       MaterialApp(
         home: ClassroomCoursePage(
           course: local,
-          importCourses: [local],
+          importCourses: [
+            local,
+            Course.fromJson(
+              local.toJson()
+                ..['id'] = 'unmatched-local'
+                ..['name'] = '未匹配合成课程',
+            ),
+          ],
           library: library,
           onDetails: (_) {},
           probe: (_) async => const AccessProbe(ProbeState.available),
@@ -149,8 +156,16 @@ void main() {
     expect(controller.visited, ['a', 'b']);
     expect(library.saves, 0);
     expect(library.value.nameMatched, isFalse);
+    expect(find.text('失败（1）'), findsOneWidget);
+    await tester.ensureVisible(find.text('保留失败项，继续其他课程'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('保留失败项，继续其他课程'));
+    await ticks(8);
+    expect(find.text('未匹配（1）'), findsOneWidget);
     controller.failSecond = false;
-    await tester.tap(find.text('继续导入'));
+    await tester.ensureVisible(find.text('只重试失败项'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('只重试失败项'));
     await tester.pump();
     await ticks(12);
     expect(find.text('导入完成'), findsOneWidget);
