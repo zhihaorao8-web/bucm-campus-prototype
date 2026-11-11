@@ -66,6 +66,14 @@ class ClassroomCourse {
     }
     return result;
   }
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'name': name,
+    'teacher': teacher,
+    'code': code,
+    'group': group,
+    'semester': semester,
+  };
   bool matches(Course local) =>
       semester == local.semester &&
       classroomName(name) == classroomName(local.name);
@@ -130,5 +138,22 @@ class RecordingPage {
   final ClassroomCourse course;
   final int page, pageSize, total;
   final List<ClassroomRecording> records;
+  Map<String, Object?> toJson() => {
+    'course': course.toJson(),
+    'page': page,
+    'pageSize': pageSize,
+    'total': total,
+    'records': records
+        .map(
+          (record) => {
+            'id': record.id,
+            'label': record.label,
+            'date': isoDate(record.date),
+            'place': record.place,
+            'published': record.published,
+          },
+        )
+        .toList(),
+  };
   bool get hasNext => page * pageSize < total;
 }

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,6 +40,17 @@ void main() {
       final repo = MemoryRepository(
         ScheduleData(courses: [sample()], summary: '合成导入摘要'),
       );
+      final folder = await tester.runAsync(
+        () => Directory.systemTemp.createTemp('synthetic-logout-'),
+      );
+      const paths = MethodChannel('plugins.flutter.io/path_provider');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(paths, (_) async => folder!.path);
+      addTearDown(() async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(paths, null);
+        await folder!.delete(recursive: true);
+      });
       var sessionClears = 0;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SchoolAdapter.channel, (call) async {
@@ -66,8 +78,18 @@ void main() {
       expect(sessionClears, 0);
       await tester.tap(find.text('退出学校会话'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('确认'));
+      await tester.runAsync(() async {
+        await tester.tap(find.text('确认'));
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+      });
       await tester.pumpAndSettle();
+      // File cleanup spans multiple IO completions outside the fake test clock.
+      for (var i = 0; i < 6; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pumpAndSettle();
+      }
       expect(sessionClears, 1);
       expect(repo.value.courses.length, 1);
       await reveal(tester, find.text('清空本地课表'));

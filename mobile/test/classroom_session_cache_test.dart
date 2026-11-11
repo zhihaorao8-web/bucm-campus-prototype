@@ -98,6 +98,16 @@ void main() {
     expect(cache.take(sample()), isNull);
     expect(released, [idle.view, active.view]);
   });
+  test('统一导入工作页面仅可独占取用，不冒充任一课程的录播列表', () {
+    final value = session();
+    cache.putWorkspace(value, revision: cache.revision);
+    expect(cache.take(sample()), isNull);
+    expect(cache.takeWorkspace(), same(value));
+    expect(cache.takeWorkspace(), isNull);
+    cache.clear();
+    expect(released, isEmpty);
+    cache.release(value.view);
+  });
   test('时钟倒退和过期写入不复用，上下文仅释放一次', () {
     final value = session();
     save(sample(), value);

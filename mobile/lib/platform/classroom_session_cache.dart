@@ -13,12 +13,14 @@ class ClassroomSession {
     required this.entry,
     required this.fetchedAt,
     this.offset = 0,
+    this.documentPage,
   });
   final InAppWebViewKeepAlive view;
   final RecordingPage records;
   final String entry;
   final DateTime fetchedAt;
   final double offset;
+  final int? documentPage;
 }
 
 class ClassroomSessionCache {
@@ -83,14 +85,29 @@ class ClassroomSessionCache {
     return value;
   }
 
-  void put(Course course, ClassroomSession value, {required int revision}) {
+  /// Reuse one already-authenticated classroom document for a different course.
+  /// The caller must return to the official catalog and revalidate the match.
+  ClassroomSession? takeWorkspace() {
+    _prune();
+    final value = _entries.isEmpty ? null : _entries.remove(_entries.keys.last);
+    _schedule();
+    return value;
+  }
+
+  void put(Course course, ClassroomSession value, {required int revision}) =>
+      _put(_key(course), value, revision);
+
+  void putWorkspace(ClassroomSession value, {required int revision}) =>
+      _put('workspace', value, revision);
+
+  void _put(String key, ClassroomSession value, int revision) {
     _prune();
     if (revision != _revision || !fresh(value.fetchedAt)) {
       release(value.view);
     } else {
-      final old = _entries.remove(_key(course));
+      final old = _entries.remove(key);
       if (old != null && !identical(old.view, value.view)) release(old.view);
-      _entries[_key(course)] = value;
+      _entries[key] = value;
       while (_entries.length > capacity) {
         release(_entries.remove(_entries.keys.first)!.view);
       }

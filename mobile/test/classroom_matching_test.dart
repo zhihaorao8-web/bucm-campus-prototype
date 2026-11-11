@@ -6,6 +6,7 @@ import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/platform/classroom_access.dart';
 import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'schedule_test.dart' show sample;
+import 'support/memory_classroom_library.dart';
 
 void main() {
   final local = Course.fromJson(
@@ -72,6 +73,7 @@ void main() {
       MaterialApp(
         home: ClassroomCoursePage(
           course: local,
+          library: MemoryClassroomLibrary(),
           onDetails: (_) {},
           probe: probe,
         ),
@@ -101,6 +103,7 @@ void main() {
       MaterialApp(
         home: ClassroomCoursePage(
           course: local,
+          library: MemoryClassroomLibrary(),
           onDetails: (_) {},
           probe: (_) => response.future,
         ),

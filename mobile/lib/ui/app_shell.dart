@@ -14,6 +14,7 @@ import 'weekday_tabs.dart';
 import 'glass_navigation.dart';
 import 'appearance_page.dart';
 import 'project_info_page.dart';
+import 'classroom_import_page.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -88,6 +89,19 @@ class _AppShellState extends ConsumerState<AppShell>
     }
   }
 
+  Future<void> importClassroom() async {
+    if (demo || busy) return;
+    final data = ref.read(scheduleProvider).value;
+    if (data == null) return;
+    final semester = data.semesters.contains(selectedSemester)
+        ? selectedSemester
+        : data.semesters.firstOrNull;
+    await openClassroomImport(
+      context,
+      data.courses.where((c) => c.semester == semester).toList(),
+    );
+  }
+
   Future<bool> confirm(String title, String detail) async =>
       await showDialog<bool>(
         context: context,
@@ -152,6 +166,17 @@ class _AppShellState extends ConsumerState<AppShell>
                   minHeight: 48,
                   onPressed: openImport,
                   child: const Icon(Icons.sync_outlined),
+                ),
+              ),
+            if (!demo && stored.hasValue && tab == 1)
+              Tooltip(
+                message: '统一导入录播',
+                child: MiuixIconButton(
+                  key: const ValueKey('classroom-import-button'),
+                  minWidth: 48,
+                  minHeight: 48,
+                  onPressed: importClassroom,
+                  child: const Icon(Icons.video_library_outlined),
                 ),
               ),
             const SizedBox(width: 8),
@@ -594,6 +619,19 @@ class _AppShellState extends ConsumerState<AppShell>
         ),
       ),
       const SizedBox(height: 24),
+      sectionLabel('轻新课堂'),
+      MiuixCard(
+        cornerRadius: 24,
+        insideMargin: EdgeInsets.zero,
+        child: MiuixArrowPreference(
+          title: '统一导入录播',
+          summary: '当前学期课表课程 · 导入后直接查看列表',
+          startAction: const Icon(Icons.video_library_outlined),
+          enabled: !busy && !demo && data.courses.isNotEmpty,
+          onClick: importClassroom,
+        ),
+      ),
+      const SizedBox(height: 24),
       sectionLabel('登录与隐私'),
       MiuixCard(
         cornerRadius: 24,
@@ -609,11 +647,11 @@ class _AppShellState extends ConsumerState<AppShell>
             ),
             MiuixArrowPreference(
               title: '退出学校会话',
-              summary: '保留离线课表',
+              summary: '保留离线课表，清除录播目录',
               enabled: !busy,
               startAction: const Icon(Icons.logout),
               onClick: () async {
-                if (!await confirm('退出学校会话？', '将清除本应用的学校网页会话，离线课表继续保留。')) {
+                if (!await confirm('退出学校会话？', '将清除学校网页会话和已导入的录播目录，离线课表继续保留。')) {
                   return;
                 }
                 await runAction(() async {
