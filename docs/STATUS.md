@@ -1,11 +1,12 @@
 # 进度与验证边界
 
-## 2026-11-11 0.25发布准备
+## 2026-11-11 0.25已发布
 
 - 用户已授权发布0.25，根Manifest为显示版本0.25、code 9，pubspec由prepare同步为0.25.0+9；更新日志与发布说明已准备。旧标签/附件不覆盖。
 - 本轮检查通过：Java/XLS/DOM/媒体离线检查、静态分析、71项Flutter合成测试（另1项可选预览跳过）；隔离connectedReleaseAndroidTest的压缩XLS解析1项通过，随后重新构建正常release/R8包。
 - 最终APK核对通过：正常包名、0.25/code 9、非debuggable、与已安装版本同签名、ZIP完整、播放器/网页脚本和第三方许可逐字节一致、无测试数据或诊断标签；锁文件摘要未变。模拟器保留数据覆盖安装成功，启动与固定导航正常。此项不替代此前真实学校样本验证或7天会话测试。
-- 精确版本提交CI、标签与GitHub附件仍待完成，不将旧提交CI视为本次发布通过。
+- 已推送并发布：[v0.25预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.25)，发布源码`652e45bc11f5f832b81e92043154df5e169f89f7`，[该提交CI](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/42973212001)全部成功；标签固定该提交，未合并main或移动旧标签。
+- 发布附件为本机同签名release包，61,451,912字节，SHA-256 `b1d722377d81b6e9d8e7a67b2912bba97a34c1b7ad17da5e3248669357136f00`；APK和SHA256SUMS.txt均已上传并逐项核对GitHub服务器digest/大小。发布使用开发签名并明确标记Pre-release。此后发布证据文档提交不改变标签源码。
 
 ## 2026-11-11 统一录播导入与跨课程直接查看
 
