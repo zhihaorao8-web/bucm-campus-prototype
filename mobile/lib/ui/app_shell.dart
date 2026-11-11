@@ -314,7 +314,8 @@ class _AppShellState extends ConsumerState<AppShell>
           MiuixCard(
             cornerRadius: 28,
             insideMargin: const EdgeInsets.all(24),
-            onPressed: () => showCourseDetails(context, next.course),
+            onPressed: () =>
+                showCourseDetails(context, next.course, date: next.date),
             child: DefaultTextStyle(
               style: Theme.of(
                 context,

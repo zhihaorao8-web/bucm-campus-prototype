@@ -307,6 +307,7 @@ class WeekGrid extends StatelessWidget {
                                   onTap: () => showCourseDetails(
                                     context,
                                     p.event.course,
+                                    date: p.event.date,
                                   ),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
