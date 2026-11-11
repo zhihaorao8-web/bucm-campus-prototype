@@ -1,10 +1,10 @@
 # BUCM Campus Prototype
 
-## Flutter 第一版 0.2（预发布）
+## Flutter Android 0.25（预发布）
 
-当前Flutter版本按用户指定为`0.2`（Android内部版本号8），下载见[GitHub预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.2)。release模式APK沿用本机开发签名，不代表已建立生产签名流程。已有`v0.1.4`、`v0.1.5`历史标签保持不变。
+当前Flutter版本按用户指定为`0.25`（Android内部版本号9），下载见[GitHub预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.25)。release模式APK沿用本机开发签名，不代表已建立生产签名流程。已有`v0.1.4`、`v0.1.5`历史标签保持不变。
 
-用户已确认迁移至Flutter，优先Android，只做课表与今日速览。新工程位于`mobile/`：官方页面登录、官方XLS自动导入与DOM备用读取、离线缓存、周/日课表、冲突并排、课程详情、下一节课和深浅色界面。应用不保存密码；会话失效需本人重新登录。不包含直播、图书馆、提醒或社区。
+用户已确认Flutter Android课表与轻新课堂接入。`mobile/`包括官方页面登录、官方XLS自动导入与DOM备用读取、离线周/日课表、冲突并排、今日速览、轻新课堂原生录播列表与内置多画面播放器。设置和课表页均可“统一导入录播”，已导入列表重启保留，支持单课刷新；详细更新见[0.25更新日志](docs/releases/0.25.md)。应用不保存密码；会话失效需本人重新登录。直播入口仍未开放，不含实际直播、图书馆、提醒或社区。
 
 新包名与旧原型并存，需重新登录导入，不自动读取旧应用数据。Android复用已有Java XLS与作息解析器；iOS/Windows接入尚未完成。**原型真实学校验证不等于Flutter新应用通过验证。** 构建、架构和限制见[Flutter开发说明](docs/FLUTTER.md)，界面规范见[DESIGN.md](DESIGN.md)。下文记录保留的Java原型。
 
@@ -63,6 +63,6 @@ CI或自动测试不得使用真实账号，亦不应保存认证会话。
 
 ## 版本
 
-当前Flutter维护版：`0.2`；此前Java原型维护版：`v0.1.5`；首个Git验证基线：`v0.1.4`。历史变化见[CHANGELOG](CHANGELOG.md)，分支、标签和发布规范见[版本管理](docs/VERSIONING.md)。Java原型0.1.0–0.1.3仅有此前本地迭代，不补造其Git历史。
+当前Flutter维护版：`0.25`；此前Java原型维护版：`v0.1.5`；首个Git验证基线：`v0.1.4`。历史变化见[CHANGELOG](CHANGELOG.md)，分支、标签和发布规范见[版本管理](docs/VERSIONING.md)。Java原型0.1.0–0.1.3仅有此前本地迭代，不补造其Git历史。
 
 源码独立编写，参考过THUInfo与ZZUPocket的接入思路，未复制其应用源码。
