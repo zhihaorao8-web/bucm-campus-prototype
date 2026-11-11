@@ -30,6 +30,10 @@ class _SchoolTab {
   bool routed = false;
   bool advancing = false, navigationStopped = false;
   int entryHops = 0;
+  Timer? loadTimer;
+  int ccLoads = 0;
+  String? dedicatedTarget;
+  bool dedicatedRecovered = false, loadTimedOut = false;
 }
 
 /// Course UI reuses the official WebView session for bounded entry navigation
@@ -108,6 +112,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
 
   // Dispose only after the old platform widgets have detached.
   void releaseTabs(Iterable<_SchoolTab> removed) {
+    for (final tab in removed) {
+      tab.loadTimer?.cancel();
+    }
     final handles = removed.map((tab) => tab.retained).toList();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       for (final handle in handles) {
@@ -324,6 +331,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    for (final tab in tabs) {
+      tab.loadTimer?.cancel();
+    }
     generation++;
     playbackGeneration++;
     unawaited(
@@ -545,7 +555,18 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     if (!foreground) {
       generation++;
       poll?.cancel();
+      for (final tab in tabs) {
+        tab.loadTimer?.cancel();
+        tab.loadTimer = null;
+      }
     } else if (tabs.isNotEmpty && automaticEntry) {
+      final tab = tabs[active];
+      if (loading) {
+        tab.loadTimer = Timer(
+          const Duration(seconds: 30),
+          () => recoverPageLoad(tab),
+        );
+      }
       scheduleRead(tabs[active], restart: true);
     }
   }
@@ -571,6 +592,27 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       return;
     }
     final tab = tabs[active];
+    if (tab.loadTimedOut) {
+      automaticEntry = true;
+      tab.loadTimedOut = false;
+      tab.navigationStopped = false;
+      readProgress.reset();
+      setState(() {
+        busy = true;
+        message = '正在重新加载学校页面…';
+      });
+      try {
+        await tab.controller?.reload();
+      } catch (_) {
+        if (mounted) {
+          setState(() {
+            busy = false;
+            message = '页面重新加载未完成，请重新连接学校入口。';
+          });
+        }
+      }
+      return;
+    }
     automaticEntry = true;
     tab.navigationStopped = tab.advancing = false;
     tab.entryHops = 0;
@@ -605,6 +647,60 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           message = '当前学校页面未能读取，请重新加载页面后点击继续导入。';
         });
       }
+    }
+  }
+
+  void watchPageLoad(_SchoolTab tab, String address) {
+    tab.dedicatedTarget = dedicatedClassroomEntry(address);
+    if (tab.dedicatedTarget == null) {
+      tab.ccLoads = 0;
+    } else if (++tab.ccLoads >= 6 && !tab.dedicatedRecovered) {
+      recoverPageLoad(tab);
+      return;
+    }
+    tab.loadTimer ??= Timer(const Duration(seconds: 30), () {
+      if (loading) recoverPageLoad(tab);
+    });
+  }
+
+  void recoverPageLoad(_SchoolTab tab) {
+    if (!mounted || !foreground || !tabs.contains(tab) || tabs[active] != tab) {
+      return;
+    }
+    tab.loadTimer?.cancel();
+    tab.loadTimer = null;
+    poll?.cancel();
+    final target = tab.dedicatedTarget;
+    if (target != null && !tab.dedicatedRecovered) {
+      generation++;
+      automaticEntry = true;
+      automaticPath = automaticPath && !target.startsWith(vpnEntry);
+      readProgress.reset();
+      importPages.clear();
+      setState(() {
+        // Replace the looping document rather than competing with its script
+        // redirects. WebView keeps its normal shared school session.
+        clearTabs();
+        active = recordTab = catalogTab = 0;
+        entry = target;
+        catalog = null;
+        selected = null;
+        rememberedAttempted = false;
+        tabs.add(
+          _SchoolTab(purpose: _Purpose.browse)..dedicatedRecovered = true,
+        );
+        authVisible = showWeb = true;
+        busy = loading = true;
+        message = '学校首页加载未完成，正在通过专用课程入口继续导入…';
+      });
+    } else {
+      tab.loadTimedOut = true;
+      tab.navigationStopped = true;
+      setState(() {
+        authVisible = showWeb = true;
+        busy = loading = false;
+        message = '学校页面加载超时。点击继续导入可重新加载，已完成的导入保留。';
+      });
     }
   }
 
@@ -1246,6 +1342,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                           }
                         },
                         shouldOverrideUrlLoading: (_, action) async {
+                          if (tab.loadTimedOut && action.hasGesture != true) {
+                            return NavigationActionPolicy.CANCEL;
+                          }
                           final target = action.request.url?.toString() ?? '';
                           final allowed = classroomNavigation(target);
                           if (!allowed &&
@@ -1276,20 +1375,26 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                               ? NavigationActionPolicy.ALLOW
                               : NavigationActionPolicy.CANCEL;
                         },
-                        onLoadStart: (_, _) {
+                        onLoadStart: (_, url) {
                           tab.advancing = false;
+                          tab.loadTimedOut = false;
                           if (mounted &&
                               tabs.isNotEmpty &&
                               tabs[active] == tab) {
                             generation++;
                             poll?.cancel();
                             setState(() => loading = true);
+                            watchPageLoad(tab, url?.toString() ?? '');
                           }
                         },
                         onLoadStop: (_, _) {
                           if (mounted &&
                               tabs.isNotEmpty &&
                               tabs[active] == tab) {
+                            tab.loadTimer?.cancel();
+                            tab.loadTimer = null;
+                            tab.ccLoads = 0;
+                            if (tab.loadTimedOut) return;
                             setState(() => loading = false);
                             scheduleRead(tab, restart: true);
                           }

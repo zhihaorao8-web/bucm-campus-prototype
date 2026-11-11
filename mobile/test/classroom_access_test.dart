@@ -5,6 +5,32 @@ import 'package:campus_schedule/platform/classroom_access.dart';
 import 'package:campus_schedule/ui/classroom_browser.dart';
 
 void main() {
+  test('白屏恢复只接受已验证的cc入口，不转移查询参数或接受其他隧道', () {
+    final target = dedicatedClassroomEntry(
+      'https://qhz.bucm.edu.cn/cc/?synthetic=NEVER_EXPORT',
+    );
+    expect(
+      target,
+      'https://qhz.bucm.edu.cn/coursePlatform/#/courseCenter/index?firstMenuId=11',
+    );
+    expect(target, isNot(contains('NEVER_EXPORT')));
+    expect(
+      dedicatedClassroomEntry(
+        'https://webvpn.bucm.edu.cn/https/77726476706e69737468656265737421e1ff5bd225256b5d300d8db9d6562d/cc/',
+      ),
+      startsWith(vpnEntry),
+    );
+    for (final invalid in [
+      'http://qhz.bucm.edu.cn/cc/',
+      'https://qhz.bucm.edu.cn.evil.test/cc/',
+      'https://user@qhz.bucm.edu.cn/cc/',
+      'https://webvpn.bucm.edu.cn/https/other/cc/',
+      'https://webvpn.bucm.edu.cn/',
+      'https://qhz.bucm.edu.cn/coursePlatform/',
+    ]) {
+      expect(dedicatedClassroomEntry(invalid), isNull);
+    }
+  });
   test('requires platform branding and script, not just status 200', () {
     expect(
       classifyProbe(

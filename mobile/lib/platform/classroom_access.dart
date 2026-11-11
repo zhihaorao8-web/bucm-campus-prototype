@@ -23,6 +23,29 @@ const directEntry = 'https://i.bucm.edu.cn/';
 const vpnEntry = 'https://webvpn.bucm.edu.cn/';
 const classroomProbe = 'https://qhz.bucm.edu.cn/cc/';
 
+/// Only the observed classroom cc entry may recover to the dedicated school
+/// course application. No parameters or credentials are copied between routes.
+String? dedicatedClassroomEntry(String address) {
+  final uri = Uri.tryParse(address);
+  if (uri == null ||
+      uri.scheme != 'https' ||
+      uri.port != 443 ||
+      uri.userInfo.isNotEmpty) {
+    return null;
+  }
+  const prefix =
+      '/https/77726476706e69737468656265737421e1ff5bd225256b5d300d8db9d6562d/';
+  if (uri.host == 'qhz.bucm.edu.cn' &&
+      const ['/cc', '/cc/'].contains(uri.path)) {
+    return 'https://qhz.bucm.edu.cn/coursePlatform/#/courseCenter/index?firstMenuId=11';
+  }
+  if (uri.host == 'webvpn.bucm.edu.cn' &&
+      ['${prefix}cc', '${prefix}cc/'].contains(uri.path)) {
+    return 'https://webvpn.bucm.edu.cn${prefix}coursePlatform/#/courseCenter/index?firstMenuId=11';
+  }
+  return null;
+}
+
 /// Only validates public page signatures. Does not authenticate or share cookies.
 AccessProbe classifyProbe(
   String address,

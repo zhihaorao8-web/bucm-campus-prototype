@@ -26,6 +26,13 @@
   if (!root && !cc) return result('untrusted', '', 'route');
   if (/^#\/?login(?:[/?]|$)/i.test(location.hash) || document.querySelector('input[type="password"]')) return result('authentication');
   if (Array.from(document.querySelectorAll('.el-dialog__wrapper,.el-message-box__wrapper')).some(function (node) { return node.getClientRects().length; })) return result('waiting', root ? 'portal' : 'platform', 'modal');
+  if (portalReady) {
+    // The generic cc front page can loop in its own portal initialization.
+    // This dedicated course entry and route were verified in the authorized
+    // Android session. The school still performs its normal authentication.
+    setTimeout(function () { location.assign(location.origin + prefix + 'coursePlatform/#/courseCenter/index?firstMenuId=11'); }, 0);
+    return result('opening', 'portal', 'verified-entry');
+  }
   var element;
   if (root) {
     element = Array.from(document.querySelectorAll('a')).find(function (node) {
@@ -34,12 +41,6 @@
     if (!element) element = Array.from(document.querySelectorAll('*')).slice(0, 6000).find(function (node) {
       return !node.children.length && node.getClientRects().length && node.textContent.trim() === '智慧教学平台';
     });
-    if (!element && portalReady) {
-      // Portal cards can differ by account/layout. This is the previously
-      // verified school mapping, not a URL inferred from arbitrary page text.
-      setTimeout(function () { location.assign(location.origin + prefix + 'cc/'); }, 0);
-      return result('opening', 'portal', 'verified-entry');
-    }
   } else {
     element = Array.from(document.querySelectorAll('*')).slice(0, 6000).find(function (node) {
       return !node.children.length && node.getClientRects().length && node.textContent.trim() === '课程平台';

@@ -15,6 +15,7 @@ class RecoveryController extends PlatformInAppWebViewController {
   String state = 'authentication';
   String snapshotState = 'navigate';
   bool created = false;
+  PlatformInAppWebViewWidgetCreationParams? viewParams;
   int reads = 0;
   final commands = <String>[];
   @override
@@ -57,6 +58,7 @@ class RecoveryView extends PlatformInAppWebViewWidget {
   final RecoveryController controller;
   @override
   Widget build(BuildContext context) {
+    controller.viewParams = params;
     if (!controller.created) {
       controller.created = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -141,6 +143,24 @@ void main() {
     await tick(tester, 23);
     expect(find.textContaining('课程数据读取超时'), findsOneWidget);
     expect(controller.commands, everyElement('snapshot'));
+    var params = controller.viewParams!;
+    var web = params.controllerFromPlatform!(controller);
+    params.onLoadStart!(web, WebUri(vpnEntry));
+    await tick(tester, 16);
+    expect(find.textContaining('学校页面加载超时'), findsOneWidget);
+    const cc =
+        'https://webvpn.bucm.edu.cn/https/77726476706e69737468656265737421e1ff5bd225256b5d300d8db9d6562d/cc/';
+    params = controller.viewParams!;
+    web = params.controllerFromPlatform!(controller);
+    for (var i = 0; i < 6; i++) {
+      params.onLoadStart!(web, WebUri(cc));
+    }
+    await tester.pump();
+    final views = tester.widgetList<InAppWebView>(find.byType(InAppWebView));
+    expect(
+      views.single.platform.params.initialUrlRequest!.url.toString(),
+      contains('/coursePlatform/#/courseCenter/index?firstMenuId=11'),
+    );
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
     expect(tester.takeException(), isNull);

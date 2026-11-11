@@ -52,7 +52,7 @@ for (const route of ['/', '/portal', '/synthetic/portal']) {
   assert.equal(value.result.state,'opening');
   assert.equal(value.result.reason,'verified-entry');
   assert.equal(value.clicks,0);
-  assert.deepEqual(value.assigned,['https://webvpn.bucm.edu.cn'+prefix+'cc/']);
+  assert.deepEqual(value.assigned,['https://webvpn.bucm.edu.cn'+prefix+'coursePlatform/#/courseCenter/index?firstMenuId=11']);
 }
 const framed=run('https://webvpn.bucm.edu.cn/',resource,{iframe:true,label:'无关资源'});
 assert.equal(framed.result.state,'authentication');assert.equal(framed.clicks,0);
