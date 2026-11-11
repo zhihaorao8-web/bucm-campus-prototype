@@ -83,6 +83,7 @@
     Promise.all(available.map(async function (f) {
       var url = new URL(info[f[1]]);
       var mappings = {
+        'qxkt3.bucm.edu.cn': '/https-8880/77726476706e69737468656265737421e1ef4a88747e6a457d05c7a99c406d3626/',
         'qxkt4.bucm.edu.cn': '/https-8880/77726476706e69737468656265737421e1ef4a88737e6a457d05c7a99c406d3652/',
         'qxkt2.bucm.edu.cn': '/https-8880/77726476706e69737468656265737421e1ef4a88757e6a457d05c7a99c406d3643/'
       };

@@ -9,7 +9,9 @@ bool classroomMedia(String value) {
   return uri != null &&
       uri.scheme == 'https' &&
       uri.userInfo.isEmpty &&
-      (((uri.host == 'qxkt4.bucm.edu.cn' || uri.host == 'qxkt2.bucm.edu.cn') &&
+      (((uri.host == 'qxkt4.bucm.edu.cn' ||
+                  uri.host == 'qxkt2.bucm.edu.cn' ||
+                  uri.host == 'qxkt3.bucm.edu.cn') &&
               uri.port == 8880) ||
           (uri.host == 'qhz.bucm.edu.cn' && uri.port == 443));
 }
