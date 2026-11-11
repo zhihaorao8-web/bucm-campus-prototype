@@ -100,6 +100,8 @@ void main() {
           ),
         );
         expect(find.text('示例教师'), findsOneWidget);
+        await tester.tap(find.text('课程信息'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('查看完整课程信息'));
         expect(opened, isTrue);
         await tester.tap(find.text('直播'));

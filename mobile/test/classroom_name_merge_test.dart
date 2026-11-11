@@ -189,6 +189,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('下一页'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('下一页'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('来源b的回放'));
@@ -287,7 +288,7 @@ void main() {
       await dir.delete(recursive: true);
     }
   });
-  testWidgets('离线合并目录跨来源翻页，同名不同老师均可见且不执行网络检测', (tester) async {
+  testWidgets('离线目录按日期汇总不同来源，同名不同老师均可见且不执行网络检测', (tester) async {
     var probes = 0;
     await tester.pumpWidget(
       MaterialApp(
@@ -305,11 +306,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('已按名称合并 2 门'), findsOneWidget);
     expect(find.text('来源a的回放'), findsOneWidget);
-    await tester.ensureVisible(find.text('下一页'));
-    await tester.tap(find.text('下一页'));
-    await tester.pumpAndSettle();
     expect(find.text('来源b的回放'), findsOneWidget);
-    expect(find.text('第 2 页 · 共 2 条'), findsOneWidget);
+    expect(find.text('第 1 页 · 共 2 条'), findsOneWidget);
     expect(probes, 0);
     await tester.pumpWidget(const SizedBox());
   });

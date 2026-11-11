@@ -206,6 +206,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('合成晚课5'), findsWidgets);
       expect(find.text('合成教师'), findsWidgets);
+      await tester.tap(find.text('课程信息'));
+      await tester.pumpAndSettle();
       expect(find.text('18:00–20:25'), findsOneWidget);
       await tester.tap(find.text('完成'));
       await tester.pumpAndSettle();

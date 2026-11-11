@@ -14,6 +14,7 @@ import '../platform/classroom_policy.dart';
 import '../platform/classroom_player.dart';
 import '../platform/classroom_session_cache.dart';
 import 'classroom_player_page.dart';
+import 'classroom_recording_timeline.dart';
 
 enum _Purpose { browse, records, playback }
 
@@ -83,6 +84,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   String? entrySource;
   bool automaticEntry = true, automaticPath = false;
   Timer? poll;
+  int timelinePage = 1, lessonPage = 1;
   final readProgress = ClassroomReadProgress();
   bool foreground = true;
   final cache = ClassroomSessionCache.shared;
@@ -1599,15 +1601,31 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                     ),
                     const SizedBox(height: 8),
                     Text(local.teacher.isEmpty ? '学校未提供教师' : local.teacher),
-                    Text(
-                      local.segments
-                          .map((s) => '${s.start}–${s.end}')
-                          .join('\n'),
-                    ),
                     Text(local.semester),
-                    TextButton(
-                      onPressed: () => widget.onDetails(context),
-                      child: const Text('查看完整课程信息'),
+                    Material(
+                      type: MaterialType.transparency,
+                      child: ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        title: const Text('课程信息'),
+                        children: [
+                          Text(
+                            local.segments
+                                .map(
+                                  (segment) =>
+                                      '${segment.start}–${segment.end}',
+                                )
+                                .join(' · '),
+                          ),
+                          Text(local.place.isEmpty ? '学校未提供地点' : local.place),
+                          Text(
+                            '第${local.weeks}周 · 第${local.periods.join('、')}节',
+                          ),
+                          TextButton(
+                            onPressed: () => widget.onDetails(context),
+                            child: const Text('查看完整课程信息'),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1648,13 +1666,14 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                 if (archive != null)
                   Text(
                     archive!.nameMatched
-                        ? '已按名称合并 ${archive!.courses.length} 门学校课程（按来源分页）'
+                        ? '已按名称合并 ${archive!.courses.length} 门学校课程（按日期汇总）'
                         : '旧目录尚未汇总同名课程，请刷新录播或统一导入。',
                   ),
-                Text(
-                  '当前回放来源：${recordings!.course.name} · ${recordings!.course.teacher}',
-                ),
-                if (widget.date != null)
+                if (archive == null)
+                  Text(
+                    '当前回放来源：${recordings!.course.name} · ${recordings!.course.teacher}',
+                  ),
+                if (widget.date != null && archive == null)
                   Text(
                     recordings!.records.any(
                           (v) => isoDate(v.date) == isoDate(widget.date!),
@@ -1681,58 +1700,72 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                     ),
                   ],
                 ),
-                if (recordings!.records.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('学校当前没有可显示的录播记录。'),
-                  ),
-                for (final record in recordings!.records)
-                  MiuixCard(
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: ListTile(
-                        selected:
-                            widget.date != null &&
-                            isoDate(widget.date!) == isoDate(record.date),
-                        title: Text(record.label),
-                        subtitle: Text(
-                          '${record.place.isEmpty ? '学校未提供地点' : record.place}\n${record.published ? '已发布' : '未发布或暂不可观看'}',
+                if (archive != null)
+                  ClassroomRecordingTimeline(
+                    archive: archive!,
+                    date: widget.date,
+                    busy: busy,
+                    page: timelinePage,
+                    lessonPage: lessonPage,
+                    onPage: (value) => setState(() => timelinePage = value),
+                    onLessonPage: (value) => setState(() => lessonPage = value),
+                    onPlay: (record, courseId) =>
+                        playNative(record, sourceCourseId: courseId),
+                  )
+                else ...[
+                  if (recordings!.records.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text('学校当前没有可显示的录播记录。'),
+                    ),
+                  for (final record in recordings!.records)
+                    MiuixCard(
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: ListTile(
+                          selected:
+                              widget.date != null &&
+                              isoDate(widget.date!) == isoDate(record.date),
+                          title: Text(record.label),
+                          subtitle: Text(
+                            '${record.place.isEmpty ? '学校未提供地点' : record.place}\n${record.published ? '已发布' : '未发布或暂不可观看'}',
+                          ),
+                          isThreeLine: true,
+                          trailing: const Icon(Icons.play_circle_outline),
+                          onTap: busy || !record.published
+                              ? null
+                              : () => playNative(
+                                  record,
+                                  sourceCourseId: recordings!.course.id,
+                                ),
                         ),
-                        isThreeLine: true,
-                        trailing: const Icon(Icons.play_circle_outline),
-                        onTap: busy || !record.published
-                            ? null
-                            : () => playNative(
-                                record,
-                                sourceCourseId: recordings!.course.id,
-                              ),
                       ),
                     ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: busy || displayPage == 1
+                            ? null
+                            : () => changePage(displayPage - 1),
+                        child: const Text('上一页'),
+                      ),
+                      Text(
+                        '第 $displayPage 页 · 共 ${archive?.total ?? recordings!.total} 条',
+                      ),
+                      TextButton(
+                        onPressed:
+                            busy ||
+                                (archive != null
+                                    ? displayPage >= archive!.pages.length
+                                    : !recordings!.hasNext)
+                            ? null
+                            : () => changePage(displayPage + 1),
+                        child: const Text('下一页'),
+                      ),
+                    ],
                   ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: busy || displayPage == 1
-                          ? null
-                          : () => changePage(displayPage - 1),
-                      child: const Text('上一页'),
-                    ),
-                    Text(
-                      '第 $displayPage 页 · 共 ${archive?.total ?? recordings!.total} 条',
-                    ),
-                    TextButton(
-                      onPressed:
-                          busy ||
-                              (archive != null
-                                  ? displayPage >= archive!.pages.length
-                                  : !recordings!.hasNext)
-                          ? null
-                          : () => changePage(displayPage + 1),
-                      child: const Text('下一页'),
-                    ),
-                  ],
-                ),
+                ],
               ] else if (catalog != null) ...[
                 const Text('按同学期课程名称汇总全部回放，教师和班级仅用于显示来源。'),
                 for (final course in candidates)
