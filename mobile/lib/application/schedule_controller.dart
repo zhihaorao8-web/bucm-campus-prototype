@@ -29,7 +29,11 @@ class ScheduleController extends AsyncNotifier<ScheduleData> {
       final previous = recoverUnreadable && state.hasError
           ? const ScheduleData()
           : state.requireValue;
-      final next = previous.mergeImport(courses, summary, schoolNow());
+      final next = previous.mergeImport(
+        courses,
+        summary,
+        DateTime.now().toUtc(),
+      );
       await ref.read(repositoryProvider).save(next);
       state = AsyncData(next);
     } finally {

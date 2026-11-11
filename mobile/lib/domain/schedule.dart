@@ -28,6 +28,11 @@ int calendarDays(DateTime a, DateTime b) => DateTime.utc(
 String isoDate(DateTime date) =>
     '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 String shortDate(DateTime date) => '${date.month}月${date.day}日';
+String schoolTimestamp(DateTime instant) {
+  final date = schoolNow(instant);
+  return '${isoDate(date)} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+}
+
 const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 int clockMinutes(String clock) {
   if (!RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$').hasMatch(clock)) {
@@ -235,17 +240,31 @@ class ScheduleData {
     this.courses = const [],
     this.importedAt,
     this.summary = '',
+    this.importedAtBySemester = const {},
+    this.summaryBySemester = const {},
     this.isDemo = false,
   });
   final List<Course> courses;
   final DateTime? importedAt;
   final String summary;
   final bool isDemo;
+  final Map<String, DateTime> importedAtBySemester;
+  final Map<String, String> summaryBySemester;
+  DateTime? lastImportFor(String semester) =>
+      importedAtBySemester[semester] ??
+      (semesters.length == 1 && semesters.single == semester
+          ? importedAt
+          : null);
+  String summaryFor(String semester) =>
+      summaryBySemester[semester] ??
+      (semesters.length == 1 && semesters.single == semester ? summary : '');
   List<String> get semesters =>
       courses.map((c) => c.semester).toSet().toList()
         ..sort((a, b) => b.compareTo(a));
   factory ScheduleData.fromJson(Map<String, dynamic> json) {
-    if (json['schema'] != 1) throw const FormatException('不支持的课表存储版本');
+    if (json['schema'] != 1 && json['schema'] != 2) {
+      throw const FormatException('不支持的课表存储版本');
+    }
     return ScheduleData(
       courses: (json['courses'] as List)
           .map((c) => Course.fromJson(Map<String, dynamic>.from(c as Map)))
@@ -254,13 +273,26 @@ class ScheduleData {
           ? null
           : DateTime.parse(json['importedAt'] as String),
       summary: json['summary'] as String? ?? '',
+      importedAtBySemester: Map.unmodifiable(
+        (json['importedAtBySemester'] as Map? ?? {}).map(
+          (key, value) =>
+              MapEntry(key as String, DateTime.parse(value as String)),
+        ),
+      ),
+      summaryBySemester: Map.unmodifiable(
+        Map<String, String>.from(json['summaryBySemester'] as Map? ?? {}),
+      ),
     );
   }
   Map<String, dynamic> toJson() => {
-    'schema': 1,
+    'schema': 2,
     'courses': courses.map((c) => c.toJson()).toList(),
     'importedAt': importedAt?.toIso8601String(),
     'summary': summary,
+    'importedAtBySemester': importedAtBySemester.map(
+      (key, value) => MapEntry(key, value.toIso8601String()),
+    ),
+    'summaryBySemester': summaryBySemester,
   };
   ScheduleData mergeImport(List<Course> incoming, String note, DateTime now) {
     if (isDemo || incoming.isEmpty) throw const FormatException('请退出示例后导入有效课表');
@@ -278,6 +310,16 @@ class ScheduleData {
       ],
       importedAt: now,
       summary: note,
+      importedAtBySemester: Map.unmodifiable({
+        for (final semester in semesters)
+          if (lastImportFor(semester) != null)
+            semester: lastImportFor(semester)!,
+        terms.single: now,
+      }),
+      summaryBySemester: Map.unmodifiable({
+        for (final semester in semesters) semester: summaryFor(semester),
+        terms.single: note,
+      }),
     );
   }
 }

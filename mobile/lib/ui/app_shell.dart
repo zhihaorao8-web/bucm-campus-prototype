@@ -474,7 +474,7 @@ class _AppShellState extends ConsumerState<AppShell>
         Text(
           data.isDemo
               ? '所有课程均为合成示例'
-              : '已保存到本机${data.importedAt == null ? '' : '，最近导入 ${shortDate(data.importedAt!)}'}',
+              : '已保存到本机 · 本学期${data.lastImportFor(semester) == null ? '更新时间未知' : '更新于 ${schoolTimestamp(data.lastImportFor(semester)!)}'}',
           style: TextStyle(color: colors.onSurfaceVariant),
         ),
       ],

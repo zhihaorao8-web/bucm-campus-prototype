@@ -189,7 +189,12 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 80));
     });
     await tester.pumpAndSettle();
-    expect(find.text('已导入的录播列表 · 可刷新'), findsOneWidget);
+    expect(
+      find.text(
+        '已导入的录播列表 · 更新于 ${schoolTimestamp(restored!.importedAt)} · 可刷新',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('示例录播1'), findsOneWidget);
     await tester.ensureVisible(find.text('下一页'));
     await tester.pumpAndSettle();

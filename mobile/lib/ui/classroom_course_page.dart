@@ -1664,7 +1664,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                   ),
                 Text(
                   archive != null
-                      ? '已导入的录播列表 · 可刷新'
+                      ? '已导入的录播列表 · 更新于 ${schoolTimestamp(archive!.importedAt)} · 可刷新'
                       : restored
                       ? '已使用缓存 · 可刷新'
                       : '已更新列表 · 可刷新',
