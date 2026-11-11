@@ -3,14 +3,14 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../assets/classroom-entry.js'), 'utf8');
 const prefix = '/https/77726476706e69737468656265737421e1ff5bd225256b5d300d8db9d6562d/';
-function run(address, target, {password = false, modal = false, label, throwing = false, body = '', cardsOnly = false, title = 'WebVPN - 资源站点'} = {}) {
+function run(address, target, {password = false, iframe = false, modal = false, label, throwing = false, body = '', cardsOnly = false, title = 'WebVPN - 资源站点'} = {}) {
   const location = new URL(address), assigned = [], pending = [];
   location.assign = value => assigned.push(value);
   const original = () => {throw Error('Native popup must never be opened');};
   const window = {open: original};
   let clicks = 0;
   const element = {textContent: label ?? (location.pathname === '/' ? '智慧教学平台 https://qhz.bucm.edu.cn/cc/' : '课程平台'), children: [], getClientRects: () => [{}], click() {clicks++;if (throwing) throw Error('Synthetic click error');window.open(target, '_blank');}};
-  const document = {title, body: {innerText: body}, querySelector: () => password ? {} : null,
+  const document = {title, body: {innerText: body}, querySelector: selector => selector === 'iframe' ? iframe ? {} : null : password ? {} : null,
     querySelectorAll: selector => selector.startsWith('.el-') ? modal ? [element] : [] : cardsOnly && selector === 'a' ? [] : [element]};
   const result = JSON.parse(vm.runInNewContext(source, {window, location, document, URL, setTimeout: fn => pending.push(fn)}));
   assert.equal(window.open, original);
@@ -45,4 +45,23 @@ assert.equal(run('https://webvpn.bucm.edu.cn/', resource, {password: true}).clic
 assert.equal(run('https://webvpn.bucm.edu.cn/', resource, {label: '无关资源', body: '统一认证扫码'}).result.state, 'authentication');
 assert.equal(run('https://qhz.bucm.edu.cn/cc/', resource, {modal: true}).clicks, 0);
 assert.equal(run('https://qhz.bucm.edu.cn/cc/', resource, {throwing: true}).result.state, 'blocked');
+// The screen-recorded portal layout has grouped resources, not necessarily the
+// teaching card. Only a positively identified portal may use the fixed mapping.
+for (const route of ['/', '/portal', '/synthetic/portal']) {
+  const value=run('https://webvpn.bucm.edu.cn'+route,resource,{label:'数字北中医',body:'最近访问 办公系统 业务系统 其他资源'});
+  assert.equal(value.result.state,'opening');
+  assert.equal(value.result.reason,'verified-entry');
+  assert.equal(value.clicks,0);
+  assert.deepEqual(value.assigned,['https://webvpn.bucm.edu.cn'+prefix+'cc/']);
+}
+const framed=run('https://webvpn.bucm.edu.cn/',resource,{iframe:true,label:'无关资源'});
+assert.equal(framed.result.state,'authentication');assert.equal(framed.clicks,0);
+assert.deepEqual(framed.assigned,[]);
+for (const options of [{body:'统一认证扫码'},{iframe:true},{password:true}]) {
+  const login=run('https://webvpn.bucm.edu.cn/synthetic/sign-in',resource,{label:'无关资源',...options});
+  assert.equal(login.result.state,'authentication');assert.equal(login.clicks,0);assert.deepEqual(login.assigned,[]);
+}
+assert.equal(run('https://webvpn.bucm.edu.cn/https/other/login',resource,{body:'统一认证扫码'}).result.state,'untrusted');
+assert.equal(run('https://webvpn.bucm.edu.cn/',resource,{label:'无关资源'}).result.reason,'no-entry');
+assert.equal(run('https://webvpn.bucm.edu.cn/portal',resource,{label:'数字北中医',body:'最近访问 办公系统',title:'Other platform'}).result.state,'untrusted');
 console.log('Classroom automatic entry checks passed; no credentials or school network used.');

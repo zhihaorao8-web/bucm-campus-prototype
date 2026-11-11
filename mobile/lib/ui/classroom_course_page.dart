@@ -9,6 +9,7 @@ import '../data/classroom_library.dart';
 import '../domain/classroom.dart';
 import '../domain/schedule.dart';
 import '../platform/classroom_access.dart';
+import '../platform/classroom_read_progress.dart';
 import '../platform/classroom_policy.dart';
 import '../platform/classroom_player.dart';
 import '../platform/classroom_session_cache.dart';
@@ -55,7 +56,8 @@ class ClassroomCoursePage extends StatefulWidget {
   State<ClassroomCoursePage> createState() => _ClassroomCoursePageState();
 }
 
-class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
+class _ClassroomCoursePageState extends State<ClassroomCoursePage>
+    with WidgetsBindingObserver {
   final tabs = <_SchoolTab>[];
   final scroll = ScrollController();
   late final links = widget.links ?? ClassroomLinks.shared;
@@ -77,6 +79,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   String? entrySource;
   bool automaticEntry = true, automaticPath = false;
   Timer? poll;
+  final readProgress = ClassroomReadProgress();
+  bool foreground = true;
   final cache = ClassroomSessionCache.shared;
   late int cacheRevision;
   late final library = widget.library ?? ClassroomLibrary.shared;
@@ -127,6 +131,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     scroll.addListener(() {
       if (scroll.hasClients) lastOffset = scroll.offset;
     });
@@ -315,6 +323,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     generation++;
     playbackGeneration++;
     unawaited(
@@ -377,6 +386,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
     ClassroomAccess mode = ClassroomAccess.automatic,
   ]) async {
     fetchedAt = null;
+    readProgress.reset();
     livePage = null;
     liveCourse = null;
     freshReadPending = true;
@@ -413,6 +423,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
       rememberedAttempted = false;
       active = 0;
       busy = false;
+      automaticPath =
+          mode == ClassroomAccess.automatic &&
+          decision.mode == ClassroomAccess.direct;
       entry =
           mode == ClassroomAccess.automatic &&
               decision.mode == ClassroomAccess.direct
@@ -458,15 +471,17 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
       busy = false;
       message = '请在学校官方页面完成认证；登录成功后将继续自动获取录播。';
     });
+    readProgress.advance(ClassroomReadStage.authentication);
+    scheduleRead(tab);
   }
 
-  Future<String> advanceEntry(_SchoolTab tab) async {
+  Future<Map<String, dynamic>> advanceEntry(_SchoolTab tab) async {
     if (!automaticEntry || tab.navigationStopped || tab.advancing) {
-      return 'waiting';
+      return {'state': 'waiting'};
     }
     if (tab.entryHops >= 4) {
       tab.navigationStopped = true;
-      return 'blocked';
+      return {'state': 'blocked'};
     }
     entrySource ??= await rootBundle.loadString('assets/classroom-entry.js');
     tab.advancing = true;
@@ -483,10 +498,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
         tab.advancing = false;
       }
       if (state == 'blocked') tab.navigationStopped = true;
-      return state;
+      return Map<String, dynamic>.from(data);
     } catch (_) {
       tab.advancing = false;
-      return 'waiting';
+      return {'state': 'waiting'};
     }
   }
 
@@ -509,27 +524,99 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
 
   void scheduleRead(_SchoolTab tab, {bool restart = false}) {
     poll?.cancel();
-    if (restart) attempts = 0;
-    if (!mounted || tab.purpose == _Purpose.playback) return;
-    poll = Timer(const Duration(milliseconds: 900), () => inspect(tab));
+    if (restart) {
+      attempts = 0;
+      readProgress.reset();
+    }
+    if (!mounted || !foreground || tab.purpose == _Purpose.playback) return;
+    poll = Timer(
+      Duration(
+        milliseconds: readProgress.stage == ClassroomReadStage.authentication
+            ? 2000
+            : 900,
+      ),
+      () => inspect(tab),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    foreground = state == AppLifecycleState.resumed;
+    if (!foreground) {
+      generation++;
+      poll?.cancel();
+    } else if (tabs.isNotEmpty && automaticEntry) {
+      scheduleRead(tabs[active], restart: true);
+    }
+  }
+
+  bool allowRead(ClassroomReadStage stage) {
+    if (readProgress.advance(stage)) {
+      attempts = readProgress.attempts;
+      return true;
+    }
+    setState(() {
+      authVisible = true;
+      showWeb = true;
+      busy = false;
+      message = readProgress.timeoutMessage;
+    });
+    return false;
+  }
+
+  Future<void> retryCurrent() async {
+    importPages.clear();
+    if (tabs.isEmpty) {
+      await connect();
+      return;
+    }
+    final tab = tabs[active];
+    automaticEntry = true;
+    tab.navigationStopped = tab.advancing = false;
+    tab.entryHops = 0;
+    final ticket = ++generation;
+    poll?.cancel();
+    readProgress.reset();
+    setState(() {
+      authVisible = showWeb = true;
+      busy = true;
+      message = '正在识别当前学校页面并继续导入…';
+    });
+    try {
+      final data = await script(tab, {'action': 'snapshot'});
+      if (!mounted || ticket != generation || !tabs.contains(tab)) return;
+      // catalogRoute exists only inside the classroom SPA. A portal/login
+      // document must re-enter through the entry coordinator instead.
+      if (data['state'] == 'catalog' || data['state'] == 'records') {
+        selected = null;
+        rememberedAttempted = false;
+        await navigateOfficial(tab, {
+          'action': 'catalogRoute',
+        }, _Purpose.browse);
+      } else {
+        tab.purpose = _Purpose.browse;
+        tab.routed = false;
+        scheduleRead(tab, restart: true);
+      }
+    } catch (_) {
+      if (mounted && ticket == generation) {
+        setState(() {
+          busy = false;
+          message = '当前学校页面未能读取，请重新加载页面后点击继续导入。';
+        });
+      }
+    }
   }
 
   Future<void> inspect(_SchoolTab tab) async {
     if (!mounted ||
+        !foreground ||
         !tabs.contains(tab) ||
         tabs[active] != tab ||
         tab.controller == null) {
       return;
     }
-    if (++attempts > 20) {
-      if (busy) {
-        setState(() {
-          busy = false;
-          message = '学校数据暂未完成加载，可重新读取或返回官方页面检查。';
-        });
-      }
-      return;
-    }
+    attempts++;
     final ticket = generation;
     try {
       final data = await script(tab, {'action': 'snapshot'});
@@ -549,6 +636,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
               ? '学校提示当前账号没有查看权限。'
               : '学校请求失败，请检查官方页面或稍后重试。';
         });
+        return;
+      }
+      if (data['state'] != 'navigate' && !allowRead(ClassroomReadStage.data)) {
         return;
       }
       if (data['state'] == 'catalog' && tab.purpose != _Purpose.records) {
@@ -694,7 +784,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
         return;
       }
       if (data['state'] == 'navigate' && tab.purpose == _Purpose.browse) {
-        final state = await advanceEntry(tab);
+        final entryResult = await advanceEntry(tab);
+        final state = entryResult['state'];
         if (!mounted || ticket != generation || !tabs.contains(tab)) return;
         if (state == 'authentication') {
           if (await fallbackToVpn()) return;
@@ -702,17 +793,33 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
           requireAuthentication(tab);
           return;
         }
-        if (state == 'blocked') {
+        if (state == 'blocked' || state == 'untrusted') {
           setState(() {
             busy = false;
-            message = '自动进入学校平台暂未完成，请在官方页面继续或重新获取。';
+            authVisible = showWeb = true;
+            message = state == 'untrusted'
+                ? '当前页面不属于已支持的学校入口路径。请在官方页面进入教学平台后点击继续导入。'
+                : '平台入口跳转未通过校验。请在官方页面手动进入，或切换学校 WebVPN 后继续导入。';
           });
           return;
         }
+        final stage = entryResult['stage'] == 'platform'
+            ? ClassroomReadStage.platform
+            : ClassroomReadStage.portal;
+        if (!allowRead(stage)) return;
         if (state == 'opening') {
           setState(() {
             busy = true;
             message = '正在自动进入学校课程平台…';
+          });
+        } else {
+          setState(() {
+            busy = true;
+            message = entryResult['reason'] == 'modal'
+                ? '学校页面有弹窗，请处理后继续导入。'
+                : stage == ClassroomReadStage.portal
+                ? '正在等待 WebVPN 门户入口；可在官方页面手动进入教学平台。'
+                : '正在等待课程平台入口；可在官方页面手动进入课程平台。';
           });
         }
       }
@@ -1040,10 +1147,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
           ],
         ),
         IconButton(
-          tooltip: '读取当前课程页面',
+          tooltip: '继续导入',
           onPressed: busy || tabs[active].purpose == _Purpose.playback
               ? null
-              : () => scheduleRead(tabs[active], restart: true),
+              : retryCurrent,
           icon: const Icon(Icons.refresh),
         ),
         IconButton(
@@ -1064,6 +1171,12 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
                   '请在官方页面完成认证并进入课程平台。WebVPN 中可打开“智慧教学平台”；也可从数字北中医应用中心进入。',
             ),
           ),
+          if (!busy && tabs[active].purpose != _Purpose.playback)
+            TextButton.icon(
+              onPressed: retryCurrent,
+              icon: const Icon(Icons.refresh),
+              label: const Text('继续导入'),
+            ),
           Expanded(
             child: Stack(
               children: [
@@ -1506,19 +1619,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
           else ...[
             if (!busy)
               OutlinedButton(
-                onPressed: () async {
-                  importPages.clear();
-                  if (tabs.isNotEmpty) {
-                    selected = null;
-                    rememberedAttempted = false;
-                    await navigateOfficial(tabs[active], {
-                      'action': 'catalogRoute',
-                    }, _Purpose.browse);
-                  } else {
-                    await connect();
-                  }
-                },
-                child: const Text('重试当前课程'),
+                onPressed: retryCurrent,
+                child: const Text('继续导入'),
               ),
             TextButton(
               onPressed: () => setState(() {

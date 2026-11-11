@@ -1,6 +1,7 @@
 (function () {
   'use strict';
-  // Only two observed entry buttons. The extraction returns state, never URLs.
+  // Observed entry buttons and the verified HTTPS classroom entry only.
+  // The extraction returns bounded state, never URLs or credentials.
   var prefix = '/https/77726476706e69737468656265737421e1ff5bd225256b5d300d8db9d6562d/';
   function result(state, stage, reason) { return JSON.stringify({state: state, stage: stage || '', reason: reason || ''}); }
   if (location.protocol !== 'https:' || location.port) return result('untrusted', '', 'scheme');
@@ -9,13 +10,22 @@
   if (location.hostname === 'cas.bucm.edu.cn') return result('authentication');
   if (!vpn && !direct) return result('untrusted', '', 'host');
   var root = vpn && (location.pathname === '/' ||
+    /^\/portal\/?$/i.test(location.pathname) && /^WebVPN\b/i.test(document.title) ||
     /^\/[a-z0-9_-]+\/portal\/?$/i.test(location.pathname) &&
     !/^\/https?(?:-\d+)?\//i.test(location.pathname) && /^WebVPN\b/i.test(document.title));
   var cc = direct && /^\/cc\/?$/.test(location.pathname) || vpn &&
     (location.pathname === prefix + 'cc/' || location.pathname === prefix + 'cc');
+  var body = document.body ? document.body.innerText : '';
+  var portalReady = root && /^WebVPN\b/i.test(document.title) &&
+    /最近访问/.test(body) && /办公系统|业务系统|其他资源/.test(body);
+  var nativeVpn = vpn && !/^\/https?(?:-\d+)?\//i.test(location.pathname);
+  // Authentication can be hosted on a native WebVPN login route rather than
+  // '/'. Detect only presence/state, never field values or iframe contents.
+  if (nativeVpn && !portalReady && (/^#\/?login(?:[/?]|$)/i.test(location.hash) ||
+      /统一认证扫码|扫码登录/.test(body) || document.querySelector('input[type="password"]') || document.querySelector('iframe'))) return result('authentication');
   if (!root && !cc) return result('untrusted', '', 'route');
   if (/^#\/?login(?:[/?]|$)/i.test(location.hash) || document.querySelector('input[type="password"]')) return result('authentication');
-  if (Array.from(document.querySelectorAll('.el-dialog__wrapper,.el-message-box__wrapper')).some(function (node) { return node.getClientRects().length; })) return result('waiting', '', 'modal');
+  if (Array.from(document.querySelectorAll('.el-dialog__wrapper,.el-message-box__wrapper')).some(function (node) { return node.getClientRects().length; })) return result('waiting', root ? 'portal' : 'platform', 'modal');
   var element;
   if (root) {
     element = Array.from(document.querySelectorAll('a')).find(function (node) {
@@ -24,7 +34,12 @@
     if (!element) element = Array.from(document.querySelectorAll('*')).slice(0, 6000).find(function (node) {
       return !node.children.length && node.getClientRects().length && node.textContent.trim() === '智慧教学平台';
     });
-    if (!element && /统一认证扫码|扫码登录/.test(document.body.innerText)) return result('authentication');
+    if (!element && portalReady) {
+      // Portal cards can differ by account/layout. This is the previously
+      // verified school mapping, not a URL inferred from arbitrary page text.
+      setTimeout(function () { location.assign(location.origin + prefix + 'cc/'); }, 0);
+      return result('opening', 'portal', 'verified-entry');
+    }
   } else {
     element = Array.from(document.querySelectorAll('*')).slice(0, 6000).find(function (node) {
       return !node.children.length && node.getClientRects().length && node.textContent.trim() === '课程平台';

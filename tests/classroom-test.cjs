@@ -34,4 +34,6 @@ assert.equal(videos.played,'synthetic-video');
 assert.equal(run(videos,{action:'page',page:3}).state,'missing');
 const pending={ref:videos.tableData};
 assert.equal(run(videos,{}, {window:{__campusClassroomPending:pending}}).state,'loading');
+assert.equal(run(null).state,'loading');
+assert.equal(run({$children:[]}).state,'loading');
 console.log('Classroom synthetic DOM checks passed; no school session used.');

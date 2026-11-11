@@ -75,5 +75,7 @@
       return {id: text(v.rpId), label: text(v.rpName), date: text(v.date_time), place: text(v.roomName), published: String(v.shareType) === '1'};
     })});
   }
-  return JSON.stringify({state: 'navigate'});
+  // We are already on a trusted classroom document; Vue/data may still be
+  // initializing. Do not send this page back through portal entry detection.
+  return JSON.stringify({state: 'loading'});
 })();
