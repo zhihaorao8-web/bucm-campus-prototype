@@ -209,7 +209,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   }
 
   Future<void> finishBatch(ParsedBatch batch, String source) async {
-    final saved = ref.read(scheduleProvider).requireValue;
+    final saved = ref
+        .read(scheduleProvider.notifier)
+        .importBaseline(recoverUnreadable: widget.recoverUnreadable);
     final previous = saved.courses
         .where((c) => c.semester == batch.semester)
         .firstOrNull;

@@ -15,6 +15,12 @@ class ScheduleController extends AsyncNotifier<ScheduleData> {
   bool _writing = false;
   @override
   Future<ScheduleData> build() => ref.watch(repositoryProvider).load();
+  ScheduleData importBaseline({bool recoverUnreadable = false}) {
+    if (state.hasError && recoverUnreadable) return const ScheduleData();
+    if (state.hasError) throw StateError('请从恢复页面重新导入，或先恢复备份');
+    return state.requireValue;
+  }
+
   Future<void> importBatch(
     List<Course> courses,
     String summary, {
@@ -23,12 +29,7 @@ class ScheduleController extends AsyncNotifier<ScheduleData> {
     if (_writing) throw StateError('已有导入正在保存，请稍后重试');
     _writing = true;
     try {
-      if (state.hasError && !recoverUnreadable) {
-        throw StateError('请从恢复页面重新导入，或先恢复备份');
-      }
-      final previous = recoverUnreadable && state.hasError
-          ? const ScheduleData()
-          : state.requireValue;
+      final previous = importBaseline(recoverUnreadable: recoverUnreadable);
       final next = previous.mergeImport(
         courses,
         summary,

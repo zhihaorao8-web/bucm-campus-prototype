@@ -120,6 +120,17 @@ void main() {
         container.read(scheduleProvider.future),
         throwsFormatException,
       );
+      expect(
+        container
+            .read(scheduleProvider.notifier)
+            .importBaseline(recoverUnreadable: true)
+            .courses,
+        isEmpty,
+      );
+      expect(
+        () => container.read(scheduleProvider.notifier).importBaseline(),
+        throwsStateError,
+      );
       await expectLater(
         container.read(scheduleProvider.notifier).importBatch([
           sample(),
