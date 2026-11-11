@@ -80,9 +80,12 @@ class _AppShellState extends ConsumerState<AppShell>
       message('请先退出合成示例，再导入本人课表');
       return;
     }
-    final imported = await Navigator.of(
-      context,
-    ).push<String>(MaterialPageRoute(builder: (_) => const ImportPage()));
+    final imported = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) =>
+            ImportPage(recoverUnreadable: ref.read(scheduleProvider).hasError),
+      ),
+    );
     if (mounted && imported != null) {
       selectTerm(imported);
       message('课表已保存，可以离线查看');
@@ -213,23 +216,66 @@ class _AppShellState extends ConsumerState<AppShell>
                       semanticsLabel: '正在读取本地课表',
                     ),
                   ),
-                  error: (error, stack) => Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('本地课表暂时无法读取。文件已保留，请重试。'),
-                        const SizedBox(height: 16),
-                        MiuixButton(
-                          colors: MiuixButtonDefaults.buttonColorsPrimary(
-                            context,
+                  error: (error, stack) => tab == 2
+                      ? settings(const ScheduleData(), insets)
+                      : Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                '本地课表暂时无法读取，原文件已保留。重新导入成功后将替换无法读取的课表；也可在更多操作中恢复备份。',
+                              ),
+                              const SizedBox(height: 16),
+                              MiuixButton(
+                                colors: MiuixButtonDefaults.buttonColorsPrimary(
+                                  context,
+                                ),
+                                onPressed: openImport,
+                                child: const Text('重新导入'),
+                              ),
+                              PopupMenuButton<String>(
+                                tooltip: '更多恢复操作',
+                                onSelected: (action) async {
+                                  if (action == 'retry') {
+                                    ref.invalidate(scheduleProvider);
+                                    return;
+                                  }
+                                  if (!await confirm(
+                                    '恢复备份',
+                                    '将使用上一份有效备份替换当前课表，原文件仍保留。',
+                                  )) {
+                                    return;
+                                  }
+                                  try {
+                                    await ref
+                                        .read(scheduleProvider.notifier)
+                                        .restoreBackup();
+                                    if (mounted) message('已恢复备份课表');
+                                  } catch (_) {
+                                    if (mounted) {
+                                      message('没有可恢复的备份，或恢复未成功。原文件已保留，请重新导入。');
+                                    }
+                                  }
+                                },
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                    value: 'backup',
+                                    child: Text('恢复备份'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'retry',
+                                    child: Text('重新读取'),
+                                  ),
+                                ],
+                                child: const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Text('更多操作'),
+                                ),
+                              ),
+                            ],
                           ),
-                          onPressed: () => ref.invalidate(scheduleProvider),
-                          child: const Text('重新读取'),
                         ),
-                      ],
-                    ),
-                  ),
                   data: (saved) {
                     final data = demo ? demoSchedule(now) : saved;
                     final semester = data.semesters.contains(selectedSemester)

@@ -11,7 +11,8 @@ import '../platform/school_adapter.dart';
 import '../platform/classroom_session_cache.dart';
 
 class ImportPage extends ConsumerStatefulWidget {
-  const ImportPage({super.key});
+  const ImportPage({super.key, this.recoverUnreadable = false});
+  final bool recoverUnreadable;
   @override
   ConsumerState<ImportPage> createState() => _ImportPageState();
 }
@@ -232,7 +233,13 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         '$source导入 ${courses.length} 条排课规则，${batch.count} 段来源，合并 $duplicate 项完全重复。\n学期 $term，第1周周一 ${isoDate(monday)}。'
         '${batch.hasUnscheduled ? '\n另有“无课表课程”区域，因无排课时间，未排入课表。' : ''}'
         '\n已通过本批结构与时间校验；完整学期准确性仍需单独核对。';
-    await ref.read(scheduleProvider.notifier).importBatch(courses, summary);
+    await ref
+        .read(scheduleProvider.notifier)
+        .importBatch(
+          courses,
+          summary,
+          recoverUnreadable: widget.recoverUnreadable,
+        );
     if (mounted) Navigator.pop(context, term);
   }
 

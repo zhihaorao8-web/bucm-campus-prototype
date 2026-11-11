@@ -8,20 +8,45 @@ final repositoryProvider = Provider<ScheduleRepository>(
 final scheduleProvider =
     AsyncNotifierProvider<ScheduleController, ScheduleData>(
       ScheduleController.new,
+      retry: (_, _) => null,
     );
 
 class ScheduleController extends AsyncNotifier<ScheduleData> {
   bool _writing = false;
   @override
   Future<ScheduleData> build() => ref.watch(repositoryProvider).load();
-  Future<void> importBatch(List<Course> courses, String summary) async {
+  Future<void> importBatch(
+    List<Course> courses,
+    String summary, {
+    bool recoverUnreadable = false,
+  }) async {
     if (_writing) throw StateError('已有导入正在保存，请稍后重试');
     _writing = true;
     try {
-      final previous = state.requireValue;
+      if (state.hasError && !recoverUnreadable) {
+        throw StateError('请从恢复页面重新导入，或先恢复备份');
+      }
+      final previous = recoverUnreadable && state.hasError
+          ? const ScheduleData()
+          : state.requireValue;
       final next = previous.mergeImport(courses, summary, schoolNow());
       await ref.read(repositoryProvider).save(next);
       state = AsyncData(next);
+    } finally {
+      _writing = false;
+    }
+  }
+
+  Future<void> restoreBackup() async {
+    if (_writing) throw StateError('请等待导入完成');
+    _writing = true;
+    try {
+      final repository = ref.read(repositoryProvider);
+      if (repository is! RecoverableScheduleRepository) {
+        throw StateError('当前存储不支持恢复备份');
+      }
+      final restored = await repository.restoreBackup();
+      state = AsyncData(restored);
     } finally {
       _writing = false;
     }
@@ -31,7 +56,12 @@ class ScheduleController extends AsyncNotifier<ScheduleData> {
     if (_writing) throw StateError('请等待导入完成');
     _writing = true;
     try {
-      await ref.read(repositoryProvider).save(const ScheduleData());
+      final repository = ref.read(repositoryProvider);
+      if (repository is RecoverableScheduleRepository) {
+        await repository.clearStored();
+      } else {
+        await repository.save(const ScheduleData());
+      }
       state = const AsyncData(ScheduleData());
     } finally {
       _writing = false;
