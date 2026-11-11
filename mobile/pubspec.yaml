@@ -27,5 +27,6 @@ flutter:
     - assets/export-nav.js
     - assets/coverage-check.js
     - assets/classroom.js
+    - assets/classroom-entry.js
     - assets/app-icon.png
     - assets/developer-avatar.png

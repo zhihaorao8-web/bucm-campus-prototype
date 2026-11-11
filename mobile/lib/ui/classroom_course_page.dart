@@ -20,10 +20,12 @@ class _SchoolTab {
   _Purpose purpose;
   InAppWebViewController? controller;
   bool routed = false;
+  bool advancing = false, navigationStopped = false;
+  int entryHops = 0;
 }
 
-/// Native course UI and visible official authentication/playback share one
-/// route. Covered parent WebViews retain opener context; no hidden login runs.
+/// Course UI reuses the official WebView session for bounded entry navigation
+/// and metadata. Authentication stays visible; no automated credential entry.
 class ClassroomCoursePage extends StatefulWidget {
   const ClassroomCoursePage({
     super.key,
@@ -61,6 +63,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
       loading = false,
       rememberedAttempted = false;
   String? entry, message, source;
+  String? entrySource;
+  bool automaticEntry = true, automaticPath = false;
   Timer? poll;
   bool get synthetic => widget.course.dataSource == 'synthetic';
 
@@ -91,6 +95,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   Future<void> connect([
     ClassroomAccess mode = ClassroomAccess.automatic,
   ]) async {
+    automaticEntry = true;
+    automaticPath = mode == ClassroomAccess.automatic;
     playbackGeneration++;
     unawaited(
       classroomPlaybackChannel
@@ -118,12 +124,73 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
       rememberedAttempted = false;
       active = 0;
       busy = false;
-      entry = decision.url;
+      entry =
+          mode == ClassroomAccess.automatic &&
+              decision.mode == ClassroomAccess.direct
+          ? classroomProbe
+          : decision.url;
       message = decision.message;
       showWeb = entry != null;
+      busy = showWeb;
       loading = showWeb;
       if (showWeb) tabs.add(_SchoolTab(purpose: _Purpose.browse));
     });
+  }
+
+  Future<bool> fallbackToVpn() async {
+    if (!automaticPath ||
+        recordings != null ||
+        catalog != null ||
+        selected != null) {
+      return false;
+    }
+    automaticPath = false;
+    await connect(ClassroomAccess.vpn);
+    return true;
+  }
+
+  void requireAuthentication(_SchoolTab tab) {
+    setState(() {
+      recordings = null;
+      catalog = null;
+      selected = null;
+      rememberedAttempted = false;
+      tab.purpose = _Purpose.browse;
+      tab.routed = false;
+      showWeb = true;
+      busy = false;
+      message = '请在学校官方页面完成认证；登录成功后将继续自动获取录播。';
+    });
+  }
+
+  Future<String> advanceEntry(_SchoolTab tab) async {
+    if (!automaticEntry || tab.navigationStopped || tab.advancing) {
+      return 'waiting';
+    }
+    if (tab.entryHops >= 4) {
+      tab.navigationStopped = true;
+      return 'blocked';
+    }
+    entrySource ??= await rootBundle.loadString('assets/classroom-entry.js');
+    tab.advancing = true;
+    try {
+      final value = await tab.controller!.evaluateJavascript(
+        source: entrySource!,
+      );
+      if (value is! String || value.length > 512) throw const FormatException();
+      final data = jsonDecode(value) as Map;
+      final state = data['state'] as String;
+      if (state == 'opening') {
+        tab.entryHops++;
+      } else {
+        tab.advancing = false;
+      }
+      if (state == 'blocked') tab.navigationStopped = true;
+      return state;
+    } catch (_) {
+      tab.advancing = false;
+      return 'waiting';
+    }
   }
 
   Future<Map<String, dynamic>> script(
@@ -171,14 +238,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
       final data = await script(tab, {'action': 'snapshot'});
       if (!mounted || ticket != generation || !tabs.contains(tab)) return;
       if (data['state'] == 'authentication') {
-        setState(() {
-          recordings = null;
-          catalog = null;
-          selected = null;
-          showWeb = true;
-          busy = false;
-          message = '学校会话已失效，请在官方页面重新认证；可从右上角重新连接。';
-        });
+        if (await fallbackToVpn()) return;
+        if (!mounted || ticket != generation || !tabs.contains(tab)) return;
+        requireAuthentication(tab);
         return;
       }
       if (data['state'] == 'forbidden' || data['state'] == 'error') {
@@ -270,6 +332,29 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
           if (mounted) setState(() => message = '本次可继续查看，但课程关联未保存成功。');
         }
         return;
+      }
+      if (data['state'] == 'navigate' && tab.purpose == _Purpose.browse) {
+        final state = await advanceEntry(tab);
+        if (!mounted || ticket != generation || !tabs.contains(tab)) return;
+        if (state == 'authentication') {
+          if (await fallbackToVpn()) return;
+          if (!mounted || ticket != generation || !tabs.contains(tab)) return;
+          requireAuthentication(tab);
+          return;
+        }
+        if (state == 'blocked') {
+          setState(() {
+            busy = false;
+            message = '自动进入学校平台暂未完成，请在官方页面继续或重新获取。';
+          });
+          return;
+        }
+        if (state == 'opening') {
+          setState(() {
+            busy = true;
+            message = '正在自动进入学校课程平台…';
+          });
+        }
       }
       if (tab.purpose == _Purpose.records && !tab.routed) {
         final result = await script(tab, {'action': 'recordsRoute'});
@@ -460,6 +545,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   }
 
   Future<void> closeWeb() async {
+    automaticEntry = false;
+    automaticPath = false;
     poll?.cancel();
     if (tabs.isNotEmpty && tabs[active].purpose == _Purpose.playback) {
       final tab = tabs[active];
@@ -495,6 +582,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   }
 
   Future<void> webBack() async {
+    automaticEntry = false;
+    automaticPath = false;
+    rememberedAttempted = true;
     if (tabs[active].purpose != _Purpose.playback &&
         await tabs[active].controller?.canGoBack() == true) {
       await tabs[active].controller?.goBack();
@@ -588,10 +678,26 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
                         ),
                         onWebViewCreated: (web) => tab.controller = web,
                         shouldOverrideUrlLoading: (_, action) async {
-                          final allowed = classroomNavigation(
-                            action.request.url?.toString() ?? '',
-                          );
-                          if (!allowed && mounted) {
+                          final target = action.request.url?.toString() ?? '';
+                          final allowed = classroomNavigation(target);
+                          if (!allowed &&
+                              mounted &&
+                              tabs.contains(tab) &&
+                              tabs[active] == tab) {
+                            final uri = Uri.tryParse(target);
+                            if (automaticPath &&
+                                recordings == null &&
+                                catalog == null &&
+                                selected == null &&
+                                uri?.scheme == 'http' &&
+                                const {
+                                  'i.bucm.edu.cn',
+                                  'qhz.bucm.edu.cn',
+                                  'cas.bucm.edu.cn',
+                                }.contains(uri?.host)) {
+                              unawaited(fallbackToVpn());
+                              return NavigationActionPolicy.CANCEL;
+                            }
                             setState(() {
                               loading = false;
                               busy = false;
@@ -603,6 +709,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
                               : NavigationActionPolicy.CANCEL;
                         },
                         onLoadStart: (_, _) {
+                          tab.advancing = false;
                           if (mounted &&
                               tabs.isNotEmpty &&
                               tabs[active] == tab) {
@@ -616,6 +723,22 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
                               tabs.isNotEmpty &&
                               tabs[active] == tab) {
                             setState(() => loading = false);
+                            scheduleRead(tab, restart: true);
+                          }
+                        },
+                        onUpdateVisitedHistory: (_, _, _) {
+                          if (mounted &&
+                              tabs.isNotEmpty &&
+                              tabs[active] == tab &&
+                              tab.purpose != _Purpose.playback) {
+                            scheduleRead(tab, restart: true);
+                          }
+                        },
+                        onTitleChanged: (_, _) {
+                          if (mounted &&
+                              tabs.isNotEmpty &&
+                              tabs[active] == tab &&
+                              tab.purpose == _Purpose.browse) {
                             scheduleRead(tab, restart: true);
                           }
                         },
@@ -661,8 +784,20 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
                             setState(() => message = '这里只支持在线观看，不下载课程资料。');
                           }
                         },
-                        onReceivedError: (_, request, _) {
-                          if (mounted && request.isForMainFrame == true) {
+                        onReceivedError: (_, request, error) {
+                          if (mounted &&
+                              tabs.contains(tab) &&
+                              tabs[active] == tab &&
+                              request.isForMainFrame == true) {
+                            if (error.type !=
+                                    WebResourceErrorType.FAILED_SSL_HANDSHAKE &&
+                                automaticPath &&
+                                recordings == null &&
+                                catalog == null &&
+                                selected == null) {
+                              unawaited(fallbackToVpn());
+                              return;
+                            }
                             setState(() {
                               loading = false;
                               busy = false;
