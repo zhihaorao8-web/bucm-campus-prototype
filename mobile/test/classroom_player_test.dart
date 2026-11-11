@@ -50,6 +50,8 @@ void main() {
             if (args['small'] != null)
               {'kind': args['small'], 'texture': 2, 'ratio': 16 / 9},
           ];
+        } else if (call.method == 'seek') {
+          data['position'] = args['position'];
         } else if (call.method == 'play') {
           data['wanted'] = true;
           data['playing'] = true;
@@ -84,6 +86,23 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('合成水印'), findsOneWidget);
+      await tester.ensureVisible(find.byTooltip('后退10秒'));
+      await tester.tap(find.byTooltip('后退10秒'));
+      await tester.pump();
+      expect(controller.state.position, 20000);
+      data['position'] = 5000;
+      await controller.refresh();
+      await tester.pump();
+      await tester.tap(find.byTooltip('后退10秒'));
+      await tester.pump();
+      expect(controller.state.position, 0);
+      data['position'] = 599000;
+      await controller.refresh();
+      await tester.pump();
+      await tester.tap(find.byTooltip('前进10秒'));
+      await tester.pump();
+      expect(controller.state.position, 600000);
+
       await tester.tap(find.byTooltip('交换主画面与小窗'));
       await tester.pump();
       expect(controller.state.main, 'teacher');

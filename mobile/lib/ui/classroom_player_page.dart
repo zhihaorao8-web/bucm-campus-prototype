@@ -334,6 +334,30 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
           alignment: WrapAlignment.center,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
+            IconButton(
+              tooltip: '后退10秒',
+              onPressed: error == null && state.duration > 0
+                  ? () => player.command('seek', {
+                      'position': (state.position - 10000).clamp(
+                        0,
+                        state.duration,
+                      ),
+                    })
+                  : null,
+              icon: const Icon(Icons.replay_10),
+            ),
+            IconButton(
+              tooltip: '前进10秒',
+              onPressed: error == null && state.duration > 0
+                  ? () => player.command('seek', {
+                      'position': (state.position + 10000).clamp(
+                        0,
+                        state.duration,
+                      ),
+                    })
+                  : null,
+              icon: const Icon(Icons.forward_10),
+            ),
             viewMenu(small: false),
             viewMenu(small: true),
             if (state.small == null)
