@@ -18,8 +18,8 @@ void main() {
       final loaded = ScheduleData.fromJson(data.toJson());
       expect(loaded.lastImportFor('2026-2027-1'), first);
       expect(loaded.lastImportFor('2027-2028-1'), second);
-      expect(loaded.summaryFor('2026-2027-1'), 'first');
-      expect(loaded.summaryFor('2027-2028-1'), 'second');
+      expect(loaded.summaryFor('2026-2027-1'), startsWith('first\n'));
+      expect(loaded.summaryFor('2027-2028-1'), startsWith('second\n'));
       expect(schoolTimestamp(first), '2030-09-01 11:00');
     },
   );

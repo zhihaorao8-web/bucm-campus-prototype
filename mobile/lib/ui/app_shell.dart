@@ -88,7 +88,11 @@ class _AppShellState extends ConsumerState<AppShell>
     );
     if (mounted && imported != null) {
       selectTerm(imported);
-      message('课表已保存，可以离线查看');
+      final summary = ref
+          .read(scheduleProvider)
+          .requireValue
+          .summaryFor(imported);
+      message('课表已保存，可以离线查看。${summary.split('\n').last}');
     }
   }
 

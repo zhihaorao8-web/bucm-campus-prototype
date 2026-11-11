@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:convert';
 
 // School wall-clock time, independent of the device timezone.
 DateTime schoolNow([DateTime? instant]) {
@@ -235,6 +236,85 @@ List<Occurrence> nextOccurrences(Iterable<Course> courses, DateTime now) {
   return all;
 }
 
+class ScheduleDifference {
+  const ScheduleDifference(
+    this.added,
+    this.removed,
+    this.adjusted,
+    this.unchanged, {
+    this.comparable = true,
+  });
+  final int added, removed, adjusted, unchanged;
+  final bool comparable;
+  String get label => comparable
+      ? '本次变化：新增$added条，调整$adjusted条，移除$removed条，未变$unchanged条排课规则。'
+      : '首次导入$added条排课规则，暂无同学期旧数据可比较。';
+}
+
+/// Ignore generated ids and extraction provenance. Match exact schedule content
+/// first, then only pair a unique remaining name/day/periods anchor. Ambiguous
+/// or moved lessons remain additions/removals rather than guessed adjustments.
+ScheduleDifference scheduleDifference(
+  List<Course> previous,
+  List<Course> incoming,
+) {
+  if (incoming.isEmpty) {
+    return const ScheduleDifference(0, 0, 0, 0, comparable: false);
+  }
+  final term = incoming.first.semester;
+  final old = previous.where((course) => course.semester == term).toList();
+  if (old.isEmpty) {
+    return ScheduleDifference(incoming.length, 0, 0, 0, comparable: false);
+  }
+  String name(Course course) =>
+      course.name.trim().replaceAll(RegExp(r'\s+'), ' ');
+  List<int> periods(Course course) => course.periods.toSet().toList()..sort();
+  String anchor(Course course) =>
+      jsonEncode([course.semester, name(course), course.day, periods(course)]);
+  String content(Course course) => jsonEncode([
+    anchor(course),
+    course.teacher,
+    course.place,
+    course.weekSet.toList()..sort(),
+    course.segments.map((segment) => [segment.start, segment.end]).toList(),
+    isoDate(course.termStart),
+    course.online,
+  ]);
+  final byContent = <String, List<Course>>{};
+  for (final course in incoming) {
+    byContent.putIfAbsent(content(course), () => []).add(course);
+  }
+  final unmatched = <Course>[];
+  var unchanged = 0, adjusted = 0;
+  for (final course in old) {
+    final candidates = byContent[content(course)];
+    if (candidates == null || candidates.isEmpty) {
+      unmatched.add(course);
+    } else {
+      candidates.removeLast();
+      unchanged++;
+    }
+  }
+  final before = <String, int>{}, after = <String, int>{};
+  for (final course in unmatched) {
+    before.update(anchor(course), (count) => count + 1, ifAbsent: () => 1);
+  }
+  var remainingCount = 0;
+  for (final course in byContent.values.expand((courses) => courses)) {
+    after.update(anchor(course), (count) => count + 1, ifAbsent: () => 1);
+    remainingCount++;
+  }
+  for (final key in before.keys) {
+    if (before[key] == 1 && after[key] == 1) adjusted++;
+  }
+  return ScheduleDifference(
+    remainingCount - adjusted,
+    unmatched.length - adjusted,
+    adjusted,
+    unchanged,
+  );
+}
+
 class ScheduleData {
   const ScheduleData({
     this.courses = const [],
@@ -302,6 +382,7 @@ class ScheduleData {
         incoming.map((c) => c.id).toSet().length != incoming.length) {
       throw const FormatException('本批课表的学期、起点或去重信息有冲突');
     }
+    final detail = '$note\n${scheduleDifference(courses, incoming).label}';
     // Keep other semesters; only a complete validated batch replaces its semester.
     return ScheduleData(
       courses: [
@@ -309,7 +390,7 @@ class ScheduleData {
         ...incoming,
       ],
       importedAt: now,
-      summary: note,
+      summary: detail,
       importedAtBySemester: Map.unmodifiable({
         for (final semester in semesters)
           if (lastImportFor(semester) != null)
@@ -318,7 +399,7 @@ class ScheduleData {
       }),
       summaryBySemester: Map.unmodifiable({
         for (final semester in semesters) semester: summaryFor(semester),
-        terms.single: note,
+        terms.single: detail,
       }),
     );
   }
