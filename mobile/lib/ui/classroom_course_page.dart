@@ -31,11 +31,13 @@ class ClassroomCoursePage extends StatefulWidget {
     this.date,
     required this.onDetails,
     this.links,
+    this.probe,
   });
   final Course course;
   final DateTime? date;
   final void Function(BuildContext) onDetails;
   final ClassroomLinks? links;
+  final ProbeEndpoint? probe;
   @override
   State<ClassroomCoursePage> createState() => _ClassroomCoursePageState();
 }
@@ -61,6 +63,16 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
   String? entry, message, source;
   Timer? poll;
   bool get synthetic => widget.course.dataSource == 'synthetic';
+
+  @override
+  void initState() {
+    super.initState();
+    if (!synthetic) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(connect());
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -92,7 +104,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
       message = '正在检查学校服务访问路径…';
     });
     final decision = mode == ClassroomAccess.automatic
-        ? await chooseClassroomAccess(probeClassroomEndpoint)
+        ? await chooseClassroomAccess(widget.probe ?? probeClassroomEndpoint)
         : AccessDecision(
             mode,
             mode == ClassroomAccess.vpn ? '已选择学校 WebVPN。' : '已选择直接访问。',
@@ -202,14 +214,27 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
           catalogTab = tabs.indexOf(tab);
           showWeb = false;
           busy = false;
+          final sameNames = courses
+              .where((course) => course.matches(widget.course))
+              .length;
           message = courses.isEmpty
               ? '当前页面没有该学期的课程。请在官方平台切换学期后重新读取。'
-              : '请选择与课表对应的学校课程，仅展示当前已登录账号的课程。';
+              : sameNames > 1
+              ? '该学期有多门同名课程，请确认班级后选择一次。'
+              : sameNames == 0
+              ? '未找到该学期的同名课程，可手动关联或在官方平台切换学期。'
+              : rememberedAttempted
+              ? '请选择与课表对应的学校课程。'
+              : '已按课程名称匹配，正在获取录播…';
         });
-        final match = courses.where((v) => v.id == previous).toList();
-        if (!rememberedAttempted && match.length == 1) {
+        final match = matchClassroomCourse(
+          widget.course,
+          courses,
+          confirmedId: previous,
+        );
+        if (!rememberedAttempted && match != null) {
           rememberedAttempted = true;
-          await choose(tab, match.single);
+          await choose(tab, match);
         }
         return;
       }
@@ -823,7 +848,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
               ] else
                 MiuixButton(
                   onPressed: busy ? null : () => connect(),
-                  child: const Text('连接学校录播'),
+                  child: const Text('重新获取学校录播'),
                 ),
             ],
             const SizedBox(height: 24),

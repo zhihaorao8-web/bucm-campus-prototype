@@ -1,5 +1,38 @@
 import 'schedule.dart';
 
+String classroomName(String value) =>
+    value.trim().replaceAll(RegExp(r'[\s\u00a0\u3000]+'), ' ');
+
+/// Exact name within the timetable semester; no teacher/fuzzy/substring match.
+/// A previously confirmed ID only disambiguates equally named courses.
+ClassroomCourse? matchClassroomCourse(
+  Course local,
+  List<ClassroomCourse> catalog, {
+  String? confirmedId,
+}) {
+  final matches = catalog.where((course) => course.matches(local)).toList();
+  final remembered = matches
+      .where((course) => course.id == confirmedId)
+      .toList();
+  final selected = remembered.length == 1
+      ? remembered.single
+      : matches.length == 1
+      ? matches.single
+      : null;
+  if (selected == null ||
+      catalog
+              .where(
+                (course) =>
+                    course.semester == local.semester &&
+                    course.id == selected.id,
+              )
+              .length !=
+          1) {
+    return null;
+  }
+  return selected;
+}
+
 String classroomText(dynamic value) {
   if (value is! String || value.length > 500) {
     throw const FormatException('学校字段格式不支持');
@@ -34,7 +67,8 @@ class ClassroomCourse {
     return result;
   }
   bool matches(Course local) =>
-      semester == local.semester && name.trim() == local.name.trim();
+      semester == local.semester &&
+      classroomName(name) == classroomName(local.name);
 }
 
 class ClassroomRecording {
