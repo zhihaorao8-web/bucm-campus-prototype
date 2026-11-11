@@ -5,6 +5,16 @@
   var prefix = '/https/77726476706e69737468656265737421e1ff5bd225256b5d300d8db9d6562d/';
   function result(state, stage, reason) { return JSON.stringify({state: state, stage: stage || '', reason: reason || ''}); }
   if (location.protocol !== 'https:' || location.port) return result('untrusted', '', 'scheme');
+  // A WebVPN upstream error is a successfully loaded document, not a
+  // WebView transport error. Return only a category, never its URL/details.
+  var vpnFailureText = location.protocol === 'https:' && !location.port &&
+    location.hostname === 'webvpn.bucm.edu.cn' && document.body
+    ? (document.body.innerText || '').slice(0, 32768) : '';
+  if (/该网站无法访问/.test(vpnFailureText) &&
+      /CONNECTION_FAILED/.test(vpnFailureText) &&
+      /错误代码/.test(vpnFailureText)) {
+    return JSON.stringify({state: 'serviceUnavailable', reason: 'upstream-connection'});
+  }
   var vpn = location.hostname === 'webvpn.bucm.edu.cn';
   var direct = location.hostname === 'qhz.bucm.edu.cn';
   if (location.hostname === 'cas.bucm.edu.cn') return result('authentication');

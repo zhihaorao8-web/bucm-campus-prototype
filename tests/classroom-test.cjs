@@ -37,3 +37,9 @@ assert.equal(run(videos,{}, {window:{__campusClassroomPending:pending}}).state,'
 assert.equal(run(null).state,'loading');
 assert.equal(run({$children:[]}).state,'loading');
 console.log('Classroom synthetic DOM checks passed; no school session used.');
+
+const proxyError = {location:{protocol:'https:',port:'',hostname:'webvpn.bucm.edu.cn',pathname:'/http/synthetic/cc/'},
+ document:{body:{innerText:'该网站无法访问 错误代码 CONNECTION_FAILED synthetic-private'},querySelector:()=>null,querySelectorAll:()=>[]}};
+const proxyResult=run(null,{action:'snapshot'},proxyError);
+assert.equal(proxyResult.state,'serviceUnavailable');
+assert(!JSON.stringify(proxyResult).includes('synthetic-private'));

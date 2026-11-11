@@ -3,6 +3,16 @@
   // Arguments are provided by the native UI; no credentials leave this page.
   var command = __CLASSROOM_COMMAND__;
   var vpnPrefix = '/https/77726476706e69737468656265737421e1ff5bd225256b5d300d8db9d6562d/';
+  // A WebVPN upstream error is a successfully loaded document, not a
+  // WebView transport error. Return only a category, never its URL/details.
+  var vpnFailureText = location.protocol === 'https:' && !location.port &&
+    location.hostname === 'webvpn.bucm.edu.cn' && document.body
+    ? (document.body.innerText || '').slice(0, 32768) : '';
+  if (/该网站无法访问/.test(vpnFailureText) &&
+      /CONNECTION_FAILED/.test(vpnFailureText) &&
+      /错误代码/.test(vpnFailureText)) {
+    return JSON.stringify({state: 'serviceUnavailable', reason: 'upstream-connection'});
+  }
   var trusted = location.protocol === 'https:' && !location.port &&
     (location.hostname === 'qhz.bucm.edu.cn' && location.pathname.indexOf('/coursePlatform/') === 0 ||
      location.hostname === 'webvpn.bucm.edu.cn' && location.pathname.indexOf(vpnPrefix + 'coursePlatform/') === 0);

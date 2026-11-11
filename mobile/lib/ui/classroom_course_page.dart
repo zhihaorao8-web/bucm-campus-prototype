@@ -607,7 +607,12 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       attempts = 0;
       readProgress.reset();
     }
-    if (!mounted || !foreground || tab.purpose == _Purpose.playback) return;
+    if (!mounted ||
+        !foreground ||
+        tab.loadTimedOut ||
+        tab.purpose == _Purpose.playback) {
+      return;
+    }
     poll = Timer(
       Duration(
         milliseconds: readProgress.stage == ClassroomReadStage.authentication
@@ -776,6 +781,22 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     }
   }
 
+  void reportServiceUnavailable(_SchoolTab tab) {
+    poll?.cancel();
+    tab.loadTimer?.cancel();
+    tab.loadTimer = null;
+    // Explicit retry reloads the failed proxy document. Keep archived data and
+    // do not misclassify an upstream failure as an expired school session.
+    tab.loadTimedOut = true;
+    tab.advancing = false;
+    freshReadPending = false;
+    setState(() {
+      busy = false;
+      authVisible = showWeb = true;
+      message = '学校服务暂时无法连接。可稍后点击继续导入重新加载，或返回学校入口检查；已导入内容保留。';
+    });
+  }
+
   Future<void> inspect(_SchoolTab tab) async {
     if (!mounted ||
         !foreground ||
@@ -789,6 +810,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     try {
       final data = await script(tab, {'action': 'snapshot'});
       if (!mounted || ticket != generation || !tabs.contains(tab)) return;
+      if (data['state'] == 'serviceUnavailable') {
+        reportServiceUnavailable(tab);
+        return;
+      }
       if (data['state'] == 'authentication') {
         if (await fallbackToVpn()) return;
         if (!mounted || ticket != generation || !tabs.contains(tab)) return;
@@ -936,6 +961,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         final entryResult = await advanceEntry(tab);
         final state = entryResult['state'];
         if (!mounted || ticket != generation || !tabs.contains(tab)) return;
+        if (state == 'serviceUnavailable') {
+          reportServiceUnavailable(tab);
+          return;
+        }
         if (state == 'authentication') {
           if (await fallbackToVpn()) return;
           if (!mounted || ticket != generation || !tabs.contains(tab)) return;

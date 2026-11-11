@@ -6,6 +6,7 @@ import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/platform/classroom_access.dart';
 import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'schedule_test.dart' show sample;
+import 'package:campus_schedule/platform/classroom_session_cache.dart';
 
 class RecoveryController extends PlatformInAppWebViewController {
   RecoveryController()
@@ -80,6 +81,7 @@ class RecoveryView extends PlatformInAppWebViewWidget {
 void main() {
   Future<RecoveryController> open(WidgetTester tester) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    ClassroomSessionCache.shared.clear();
     final controller = RecoveryController();
     InAppWebViewPlatform.instance = RecoveryPlatform(controller);
     final course = Course.fromJson(
@@ -143,6 +145,25 @@ void main() {
     await tick(tester, 23);
     expect(find.textContaining('课程数据读取超时'), findsOneWidget);
     expect(controller.commands, everyElement('snapshot'));
+    for (final failureInSnapshot in [false, true]) {
+      controller.state = 'serviceUnavailable';
+      controller.snapshotState = failureInSnapshot
+          ? 'serviceUnavailable'
+          : 'navigate';
+      final failureParams = controller.viewParams!;
+      final failureWeb = failureParams.controllerFromPlatform!(controller);
+      failureParams.onLoadStart!(failureWeb, WebUri(vpnEntry));
+      failureParams.onLoadStop!(failureWeb, WebUri(vpnEntry));
+      await tick(tester, 2);
+      expect(find.textContaining('学校服务暂时无法连接'), findsOneWidget);
+      expect(find.textContaining('请在学校官方页面完成认证'), findsNothing);
+      final stoppedReads = controller.reads;
+      failureParams.onTitleChanged!(failureWeb, 'WebVPN');
+      await tick(tester, 25);
+      expect(controller.reads, stoppedReads);
+    }
+    controller.state = 'waiting';
+    controller.snapshotState = 'loading';
     var params = controller.viewParams!;
     var web = params.controllerFromPlatform!(controller);
     params.onLoadStart!(web, WebUri(vpnEntry));

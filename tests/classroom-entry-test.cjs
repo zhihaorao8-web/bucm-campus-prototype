@@ -65,3 +65,16 @@ assert.equal(run('https://webvpn.bucm.edu.cn/https/other/login',resource,{body:'
 assert.equal(run('https://webvpn.bucm.edu.cn/',resource,{label:'无关资源'}).result.reason,'no-entry');
 assert.equal(run('https://webvpn.bucm.edu.cn/portal',resource,{label:'数字北中医',body:'最近访问 办公系统',title:'Other platform'}).result.state,'untrusted');
 console.log('Classroom automatic entry checks passed; no credentials or school network used.');
+
+// Synthetic proxy HTML may contain a frame/login link: errors take precedence.
+const proxyFailure = '出错啦！该网站无法访问！ 错误代码：CONNECTION_FAILED 错误信息：synthetic-only';
+for (const path of ['/', '/http/synthetic/cc/', prefix + 'coursePlatform/']) {
+  const failure = run('https://webvpn.bucm.edu.cn' + path, resource,
+    {body: proxyFailure, iframe: true, password: true});
+  assert.equal(failure.result.state, 'serviceUnavailable');
+  assert.equal(failure.clicks, 0); assert.deepEqual(failure.assigned, []);
+  assert(!JSON.stringify(failure.result).includes('synthetic-only'));
+}
+assert.notEqual(run('https://webvpn.bucm.edu.cn/', resource,
+  {body: '普通说明 CONNECTION_FAILED', iframe: true}).result.state, 'serviceUnavailable');
+assert.equal(run('https://evil.test/',resource,{body:proxyFailure}).result.state,'untrusted');
