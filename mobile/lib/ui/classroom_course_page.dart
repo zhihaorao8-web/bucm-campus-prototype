@@ -420,6 +420,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage> {
           : decision.url;
       message = decision.message;
       showWeb = entry != null;
+      // WebVPN may present its sign-in inside an iframe without reporting the
+      // classroom authentication state. Keep a new connection visible until a
+      // verified school catalog/record page can resume the native workflow.
+      authVisible = showWeb;
       busy = showWeb;
       loading = showWeb;
       if (showWeb) tabs.add(_SchoolTab(purpose: _Purpose.browse));
