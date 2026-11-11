@@ -312,53 +312,98 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     }
   }
 
+  Future<void> resizeWeb(
+    InAppWebViewController? web, {
+    double? factor,
+    bool report = true,
+  }) async {
+    if (web == null) return;
+    try {
+      if (factor == null) {
+        // Only layout dimensions, never form fields or authentication state.
+        final source = await rootBundle.loadString('assets/school-viewport.js');
+        final result = await web
+            .callAsyncJavaScript(functionBody: source)
+            .timeout(const Duration(seconds: 3));
+        final raw = result?.value;
+        if (raw is! String || raw.length > 256) return;
+        final sizes = jsonDecode(raw) as Map;
+        final viewport = (sizes['viewport'] as num).toDouble();
+        final content = (sizes['content'] as num).toDouble();
+        if (!viewport.isFinite ||
+            !content.isFinite ||
+            viewport <= 0 ||
+            content <= 0) {
+          return;
+        }
+        factor = (viewport / content).clamp(.1, 3.0).toDouble();
+      }
+      await web.zoomBy(zoomFactor: factor);
+    } catch (_) {
+      if (mounted && report) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('页面缩放暂不可用，请尝试双指缩放。')));
+      }
+    }
+  }
+
+  Widget webTools(InAppWebViewController? Function() web) => Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      IconButton(
+        tooltip: '缩小网页',
+        onPressed: () => resizeWeb(web(), factor: .8),
+        icon: const Icon(Icons.zoom_out),
+      ),
+      TextButton.icon(
+        onPressed: () => resizeWeb(web()),
+        icon: const Icon(Icons.fit_screen),
+        label: const Text('适应宽度'),
+      ),
+      IconButton(
+        tooltip: '放大网页',
+        onPressed: () => resizeWeb(web(), factor: 1.25),
+        icon: const Icon(Icons.zoom_in),
+      ),
+    ],
+  );
+
   Future<void> popup(int id) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.sizeOf(context).height * .8,
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 16),
-                      child: Text('学校导出页面'),
-                    ),
+    InAppWebViewController? popupController;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: const Text('学校页面'),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(48),
+              child: webTools(() => popupController),
+            ),
+          ),
+          body: SafeArea(
+            child: InAppWebView(
+              windowId: id,
+              initialSettings: settings(),
+              onWebViewCreated: (web) => popupController = web,
+              onLoadStop: (web, _) => resizeWeb(web, report: false),
+              shouldOverrideUrlLoading: (_, action) async =>
+                  authenticationUrl(action.request.url?.toString() ?? '')
+                  ? NavigationActionPolicy.ALLOW
+                  : NavigationActionPolicy.CANCEL,
+              onDownloadStartRequest: (web, request) async {
+                if (context.mounted) Navigator.pop(context);
+                await download(web, request);
+              },
+              onReceivedServerTrustAuthRequest: (web, challenge) async =>
+                  ServerTrustAuthResponse(
+                    action: ServerTrustAuthResponseAction.CANCEL,
                   ),
-                  IconButton(
-                    tooltip: '关闭导出页面',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
+              onPermissionRequest: (_, request) async => PermissionResponse(
+                resources: request.resources,
+                action: PermissionResponseAction.DENY,
               ),
-              Expanded(
-                child: InAppWebView(
-                  windowId: id,
-                  initialSettings: settings(),
-                  shouldOverrideUrlLoading: (_, action) async =>
-                      authenticationUrl(action.request.url?.toString() ?? '')
-                      ? NavigationActionPolicy.ALLOW
-                      : NavigationActionPolicy.CANCEL,
-                  onDownloadStartRequest: (web, request) async {
-                    if (context.mounted) Navigator.pop(context);
-                    await download(web, request);
-                  },
-                  onReceivedServerTrustAuthRequest: (web, challenge) async =>
-                      ServerTrustAuthResponse(
-                        action: ServerTrustAuthResponseAction.CANCEL,
-                      ),
-                  onPermissionRequest: (_, request) async => PermissionResponse(
-                    resources: request.resources,
-                    action: PermissionResponseAction.DENY,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -366,6 +411,12 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   }
 
   InAppWebViewSettings settings() => InAppWebViewSettings(
+    preferredContentMode: UserPreferredContentMode.DESKTOP,
+    useWideViewPort: true,
+    loadWithOverviewMode: true,
+    supportZoom: true,
+    builtInZoomControls: true,
+    displayZoomControls: false,
     javaScriptEnabled: true,
     domStorageEnabled: true,
     useShouldOverrideUrlLoading: true,
@@ -394,6 +445,10 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('学校官方页面'),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48),
+            child: webTools(() => controller),
+          ),
           actions: [
             PopupMenuButton<String>(
               tooltip: '学校入口',
@@ -479,6 +534,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                   ),
                   initialSettings: settings(),
                   onWebViewCreated: (value) => controller = value,
+                  onLoadStop: (web, _) => resizeWeb(web, report: false),
                   shouldOverrideUrlLoading: (_, action) async {
                     if (authenticationUrl(
                       action.request.url?.toString() ?? '',

@@ -15,7 +15,7 @@ def main():
     target = app / 'android/app'
     if not (target / 'build.gradle.kts').exists():
         raise SystemExit('Generate the Android host with flutter create first; see docs/FLUTTER.md.')
-    for name in ('extract.js', 'export-nav.js', 'coverage-check.js', 'classroom.js', 'classroom-entry.js'):
+    for name in ('extract.js', 'school-viewport.js', 'export-nav.js', 'coverage-check.js', 'classroom.js', 'classroom-entry.js'):
         (app / 'assets').mkdir(exist_ok=True)
         shutil.copyfile(ROOT / 'assets' / name, app / 'assets' / name)
     # Shared user-supplied artwork; generated Flutter assets remain ignored.

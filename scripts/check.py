@@ -37,6 +37,7 @@ def main():
     if not node:
         raise SystemExit('Node.js is required for DOM extraction checks.')
     subprocess.run([node, str(ROOT / 'tests/extract-test.cjs')], check=True)
+    subprocess.run([node, str(ROOT / 'tests/school-viewport-test.cjs')], check=True)
     subprocess.run([node, str(ROOT / 'tests/export-nav-test.cjs')], check=True)
     subprocess.run([node, str(ROOT / 'tests/coverage-check-test.cjs')], check=True)
     subprocess.run([node, str(ROOT / 'tests/classroom-test.cjs')], check=True)

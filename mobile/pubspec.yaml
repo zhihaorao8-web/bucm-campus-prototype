@@ -24,6 +24,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/extract.js
+    - assets/school-viewport.js
     - assets/export-nav.js
     - assets/coverage-check.js
     - assets/classroom.js
