@@ -5,6 +5,7 @@ import 'package:flutter_miuix/miuix.dart';
 import '../application/schedule_controller.dart';
 import '../application/appearance_controller.dart';
 import '../data/demo_schedule.dart';
+import '../data/classroom_library.dart';
 import '../domain/schedule.dart';
 import '../platform/school_adapter.dart';
 import 'course_widgets.dart';
@@ -35,10 +36,53 @@ class _AppShellState extends ConsumerState<AppShell>
     (_) => miuixScrollBehavior(snapOnRelease: false),
   );
   final pageControllers = List.generate(3, (_) => ScrollController());
+  final classroomLibrary = ClassroomLibrary.shared;
+  Set<String> recordingKeys = {};
+  Timer? badgeTimer;
+  int badgeTicket = 0, badgeRevision = 0;
+  bool hasRecordings(Course course) =>
+      !demo && recordingKeys.contains(ClassroomLibrary.key(course));
+  void refreshRecordingBadges() {
+    badgeTimer?.cancel();
+    final ticket = ++badgeTicket;
+    if (badgeRevision != classroomLibrary.revision) {
+      badgeRevision = classroomLibrary.revision;
+      if (mounted) setState(() => recordingKeys = {});
+    }
+    badgeTimer = Timer(const Duration(milliseconds: 150), () async {
+      if (!mounted || ticket != badgeTicket) return;
+      final saved = ref.read(scheduleProvider);
+      if (!saved.hasValue) return;
+      try {
+        final availability = await classroomLibrary.availability(
+          saved.requireValue.courses,
+        );
+        if (mounted && ticket == badgeTicket) {
+          setState(
+            () => recordingKeys = availability.entries
+                .where(
+                  (entry) => entry.value == RecordingAvailability.available,
+                )
+                .map((entry) => entry.key)
+                .toSet(),
+          );
+        }
+      } catch (_) {
+        if (mounted && ticket == badgeTicket) {
+          setState(() => recordingKeys = {});
+        }
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    classroomLibrary.changes.addListener(refreshRecordingBadges);
+    ref.listenManual(scheduleProvider, (_, next) {
+      if (next.hasValue) refreshRecordingBadges();
+    }, fireImmediately: true);
     ticker = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() => now = schoolNow());
     });
@@ -47,6 +91,9 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   void dispose() {
     ticker.cancel();
+    badgeTicket++;
+    badgeTimer?.cancel();
+    classroomLibrary.changes.removeListener(refreshRecordingBadges);
     for (final behavior in scrollBehaviors) {
       behavior.state.dispose();
     }
@@ -60,6 +107,7 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      refreshRecordingBadges();
       setState(() => now = schoolNow());
     }
   }
@@ -465,6 +513,7 @@ class _AppShellState extends ConsumerState<AppShell>
         for (final (index, event) in today.indexed)
           CourseRow(
             event: event,
+            hasRecordings: hasRecordings(event.course),
             colorIndex: index % 5,
             now: now,
             conflict: today.any(
@@ -589,6 +638,7 @@ class _AppShellState extends ConsumerState<AppShell>
           for (final (index, event) in events.indexed)
             CourseRow(
               event: event,
+              hasRecordings: hasRecordings(event.course),
               colorIndex: index % 5,
               conflict: events.any(
                 (other) => other != event && event.overlaps(other),
@@ -634,6 +684,7 @@ class _AppShellState extends ConsumerState<AppShell>
                   height: height,
                   child: WeekGrid(
                     courses: courses,
+                    hasRecordings: hasRecordings,
                     monday: monday,
                     today: now,
                     onSelectDay: (value) => setState(() {

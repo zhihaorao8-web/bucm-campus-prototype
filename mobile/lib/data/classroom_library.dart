@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import '../domain/classroom.dart';
 import '../domain/schedule.dart';
 
 /// Complete metadata pages only. Media descriptors and credentials never enter
 /// this model or file. Incomplete imports cannot replace a previous archive.
+enum RecordingAvailability { empty, unpublished, available }
+
 class ClassroomArchive {
   ClassroomArchive._(this.pages, this.importedAt, this.sources);
   final List<ClassroomArchive>? sources;
@@ -131,6 +134,8 @@ class ClassroomLibrary {
   Future<void> _tail = Future.value();
   int _revision = 0;
   int get revision => _revision;
+  final changes = ValueNotifier<int>(0);
+  void _changed() => changes.value++;
   static String key(Course course) =>
       jsonEncode([course.semester, course.id, classroomName(course.name)]);
   Future<File> _file() async {
@@ -181,6 +186,49 @@ class ClassroomLibrary {
         : null;
   }
 
+  /// One local file read for an entire timetable. Missing entries stay unknown.
+  Future<Map<String, RecordingAvailability>> availability(
+    List<Course> courses,
+  ) async {
+    final revision = _revision;
+    await _tail;
+    final values = await _read();
+    final exact = <String, ClassroomArchive>{};
+    final names = <String, ClassroomArchive>{};
+    String nameKey(Course course) =>
+        jsonEncode([course.semester, classroomName(course.name)]);
+    for (final entry in values.entries) {
+      final archive = ClassroomArchive.fromJson(
+        Map<String, dynamic>.from(entry.value as Map),
+      );
+      exact[entry.key] = archive;
+      if (archive.nameMatched) {
+        final key = jsonEncode([
+          archive.course.semester,
+          classroomName(archive.course.name),
+        ]);
+        if (names[key] == null ||
+            names[key]!.importedAt.isBefore(archive.importedAt)) {
+          names[key] = archive;
+        }
+      }
+    }
+    final output = <String, RecordingAvailability>{};
+    for (final course in courses) {
+      if (course.dataSource == 'synthetic') continue;
+      final archive = exact[key(course)] ?? names[nameKey(course)];
+      if (archive == null || !archive.course.matches(course)) continue;
+      output[key(course)] = archive.total == 0
+          ? RecordingAvailability.empty
+          : archive.pages.any(
+              (page) => page.records.any((record) => record.published),
+            )
+          ? RecordingAvailability.available
+          : RecordingAvailability.unpublished;
+    }
+    return revision == _revision ? Map.unmodifiable(output) : const {};
+  }
+
   Future<void> save(
     Course course,
     ClassroomArchive archive, {
@@ -217,7 +265,10 @@ class ClassroomLibrary {
       final temp = File('${file.path}.pending');
       try {
         await temp.writeAsString(content, flush: true);
-        if (revision == _revision) await temp.rename(file.path);
+        if (revision == _revision) {
+          await temp.rename(file.path);
+          _changed();
+        }
       } finally {
         if (await temp.exists()) await temp.delete();
       }
@@ -238,6 +289,7 @@ class ClassroomLibrary {
           flush: true,
         );
         await temp.rename(file.path);
+        _changed();
       } finally {
         if (await temp.exists()) await temp.delete();
       }
@@ -248,6 +300,7 @@ class ClassroomLibrary {
 
   Future<void> clear() {
     _revision++;
+    _changed();
     final operation = _tail.then((_) async {
       final file = await _file();
       if (await file.exists()) await file.delete();

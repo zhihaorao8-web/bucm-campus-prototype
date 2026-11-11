@@ -55,6 +55,69 @@ void main() {
   tearDown(() async {
     await directory.delete(recursive: true);
   });
+  test(
+    'local availability distinguishes unknown, empty, unpublished and playable, clearing invalidates badges',
+    () async {
+      expect(await library.availability([local]), isEmpty);
+      var notifications = 0;
+      library.changes.addListener(() => notifications++);
+      await library.save(
+        local,
+        ClassroomArchive.merge([archive()], DateTime.utc(2031)),
+        revision: library.revision,
+      );
+      final renamedId = Course.fromJson(
+        local.toJson()..['id'] = 'new-local-id',
+      );
+      final unrelated = Course.fromJson(
+        local.toJson()
+          ..['id'] = 'other'
+          ..['name'] = '其他课程',
+      );
+      final available = await library.availability([
+        local,
+        renamedId,
+        unrelated,
+      ]);
+      expect(
+        available[ClassroomLibrary.key(local)],
+        RecordingAvailability.available,
+      );
+      expect(
+        available[ClassroomLibrary.key(renamedId)],
+        RecordingAvailability.available,
+      );
+      expect(available.containsKey(ClassroomLibrary.key(unrelated)), isFalse);
+      final privatePage = page(1, total: 1, ids: [1]).toJson();
+      for (final record in privatePage['records'] as List) {
+        (record as Map)['published'] = false;
+      }
+      await library.save(
+        local,
+        ClassroomArchive([
+          RecordingPage.fromJson(privatePage),
+        ], DateTime.utc(2031)),
+        revision: library.revision,
+      );
+      expect(
+        (await library.availability([local]))[ClassroomLibrary.key(local)],
+        RecordingAvailability.unpublished,
+      );
+      await library.save(
+        local,
+        ClassroomArchive([page(1, total: 0, ids: [])], DateTime.utc(2031)),
+        revision: library.revision,
+      );
+      expect(
+        (await library.availability([local]))[ClassroomLibrary.key(local)],
+        RecordingAvailability.empty,
+      );
+      await library.clear();
+      expect(await library.availability([local]), isEmpty);
+      expect(notifications, 4);
+    },
+  );
+
   test('完整分页可跨实例读取，页码与录播ID映射保留，只持久化白名单字段', () async {
     await library.save(local, archive(), revision: library.revision);
     final restored = await ClassroomLibrary(directory: directory).lookup(local);

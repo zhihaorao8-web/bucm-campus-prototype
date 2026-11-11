@@ -52,8 +52,10 @@ class WeekGrid extends StatelessWidget {
     required this.monday,
     required this.today,
     this.onSelectDay,
+    this.hasRecordings,
   });
   final List<Course> courses;
+  final bool Function(Course)? hasRecordings;
   final DateTime monday, today;
   final ValueChanged<int>? onSelectDay;
   static double minimumHeight(BuildContext context) =>
@@ -297,7 +299,7 @@ class WeekGrid extends StatelessWidget {
                               ),
                               button: true,
                               label:
-                                  '${p.event.course.name}，周${weekdays[d]}，${p.event.segment.start}到${p.event.segment.end}，${courseLocation(p.event.course)}，${p.event.course.teacher}${p.lanes > 1 ? '，时段重叠' : ''}',
+                                  '${p.event.course.name}，周${weekdays[d]}，${p.event.segment.start}到${p.event.segment.end}，${courseLocation(p.event.course)}，${p.event.course.teacher}${p.lanes > 1 ? '，时段重叠' : ''}${hasRecordings?.call(p.event.course) == true ? '，本地目录中有可播放录播' : ''}',
                               excludeSemantics: true,
                               child: Material(
                                 color: cardColors[p],
@@ -348,6 +350,23 @@ class WeekGrid extends StatelessWidget {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
+                                              if (hasRecordings?.call(
+                                                        p.event.course,
+                                                      ) ==
+                                                      true &&
+                                                  box.maxHeight >=
+                                                      line * 7 + 24 &&
+                                                  box.maxWidth >= 44)
+                                                Align(
+                                                  alignment:
+                                                      Alignment.centerRight,
+                                                  child: Icon(
+                                                    Icons
+                                                        .video_library_outlined,
+                                                    size: 12,
+                                                    color: ink,
+                                                  ),
+                                                ),
                                               Flexible(
                                                 child: Text(
                                                   p.event.course.name,

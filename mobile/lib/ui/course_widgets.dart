@@ -111,9 +111,11 @@ class CourseRow extends StatelessWidget {
     this.conflict = false,
     this.now,
     this.colorIndex = 0,
+    this.hasRecordings = false,
   });
   final Occurrence event;
   final bool conflict;
+  final bool hasRecordings;
   final DateTime? now;
   final int colorIndex;
   @override
@@ -175,6 +177,11 @@ class CourseRow extends StatelessWidget {
                 ],
               ),
             ),
+            if (hasRecordings)
+              const Tooltip(
+                message: '本地目录中有可播放录播',
+                child: Icon(Icons.video_library_outlined, size: 20),
+              ),
             const Icon(Icons.chevron_right, size: 20),
           ],
         ),
