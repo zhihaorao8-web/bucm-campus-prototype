@@ -3,34 +3,27 @@ import 'schedule.dart';
 String classroomName(String value) =>
     value.trim().replaceAll(RegExp(r'[\s\u00a0\u3000]+'), ' ');
 
-/// Exact name within the timetable semester; no teacher/fuzzy/substring match.
-/// A previously confirmed ID only disambiguates equally named courses.
-ClassroomCourse? matchClassroomCourse(
+/// All exact names in the same semester, independently of teacher/class.
+/// Conflicting school IDs are rejected rather than selecting arbitrary data.
+List<ClassroomCourse> matchingClassroomCourses(
   Course local,
-  List<ClassroomCourse> catalog, {
-  String? confirmedId,
-}) {
+  List<ClassroomCourse> catalog,
+) {
   final matches = catalog.where((course) => course.matches(local)).toList();
-  final remembered = matches
-      .where((course) => course.id == confirmedId)
-      .toList();
-  final selected = remembered.length == 1
-      ? remembered.single
-      : matches.length == 1
-      ? matches.single
-      : null;
-  if (selected == null ||
-      catalog
-              .where(
-                (course) =>
-                    course.semester == local.semester &&
-                    course.id == selected.id,
-              )
-              .length !=
-          1) {
-    return null;
+  if (matches.any(
+    (course) =>
+        catalog
+            .where(
+              (other) =>
+                  other.semester == local.semester && other.id == course.id,
+            )
+            .length !=
+        1,
+  )) {
+    throw const FormatException('学校课程标识重复，请刷新学校目录');
   }
-  return selected;
+  matches.sort((a, b) => a.id.compareTo(b.id));
+  return List.unmodifiable(matches);
 }
 
 String classroomText(dynamic value) {

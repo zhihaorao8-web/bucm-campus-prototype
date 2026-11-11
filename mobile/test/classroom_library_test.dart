@@ -60,8 +60,8 @@ void main() {
     final restored = await ClassroomLibrary(directory: directory).lookup(local);
     expect(restored!.total, 3);
     expect(restored.pages.length, 2);
-    expect(restored.pageOf('synthetic-3'), 2);
-    expect(restored.pageOf('missing'), 0);
+    expect(restored.sourcePage('school-synthetic', 'synthetic-3')?.page, 2);
+    expect(restored.sourcePage('school-synthetic', 'missing'), isNull);
     final raw = await File(
       '${directory.path}/classroom-library-v1.json',
     ).readAsString();

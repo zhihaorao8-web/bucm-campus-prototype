@@ -23,43 +23,43 @@ void main() {
         code: 'S001',
         group: '合成班',
       );
-  test('名称唯一时自动关联，限定学期且不使用模糊或教师匹配', () {
+  test('名称匹配限定学期，不使用模糊匹配或教师条件', () {
     final right = school('right', name: '　合成医学\u00a0 A　');
     expect(
-      matchClassroomCourse(local, [
+      matchingClassroomCourses(local, [
         school('old', semester: '2031-2032-1'),
         right,
-      ])?.id,
+      ]).single.id,
       'right',
     );
     expect(
-      matchClassroomCourse(local, [school('different', name: '合成医学 A（选修）')]),
-      isNull,
+      matchingClassroomCourses(local, [
+        school('different', name: '合成医学 A（选修）'),
+      ]),
+      isEmpty,
     );
     expect(
-      matchClassroomCourse(local, [school('different', name: '合成医学A')]),
-      isNull,
+      matchingClassroomCourses(local, [school('different', name: '合成医学A')]),
+      isEmpty,
     );
-    expect(matchClassroomCourse(local, []), isNull);
+    expect(matchingClassroomCourses(local, []), isEmpty);
   });
-  test('同名不随意关联，确认ID必须仍在同学期同名候选中且唯一', () {
+  test('同名条目全部关联，重复学校ID拒绝而不任意选一门', () {
     final a = school('a'), b = school('b');
-    expect(matchClassroomCourse(local, [a, b]), isNull);
-    expect(matchClassroomCourse(local, [a, b], confirmedId: 'b')?.id, 'b');
-    expect(matchClassroomCourse(local, [a, b], confirmedId: 'expired'), isNull);
+    expect(matchingClassroomCourses(local, [a, b]).map((c) => c.id), [
+      'a',
+      'b',
+    ]);
     expect(
-      matchClassroomCourse(local, [
+      matchingClassroomCourses(local, [
         a,
         school('b', name: '其他合成课'),
-      ], confirmedId: 'b')?.id,
+      ]).single.id,
       'a',
     );
     expect(
-      matchClassroomCourse(local, [
-        a,
-        school('a', name: '其他合成课'),
-      ], confirmedId: 'a'),
-      isNull,
+      () => matchingClassroomCourses(local, [a, school('a', name: '其他合成课')]),
+      throwsFormatException,
     );
   });
   testWidgets('进入本人课程自动检测，失败保留重试；合成示例不连接', (tester) async {

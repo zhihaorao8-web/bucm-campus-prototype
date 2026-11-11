@@ -91,6 +91,13 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   late final int libraryRevision;
   ClassroomArchive? archive;
   ClassroomRecording? queuedPlayback;
+  String? queuedCourseId;
+  bool autoCollecting = false;
+  List<ClassroomCourse>? importMatches;
+  final importSources = <ClassroomArchive>[];
+  int sourceIndex = 0;
+  bool get collecting => bulk || autoCollecting;
+  int get displayPage => archive?.displayPage(recordings!) ?? recordings!.page;
   int queuedPage = 1;
   int? livePage;
   String? liveCourse;
@@ -197,7 +204,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       /* Official fetch remains available. */
     }
     if (!mounted) return;
-    if (saved != null && (!keepLive || saved.course.id == selected?.id)) {
+    if (saved != null &&
+        (!keepLive || saved.courses.any((c) => c.id == selected?.id))) {
       setState(() {
         archive = saved;
         if (!keepLive) {
@@ -236,6 +244,18 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   Future<void> nextImport(_SchoolTab tab) async {
     if (!mounted || !tabs.contains(tab)) return;
     importPages.clear();
+    importMatches = null;
+    importSources.clear();
+    sourceIndex = 0;
+    if (!bulk) {
+      setState(() {
+        autoCollecting = false;
+        recordings = archive!.pages.first;
+        selected = recordings!.course;
+        busy = showWeb = false;
+      });
+      return;
+    }
     if (importIndex + 1 == widget.importCourses!.length) {
       setState(() {
         importFinished = true;
@@ -277,12 +297,17 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         List.unmodifiable(importPages),
         DateTime.now(),
       );
-      await library.save(localCourse, saved, revision: libraryRevision);
-      if (!mounted) return;
-      if (libraryRevision != library.revision) throw const FormatException();
       completedArchives[page.course.id] = saved;
-      imported++;
-      await nextImport(tab);
+      importSources.add(saved);
+      sourceIndex++;
+      importPages.clear();
+      if (sourceIndex < importMatches!.length) {
+        await navigateOfficial(tab, {
+          'action': 'catalogRoute',
+        }, _Purpose.browse);
+      } else {
+        await finishNameImport(tab);
+      }
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -296,7 +321,50 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     }
   }
 
+  Future<void> finishNameImport(_SchoolTab tab) async {
+    final saved = ClassroomArchive.merge([...importSources], DateTime.now());
+    await library.save(localCourse, saved, revision: libraryRevision);
+    if (!mounted) return;
+    if (libraryRevision != library.revision) throw const FormatException();
+    if (!bulk) archive = saved;
+    imported++;
+    await nextImport(tab);
+  }
+
+  Future<void> collectNameMatches(
+    _SchoolTab tab,
+    List<ClassroomCourse> matches,
+  ) async {
+    if (matches.isEmpty) {
+      if (bulk) {
+        skipped.add(localCourse.name);
+        await nextImport(tab);
+      }
+      return;
+    }
+    if (importMatches == null) {
+      importMatches = matches;
+      sourceIndex = 0;
+      importSources.clear();
+    } else if (matches.map((c) => c.id).join('\u0000') !=
+        importMatches!.map((c) => c.id).join('\u0000')) {
+      throw const FormatException('同名课程目录已变化');
+    }
+    while (sourceIndex < importMatches!.length &&
+        completedArchives.containsKey(importMatches![sourceIndex].id)) {
+      importSources.add(completedArchives[importMatches![sourceIndex].id]!);
+      sourceIndex++;
+    }
+    if (sourceIndex == importMatches!.length) {
+      await finishNameImport(tab);
+    } else {
+      await choose(tab, importMatches![sourceIndex]);
+    }
+  }
+
   Future<void> refreshRecordings() async {
+    queuedPlayback = null;
+    queuedCourseId = null;
     if (archive == null) {
       await changePage(recordings!.page);
       return;
@@ -349,6 +417,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         !busy &&
         !loading &&
         !showWeb &&
+        (archive == null || archive!.courses.length == 1) &&
         recordings != null &&
         selected != null &&
         fetchedAt != null &&
@@ -428,7 +497,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       catalog = null;
       recordings = queuedPlayback == null
           ? null
-          : archive?.pages[queuedPage - 1];
+          : archive?.sourcePage(queuedCourseId ?? '', queuedPlayback!.id);
       selected = null;
       rememberedAttempted = false;
       active = 0;
@@ -587,6 +656,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
 
   Future<void> retryCurrent() async {
     importPages.clear();
+    importMatches = null;
+    importSources.clear();
+    sourceIndex = 0;
     if (tabs.isEmpty) {
       await connect();
       return;
@@ -750,12 +822,6 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           scheduleRead(tab);
           return;
         }
-        String? previous;
-        try {
-          previous = await links.lookup(localCourse);
-        } catch (_) {
-          /* Keep the current official catalog usable if local preferences are damaged. */
-        }
         if (!mounted ||
             ticket != generation ||
             tab.purpose == _Purpose.records) {
@@ -772,50 +838,36 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           message = courses.isEmpty
               ? '当前页面没有该学期的课程。请在官方平台切换学期后重新读取。'
               : sameNames > 1
-              ? '该学期有多门同名课程，请确认班级后选择一次。'
+              ? '已按课程名称匹配 $sameNames 门学校课程，正在汇总全部回放…'
               : sameNames == 0
-              ? '未找到该学期的同名课程，可手动关联或在官方平台切换学期。'
+              ? '未找到该学期的同名课程，请检查课程名称或学校学期。'
               : rememberedAttempted
               ? '请选择与课表对应的学校课程。'
               : '已按课程名称匹配，正在获取录播…';
         });
-        final match = matchClassroomCourse(
-          localCourse,
-          courses,
-          confirmedId: previous,
-        );
-        if (bulk && !importFinished) {
+        final matches = matchingClassroomCourses(localCourse, courses);
+        if ((bulk && !importFinished) ||
+            (queuedPlayback == null && !rememberedAttempted)) {
           if (courses.isEmpty || importingPage) return;
           importingPage = true;
           try {
-            if (match == null) {
-              skipped.add(localCourse.name);
-              await nextImport(tab);
-            } else if (completedArchives.containsKey(match.id)) {
-              await library.save(
-                localCourse,
-                completedArchives[match.id]!,
-                revision: libraryRevision,
-              );
-              if (!mounted) return;
-              if (libraryRevision != library.revision) {
-                throw const FormatException();
-              }
-              await links.bind(localCourse, match.id);
-              imported++;
-              await nextImport(tab);
-            } else {
-              rememberedAttempted = true;
-              await choose(tab, match);
-            }
+            autoCollecting = !bulk && matches.isNotEmpty;
+            await collectNameMatches(tab, matches);
           } finally {
             importingPage = false;
           }
           return;
         }
+        final match = matches.where((c) => c.id == queuedCourseId).firstOrNull;
         if (!rememberedAttempted && match != null) {
           rememberedAttempted = true;
           await choose(tab, match);
+        } else if (queuedPlayback != null && match == null) {
+          setState(() {
+            queuedPlayback = null;
+            busy = false;
+            message = '原回放所属的同名课程已不可访问，请刷新回放目录后重试。';
+          });
         }
         return;
       }
@@ -849,11 +901,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           }
           recordTab = tabs.indexOf(tab);
           showWeb = false;
-          busy = false;
+          busy = collecting;
           message = null;
         });
-        if (bulk) {
-          await links.bind(localCourse, page.course.id);
+        if (collecting) {
           await importRecordPage(tab, page);
           return;
         }
@@ -867,7 +918,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
               .toList();
           queuedPlayback = null;
           if (candidates.length == 1) {
-            unawaited(playNative(candidates.single));
+            unawaited(
+              playNative(candidates.single, sourceCourseId: page.course.id),
+            );
           } else {
             setState(() => message = '录播列表已变化，请刷新后重新选择。');
           }
@@ -989,25 +1042,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
 
   Future<void> changeCourse() async {
     queuedPlayback = null;
-    archive = null;
-    await library.remove(localCourse);
-    if (!mounted) return;
-    if (tabs.isEmpty) {
-      await connect();
-      rememberedAttempted = true;
-      return;
-    }
-    fetchedAt = null;
-    freshReadPending = true;
-    restored = false;
-    final tab = tabs[recordTab];
-    active = recordTab;
-    recordings = null;
-    catalog = null;
-    selected = null;
-    rememberedAttempted = true;
-    tab.routed = false;
-    await navigateOfficial(tab, {'action': 'catalogRoute'}, _Purpose.browse);
+    await refreshRecordings();
   }
 
   Future<void> changePage(int page) async {
@@ -1042,16 +1077,25 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     }
   }
 
-  Future<void> playNative(ClassroomRecording record) async {
+  Future<void> playNative(
+    ClassroomRecording record, {
+    String? sourceCourseId,
+  }) async {
     if (busy || !record.published) return;
-    final targetPage = archive?.pageOf(record.id) ?? 1;
-    final targetCourse = selected?.id ?? archive?.course.id;
+    final targetCourse =
+        sourceCourseId ?? recordings?.course.id ?? selected?.id;
+    final sourcePage = targetCourse == null
+        ? null
+        : archive?.sourcePage(targetCourse, record.id);
+    final targetPage = sourcePage?.page ?? recordings?.page ?? 1;
     if (archive != null &&
         tabs.isNotEmpty &&
         (livePage != targetPage || liveCourse != targetCourse)) {
       queuedPlayback = record;
+      queuedCourseId = targetCourse;
       queuedPage = targetPage;
       if (liveCourse == targetCourse) {
+        selected = sourcePage?.course ?? recordings?.course;
         await changePage(queuedPage);
       } else {
         selected = null;
@@ -1064,7 +1108,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     }
     if (tabs.isEmpty) {
       queuedPlayback = record;
-      queuedPage = archive?.pageOf(record.id) ?? 1;
+      queuedCourseId = targetCourse;
+      queuedPage = targetPage;
       if (queuedPage < 1) {
         queuedPlayback = null;
         return;
@@ -1075,6 +1120,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     final tab = tabs[recordTab];
     final view = tab.controller?.getViewId();
     if (view is! int && view is! String) return;
+    selected = sourcePage?.course ?? recordings?.course ?? selected;
     final operation = ++playbackGeneration;
     poll?.cancel();
     ClassroomPlayerState? prepared;
@@ -1492,7 +1538,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   Widget native() {
     if (bulk) return importNative();
     final local = localCourse;
-    final candidates = (catalog ?? []).toList()
+    final candidates = (catalog ?? []).where((c) => c.matches(local)).toList()
       ..sort(
         (a, b) =>
             (b.matches(local) ? 1 : 0).compareTo(a.matches(local) ? 1 : 0),
@@ -1561,9 +1607,23 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                 ),
               if (synthetic)
                 const Text('合成示例不连接学校；请使用本人导入的课程。')
-              else if (recordings != null) ...[
+              else if (collecting) ...[
+                const LinearProgressIndicator(),
+                Text('正在汇总同名课程：$sourceIndex / ${importMatches?.length ?? 0}'),
+                if (!busy)
+                  TextButton(
+                    onPressed: retryCurrent,
+                    child: const Text('继续导入'),
+                  ),
+              ] else if (recordings != null) ...[
+                if (archive != null)
+                  Text(
+                    archive!.nameMatched
+                        ? '已按名称合并 ${archive!.courses.length} 门学校课程（按来源分页）'
+                        : '旧目录尚未汇总同名课程，请刷新录播或统一导入。',
+                  ),
                 Text(
-                  '已关联：${recordings!.course.name} · ${recordings!.course.teacher}',
+                  '当前回放来源：${recordings!.course.name} · ${recordings!.course.teacher}',
                 ),
                 if (widget.date != null)
                   Text(
@@ -1588,7 +1648,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                     ),
                     TextButton(
                       onPressed: busy ? null : changeCourse,
-                      child: const Text('更换关联'),
+                      child: const Text('重新匹配同名课程'),
                     ),
                   ],
                 ),
@@ -1613,7 +1673,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                         trailing: const Icon(Icons.play_circle_outline),
                         onTap: busy || !record.published
                             ? null
-                            : () => playNative(record),
+                            : () => playNative(
+                                record,
+                                sourceCourseId: recordings!.course.id,
+                              ),
                       ),
                     ),
                   ),
@@ -1621,22 +1684,28 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(
-                      onPressed: busy || recordings!.page == 1
+                      onPressed: busy || displayPage == 1
                           ? null
-                          : () => changePage(recordings!.page - 1),
+                          : () => changePage(displayPage - 1),
                       child: const Text('上一页'),
                     ),
-                    Text('第 ${recordings!.page} 页 · 共 ${recordings!.total} 条'),
+                    Text(
+                      '第 $displayPage 页 · 共 ${archive?.total ?? recordings!.total} 条',
+                    ),
                     TextButton(
-                      onPressed: busy || !recordings!.hasNext
+                      onPressed:
+                          busy ||
+                              (archive != null
+                                  ? displayPage >= archive!.pages.length
+                                  : !recordings!.hasNext)
                           ? null
-                          : () => changePage(recordings!.page + 1),
+                          : () => changePage(displayPage + 1),
                       child: const Text('下一页'),
                     ),
                   ],
                 ),
               ] else if (catalog != null) ...[
-                const Text('选择关联课程；请核对教师、课程序号和班级。'),
+                const Text('按同学期课程名称汇总全部回放，教师和班级仅用于显示来源。'),
                 for (final course in candidates)
                   MiuixCard(
                     child: Material(
@@ -1647,9 +1716,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                           '${course.teacher}\n${course.code} · ${course.group}',
                         ),
                         isThreeLine: true,
-                        onTap: busy
-                            ? null
-                            : () => choose(tabs[catalogTab], course),
+                        onTap: busy ? null : retryCurrent,
                       ),
                     ),
                   ),
@@ -1710,7 +1777,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
             ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
-            child: Text('导入后，点击课表课程即可查看录播列表。同名或未匹配的课程可进入课程页手动关联。'),
+            child: Text('同学期同名课程的回放全部汇总，教师仅用于展示来源。未匹配项请检查课程名称或学校学期。'),
           ),
           if (skipped.isNotEmpty) ...[
             const Text('以下课程需要手动确认：'),

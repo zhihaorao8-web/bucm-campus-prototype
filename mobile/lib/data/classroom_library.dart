@@ -7,8 +7,11 @@ import '../domain/schedule.dart';
 /// Complete metadata pages only. Media descriptors and credentials never enter
 /// this model or file. Incomplete imports cannot replace a previous archive.
 class ClassroomArchive {
+  ClassroomArchive._(this.pages, this.importedAt, this.sources);
+  final List<ClassroomArchive>? sources;
   ClassroomArchive(List<RecordingPage> values, this.importedAt)
-    : pages = List.unmodifiable(values) {
+    : sources = null,
+      pages = List.unmodifiable(values) {
     if (pages.isEmpty || pages.length > 1000) {
       throw const FormatException('录播分页数量不支持');
     }
@@ -36,18 +39,77 @@ class ClassroomArchive {
   }
   final List<RecordingPage> pages;
   final DateTime importedAt;
+  bool get nameMatched => sources != null;
+  List<ClassroomCourse> get courses =>
+      (sources ?? [this]).map((v) => v.course).toList();
+  factory ClassroomArchive.merge(
+    List<ClassroomArchive> values,
+    DateTime importedAt,
+  ) {
+    if (values.isEmpty ||
+        values.length > 1000 ||
+        values.any((v) => v.sources != null)) {
+      throw const FormatException('同名课程目录不完整');
+    }
+    final first = values.first.course;
+    if (values.map((v) => v.course.id).toSet().length != values.length ||
+        values.any(
+          (v) =>
+              v.course.semester != first.semester ||
+              classroomName(v.course.name) != classroomName(first.name),
+        ) ||
+        values.fold<int>(0, (n, v) => n + v.total) > 10000 ||
+        values.fold<int>(0, (n, v) => n + v.pages.length) > 1000) {
+      throw const FormatException('同名课程目录不一致');
+    }
+    final sorted = [...values]
+      ..sort((a, b) => a.course.id.compareTo(b.course.id));
+    return ClassroomArchive._(
+      List.unmodifiable(sorted.expand((v) => v.pages)),
+      importedAt,
+      List.unmodifiable(sorted),
+    );
+  }
   ClassroomCourse get course => pages.first.course;
-  int get total => pages.first.total;
-  int pageOf(String id) =>
+  int get total =>
+      sources?.fold<int>(0, (n, v) => n + v.total) ?? pages.first.total;
+  int displayPage(RecordingPage page) =>
       pages.indexWhere(
-        (page) => page.records.any((record) => record.id == id),
+        (v) => v.course.id == page.course.id && v.page == page.page,
       ) +
       1;
+  RecordingPage? sourcePage(String courseId, String recordId) => pages
+      .where(
+        (page) =>
+            page.course.id == courseId &&
+            page.records.any((r) => r.id == recordId),
+      )
+      .firstOrNull;
   Map<String, Object?> toJson() => {
     'importedAt': importedAt.toUtc().toIso8601String(),
-    'pages': pages.map((page) => page.toJson()).toList(),
+    if (sources == null)
+      'pages': pages.map((page) => page.toJson()).toList()
+    else
+      'sources': sources!.map((v) => v.toJson()).toList(),
   };
   factory ClassroomArchive.fromJson(Map<String, dynamic> json) {
+    if (json['sources'] != null) {
+      final sources = json['sources'] as List;
+      if (sources.length > 1000 ||
+          sources.any((v) => v is! Map || v.containsKey('sources'))) {
+        throw const FormatException();
+      }
+      return ClassroomArchive.merge(
+        sources
+            .map(
+              (v) => ClassroomArchive.fromJson(
+                Map<String, dynamic>.from(v as Map),
+              ),
+            )
+            .toList(),
+        DateTime.parse(json['importedAt'] as String),
+      );
+    }
     final values = json['pages'] as List;
     if (values.length > 1000) throw const FormatException();
     return ClassroomArchive(
@@ -84,7 +146,7 @@ class ClassroomLibrary {
       throw const FormatException('录播目录文件过大');
     }
     final data = jsonDecode(await file.readAsString()) as Map;
-    if (data['schema'] != 1 ||
+    if (!const {1, 2}.contains(data['schema']) ||
         data['courses'] is! Map ||
         (data['courses'] as Map).length > 1000) {
       throw const FormatException('录播目录格式不支持');
@@ -95,12 +157,26 @@ class ClassroomLibrary {
   Future<ClassroomArchive?> lookup(Course course) async {
     final revision = _revision;
     await _tail;
-    final value = (await _read())[key(course)];
+    final values = await _read();
+    var value = values[key(course)];
+    if (value == null) {
+      final sameName =
+          values.values
+              .map(
+                (v) => ClassroomArchive.fromJson(
+                  Map<String, dynamic>.from(v as Map),
+                ),
+              )
+              .where((v) => v.nameMatched && v.course.matches(course))
+              .toList()
+            ..sort((a, b) => b.importedAt.compareTo(a.importedAt));
+      value = sameName.firstOrNull?.toJson();
+    }
     if (value == null) return null;
     final archive = ClassroomArchive.fromJson(
       Map<String, dynamic>.from(value as Map),
     );
-    return revision == _revision && archive.course.semester == course.semester
+    return revision == _revision && archive.course.matches(course)
         ? archive
         : null;
   }
@@ -112,7 +188,9 @@ class ClassroomLibrary {
   }) {
     final operation = _tail.then((_) async {
       if (revision != _revision) return;
-      if (archive.course.semester != course.semester ||
+      if ((archive.nameMatched
+              ? !archive.course.matches(course)
+              : archive.course.semester != course.semester) ||
           course.dataSource == 'synthetic') {
         throw const FormatException();
       }
@@ -122,13 +200,16 @@ class ClassroomLibrary {
         final previous = ClassroomArchive.fromJson(
           Map<String, dynamic>.from(values[key] as Map),
         );
-        if (previous.course.id == safe.course.id &&
-            previous.course.semester == safe.course.semester) {
+        if (previous.course.semester == safe.course.semester &&
+            (safe.nameMatched
+                ? classroomName(previous.course.name) ==
+                      classroomName(safe.course.name)
+                : previous.course.id == safe.course.id)) {
           values[key] = safe.toJson();
         }
       }
       values[key(course)] = safe.toJson();
-      final content = jsonEncode({'schema': 1, 'courses': values});
+      final content = jsonEncode({'schema': 2, 'courses': values});
       if (utf8.encode(content).length > 8 * 1024 * 1024) {
         throw const FormatException('录播目录文件过大');
       }
@@ -153,7 +234,7 @@ class ClassroomLibrary {
       final temp = File('${file.path}.pending');
       try {
         await temp.writeAsString(
-          jsonEncode({'schema': 1, 'courses': values}),
+          jsonEncode({'schema': 2, 'courses': values}),
           flush: true,
         );
         await temp.rename(file.path);
