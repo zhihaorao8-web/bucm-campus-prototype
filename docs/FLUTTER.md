@@ -82,6 +82,22 @@ cd mobile/android
 
 ## 验证与隐私
 
+### 原生合成媒体检查
+
+原生播放组已与WebView认证协调分离，正式入口继续校验学校描述并只使用受限`ClassroomDataSource`。设备检查使用独立`cn.bucm.campus_schedule.mediatest`包及测试APK中的合成H264/AAC HLS，通过`AssetDataSource`读取，不访问学校或修改本人应用数据。
+
+在项目根目录执行（FFmpeg路径替换为本机可执行文件）：
+
+```powershell
+python scripts/check_native_media.py --ffmpeg 'C:\tools\ffmpeg.exe' --device emulator-5554
+```
+
+沿用上方`JAVA_HOME`/`PUB_CACHE`配置及既有Android SDK。脚本只接受唯一在线的指定模拟器，生成素材/SHA清单到忽略的`mobile/build/app/generated/synthetic-media/`，仅执行`:app:connectedDebugAndroidTest -PcampusMediaTest=true`，要求三项新鲜JUnit检查齐全通过，并核对执行期间原生源码未改变。汇总为本地`build/native-media-summary.json`，不提交设备日志或生成的媒体。
+
+测试运行器版本对齐仅作用于隔离目标；正常应用和release解析检查不增加这些debug运行依赖。素材只属于媒体仪器测试源集，不打包进普通应用。检查结束后重新执行普通`flutter build apk --debug`恢复正常包名产物，安装前验证包名与素材排除；发布另按release检查，不用隔离/debug结果替代。
+
+实际覆盖范围与完整课时/听音/水印检查见[播放器验收清单](research/PLAYER_ACCEPTANCE.md)。本机模拟器通过不代表远程CI或真实学校全链路通过。
+
 外观偏好位于独立`appearance-v1.json`（schema 1），以临时文件flush/rename原子保存并串行处理修改；清空课程不删除外观偏好，退出学校会话不删除离线课表。应用主题、Material 3风格/对比度、顶/底栏模糊、悬浮/普通底栏、玻璃高光、主页面横滑与80%–120%整体缩放均读取该状态。系统字号在整体缩放之外继续生效。系统Monet种子通过只读原生通道读取Android 12及以上动态强调色，无动态色时提供手动选择；不读取壁纸图像。子页面的预测性返回动画要求Android 14及以上及系统手势支持，左边缘返回仅作用于新增设置子页，不拦截学校WebView的网页手势。
 
 项目信息版本来自Android实际包信息（最终由根Manifest构建），不从Dart写死版本。`prepare_flutter.py`同步`design/branding/`下的应用图标与GitHub开发者头像到被忽略的Flutter资产目录；头像离线显示，不需要运行时网络请求。开发者显示名Muzhi、账号zhihaorao8-web，外部主页/仓库以固定HTTPS地址交给浏览器，原生通道拒绝未知链接目标，不扩大学校下载域名白名单。预览与测试需等待两张图片实际解码后检查，避免把空占位误认为成功绘制。

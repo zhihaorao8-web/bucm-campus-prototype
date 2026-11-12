@@ -8,12 +8,21 @@ plugins {
 val versionManifest = javax.xml.parsers.DocumentBuilderFactory.newInstance()
     .newDocumentBuilder().parse(file("../../../AndroidManifest.xml")).documentElement
 val isolatedParserTest = providers.gradleProperty("campusReleaseParserTest").orNull == "true"
+val isolatedMediaTest = providers.gradleProperty("campusMediaTest").orNull == "true"
+check(!(isolatedParserTest && isolatedMediaTest)) { "Choose one isolated instrumentation target." }
 
 android {
     namespace = "cn.bucm.campus_schedule"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
-    testBuildType = "release"
+    testBuildType = if (isolatedMediaTest) "debug" else "release"
+
+    sourceSets.getByName("androidTest") {
+        if (isolatedMediaTest) {
+            java.setSrcDirs(listOf("src/mediaTest/java"))
+            assets.setSrcDirs(listOf(project.layout.buildDirectory.dir("generated/synthetic-media")))
+        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -21,12 +30,19 @@ android {
     }
 
     defaultConfig {
-        applicationId = if (isolatedParserTest) "cn.bucm.campus_schedule.releasetest" else "cn.bucm.campus_schedule"
+        applicationId = when {
+            isolatedParserTest -> "cn.bucm.campus_schedule.releasetest"
+            isolatedMediaTest -> "cn.bucm.campus_schedule.mediatest"
+            else -> "cn.bucm.campus_schedule"
+        }
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        if (isolatedMediaTest) {
+            testInstrumentationRunnerArguments["class"] = "cn.bucm.campus_schedule.MediaPlaybackTest"
+        }
         // User-facing version and monotonic code always come from the root manifest.
         versionCode = versionManifest.getAttribute("android:versionCode").toInt()
         versionName = versionManifest.getAttribute("android:versionName")
@@ -53,11 +69,25 @@ dependencies {
     implementation(fileTree("libs") { include("*.jar") })
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    if (isolatedMediaTest) {
+        // integration_test contributes an older runner to debug. AGP requires
+        // consistent app/test resolution; align only this isolated target.
+        debugImplementation("androidx.test:runner:1.6.2")
+        debugImplementation("androidx.test.ext:junit:1.2.1")
+    }
 }
 
 tasks.matching { it.name == "connectedReleaseAndroidTest" }.configureEach {
     doFirst {
         check(isolatedParserTest) { "Use -PcampusReleaseParserTest=true; never run parser instrumentation over a user's installed app." }
+    }
+}
+tasks.matching { it.name == "connectedDebugAndroidTest" }.configureEach {
+    doFirst {
+        check(isolatedMediaTest) { "Use -PcampusMediaTest=true; never instrument the user's installed app." }
+        check(project.layout.buildDirectory.file("generated/synthetic-media/fixture.json").get().asFile.isFile) {
+            "Generate the local synthetic HLS fixture with scripts/check_native_media.py first."
+        }
     }
 }
 
