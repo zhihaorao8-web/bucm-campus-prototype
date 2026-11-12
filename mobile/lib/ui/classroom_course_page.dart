@@ -534,6 +534,16 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     super.dispose();
   }
 
+  Future<void> openSchoolPage() async {
+    if (tabs.isEmpty) {
+      // A failed route probe creates no WebView. An explicit user action may
+      // still open the fixed official HTTPS entry with normal TLS validation.
+      await connect(ClassroomAccess.vpn);
+    } else {
+      setState(() => authVisible = showWeb = true);
+    }
+  }
+
   Future<void> connect([
     ClassroomAccess mode = ClassroomAccess.automatic,
   ]) async {
@@ -1797,9 +1807,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                       : '尚未导入录播目录',
                   busy: busy,
                   onRetry: archive != null ? refreshRecordings : retryCurrent,
-                  onOpenSchool: tabs.isEmpty
-                      ? null
-                      : () => setState(() => authVisible = showWeb = true),
+                  onOpenSchool: openSchoolPage,
                 ),
               if (synthetic && message != null)
                 Padding(
@@ -2099,13 +2107,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                 onPressed: skipFailedImport,
                 child: const Text('保留失败项，继续其他课程'),
               ),
-            TextButton(
-              onPressed: () => setState(() {
-                authVisible = true;
-                showWeb = tabs.isNotEmpty;
-              }),
-              child: const Text('打开学校页面'),
-            ),
+            TextButton(onPressed: openSchoolPage, child: const Text('打开学校页面')),
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: const Text('停止并返回'),

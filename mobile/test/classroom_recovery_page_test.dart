@@ -79,7 +79,10 @@ class RecoveryView extends PlatformInAppWebViewWidget {
 }
 
 void main() {
-  Future<RecoveryController> open(WidgetTester tester) async {
+  Future<RecoveryController> open(
+    WidgetTester tester, {
+    ProbeState? failure,
+  }) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     ClassroomSessionCache.shared.clear();
     final controller = RecoveryController();
@@ -94,7 +97,10 @@ void main() {
           importCourses: [course],
           onDetails: (_) {},
           probe: (url) async => AccessProbe(
-            url == vpnEntry ? ProbeState.available : ProbeState.unavailable,
+            failure ??
+                (url == vpnEntry
+                    ? ProbeState.available
+                    : ProbeState.unavailable),
           ),
         ),
       ),
@@ -115,6 +121,32 @@ void main() {
       );
       await tester.pump();
     }
+  }
+
+  for (final failure in [ProbeState.unavailable, ProbeState.certificateError]) {
+    testWidgets('manual official page opens after route probe $failure', (
+      tester,
+    ) async {
+      final controller = await open(tester, failure: failure);
+      expect(controller.created, isFalse);
+      final button = find.text('打开学校页面');
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pump();
+      await tester.pump();
+      expect(controller.created, isTrue);
+      expect(
+        controller.viewParams!.initialUrlRequest!.url.toString(),
+        vpnEntry,
+      );
+      expect(
+        find.byKey(const ValueKey('recording-native-layer')),
+        findsNothing,
+      );
+      expect(find.text('合成学校页面'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
   }
 
   testWidgets('认证等待→门户超时→继续导入→后台暂停恢复→未知路径提示', (tester) async {
