@@ -24,6 +24,9 @@ final class ClassroomPlayerGroup {
     String main,small,error;
     boolean want;
     float speed=1;
+    // Freeze the initial common timeline once all initial streams are known.
+    // Closing a shorter view must not change the recording's resume identity.
+    long timelineDuration;
 
     ClassroomPlayerGroup(Activity activity,TextureRegistry textures,Map<String,String> sources,
             String watermark,DataSource.Factory dataSources) {
@@ -44,6 +47,7 @@ final class ClassroomPlayerGroup {
         if(!urls.containsKey(nextMain)||(nextSmall!=null&&(!urls.containsKey(nextSmall)||nextMain.equals(nextSmall))))
             throw new IllegalArgumentException();
         long position=master()==null?0:master().player.getCurrentPosition();
+        duration();
         main=nextMain;small=nextSmall;
         for(String kind:new ArrayList<>(streams.keySet()))if(!kind.equals(main)&&!kind.equals(small)){streams.remove(kind).close();}
         for(String kind:Arrays.asList(main,small))if(kind!=null&&!streams.containsKey(kind))streams.put(kind,new Stream(kind,position));
@@ -56,12 +60,26 @@ final class ClassroomPlayerGroup {
     Stream master(){return streams.containsKey("teacher")?streams.get("teacher"):streams.containsKey("student")?streams.get("student"):streams.get(main);}
     void pause(){want=false;activity.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);for(Stream s:streams.values())s.player.pause();}
     void seek(long ms){long end=duration();long target=Math.max(0,end>0?Math.min(ms,end):ms);for(Stream s:streams.values())s.player.seekTo(target);}
-    long duration(){long result=Long.MAX_VALUE;for(Stream s:streams.values()){long d=s.player.getDuration();if(d>0)result=Math.min(result,d);}return result==Long.MAX_VALUE?0:result;}
-    boolean ended(){for(Stream s:streams.values())if(s.player.getPlaybackState()==Player.STATE_ENDED)return true;return false;}
+    long duration(){
+        if(timelineDuration>0)return timelineDuration;
+        long result=Long.MAX_VALUE;boolean known=!streams.isEmpty();
+        for(Stream s:streams.values()){
+            long d=s.player.getDuration();known&=d>0;
+            if(d>0)result=Math.min(result,d);
+        }
+        if(known)timelineDuration=result;
+        return result==Long.MAX_VALUE?0:result;
+    }
+    boolean ended(){
+        if(timelineDuration>0&&master()!=null&&master().player.getCurrentPosition()>=timelineDuration)return true;
+        for(Stream s:streams.values())if(s.player.getPlaybackState()==Player.STATE_ENDED)return true;
+        return false;
+    }
     Map<String,Object> snapshot() {
         boolean ready=error==null&&!streams.isEmpty();
         for(Stream s:streams.values())ready&=s.player.getPlaybackState()==Player.STATE_READY;
         Stream clock=master();
+        if(want&&ended())pause();
         if(clock!=null&&ready&&want)for(Stream s:streams.values())if(s!=clock&&Math.abs(s.player.getCurrentPosition()-clock.player.getCurrentPosition())>400)s.player.seekTo(clock.player.getCurrentPosition());
         for(Stream s:streams.values())s.player.setPlayWhenReady(ready&&want);
         if(ready&&want)activity.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);

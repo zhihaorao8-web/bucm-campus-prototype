@@ -51,9 +51,12 @@ public class MediaPlaybackTest {
         }
     }
     private void create(String playlist) throws Exception {
+        create(playlist,playlist);
+    }
+    private void create(String ppt,String teacher) throws Exception {
         main(()->{
             Map<String,String> sources=new LinkedHashMap<>();
-            for(String kind:Arrays.asList("ppt","teacher","student"))sources.put(kind,playlist);
+            sources.put("ppt",ppt);sources.put("teacher",teacher);sources.put("student",teacher);
             java.lang.reflect.Method accessor=FlutterActivity.class.getDeclaredMethod("getFlutterEngine");
             accessor.setAccessible(true);
             FlutterEngine engine=(FlutterEngine)accessor.invoke(activity);
@@ -85,7 +88,7 @@ public class MediaPlaybackTest {
         JSONArray files=manifest.getJSONArray("files");assertTrue(files.length()>2);
         for(int i=0;i<files.length();i++) {
             JSONObject item=files.getJSONObject(i);String name=item.getString("file");
-            assertTrue(name.equals("index.m3u8")||name.matches("segment-\\d{3}\\.ts"));
+            assertTrue(name.equals("index.m3u8")||name.equals("short.m3u8")||name.matches("segment-\\d{3}\\.ts"));
             StringBuilder digest=new StringBuilder();
             for(byte b:MessageDigest.getInstance("SHA-256").digest(read(name)))digest.append(String.format(Locale.ROOT,"%02x",b&255));
             assertEquals(item.getString("sha256"),digest.toString());
@@ -149,5 +152,29 @@ public class MediaPlaybackTest {
         main(()->{group.play();return null;});
         await("asset failure",()->group.error!=null);
         main(()->{assertEquals("PLAYBACK",group.error);assertFalse(group.want);for(ClassroomPlayerGroup.Stream stream:group.streams.values())assertFalse(stream.player.getPlayWhenReady());return null;});
+    }
+
+    @Test public void unequalStreamDurationSurvivesLayoutAndReopen() throws Exception {
+        create("asset:///short.m3u8","asset:///index.m3u8");
+        await("unequal initial streams",this::ready);
+        long initial=main(()->{
+            long duration=group.duration();
+            assertTrue(group.streams.get("teacher").player.getDuration()-duration>10000);
+            group.seek(12000);return duration;
+        });
+        await("unequal paused seek",()->ready()&&Math.abs(group.master().player.getCurrentPosition()-12000)<500);
+        main(()->{group.layout("teacher",null);assertEquals(initial,group.duration());assertNear(12000);group.layout("student","teacher");return null;});
+        await("longer views only",this::ready);
+        main(()->{group.seek(initial-1000);group.play();return null;});
+        await("common end without short decoder",()->group.ended()&&!group.want);
+        main(()->{assertTrue(group.master().player.getCurrentPosition()<initial+1000);group.play();return null;});
+        await("restart at common end",()->ready()&&group.want&&group.master().player.getCurrentPosition()>300&&group.master().player.getCurrentPosition()<3000);
+        main(()->{group.pause();return null;});
+        main(()->{assertEquals(initial,group.duration());group.layout("ppt","teacher");return null;});
+        await("short view restored",this::ready);
+        main(()->{assertEquals(initial,group.duration());group.close();return null;});
+        create("asset:///short.m3u8","asset:///index.m3u8");
+        await("recording reopened",this::ready);
+        main(()->{assertEquals(initial,group.duration());return null;});
     }
 }

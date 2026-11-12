@@ -44,8 +44,12 @@ def generate(ffmpeg):
             raise SystemExit('Fixture playlist must reference relative synthetic TS assets only.')
         if '#EXT-X-ENDLIST' not in playlist:
             raise SystemExit('Fixture is not a finite VOD playlist.')
+        # A shorter PPT track reproduces real recordings with unequal stream lengths.
+        lines = playlist.splitlines()
+        end = lines.index(parts[-6]) - 1
+        (staging / 'short.m3u8').write_text('\n'.join(lines[:end]) + '\n#EXT-X-ENDLIST\n', encoding='utf-8')
         files = []
-        for name in ['index.m3u8', *parts]:
+        for name in ['index.m3u8', 'short.m3u8', *parts]:
             content = (staging / name).read_bytes()
             (OUTPUT / name).write_bytes(content)
             files.append({'file': name, 'sha256': hashlib.sha256(content).hexdigest()})
@@ -105,9 +109,9 @@ def main():
                     raise SystemExit('Native media case did not pass; inspect the fresh JUnit report.')
                 cases.append(case.get('name'))
     expected = {'decodePauseUnifiedSeekSpeedAndAudio', 'layoutKeepsPositionAndReleasesDroppedDecoders',
-                'missingLocalAssetReportsErrorAndStops'}
-    if set(cases) != expected or len(cases) != 3:
-        raise SystemExit('Fresh JUnit reports did not include all three native media checks.')
+                'unequalStreamDurationSurvivesLayoutAndReopen', 'missingLocalAssetReportsErrorAndStops'}
+    if set(cases) != expected or len(cases) != 4:
+        raise SystemExit('Fresh JUnit reports did not include all four native media checks.')
     if fingerprints != {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}:
         raise SystemExit('Native sources changed during the check; rerun against a stable tree.')
     summary.write_text(json.dumps({
@@ -115,7 +119,7 @@ def main():
         'seconds': round(time.time() - started, 2), 'nativeSources': fingerprints,
         'fixtureSHA256': hashlib.sha256((OUTPUT / 'fixture.json').read_bytes()).hexdigest(),
     }, indent=2) + '\n', encoding='utf-8')
-    print('Verified all 3 fresh native synthetic media checks; summary saved under build/.', flush=True)
+    print('Verified all 4 fresh native synthetic media checks; summary saved under build/.', flush=True)
 
 
 if __name__ == '__main__':
