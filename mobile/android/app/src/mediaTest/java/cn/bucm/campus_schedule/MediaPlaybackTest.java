@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.SystemClock;
 import android.view.WindowManager;
 import androidx.media3.common.Player;
+import androidx.media3.common.C;
 import androidx.media3.datasource.AssetDataSource;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -72,6 +73,7 @@ public class MediaPlaybackTest {
     private void assertSingleAudio() {
         int audible=0;
         for(ClassroomPlayerGroup.Stream stream:group.streams.values())if(stream.player.getVolume()>0)audible++;
+        for(ClassroomPlayerGroup.Stream stream:group.streams.values())assertEquals(stream!=group.master(),stream.player.getTrackSelectionParameters().disabledTrackTypes.contains(C.TRACK_TYPE_AUDIO));
         assertEquals(1,audible);
         assertEquals(1f,group.master().player.getVolume(),0);
     }
@@ -176,5 +178,17 @@ public class MediaPlaybackTest {
         create("asset:///short.m3u8","asset:///index.m3u8");
         await("recording reopened",this::ready);
         main(()->{assertEquals(initial,group.duration());return null;});
+    }
+
+    @Test public void onlyClockDecodesAudioAndFallbackRestoresIt() throws Exception {
+        create("asset:///index.m3u8");
+        await("single audio decoder",()->ready()&&group.streams.get("teacher").player.getAudioFormat()!=null&&group.streams.get("ppt").player.getAudioFormat()==null);
+        main(()->{assertSingleAudio();group.play();return null;});
+        await("audio clock advancing",()->group.master().player.getCurrentPosition()>1000);
+        long position=main(()->{group.pause();long p=group.master().player.getCurrentPosition();group.layout("ppt",null);return p;});
+        await("PPT audio fallback",()->ready()&&group.streams.get("ppt").player.getAudioFormat()!=null);
+        main(()->{assertNear(position);assertSingleAudio();group.layout("ppt","teacher");return null;});
+        await("teacher audio restored",()->ready()&&group.streams.get("teacher").player.getAudioFormat()!=null&&group.streams.get("ppt").player.getAudioFormat()==null);
+        main(()->{assertNear(position);assertSingleAudio();return null;});
     }
 }

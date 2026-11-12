@@ -53,6 +53,8 @@ final class ClassroomPlayerGroup {
         for(String kind:Arrays.asList(main,small))if(kind!=null&&!streams.containsKey(kind))streams.put(kind,new Stream(kind,position));
         for(Stream s:streams.values()) {
             boolean audible=s==master();
+            s.player.setTrackSelectionParameters(s.player.getTrackSelectionParameters().buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO,!audible).build());
             s.player.setAudioAttributes(new AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),audible);
             s.player.setVolume(audible?1:0);
         }
