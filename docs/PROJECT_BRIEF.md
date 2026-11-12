@@ -42,6 +42,8 @@
 
 ## 技术、设计和交付
 
+- 2026-11-12用户确认未来GitHub发布同时构建debug测试包与正常使用包；debug内置诊断等测试能力，release关闭诊断与测试入口，实验功能开关独立。按[双包发布规范](BUILD_VARIANTS.md)执行，不自动发布或修改历史附件。
+
 - Flutter＋Riverpod分层，根Java原型仅作基线，Android经隔离适配层复用HSSF/作息解析，不宣称其他平台或纯Dart接入已完成。构建见[FLUTTER](FLUTTER.md)，依赖及许可见[THIRD_PARTY](THIRD_PARTY.md)。
 - MIUIX、三项一级导航、悬浮玻璃栏、外观偏好、深色/大字/小屏/无障碍遵守[设计](../DESIGN.md)。合成示例显式标记且不保存为本人数据。
 - 每项功能/UI完成相应检查、更新证据后，独立提交并普通推送当前分支；不强推、不自动合并main。同步不等于发布，不重写历史标签/附件。版本由AndroidManifest读取，发布时递增code并同步CHANGELOG/验证状态。
