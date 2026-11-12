@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../platform/classroom_player.dart';
@@ -21,6 +22,10 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     with WidgetsBindingObserver {
   bool fullscreen = false;
   bool changingFullscreen = false;
+  bool controlsVisible = true, menuOpen = false;
+  bool foreground = true, accessibleNavigation = false;
+  int pointersDown = 0;
+  Timer? controlsTimer;
   double? dragging;
   String? lastSmall;
   ClassroomPlayerController get player => widget.controller;
@@ -32,17 +37,71 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     player.start();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    accessibleNavigation = MediaQuery.accessibleNavigationOf(context);
+    updateControls();
+  }
+
+  bool get canHideControls =>
+      fullscreen &&
+      foreground &&
+      !accessibleNavigation &&
+      player.state.playing &&
+      player.state.wanted &&
+      !player.state.buffering &&
+      player.state.error == null &&
+      player.failure == null &&
+      dragging == null &&
+      !menuOpen &&
+      pointersDown == 0;
+
+  void updateControls({bool interacted = false}) {
+    if (!mounted) return;
+    if (interacted || !canHideControls) {
+      controlsTimer?.cancel();
+      controlsTimer = null;
+      if (!controlsVisible) setState(() => controlsVisible = true);
+    }
+    // Periodic native position updates must not restart the idle deadline.
+    if (canHideControls && controlsVisible && controlsTimer == null) {
+      controlsTimer = Timer(const Duration(seconds: 3), () {
+        controlsTimer = null;
+        if (mounted && canHideControls) {
+          setState(() => controlsVisible = false);
+        }
+      });
+    }
+  }
+
+  void setMenuOpen(bool value) {
+    menuOpen = value;
+    updateControls(interacted: true);
+  }
+
+  void endPointer() {
+    if (pointersDown > 0) pointersDown--;
+    updateControls(interacted: true);
+  }
+
   void changed() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+      updateControls();
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    foreground = state == AppLifecycleState.resumed;
+    updateControls();
     if (state != AppLifecycleState.resumed) unawaited(player.command('pause'));
   }
 
   @override
   void dispose() {
+    controlsTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     player.removeListener(changed);
     player.dispose();
@@ -60,6 +119,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     changingFullscreen = true;
     final next = !fullscreen;
     setState(() => fullscreen = next);
+    updateControls(interacted: true);
     try {
       if (next) {
         await SystemChrome.setPreferredOrientations([
@@ -79,6 +139,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
       if (mounted) setState(() => fullscreen = !next);
     } finally {
       changingFullscreen = false;
+      updateControls();
     }
   }
 
@@ -130,7 +191,19 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     final state = player.state;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = (constraints.maxWidth * .34).clamp(96.0, 200.0);
+        final maximum = math.max(
+          0.0,
+          math.min(
+            200.0,
+            math.min(
+              constraints.maxWidth - 24,
+              (constraints.maxHeight - 24) * 16 / 9,
+            ),
+          ),
+        );
+        final width = (constraints.maxWidth * .34)
+            .clamp(math.min(96.0, maximum), maximum)
+            .toDouble();
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -138,7 +211,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
               label: '${classroomViewName(state.main)}主画面',
               child: picture(state.main),
             ),
-            if (state.small != null)
+            if (state.small != null && width >= 48)
               Positioned(
                 right: 12,
                 bottom: 12,
@@ -225,7 +298,10 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     final state = player.state;
     return PopupMenuButton<String>(
       tooltip: small ? '选择小窗画面' : '选择主画面',
+      onOpened: () => setMenuOpen(true),
+      onCanceled: () => setMenuOpen(false),
       onSelected: (kind) {
+        setMenuOpen(false);
         if (small) {
           if (kind == state.main) {
             if (state.small != null) layout(state.small!, state.main);
@@ -280,10 +356,20 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
           ),
           max: state.duration > 0 ? state.duration.toDouble() : 1,
           onChanged: state.duration > 0 && error == null
-              ? (value) => setState(() => dragging = value)
+              ? (value) {
+                  setState(() => dragging = value);
+                  updateControls(interacted: true);
+                }
+              : null,
+          onChangeStart: state.duration > 0 && error == null
+              ? (value) {
+                  setState(() => dragging = value);
+                  updateControls(interacted: true);
+                }
               : null,
           onChangeEnd: (value) {
             setState(() => dragging = null);
+            updateControls(interacted: true);
             unawaited(player.command('seek', {'position': value.toInt()}));
           },
         ),
@@ -309,8 +395,12 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
               PopupMenuButton<double>(
                 tooltip: '播放速度',
                 initialValue: state.speed,
-                onSelected: (speed) =>
-                    player.command('speed', {'speed': speed}),
+                onOpened: () => setMenuOpen(true),
+                onCanceled: () => setMenuOpen(false),
+                onSelected: (speed) {
+                  setMenuOpen(false);
+                  player.command('speed', {'speed': speed});
+                },
                 itemBuilder: (_) => [
                   for (final speed in [.75, 1.0, 1.25, 1.5, 2.0])
                     PopupMenuItem(value: speed, child: Text('$speed×')),
@@ -390,23 +480,43 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     child: Scaffold(
       appBar: fullscreen ? null : AppBar(title: Text(widget.title)),
       body: SafeArea(
-        child: fullscreen
-            ? Column(
-                children: [
-                  Expanded(child: viewport()),
-                  controls(),
-                ],
-              )
-            : ListView(
-                children: [
-                  AspectRatio(aspectRatio: 16 / 9, child: viewport()),
-                  controls(),
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('点按小窗可交换主画面。学校观看记录尚未接入，本地播放不代表学校记录已更新。'),
-                  ),
-                ],
-              ),
+        child: Listener(
+          onPointerDown: (_) {
+            pointersDown++;
+            updateControls(interacted: true);
+          },
+          onPointerUp: (_) => endPointer(),
+          onPointerCancel: (_) => endPointer(),
+          child: fullscreen
+              ? Column(
+                  children: [
+                    Expanded(
+                      child: Semantics(
+                        label: '轻点显示播放控制',
+                        button: true,
+                        onTap: () => updateControls(interacted: true),
+                        child: GestureDetector(
+                          key: const ValueKey('fullscreen-playback-surface'),
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => updateControls(interacted: true),
+                          child: viewport(),
+                        ),
+                      ),
+                    ),
+                    if (controlsVisible) controls(),
+                  ],
+                )
+              : ListView(
+                  children: [
+                    AspectRatio(aspectRatio: 16 / 9, child: viewport()),
+                    controls(),
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('点按小窗可交换主画面。学校观看记录尚未接入，本地播放不代表学校记录已更新。'),
+                    ),
+                  ],
+                ),
+        ),
       ),
     ),
   );
