@@ -82,13 +82,19 @@ final class ClassroomPlayerGroup {
         for(Stream s:streams.values())ready&=s.player.getPlaybackState()==Player.STATE_READY;
         Stream clock=master();
         if(want&&ended())pause();
-        if(clock!=null&&ready&&want)for(Stream s:streams.values())if(s!=clock&&Math.abs(s.player.getCurrentPosition()-clock.player.getCurrentPosition())>400)s.player.seekTo(clock.player.getCurrentPosition());
-        for(Stream s:streams.values())s.player.setPlayWhenReady(ready&&want);
-        if(ready&&want)activity.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        boolean advancing=clock!=null&&ready&&want&&clock.player.getPlaybackSuppressionReason()==Player.PLAYBACK_SUPPRESSION_REASON_NONE;
+        if(advancing)for(Stream s:streams.values())if(s!=clock&&Math.abs(s.player.getCurrentPosition()-clock.player.getCurrentPosition())>400)s.player.seekTo(clock.player.getCurrentPosition());
+        for(Stream s:streams.values()){
+            boolean next=s==clock?ready&&want:advancing;
+            // Reissuing true would request audio focus again during suppression.
+            if(s.player.getPlayWhenReady()!=next)s.player.setPlayWhenReady(next);
+        }
+        boolean playing=advancing&&clock.player.isPlaying();
+        if(playing)activity.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         else activity.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         Map<String,Object> result=new HashMap<>();
         result.put("session",id);result.put("main",main);result.put("small",small);result.put("available",new ArrayList<>(urls.keySet()));
-        result.put("playing",ready&&want);result.put("wanted",want);result.put("buffering",!ready&&error==null&&!ended());
+        result.put("playing",playing);result.put("wanted",want);result.put("buffering",!ready&&error==null&&!ended());
         result.put("position",clock==null?0:clock.player.getCurrentPosition());result.put("duration",duration());result.put("speed",(double)speed);
         result.put("watermark",watermark);result.put("error",error);
         List<Map<String,Object>> values=new ArrayList<>();

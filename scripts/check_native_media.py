@@ -110,9 +110,9 @@ def main():
                 cases.append(case.get('name'))
     expected = {'decodePauseUnifiedSeekSpeedAndAudio', 'layoutKeepsPositionAndReleasesDroppedDecoders',
                 'unequalStreamDurationSurvivesLayoutAndReopen', 'missingLocalAssetReportsErrorAndStops',
-                'onlyClockDecodesAudioAndFallbackRestoresIt'}
-    if set(cases) != expected or len(cases) != 5:
-        raise SystemExit('Fresh JUnit reports did not include all five native media checks.')
+                'onlyClockDecodesAudioAndFallbackRestoresIt', 'transientFocusStopsBothViewsAndExplicitPausePreventsResume'}
+    if set(cases) != expected or len(cases) != 6:
+        raise SystemExit('Fresh JUnit reports did not include all six native media checks.')
     if fingerprints != {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}:
         raise SystemExit('Native sources changed during the check; rerun against a stable tree.')
     summary.write_text(json.dumps({
@@ -120,7 +120,7 @@ def main():
         'seconds': round(time.time() - started, 2), 'nativeSources': fingerprints,
         'fixtureSHA256': hashlib.sha256((OUTPUT / 'fixture.json').read_bytes()).hexdigest(),
     }, indent=2) + '\n', encoding='utf-8')
-    print('Verified all 5 fresh native synthetic media checks; summary saved under build/.', flush=True)
+    print('Verified all 6 fresh native synthetic media checks; summary saved under build/.', flush=True)
 
 
 if __name__ == '__main__':

@@ -2,6 +2,8 @@ package cn.bucm.campus_schedule;
 
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioManager;
+import android.media.AudioFocusRequest;
 import android.os.SystemClock;
 import android.view.WindowManager;
 import androidx.media3.common.Player;
@@ -190,5 +192,28 @@ public class MediaPlaybackTest {
         main(()->{assertNear(position);assertSingleAudio();group.layout("ppt","teacher");return null;});
         await("teacher audio restored",()->ready()&&group.streams.get("teacher").player.getAudioFormat()!=null&&group.streams.get("ppt").player.getAudioFormat()==null);
         main(()->{assertNear(position);assertSingleAudio();return null;});
+    }
+
+    @Test public void transientFocusStopsBothViewsAndExplicitPausePreventsResume() throws Exception {
+        create("asset:///index.m3u8");await("focus ready",this::ready);
+        AudioManager audio=(AudioManager)activity.getSystemService(Context.AUDIO_SERVICE);
+        AudioFocusRequest request=new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                .setAudioAttributes(new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_MEDIA).build())
+                .setOnAudioFocusChangeListener(change->{},new android.os.Handler(android.os.Looper.getMainLooper())).build();
+        try {
+            main(()->{group.play();return null;});
+            await("focus playing",()->group.master().player.isPlaying()&&group.master().player.getCurrentPosition()>1000);
+            main(()->{assertEquals(AudioManager.AUDIOFOCUS_REQUEST_GRANTED,audio.requestAudioFocus(request));return null;});
+            await("focus suppressed",()->group.master().player.getPlaybackSuppressionReason()!=Player.PLAYBACK_SUPPRESSION_REASON_NONE);
+            long stopped=main(()->{assertFalse((Boolean)group.snapshot().get("playing"));assertTrue(group.want);assertFalse(group.streams.get("ppt").player.getPlayWhenReady());return group.master().player.getCurrentPosition();});
+            SystemClock.sleep(700);
+            main(()->{assertNear(stopped);audio.abandonAudioFocusRequest(request);return null;});
+            await("focus regained",()->group.master().player.isPlaying()&&group.streams.get("ppt").player.isPlaying());
+            main(()->{assertEquals(AudioManager.AUDIOFOCUS_REQUEST_GRANTED,audio.requestAudioFocus(request));return null;});
+            await("second interruption",()->group.master().player.getPlaybackSuppressionReason()!=Player.PLAYBACK_SUPPRESSION_REASON_NONE);
+            main(()->{group.pause();audio.abandonAudioFocusRequest(request);return null;});
+            SystemClock.sleep(700);
+            main(()->{assertFalse(group.want);assertFalse((Boolean)group.snapshot().get("playing"));for(ClassroomPlayerGroup.Stream stream:group.streams.values())assertFalse(stream.player.getPlayWhenReady());return null;});
+        } finally {main(()->{audio.abandonAudioFocusRequest(request);return null;});}
     }
 }
