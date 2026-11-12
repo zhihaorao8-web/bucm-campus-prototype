@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../application/classroom_import_progress.dart';
+import '../application/classroom_connection_status.dart';
 import '../data/classroom_links.dart';
 import '../data/classroom_library.dart';
 import '../domain/classroom.dart';
@@ -15,6 +16,7 @@ import '../platform/classroom_policy.dart';
 import '../platform/classroom_player.dart';
 import '../platform/classroom_session_cache.dart';
 import 'classroom_player_page.dart';
+import 'classroom_connection_card.dart';
 import 'classroom_recording_timeline.dart';
 import 'course_widgets.dart' show showCourseInformation;
 
@@ -51,6 +53,7 @@ class ClassroomCoursePage extends StatefulWidget {
     this.probe,
     this.library,
     this.importCourses,
+    this.onImportResult,
   });
   final Course course;
   final DateTime? date;
@@ -59,6 +62,7 @@ class ClassroomCoursePage extends StatefulWidget {
   final ProbeEndpoint? probe;
   final ClassroomLibrary? library;
   final List<Course>? importCourses;
+  final ValueChanged<ClassroomConnectionStatus>? onImportResult;
   @override
   State<ClassroomCoursePage> createState() => _ClassroomCoursePageState();
 }
@@ -83,6 +87,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       loading = false,
       rememberedAttempted = false;
   String? entry, message, source;
+  ClassroomConnectionPhase connectionPhase = ClassroomConnectionPhase.idle;
+  ClassroomConnectionStatus get connectionStatus =>
+      ClassroomConnectionStatus(connectionPhase, message);
   String? entrySource;
   bool automaticEntry = true, automaticPath = false;
   Timer? poll;
@@ -245,6 +252,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       needsCatalog = true;
       busy = true;
       loading = false;
+      connectionPhase = ClassroomConnectionPhase.reading;
       showWeb = true;
       tabs.add(_SchoolTab(purpose: _Purpose.browse, retained: workspace.view));
       message = '正在读取学校课程目录…';
@@ -263,6 +271,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         recordings = archive!.pages.first;
         selected = recordings!.course;
         busy = showWeb = false;
+        connectionPhase = ClassroomConnectionPhase.updated;
+        message = null;
       });
       return;
     }
@@ -274,6 +284,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         busy = false;
         showWeb = false;
         message = null;
+        connectionPhase = ClassroomConnectionPhase.updated;
       });
       poll?.cancel();
       return;
@@ -328,6 +339,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         setState(() {
           fetchedAt = null;
           busy = false;
+          connectionPhase = ClassroomConnectionPhase.failed;
           message = '本门课程未能完整导入，已完成的课程保留。可重试当前课程。';
           if (bulk) {
             importProgress.update(
@@ -391,12 +403,31 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   }
 
   Future<void> refreshRecordings() async {
+    final revision = library.revision;
+    bool discardClearedDirectory() {
+      if (revision == library.revision) return false;
+      setState(() {
+        clearTabs();
+        active = recordTab = catalogTab = 0;
+        archive = null;
+        recordings = null;
+        selected = null;
+        catalog = null;
+        fetchedAt = null;
+        showWeb = busy = false;
+        connectionPhase = ClassroomConnectionPhase.paused;
+        message = '学校会话或目录已清除，请重新连接并导入。';
+      });
+      return true;
+    }
+
     queuedPlayback = null;
     queuedCourseId = null;
     if (archive == null) {
       await changePage(recordings!.page);
       return;
     }
+    ClassroomConnectionStatus? outcome;
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => ClassroomCoursePage(
@@ -405,23 +436,62 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           importCourses: [localCourse],
           library: library,
           links: links,
+          probe: widget.probe,
+          onImportResult: (value) => outcome = value,
         ),
       ),
     );
     if (!mounted) return;
+    if (discardClearedDirectory()) return;
     setState(() {
       clearTabs();
       active = recordTab = catalogTab = 0;
-      archive = null;
-      recordings = null;
-      selected = null;
       fetchedAt = null;
       restored = false;
-      busy = true;
+      busy = false;
       showWeb = false;
       cacheRevision = cache.revision;
+      connectionPhase = outcome?.phase ?? ClassroomConnectionPhase.paused;
+      message = outcome?.detail;
     });
-    await loadArchive();
+    // Keep the readable old archive if the task was cancelled or re-reading
+    // storage fails. The route owns its WebView; no new connection is implied.
+    try {
+      final saved = await library.lookup(localCourse);
+      if (!mounted) return;
+      if (discardClearedDirectory()) return;
+      if (saved != null) {
+        setState(() {
+          archive = saved;
+          recordings = saved.pages.first;
+          selected = recordings!.course;
+        });
+      }
+    } catch (_) {
+      if (!mounted || discardClearedDirectory()) return;
+      if (mounted) {
+        setState(() {
+          connectionPhase = ClassroomConnectionPhase.failed;
+          message = '未能重新读取目录，继续显示此前的本地列表。';
+        });
+      }
+    }
+  }
+
+  void reportImportResult() {
+    if (bulk) {
+      widget.onImportResult?.call(
+        importProgress.count(ImportTaskStatus.completed) ==
+                importProgress.items.length
+            ? const ClassroomConnectionStatus(ClassroomConnectionPhase.updated)
+            : connectionStatus.needsRecovery
+            ? connectionStatus
+            : const ClassroomConnectionStatus(
+                ClassroomConnectionPhase.paused,
+                '导入未完成，已导入目录保留。',
+              ),
+      );
+    }
   }
 
   @override
@@ -511,6 +581,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     poll?.cancel();
     setState(() {
       busy = true;
+      connectionPhase = ClassroomConnectionPhase.connecting;
       message = '正在检查学校服务访问路径…';
     });
     final decision = mode == ClassroomAccess.automatic
@@ -528,7 +599,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           : archive?.sourcePage(queuedCourseId ?? '', queuedPlayback!.id);
       selected = null;
       rememberedAttempted = false;
-      active = 0;
+      active = recordTab = catalogTab = 0;
       busy = false;
       automaticPath =
           mode == ClassroomAccess.automatic &&
@@ -576,6 +647,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       tab.routed = false;
       showWeb = true;
       busy = false;
+      connectionPhase = ClassroomConnectionPhase.authentication;
       message = '请在学校官方页面完成认证；登录成功后将继续自动获取录播。';
     });
     readProgress.advance(ClassroomReadStage.authentication);
@@ -682,6 +754,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       authVisible = true;
       showWeb = true;
       busy = false;
+      connectionPhase = ClassroomConnectionPhase.failed;
       message = readProgress.timeoutMessage;
       if (bulk) {
         importProgress.update(importIndex, ImportTaskStatus.failed, message);
@@ -708,6 +781,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       readProgress.reset();
       setState(() {
         busy = true;
+        connectionPhase = ClassroomConnectionPhase.connecting;
         message = '正在重新加载学校页面…';
       });
       try {
@@ -716,6 +790,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         if (mounted) {
           setState(() {
             busy = false;
+            connectionPhase = ClassroomConnectionPhase.failed;
             message = '页面重新加载未完成，请重新连接学校入口。';
           });
         }
@@ -731,6 +806,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     setState(() {
       authVisible = showWeb = true;
       busy = true;
+      connectionPhase = ClassroomConnectionPhase.reading;
       message = '正在识别当前学校页面并继续导入…';
     });
     try {
@@ -753,6 +829,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       if (mounted && ticket == generation) {
         setState(() {
           busy = false;
+          connectionPhase = ClassroomConnectionPhase.failed;
           message = '当前学校页面未能读取，请重新加载页面后点击继续导入。';
         });
       }
@@ -800,6 +877,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         );
         authVisible = showWeb = true;
         busy = loading = true;
+        connectionPhase = ClassroomConnectionPhase.platform;
         message = '学校首页加载未完成，正在通过专用课程入口继续导入…';
       });
     } else {
@@ -808,6 +886,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       setState(() {
         authVisible = showWeb = true;
         busy = loading = false;
+        connectionPhase = ClassroomConnectionPhase.failed;
         message = '学校页面加载超时。点击继续导入可重新加载，已完成的导入保留。';
       });
     }
@@ -825,6 +904,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     setState(() {
       busy = false;
       authVisible = showWeb = true;
+      connectionPhase = ClassroomConnectionPhase.unavailable;
       message = '学校服务暂时无法连接。可稍后点击继续导入重新加载，或返回学校入口检查；已导入内容保留。';
       if (bulk) {
         importProgress.update(importIndex, ImportTaskStatus.failed, message);
@@ -867,6 +947,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         }
         setState(() {
           busy = false;
+          connectionPhase = data['state'] == 'forbidden'
+              ? ClassroomConnectionPhase.forbidden
+              : ClassroomConnectionPhase.failed;
           message = data['state'] == 'forbidden'
               ? '学校提示当前账号没有查看权限。'
               : '学校请求失败，请检查官方页面或稍后重试。';
@@ -899,6 +982,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           catalogTab = tabs.indexOf(tab);
           showWeb = false;
           busy = false;
+          connectionPhase = ClassroomConnectionPhase.reading;
           final sameNames = courses
               .where((course) => course.matches(localCourse))
               .length;
@@ -933,6 +1017,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           setState(() {
             queuedPlayback = null;
             busy = false;
+            connectionPhase = ClassroomConnectionPhase.forbidden;
             message = '原回放所属的同名课程已不可访问，请刷新回放目录后重试。';
           });
         }
@@ -969,6 +1054,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           recordTab = tabs.indexOf(tab);
           showWeb = false;
           busy = collecting;
+          connectionPhase = collecting
+              ? ClassroomConnectionPhase.reading
+              : ClassroomConnectionPhase.updated;
           message = null;
         });
         if (collecting) {
@@ -1024,6 +1112,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           setState(() {
             busy = false;
             authVisible = showWeb = true;
+            connectionPhase = ClassroomConnectionPhase.failed;
             message = state == 'untrusted'
                 ? '当前页面不属于已支持的学校入口路径。请在官方页面进入教学平台后点击继续导入。'
                 : '平台入口跳转未通过校验。请在官方页面手动进入，或切换学校 WebVPN 后继续导入。';
@@ -1034,6 +1123,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
             ? ClassroomReadStage.platform
             : ClassroomReadStage.portal;
         if (!allowRead(stage)) return;
+        connectionPhase = stage == ClassroomReadStage.portal
+            ? ClassroomConnectionPhase.portal
+            : ClassroomConnectionPhase.platform;
         if (state == 'opening') {
           setState(() {
             busy = true;
@@ -1061,6 +1153,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         freshReadPending = false;
         setState(() {
           busy = false;
+          connectionPhase = ClassroomConnectionPhase.failed;
           message = '学校页面结构暂不支持读取，请在官方页面检查登录、权限及当前学期后重试。';
           if (bulk) {
             importProgress.update(
@@ -1213,6 +1306,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     tab.purpose = _Purpose.playback;
     setState(() {
       busy = true;
+      connectionPhase = ClassroomConnectionPhase.media;
       message = '正在准备课堂视频…';
     });
     try {
@@ -1235,6 +1329,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       setState(() {
         busy = false;
         showWeb = false;
+        connectionPhase = ClassroomConnectionPhase.idle;
         message = null;
       });
       handedToPlayer = true;
@@ -1269,6 +1364,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
               };
         setState(() {
           busy = false;
+          connectionPhase = ClassroomConnectionPhase.failed;
           message = detail;
         });
       }
@@ -1301,6 +1397,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   }
 
   Future<void> closeWeb() async {
+    generation++;
     automaticEntry = false;
     automaticPath = false;
     poll?.cancel();
@@ -1319,8 +1416,12 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       }
       if (!mounted) return;
     }
+    if (recordings == null && archive != null) {
+      recordings = archive!.pages.first;
+      selected = recordings!.course;
+    }
     if (recordings != null) {
-      trimTabs(recordTab + 1);
+      trimTabs((recordTab + 1).clamp(0, tabs.length));
       active = recordTab;
     } else {
       clearTabs();
@@ -1331,7 +1432,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     setState(() {
       showWeb = false;
       busy = false;
-      message = null;
+      if (!connectionStatus.needsRecovery) {
+        connectionPhase = ClassroomConnectionPhase.paused;
+        message = '已返回课程，可继续查看本地目录。';
+      }
     });
   }
 
@@ -1499,6 +1603,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                             setState(() {
                               loading = false;
                               busy = false;
+                              connectionPhase = ClassroomConnectionPhase.failed;
                               message = '已阻止非学校或非 HTTPS 跳转，请切换学校 WebVPN。';
                             });
                           }
@@ -1571,6 +1676,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                             setState(() {
                               loading = false;
                               busy = false;
+                              connectionPhase = ClassroomConnectionPhase.failed;
                               message = '学校连接证书校验失败，已停止加载。';
                             });
                           }
@@ -1605,6 +1711,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                             setState(() {
                               loading = false;
                               busy = false;
+                              connectionPhase = ClassroomConnectionPhase.failed;
                               message = '学校页面未能加载，请检查网络或切换 WebVPN。';
                             });
                           }
@@ -1700,8 +1807,21 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                 ),
               )
             else ...[
-              if (busy) const LinearProgressIndicator(),
-              if (message != null)
+              if (!synthetic)
+                ClassroomConnectionCard(
+                  status: connectionStatus,
+                  directoryLabel: archive != null
+                      ? '已导入的录播列表 · 更新于 ${schoolTimestamp(archive!.importedAt)} · 可刷新'
+                      : recordings != null
+                      ? '本次读取的录播列表 · 尚未保存完整目录'
+                      : '尚未导入录播目录',
+                  busy: busy,
+                  onRetry: archive != null ? refreshRecordings : retryCurrent,
+                  onOpenSchool: tabs.isEmpty
+                      ? null
+                      : () => setState(() => authVisible = showWeb = true),
+                ),
+              if (synthetic && message != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(message!),
@@ -1716,7 +1836,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                     onPressed: retryCurrent,
                     child: const Text('继续导入'),
                   ),
-              ] else if (recordings != null) ...[
+              ],
+              if (!synthetic && recordings != null) ...[
                 if (archive != null)
                   Text(
                     archive!.nameMatched
@@ -1735,14 +1856,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                         ? '已标记 ${shortDate(widget.date!)} 的授课记录'
                         : '本页没有 ${shortDate(widget.date!)} 的录播，可查看其他记录或翻页。',
                   ),
-                Text(
-                  archive != null
-                      ? '已导入的录播列表 · 更新于 ${schoolTimestamp(archive!.importedAt)} · 可刷新'
-                      : restored
-                      ? '已使用缓存 · 可刷新'
-                      : '已更新列表 · 可刷新',
-                ),
-                Row(
+                Wrap(
                   children: [
                     TextButton(
                       onPressed: busy ? null : refreshRecordings,
@@ -1848,7 +1962,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                         },
                   child: const Text('返回官方页面切换学期'),
                 ),
-              ] else
+              ] else if (!synthetic)
                 MiuixButton(
                   onPressed: busy ? null : () => connect(),
                   child: const Text('重新获取学校录播'),
@@ -2026,6 +2140,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   Widget build(BuildContext context) => PopScope(
     canPop: !browserVisible,
     onPopInvokedWithResult: (didPop, _) {
+      if (didPop) reportImportResult();
       if (!didPop) unawaited(webBack());
     },
     child: Stack(
