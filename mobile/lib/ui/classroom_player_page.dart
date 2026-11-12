@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../platform/classroom_player.dart';
+import 'classroom_small_window.dart';
 
 /// Original MIUIX-aligned controls. Interaction reference: fluttercommunity/chewie
 /// (MIT), https://github.com/fluttercommunity/chewie. No upstream code copied.
@@ -28,6 +29,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
   Timer? controlsTimer;
   double? dragging;
   String? lastSmall;
+  final smallPlacement = ClassroomSmallWindowPlacement();
   ClassroomPlayerController get player => widget.controller;
   @override
   void initState() {
@@ -191,19 +193,23 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     final state = player.state;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maximum = math.max(
-          0.0,
-          math.min(
-            200.0,
-            math.min(
-              constraints.maxWidth - 24,
-              (constraints.maxHeight - 24) * 16 / 9,
+        var reservedTop = 12.0;
+        if (state.watermark.isNotEmpty) {
+          final painter = TextPainter(
+            text: TextSpan(
+              text: state.watermark,
+              style: DefaultTextStyle.of(
+                context,
+              ).style.merge(const TextStyle(fontSize: 12)),
             ),
-          ),
-        );
-        final width = (constraints.maxWidth * .34)
-            .clamp(math.min(96.0, maximum), maximum)
-            .toDouble();
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+            maxLines: 4,
+            ellipsis: '…',
+          )..layout(maxWidth: math.max(0, constraints.maxWidth - 32));
+          reservedTop = 12 + painter.height + 8;
+          painter.dispose();
+        }
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -211,60 +217,16 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
               label: '${classroomViewName(state.main)}主画面',
               child: picture(state.main),
             ),
-            if (state.small != null && width >= 48)
-              Positioned(
-                right: 12,
-                bottom: 12,
-                width: width,
-                height: width * 9 / 16,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white54, width: 2),
-                    ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Semantics(
-                          button: true,
-                          label: '${classroomViewName(state.small!)}小窗，点击交换主画面',
-                          child: InkWell(
-                            onTap: () => layout(state.small!, state.main),
-                            child: picture(state.small!),
-                          ),
-                        ),
-                        Positioned(
-                          left: 6,
-                          top: 4,
-                          child: IgnorePointer(
-                            child: Text(
-                              classroomViewName(state.small!),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                backgroundColor: Colors.black54,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: IconButton(
-                            tooltip: '关闭小窗',
-                            onPressed: closeSmall,
-                            color: Colors.white,
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.black54,
-                            ),
-                            icon: const Icon(Icons.close, size: 18),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+            if (state.small != null)
+              ClassroomSmallWindow(
+                placement: smallPlacement,
+                viewport: constraints.biggest,
+                reservedTop: reservedTop,
+                label: classroomViewName(state.small!),
+                picture: picture(state.small!),
+                onSwap: () => layout(state.small!, state.main),
+                onClose: closeSmall,
+                onInteraction: () => updateControls(interacted: true),
               ),
             if (state.watermark.isNotEmpty)
               Positioned(
@@ -512,7 +474,9 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                     controls(),
                     const Padding(
                       padding: EdgeInsets.all(16),
-                      child: Text('点按小窗可交换主画面。学校观看记录尚未接入，本地播放不代表学校记录已更新。'),
+                      child: Text(
+                        '单指拖动、双指缩放小窗，点按可交换主画面。学校观看记录尚未接入，本地播放不代表学校记录已更新。',
+                      ),
                     ),
                   ],
                 ),
