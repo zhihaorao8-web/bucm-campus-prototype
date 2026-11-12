@@ -32,6 +32,7 @@ public class MainActivity extends FlutterActivity {
                         data.put("version",info.versionName);
                         data.put("build",android.os.Build.VERSION.SDK_INT>=28?info.getLongVersionCode():info.versionCode);
                         data.put("sdk",android.os.Build.VERSION.SDK_INT);
+                        data.put("source",getString(R.string.build_source_identity));
                         if(android.os.Build.VERSION.SDK_INT>=31)
                             data.put("accent",((long)getResources().getColor(android.R.color.system_accent1_500,getTheme()))&0xffffffffL);
                         reply.success(data);

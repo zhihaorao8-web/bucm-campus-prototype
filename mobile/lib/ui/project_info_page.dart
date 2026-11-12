@@ -102,6 +102,19 @@ class ProjectInfoPage extends ConsumerWidget {
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 8),
+              if (info.asData case final data?)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    '${data.value.buildType}\n${data.value.sourceLabel}',
+                    key: const ValueKey('project-build-identity'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: colors.onSurfaceVariant),
+                  ),
+                ),
               info.when(
                 data: (value) => Text(
                   '版本 ${value.version} (${value.build})',

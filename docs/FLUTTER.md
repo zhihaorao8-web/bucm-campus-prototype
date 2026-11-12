@@ -22,6 +22,8 @@ mobile/android/      Android宿主与过渡XLS适配器
 
 ## 配置与构建
 
+Android构建自动从本地Git读取HEAD与工作区状态，写入只读资源供项目信息显示；不需要手工传入SHA。干净工作区对应精确提交，存在未提交/未跟踪文件时显示“含未提交修改”，无Git归档构建显示未知。构建类型由Flutter实际模式确定，版本仍读取安装包。准备验收/发布包时先提交源码再构建；含未提交修改的包不能仅凭其HEAD声称源码完全一致。
+
 已使用Flutter 3.47.9、Dart 3.13.7准备工程；实际依赖见`mobile/pubspec.lock`。Android宿主使用Gradle 9.5.0、AGP 8.11.1、Kotlin 2.3.21、JDK 17+（本机Android Studio JBR 25）；插件运行要求Android 8以上。稳定版WebView插件尚不兼容AGP9，暂固定此兼容组合；Flutter会提示未来升级AGP，目前未绕过版本检查。Gradle分发SHA-256已固定。Maven镜像只用于公开构建依赖，与学校请求无关。
 
 首次需要Flutter SDK、Android SDK与联网获取公开依赖：

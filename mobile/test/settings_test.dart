@@ -30,6 +30,16 @@ Future<void> reveal(WidgetTester tester, Finder target) async {
 }
 
 void main() {
+  test('build identity distinguishes unknown, clean and modified sources', () {
+    expect(const AppPlatformInfo().sourceLabel, '源码未知');
+    expect(const AppPlatformInfo(source: 'untrusted text').sourceLabel, '源码未知');
+    const sha = '0123456789abcdef0123456789abcdef01234567';
+    expect(const AppPlatformInfo(source: sha).sourceLabel, '源码 01234567');
+    expect(
+      const AppPlatformInfo(source: '$sha-modified').sourceLabel,
+      '源码 01234567 · 含未提交修改',
+    );
+  });
   testWidgets(
     'settings removes old modules and preserves separate session/course confirmation',
     (tester) async {
@@ -173,6 +183,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('合成应用名称'), findsOneWidget);
       expect(find.text('版本 9.9-test (99)'), findsOneWidget);
+      expect(find.text('调试构建\n源码未知'), findsOneWidget);
       final icon = find.byKey(const ValueKey('project-app-icon'));
       await tester.runAsync(
         () => precacheImage(

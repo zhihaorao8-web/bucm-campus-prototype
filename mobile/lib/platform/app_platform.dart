@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AppPlatformInfo {
@@ -8,10 +9,21 @@ class AppPlatformInfo {
     this.build = '',
     this.sdk = 0,
     this.systemAccent,
+    this.source = '',
   });
   final String name, version, build;
   final int sdk;
   final int? systemAccent;
+  final String source;
+  String get buildType => kReleaseMode
+      ? '发布构建'
+      : kProfileMode
+      ? '性能构建'
+      : '调试构建';
+  String get sourceLabel {
+    if (!RegExp(r'^[0-9a-f]{40}(-modified)?$').hasMatch(source)) return '源码未知';
+    return '源码 ${source.substring(0, 8)}${source.endsWith('-modified') ? ' · 含未提交修改' : ''}';
+  }
 }
 
 const appChannel = MethodChannel('cn.bucm.campus/app');
@@ -24,6 +36,7 @@ final appInfoProvider = FutureProvider<AppPlatformInfo>((ref) async {
     build: '${map['build']}',
     sdk: map['sdk'] as int,
     systemAccent: map['accent'] as int?,
+    source: map['source'] as String? ?? '',
   );
 });
 Future<void> openProjectLink(String target) =>

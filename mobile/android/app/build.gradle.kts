@@ -7,6 +7,16 @@ plugins {
 
 val versionManifest = javax.xml.parsers.DocumentBuilderFactory.newInstance()
     .newDocumentBuilder().parse(file("../../../AndroidManifest.xml")).documentElement
+// Only public Git identity is embedded; no paths, remotes or device metadata.
+val sourceIdentity = try {
+    fun git(vararg args: String): String = providers.exec {
+        workingDir(rootProject.projectDir.resolve("../.."))
+        commandLine("git", *args)
+    }.standardOutput.asText.get().trim()
+    val sha = git("rev-parse", "HEAD")
+    if (!sha.matches(Regex("[0-9a-f]{40}"))) "unknown"
+    else sha + if (git("status", "--porcelain").isNotEmpty()) "-modified" else ""
+} catch (_: Exception) { "unknown" }
 val isolatedParserTest = providers.gradleProperty("campusReleaseParserTest").orNull == "true"
 val isolatedMediaTest = providers.gradleProperty("campusMediaTest").orNull == "true"
 check(!(isolatedParserTest && isolatedMediaTest)) { "Choose one isolated instrumentation target." }
@@ -30,6 +40,7 @@ android {
     }
 
     defaultConfig {
+        resValue("string", "build_source_identity", sourceIdentity)
         applicationId = when {
             isolatedParserTest -> "cn.bucm.campus_schedule.releasetest"
             isolatedMediaTest -> "cn.bucm.campus_schedule.mediatest"
