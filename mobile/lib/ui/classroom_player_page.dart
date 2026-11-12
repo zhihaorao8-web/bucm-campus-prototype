@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../platform/classroom_player.dart';
+import '../data/classroom_playback_progress.dart';
+import '../application/classroom_playback_progress_session.dart';
 import 'classroom_small_window.dart';
 
 /// Original MIUIX-aligned controls. Interaction reference: fluttercommunity/chewie
@@ -12,9 +14,13 @@ class ClassroomPlayerPage extends StatefulWidget {
     super.key,
     required this.title,
     required this.controller,
+    this.identity,
+    this.progressStore,
   });
   final String title;
   final ClassroomPlayerController controller;
+  final ClassroomPlaybackIdentity? identity;
+  final ClassroomPlaybackProgressStore? progressStore;
   @override
   State<ClassroomPlayerPage> createState() => _ClassroomPlayerPageState();
 }
@@ -30,13 +36,96 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
   double? dragging;
   String? lastSmall;
   final smallPlacement = ClassroomSmallWindowPlacement();
+  ClassroomPlaybackProgressSession? progress;
+  bool resumeDialogOpen = false;
   ClassroomPlayerController get player => widget.controller;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     player.addListener(changed);
     player.start();
+    if (widget.identity != null) {
+      progress =
+          ClassroomPlaybackProgressSession(
+              player: player,
+              identity: widget.identity!,
+              store:
+                  widget.progressStore ?? ClassroomPlaybackProgressStore.shared,
+              canPlay: () => foreground,
+            )
+            ..addListener(progressChanged)
+            ..start();
+    }
+  }
+
+  void progressChanged() {
+    if (!mounted) return;
+    setState(() {});
+    updateControls();
+    if (progress?.choicePosition == null ||
+        resumeDialogOpen ||
+        progress!.invalidated) {
+      return;
+    }
+    resumeDialogOpen = true;
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => unawaited(offerResume()),
+    );
+  }
+
+  Future<void> offerResume() async {
+    final current = progress;
+    if (!mounted ||
+        current == null ||
+        current.invalidated ||
+        current.choicePosition == null) {
+      resumeDialogOpen = false;
+      return;
+    }
+    final choice = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => ListenableBuilder(
+        listenable: current,
+        builder: (context, _) => AlertDialog(
+          title: const Text('继续观看？'),
+          content: Text(
+            current.invalidated
+                ? '学校会话已清除，请返回录播列表重新连接。'
+                : '本机上次播放到 ${time(current.choicePosition ?? 0)}。\n本机进度不代表学校观看记录。',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('返回列表'),
+            ),
+            TextButton(
+              onPressed: current.invalidated
+                  ? null
+                  : () => Navigator.pop(context, false),
+              child: const Text('从头播放'),
+            ),
+            FilledButton(
+              onPressed: current.invalidated
+                  ? null
+                  : () => Navigator.pop(context, true),
+              child: const Text('继续观看'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (choice == null) {
+      Navigator.pop(context);
+    } else {
+      await current.choose(resume: choice);
+    }
+    resumeDialogOpen = false;
   }
 
   @override
@@ -50,6 +139,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
       fullscreen &&
       foreground &&
       !accessibleNavigation &&
+      !(progress?.blocked ?? false) &&
       player.state.playing &&
       player.state.wanted &&
       !player.state.buffering &&
@@ -99,6 +189,9 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     foreground = state == AppLifecycleState.resumed;
     updateControls();
     if (state != AppLifecycleState.resumed) unawaited(player.command('pause'));
+    if (state != AppLifecycleState.resumed) {
+      unawaited(progress?.save() ?? Future<void>.value());
+    }
   }
 
   @override
@@ -106,6 +199,8 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     controlsTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     player.removeListener(changed);
+    progress?.removeListener(progressChanged);
+    progress?.dispose();
     player.dispose();
     unawaited(restoreSystemUi().catchError((Object _) {}));
     super.dispose();
@@ -302,9 +397,23 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                 'UNTRUSTED' => '媒体地址超出已验证的学校范围，请返回重试。',
                 _ => '课堂视频未能播放，请检查网络后返回重试。',
               });
+    final canControl = error == null && !(progress?.blocked ?? false);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (progress != null &&
+            progress!.blocked &&
+            !progress!.invalidated &&
+            progress!.choicePosition == null)
+          const Padding(
+            padding: EdgeInsets.all(12),
+            child: Text('正在核对本机进度与视频时长…'),
+          ),
+        if (progress?.warning != null)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(progress!.warning!),
+          ),
         if (error != null)
           Padding(
             padding: const EdgeInsets.all(12),
@@ -317,13 +426,13 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
             state.duration > 0 ? state.duration.toDouble() : 1.0,
           ),
           max: state.duration > 0 ? state.duration.toDouble() : 1,
-          onChanged: state.duration > 0 && error == null
+          onChanged: state.duration > 0 && canControl
               ? (value) {
                   setState(() => dragging = value);
                   updateControls(interacted: true);
                 }
               : null,
-          onChangeStart: state.duration > 0 && error == null
+          onChangeStart: state.duration > 0 && canControl
               ? (value) {
                   setState(() => dragging = value);
                   updateControls(interacted: true);
@@ -341,7 +450,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
             children: [
               IconButton(
                 tooltip: state.wanted ? '暂停' : '播放',
-                onPressed: error == null
+                onPressed: canControl
                     ? () => player.command(state.wanted ? 'pause' : 'play')
                     : null,
                 icon: Icon(
@@ -388,7 +497,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
           children: [
             IconButton(
               tooltip: '后退10秒',
-              onPressed: error == null && state.duration > 0
+              onPressed: canControl && state.duration > 0
                   ? () => player.command('seek', {
                       'position': (state.position - 10000).clamp(
                         0,
@@ -400,7 +509,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
             ),
             IconButton(
               tooltip: '前进10秒',
-              onPressed: error == null && state.duration > 0
+              onPressed: canControl && state.duration > 0
                   ? () => player.command('seek', {
                       'position': (state.position + 10000).clamp(
                         0,

@@ -8,6 +8,7 @@ import '../application/classroom_import_progress.dart';
 import '../application/classroom_connection_status.dart';
 import '../data/classroom_links.dart';
 import '../data/classroom_library.dart';
+import '../data/classroom_playback_progress.dart';
 import '../domain/classroom.dart';
 import '../domain/schedule.dart';
 import '../platform/classroom_access.dart';
@@ -54,6 +55,7 @@ class ClassroomCoursePage extends StatefulWidget {
     this.library,
     this.importCourses,
     this.onImportResult,
+    this.progressStore,
   });
   final Course course;
   final DateTime? date;
@@ -63,6 +65,7 @@ class ClassroomCoursePage extends StatefulWidget {
   final ClassroomLibrary? library;
   final List<Course>? importCourses;
   final ValueChanged<ClassroomConnectionStatus>? onImportResult;
+  final ClassroomPlaybackProgressStore? progressStore;
   @override
   State<ClassroomCoursePage> createState() => _ClassroomCoursePageState();
 }
@@ -438,6 +441,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           links: links,
           probe: widget.probe,
           onImportResult: (value) => outcome = value,
+          progressStore: widget.progressStore,
         ),
       ),
     );
@@ -1336,8 +1340,16 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       final controller = ClassroomPlayerController(prepared);
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) =>
-              ClassroomPlayerPage(title: record.label, controller: controller),
+          builder: (_) => ClassroomPlayerPage(
+            title: record.label,
+            controller: controller,
+            identity: ClassroomPlaybackIdentity(
+              semester: localCourse.semester,
+              courseId: selected!.id,
+              recordId: record.id,
+            ),
+            progressStore: widget.progressStore,
+          ),
         ),
       );
       if (controller.state.error != null || controller.failure != null) {

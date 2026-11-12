@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../domain/schedule.dart';
 import 'classroom_session_cache.dart';
 import '../data/classroom_library.dart';
+import '../data/classroom_playback_progress.dart';
 
 bool schoolUrl(String value) {
   final uri = Uri.tryParse(value);
@@ -84,6 +85,7 @@ class SchoolAdapter {
     ClassroomSessionCache.shared.clear();
     await Future.wait<void>([
       ClassroomLibrary.shared.clear(),
+      ClassroomPlaybackProgressStore.shared.clear(),
       channel.invokeMethod<void>('clearSession'),
     ]);
   }

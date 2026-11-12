@@ -748,11 +748,14 @@ class _AppShellState extends ConsumerState<AppShell>
             ),
             MiuixArrowPreference(
               title: '退出学校会话',
-              summary: '保留离线课表，清除录播目录',
+              summary: '保留离线课表，清除录播目录与本机观看进度',
               enabled: !busy,
               startAction: const Icon(Icons.logout),
               onClick: () async {
-                if (!await confirm('退出学校会话？', '将清除学校网页会话和已导入的录播目录，离线课表继续保留。')) {
+                if (!await confirm(
+                  '退出学校会话？',
+                  '将清除学校网页会话、已导入的录播目录和本机观看进度，离线课表继续保留。',
+                )) {
                   return;
                 }
                 await runAction(() async {
