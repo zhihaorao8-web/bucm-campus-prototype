@@ -43,6 +43,14 @@ FFmpeg路径替换为本机文件。去掉`--device`只生成素材。运行时�
 adb shell am instrument -w -e class cn.bucm.campus_schedule.AudioListeningProbe -e campusListen true cn.bucm.campus_schedule.mediatest.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
+基础PCM清楚后，可显式运行正式播放组的双流合成HLS/AAC听音对照（同样只在`.mediatest`内，不请求学校）：
+
+```text
+adb shell am instrument -w -e class cn.bucm.campus_schedule.MediaListeningProbe#continuousAacThroughProductionGroup -e campusListen true cn.bucm.campus_schedule.mediatest.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+此项复用合成资产摘要校验/纹理及资源清理；首帧/实际单路音频格式就绪后推进30秒，检查实际播放状态与至少28秒进度。素材为连续低音量音调，区别于PCM的每秒停顿；音量太小导致无法判断时不能记人工通过，可仅调整测试设备媒体音量后重放。默认六项检查只选择`MediaPlaybackTest`，不会自动执行手动听音子类。
+
 若合成音也异常，继续核对模拟器/宿主输出；若合成音清楚，再对照合成AAC与真实媒体。不能仅凭其中一项把原因定为学校素材或播放器。检查结束仍需重建正常debug，保持本人应用数据，不把隔离包当交付包。
 
 2026-11-12人工结果：模拟器PCM异常，Windows原生SoundPlayer播放同参数WAV清楚稳定。DirectSound仅部分改善，延迟配置及关闭AVD麦克风均未解决；默认配置已恢复。麦克风对照依据Android官方[蓝牙音质排查](https://developer.android.com/studio/run/emulator-troubleshooting#bluetooth-audio)，本机结果未证实它是本次根因。测试未真正播放或启动崩溃不计入听感样本；详见STATUS。

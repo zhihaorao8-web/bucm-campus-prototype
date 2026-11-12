@@ -32,12 +32,12 @@ public class MediaPlaybackTest {
     Context assets;
     final Set<String> rendered=new HashSet<>();
 
-    private <T> T main(Callable<T> work) throws Exception {
+    protected <T> T main(Callable<T> work) throws Exception {
         FutureTask<T> task=new FutureTask<>(work);
         InstrumentationRegistry.getInstrumentation().runOnMainSync(task);
         return task.get(10,TimeUnit.SECONDS);
     }
-    private void await(String stage,Callable<Boolean> condition) throws Exception {
+    protected void await(String stage,Callable<Boolean> condition) throws Exception {
         long end=SystemClock.uptimeMillis()+20000;
         while(SystemClock.uptimeMillis()<end) {
             if(main(()->{group.snapshot();return condition.call();}))return;
@@ -53,7 +53,7 @@ public class MediaPlaybackTest {
             });
         }
     }
-    private void create(String playlist) throws Exception {
+    protected void create(String playlist) throws Exception {
         create(playlist,playlist);
     }
     private void create(String ppt,String teacher) throws Exception {
@@ -68,7 +68,7 @@ public class MediaPlaybackTest {
             observeFrames();return null;
         });
     }
-    private boolean ready() {
+    protected boolean ready() {
         for(ClassroomPlayerGroup.Stream stream:group.streams.values())if(stream.player.getPlaybackState()!=Player.STATE_READY)return false;
         return !group.streams.isEmpty()&&group.error==null;
     }

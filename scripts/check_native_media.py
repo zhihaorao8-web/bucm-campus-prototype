@@ -89,6 +89,8 @@ def main():
     sources = [ROOT / 'mobile/android/app/src/main/java/cn/bucm/campus_schedule' / name
                for name in ['ClassroomPlayback.java', 'ClassroomPlayerGroup.java', 'ClassroomDataSource.java']]
     sources += [ROOT / 'mobile/android/app/src/mediaTest/java/cn/bucm/campus_schedule/MediaPlaybackTest.java',
+                ROOT / 'mobile/android/app/src/mediaTest/java/cn/bucm/campus_schedule/AudioListeningProbe.java',
+                ROOT / 'mobile/android/app/src/mediaTest/java/cn/bucm/campus_schedule/MediaListeningProbe.java',
                 ROOT / 'mobile/android/app/build.gradle.kts']
     fingerprints = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
     summary = ROOT / 'build/native-media-summary.json'
