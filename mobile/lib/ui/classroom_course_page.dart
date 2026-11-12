@@ -946,6 +946,14 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       if (data['state'] != 'navigate' && !allowRead(ClassroomReadStage.data)) {
         return;
       }
+      if (needsCatalog &&
+          (data['state'] == 'catalog' || data['state'] == 'records')) {
+        needsCatalog = false;
+        await navigateOfficial(tab, {
+          'action': 'catalogRoute',
+        }, _Purpose.browse);
+        return;
+      }
       if (data['state'] == 'catalog' && tab.purpose != _Purpose.records) {
         authVisible = false;
         final courses = (data['courses'] as List)
@@ -1166,6 +1174,27 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     try {
       tab.purpose = purpose;
       final result = await script(tab, command);
+      if (command['action'] == 'catalogRoute' &&
+          const {
+            'navigate',
+            'authentication',
+            'loading',
+          }.contains(result['state'])) {
+        if (!mounted || !tabs.contains(tab)) return;
+        needsCatalog = true;
+        automaticEntry = true;
+        tab.routed = false;
+        setState(() {
+          authVisible = showWeb = true;
+          message = '正在恢复学校课程页面，请在需要时完成官方认证。';
+        });
+        if (result['state'] == 'authentication') {
+          requireAuthentication(tab);
+        } else {
+          scheduleRead(tab, restart: true);
+        }
+        return;
+      }
       if (result['state'] != 'opening') throw const FormatException();
       if (!mounted || !tabs.contains(tab)) return;
       if (purpose == _Purpose.playback) {
@@ -1537,10 +1566,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                         onWebViewCreated: (web) async {
                           tab.controller = web;
                           if (needsCatalog) {
-                            needsCatalog = false;
-                            await navigateOfficial(tab, {
-                              'action': 'catalogRoute',
-                            }, _Purpose.browse);
+                            // A retained view can have returned to an entry or
+                            // authentication page. Wait for a verified SPA
+                            // snapshot before issuing its router command.
+                            scheduleRead(tab, restart: true);
                             return;
                           }
                           if (!validateRestored) return;

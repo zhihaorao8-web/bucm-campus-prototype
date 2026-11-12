@@ -16,6 +16,8 @@ import 'classroom_recovery_page_test.dart' as fake;
 
 class NameImportController extends fake.RecoveryController {
   String phase = 'catalog', selectedId = 'a';
+  String? pendingState;
+  int prematureRoutes = 0;
   bool failSecond = true;
   final visited = <String>[];
   final played = <String>[];
@@ -26,6 +28,18 @@ class NameImportController extends fake.RecoveryController {
     required String source,
     ContentWorld? contentWorld,
   }) async {
+    if (pendingState != null) {
+      if (source.contains('var command =')) {
+        final command =
+            jsonDecode(
+                  RegExp(r'var command = (.*);').firstMatch(source)!.group(1)!,
+                )
+                as Map;
+        if (command['action'] == 'catalogRoute') prematureRoutes++;
+        return jsonEncode({'state': pendingState});
+      }
+      return jsonEncode({'state': 'authentication'});
+    }
     if (!source.contains('var command =')) {
       return jsonEncode({'state': 'waiting'});
     }
@@ -117,6 +131,81 @@ ClassroomArchive merged() => ClassroomArchive.merge([
 ], DateTime.utc(2031, 1, 2));
 
 void main() {
+  setUpAll(() async {
+    await rootBundle.loadString('assets/classroom.js');
+    await rootBundle.loadString('assets/classroom-entry.js');
+  });
+  for (final pending in ['loading', 'navigate', 'authentication']) {
+    testWidgets('复用工作页先识别$pending，认证恢复后核对原来源再播放', (tester) async {
+      final cache = ClassroomSessionCache.shared;
+      cache.clear();
+      cache.putWorkspace(
+        ClassroomSession(
+          view: InAppWebViewKeepAlive(),
+          records: single('b').pages.single,
+          entry: vpnEntry,
+          fetchedAt: DateTime.now(),
+        ),
+        revision: cache.revision,
+      );
+      final controller = NameImportController()
+        ..failSecond = false
+        ..pendingState = pending;
+      InAppWebViewPlatform.instance = fake.RecoveryPlatform(controller);
+      const channel = MethodChannel('cn.bucm.campus/playback');
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+        call,
+      ) async {
+        if (call.method == 'prepare') {
+          throw PlatformException(code: 'SYNTHETIC_STOP');
+        }
+        return null;
+      });
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          channel,
+          null,
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ClassroomCoursePage(
+            course: local,
+            library: MemoryClassroomLibrary(merged()),
+            onDetails: (_) {},
+            probe: (_) async =>
+                throw StateError('retained view must be reused'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('来源a的回放'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('来源a的回放'));
+      Future<void> ticks(int count) async {
+        for (var i = 0; i < count; i++) {
+          await tester.pump(const Duration(seconds: 2));
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          );
+          await tester.pump();
+        }
+      }
+
+      await ticks(3);
+      expect(controller.prematureRoutes, 0);
+      expect(controller.played, isEmpty);
+      expect(find.text('学校数据已变化，请刷新列表后重试。'), findsNothing);
+      controller.pendingState = null;
+      await ticks(10);
+      expect(controller.visited, ['a']);
+      expect(controller.played, ['a']);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      cache.clear();
+      expect(tester.takeException(), isNull);
+    });
+  }
   testWidgets('统一导入逐门汇总，第二来源失败保留旧目录，重试复用第一来源并一次保存完整集合', (tester) async {
     final controller = NameImportController();
     final library = CapturingNameLibrary();
