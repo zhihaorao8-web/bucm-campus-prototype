@@ -42,6 +42,7 @@ def main():
     subprocess.run([node, str(ROOT / 'tests/coverage-check-test.cjs')], check=True)
     subprocess.run([node, str(ROOT / 'tests/classroom-test.cjs')], check=True)
     subprocess.run([node, str(ROOT / 'tests/recording-api-test.cjs')], check=True)
+    subprocess.run([node, str(ROOT / 'tests/recording-api-bridge-test.cjs')], check=True, cwd=ROOT)
     subprocess.run([node, str(ROOT / 'tests/classroom-player-test.cjs')], check=True)
     subprocess.run([node, str(ROOT / 'tests/classroom-entry-test.cjs')], check=True)
     for path in (ROOT / 'examples').glob('*.json'):

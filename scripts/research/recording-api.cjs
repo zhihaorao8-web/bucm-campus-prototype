@@ -1,7 +1,7 @@
 'use strict';
 /* Experimental read-only adapter. Run inside an initialized official page.
  * The injected request function is the school's client, never a credential.
- * Not shipped in the Android app until mobile compatibility is verified. */
+ * Android use is restricted to the opt-in direct-catalog experiment. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory;
   else root.createCampusRecordingApi = factory;

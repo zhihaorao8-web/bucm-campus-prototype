@@ -13,6 +13,7 @@ import '../data/classroom_playback_progress.dart';
 import '../domain/classroom.dart';
 import '../domain/schedule.dart';
 import '../platform/classroom_access.dart';
+import '../platform/classroom_api_reader.dart';
 import '../platform/classroom_read_progress.dart';
 import '../platform/classroom_policy.dart';
 import '../platform/classroom_player.dart';
@@ -369,6 +370,88 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       return;
     }
     collection.prepare(matches);
+    if (!collection.complete &&
+        const bool.fromEnvironment('CAMPUS_DIRECT_CATALOG')) {
+      final ticket = generation;
+      bool activeRead() =>
+          mounted &&
+          foreground &&
+          ticket == generation &&
+          tabs.contains(tab) &&
+          libraryRevision == library.revision;
+      try {
+        final api = ClassroomApiReader((command) async {
+          final adapter = await rootBundle.loadString(
+            'assets/recording-api.cjs',
+          );
+          final bridge = await rootBundle.loadString(
+            'assets/recording-api-bridge.js',
+          );
+          final value = await tab.controller!
+              .callAsyncJavaScript(
+                functionBody:
+                    '$adapter\n${bridge.replaceFirst('__RECORDING_API_COMMAND__', jsonEncode(command))}',
+              )
+              .timeout(const Duration(seconds: 15));
+          if (value?.error != null ||
+              value?.value is! String ||
+              (value!.value as String).length > 1024 * 1024) {
+            throw const ClassroomApiFailure('error');
+          }
+          return Map<String, dynamic>.from(
+            jsonDecode(value.value as String) as Map,
+          );
+        });
+        final pages = await api.read(
+          semester: localCourse.semester,
+          courses: matches,
+          skipCourseIds: collection.completed.keys.toSet(),
+          active: activeRead,
+        );
+        if (!activeRead()) return;
+        if (pages != null) {
+          assert(() {
+            debugPrint('CampusDirectoryTransport=direct');
+            return true;
+          }());
+          // Commit only after the entire name group was verified. The official
+          // page stays at the catalog; playback must restore its own source.
+          for (final page in pages) {
+            collection.addPage(page, DateTime.now());
+          }
+          livePage = null;
+          liveCourse = null;
+          await finishNameImport(tab);
+          return;
+        }
+        assert(() {
+          debugPrint('CampusDirectoryTransport=fallback');
+          return true;
+        }());
+      } on ClassroomApiFailure catch (error) {
+        if (!activeRead()) return;
+        if (error.state == 'authentication') {
+          requireAuthentication(tab);
+          return;
+        }
+        setState(() {
+          busy = false;
+          fetchedAt = null;
+          connectionPhase = error.state == 'forbidden'
+              ? ClassroomConnectionPhase.forbidden
+              : ClassroomConnectionPhase.failed;
+          message = '学校录播目录未能完整读取，原目录保留。请重新连接后重试。';
+          if (bulk) {
+            importProgress.update(
+              importIndex,
+              ImportTaskStatus.failed,
+              message,
+            );
+          }
+        });
+        return;
+      }
+    }
     if (collection.complete) {
       await finishNameImport(tab);
     } else {
