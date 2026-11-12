@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../application/classroom_import_progress.dart';
+import '../application/classroom_import_collection.dart';
 import '../application/classroom_connection_status.dart';
 import '../data/classroom_links.dart';
 import '../data/classroom_library.dart';
@@ -107,9 +108,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   ClassroomRecording? queuedPlayback;
   String? queuedCourseId;
   bool autoCollecting = false;
-  List<ClassroomCourse>? importMatches;
-  final importSources = <ClassroomArchive>[];
-  int sourceIndex = 0;
+  final collection = ClassroomImportCollection();
+  List<ClassroomCourse>? get importMatches => collection.matches;
+  int get sourceIndex => collection.sourceIndex;
   bool get collecting => bulk || autoCollecting;
   int get displayPage => archive?.displayPage(recordings!) ?? recordings!.page;
   int queuedPage = 1;
@@ -118,9 +119,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   bool needsCatalog = false, authVisible = false;
   int importIndex = 0, imported = 0;
   bool importFinished = false, importingPage = false;
-  final importPages = <RecordingPage>[];
+  List<RecordingPage> get importPages => collection.pages;
   final skipped = <String>[];
-  final completedArchives = <String, ClassroomArchive>{};
+  Map<String, ClassroomArchive> get completedArchives => collection.completed;
   late final importProgress = ClassroomImportProgress(
     widget.importCourses ?? [widget.course],
   );
@@ -264,10 +265,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
 
   Future<void> nextImport(_SchoolTab tab) async {
     if (!mounted || !tabs.contains(tab)) return;
-    importPages.clear();
-    importMatches = null;
-    importSources.clear();
-    sourceIndex = 0;
+    collection.reset();
     if (!bulk) {
       setState(() {
         autoCollecting = false;
@@ -310,27 +308,12 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     if (!mounted || importingPage || importFinished) return;
     importingPage = true;
     try {
-      if (page.page != importPages.length + 1) {
-        await changePage(importPages.length + 1);
+      final nextPage = collection.addPage(page, DateTime.now());
+      if (nextPage != null) {
+        await changePage(nextPage);
         return;
       }
-      if (page.total > 10000 || importPages.length >= 1000) {
-        throw const FormatException();
-      }
-      importPages.add(page);
-      if (page.hasNext) {
-        await changePage(page.page + 1);
-        return;
-      }
-      final saved = ClassroomArchive(
-        List.unmodifiable(importPages),
-        DateTime.now(),
-      );
-      completedArchives[page.course.id] = saved;
-      importSources.add(saved);
-      sourceIndex++;
-      importPages.clear();
-      if (sourceIndex < importMatches!.length) {
+      if (!collection.complete) {
         await navigateOfficial(tab, {
           'action': 'catalogRoute',
         }, _Purpose.browse);
@@ -359,7 +342,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   }
 
   Future<void> finishNameImport(_SchoolTab tab) async {
-    final saved = ClassroomArchive.merge([...importSources], DateTime.now());
+    final saved = collection.merge(DateTime.now());
     await library.save(localCourse, saved, revision: libraryRevision);
     if (!mounted) return;
     if (libraryRevision != library.revision) throw const FormatException();
@@ -385,20 +368,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       }
       return;
     }
-    if (importMatches == null) {
-      importMatches = matches;
-      sourceIndex = 0;
-      importSources.clear();
-    } else if (matches.map((c) => c.id).join('\u0000') !=
-        importMatches!.map((c) => c.id).join('\u0000')) {
-      throw const FormatException('同名课程目录已变化');
-    }
-    while (sourceIndex < importMatches!.length &&
-        completedArchives.containsKey(importMatches![sourceIndex].id)) {
-      importSources.add(completedArchives[importMatches![sourceIndex].id]!);
-      sourceIndex++;
-    }
-    if (sourceIndex == importMatches!.length) {
+    collection.prepare(matches);
+    if (collection.complete) {
       await finishNameImport(tab);
     } else {
       await choose(tab, importMatches![sourceIndex]);
@@ -769,10 +740,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
 
   Future<void> retryCurrent() async {
     if (bulk) importProgress.update(importIndex, ImportTaskStatus.running);
-    importPages.clear();
-    importMatches = null;
-    importSources.clear();
-    sourceIndex = 0;
+    collection.reset();
     if (tabs.isEmpty) {
       await connect();
       return;
@@ -866,7 +834,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       automaticEntry = true;
       automaticPath = automaticPath && !target.startsWith(vpnEntry);
       readProgress.reset();
-      importPages.clear();
+      collection.clearPages();
       setState(() {
         // Replace the looping document rather than competing with its script
         // redirects. WebView keeps its normal shared school session.
