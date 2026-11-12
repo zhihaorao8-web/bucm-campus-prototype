@@ -88,6 +88,10 @@
         'qxkt2.bucm.edu.cn': '/https-8880/77726476706e69737468656265737421e1ef4a88757e6a457d05c7a99c406d3643/'
       };
       if (url.protocol !== 'https:' || !Object.prototype.hasOwnProperty.call(mappings, url.hostname) || url.port !== '8880' || url.username || url.password) throw new Error('boundary');
+      // Direct media needs no tunnel URL discovery. Let the native transport
+      // request it with its HTTPS/host/redirect/auth checks; a cross-origin
+      // browser fetch would add an unrelated CORS requirement before playback.
+      if (location.hostname === 'qhz.bucm.edu.cn') return {kind: f[0], url: url.href};
       // WebVPN's official fetch wrapper supplies the actual tunnel URL. Do not
       // invent an encrypted mapping or fall back to direct media off campus.
       var response = await fetch(url.href, {credentials: 'include', signal: AbortSignal.timeout(8000)});

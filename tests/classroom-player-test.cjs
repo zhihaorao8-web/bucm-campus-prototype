@@ -32,11 +32,25 @@ function fixture(vpn = false, node = 4) {
     await new Promise(setImmediate);
     const result = f.command('capture');
     assert.equal(result.state, 'ready');assert.equal(result.sources.length, 3);
-    assert.equal(result.watermark.text, '合成水印');assert.equal(f.cancelled(), 3);
+    assert.equal(result.watermark.text, '合成水印');assert.equal(f.cancelled(), vpn ? 3 : 0);
     assert.equal(f.stops(), 3);assert.equal(f.Xhr.prototype.open, f.original);
     assert.equal(f.context.window.__campusNativePlayback, undefined);
     assert(!JSON.stringify(result).includes('NEVER_EXPORT'));
     assert.equal(f.command('capture').state, 'missing');
+  }
+  const direct = fixture();direct.command('install');direct.watermark({waterMark:'0'});
+  let browserRequests = 0;
+  direct.context.fetch = async () => {browserRequests++;throw new TypeError('Synthetic cross-origin fetch rejection');};
+  direct.command('capture');await new Promise(setImmediate);
+  const directResult = direct.command('capture');
+  assert.equal(directResult.state, 'ready');assert.equal(browserRequests, 0);
+  assert(directResult.sources.every(s => s.url === media));
+  assert.equal(direct.stops(), 3); // Official decoder stops before native handoff.
+  for (const [failure, expected] of [['network','policy-network'],['http','policy-media']]) {
+    const vpn = fixture(true);vpn.command('install');vpn.watermark({waterMark:'0'});
+    vpn.context.fetch = async () => {if(failure === 'network') throw new TypeError('Synthetic network rejection');return {ok:false};};
+    vpn.command('capture');await new Promise(setImmediate);
+    assert.equal(vpn.command('capture').state, expected);vpn.command('abort');
   }
   const disabled = fixture();disabled.command('install');disabled.watermark({waterMark: 0});
   disabled.comp.$route.query.limitSee = '1';disabled.comp.videoInfo.publicRpType = '1';
