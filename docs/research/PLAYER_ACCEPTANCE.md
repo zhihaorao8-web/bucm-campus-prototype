@@ -45,6 +45,8 @@ adb shell am instrument -w -e class cn.bucm.campus_schedule.AudioListeningProbe 
 
 若合成音也异常，继续核对模拟器/宿主输出；若合成音清楚，再对照合成AAC与真实媒体。不能仅凭其中一项把原因定为学校素材或播放器。检查结束仍需重建正常debug，保持本人应用数据，不把隔离包当交付包。
 
+2026-11-12人工结果：模拟器PCM异常，Windows原生SoundPlayer播放同参数WAV清楚稳定。DirectSound仅部分改善，延迟配置及关闭AVD麦克风均未解决；默认配置已恢复。麦克风对照依据Android官方[蓝牙音质排查](https://developer.android.com/studio/run/emulator-troubleshooting#bluetooth-audio)，本机结果未证实它是本次根因。测试未真正播放或启动崩溃不计入听感样本；详见STATUS。
+
 仅在本人授权会话、当前课程当次权限有效且媒体可达时执行。未登录、学校不可达或缺少开启水印的样本时记为阻塞/未测，不重复要求认证来掩盖网络故障。真实课程名、截图、水印身份、HAR、地址和凭据只留本机，不进入仓库。
 
 先记录：精确源码SHA、构建类型、实际版本/code、APK SHA-256、系统/WebView版本、直连或WebVPN、是否有前台访问、录播为单流/双流、时长及水印开启/关闭。设备只记类别，仓库不记录设备标识；样本用本机代号关联，不写真实课程/教师。
