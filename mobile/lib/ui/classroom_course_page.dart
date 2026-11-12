@@ -565,6 +565,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     final ticket = ++generation;
     poll?.cancel();
     setState(() {
+      // A new selection must not display or keep callbacks from the old login.
+      showWeb = loading = false;
+      if (tabs.isNotEmpty) clearTabs();
+      active = 0;
       busy = true;
       connectionPhase = ClassroomConnectionPhase.connecting;
       message = '正在检查学校服务访问路径…';
@@ -624,6 +628,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     freshReadPending = false;
     restored = false;
     setState(() {
+      // Authentication is evidence that the selected route is reachable.
+      // Keep that route while the user signs in; it is not a VPN fallback.
+      automaticPath = false;
       recordings = null;
       catalog = null;
       selected = null;
@@ -912,8 +919,6 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         return;
       }
       if (data['state'] == 'authentication') {
-        if (await fallbackToVpn()) return;
-        if (!mounted || ticket != generation || !tabs.contains(tab)) return;
         requireAuthentication(tab);
         return;
       }
@@ -1078,8 +1083,6 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           return;
         }
         if (state == 'authentication') {
-          if (await fallbackToVpn()) return;
-          if (!mounted || ticket != generation || !tabs.contains(tab)) return;
           requireAuthentication(tab);
           return;
         }

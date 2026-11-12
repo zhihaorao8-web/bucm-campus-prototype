@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:campus_schedule/domain/schedule.dart';
@@ -79,9 +81,16 @@ class RecoveryView extends PlatformInAppWebViewWidget {
 }
 
 void main() {
+  setUpAll(() async {
+    // Shared bundle futures must finish outside individual FakeAsync scopes.
+    await rootBundle.loadString('assets/classroom.js');
+    await rootBundle.loadString('assets/classroom-entry.js');
+  });
   Future<RecoveryController> open(
     WidgetTester tester, {
     ProbeState? failure,
+    bool direct = false,
+    ProbeEndpoint? probe,
   }) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     ClassroomSessionCache.shared.clear();
@@ -96,12 +105,14 @@ void main() {
           course: course,
           importCourses: [course],
           onDetails: (_) {},
-          probe: (url) async => AccessProbe(
-            failure ??
-                (url == vpnEntry
-                    ? ProbeState.available
-                    : ProbeState.unavailable),
-          ),
+          probe:
+              probe ??
+              (url) async => AccessProbe(
+                failure ??
+                    (direct || url == vpnEntry
+                        ? ProbeState.available
+                        : ProbeState.unavailable),
+              ),
         ),
       ),
     );
@@ -148,6 +159,52 @@ void main() {
       await tester.pump();
     });
   }
+
+  for (final snapshot in [false, true]) {
+    testWidgets('direct authentication stays direct snapshot=$snapshot', (
+      tester,
+    ) async {
+      final controller = await open(tester, direct: true);
+      if (snapshot) controller.snapshotState = 'authentication';
+      await tick(tester, 3);
+      expect(
+        controller.viewParams!.initialUrlRequest!.url.toString(),
+        classroomProbe,
+      );
+      expect(find.textContaining('请在学校官方页面完成认证'), findsOneWidget);
+      expect(find.textContaining('已选择学校 WebVPN'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+  }
+
+  testWidgets('switching access detaches old login while probe is pending', (
+    tester,
+  ) async {
+    var probes = 0;
+    final pending = Completer<AccessProbe>();
+    await open(
+      tester,
+      probe: (_) {
+        if (++probes == 1) {
+          return Future.value(const AccessProbe(ProbeState.available));
+        }
+        return pending.future;
+      },
+    );
+    await tick(tester, 2);
+    expect(find.text('合成学校页面'), findsOneWidget);
+    await tester.tap(find.byTooltip('学校访问方式'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('自动选择（重新检测）'));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('school-browser-layer')), findsNothing);
+    expect(find.textContaining('正在检查学校服务访问路径'), findsOneWidget);
+    pending.complete(const AccessProbe(ProbeState.available));
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
 
   testWidgets('认证等待→门户超时→继续导入→后台暂停恢复→未知路径提示', (tester) async {
     final controller = await open(tester);
