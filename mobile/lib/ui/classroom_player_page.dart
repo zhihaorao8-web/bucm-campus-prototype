@@ -36,11 +36,26 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
   int pointersDown = 0;
   Timer? controlsTimer;
   double? dragging;
+  int? draggingDuration;
   String? lastSmall;
   final smallPlacement = ClassroomSmallWindowPlacement();
   ClassroomPlaybackProgressSession? progress;
   bool resumeDialogOpen = false;
   ClassroomPlayerController get player => widget.controller;
+  bool get canScrub =>
+      foreground &&
+      player.state.duration > 0 &&
+      player.state.error == null &&
+      player.failure == null &&
+      !(progress?.blocked ?? false);
+
+  void invalidateSliderDrag() {
+    if (!canScrub || draggingDuration != player.state.duration) {
+      dragging = null;
+      draggingDuration = null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -66,7 +81,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
 
   void progressChanged() {
     if (!mounted) return;
-    setState(() {});
+    setState(invalidateSliderDrag);
     updateControls();
     if (progress?.choicePosition == null ||
         resumeDialogOpen ||
@@ -181,7 +196,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
 
   void changed() {
     if (mounted) {
-      setState(() {});
+      setState(invalidateSliderDrag);
       updateControls();
     }
   }
@@ -189,6 +204,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     foreground = state == AppLifecycleState.resumed;
+    if (!foreground) setState(invalidateSliderDrag);
     updateControls();
     if (state != AppLifecycleState.resumed) unawaited(player.command('pause'));
     if (state != AppLifecycleState.resumed) {
@@ -219,7 +235,11 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     if (changingFullscreen) return;
     changingFullscreen = true;
     final next = !fullscreen;
-    setState(() => fullscreen = next);
+    setState(() {
+      dragging = null;
+      draggingDuration = null;
+      fullscreen = next;
+    });
     updateControls(interacted: true);
     try {
       if (next) {
@@ -518,6 +538,19 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                 onInteraction: () => updateControls(interacted: true),
                 showControls: !fullscreen || controlsVisible,
               ),
+            if (dragging != null && canScrub)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Center(
+                    child: ClassroomSeekPreview(
+                      key: const ValueKey('classroom-slider-seek-preview'),
+                      target: dragging!.toInt().clamp(0, state.duration),
+                      duration: state.duration,
+                      formatTime: time,
+                    ),
+                  ),
+                ),
+              ),
             if (state.watermark.isNotEmpty)
               Positioned(
                 top: 12,
@@ -631,22 +664,39 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
             state.duration > 0 ? state.duration.toDouble() : 1.0,
           ),
           max: state.duration > 0 ? state.duration.toDouble() : 1,
-          onChanged: state.duration > 0 && canControl
+          onChanged: canScrub
               ? (value) {
+                  if (draggingDuration != player.state.duration) return;
                   setState(() => dragging = value);
                   updateControls(interacted: true);
                 }
               : null,
-          onChangeStart: state.duration > 0 && canControl
+          onChangeStart: canScrub
               ? (value) {
-                  setState(() => dragging = value);
+                  setState(() {
+                    draggingDuration = player.state.duration;
+                    dragging = value;
+                  });
                   updateControls(interacted: true);
                 }
               : null,
           onChangeEnd: (value) {
-            setState(() => dragging = null);
+            final valid =
+                dragging != null &&
+                draggingDuration == player.state.duration &&
+                canScrub;
+            setState(() {
+              dragging = null;
+              draggingDuration = null;
+            });
             updateControls(interacted: true);
-            unawaited(player.command('seek', {'position': value.toInt()}));
+            if (valid) {
+              unawaited(
+                player.command('seek', {
+                  'position': value.toInt().clamp(0, player.state.duration),
+                }),
+              );
+            }
           },
         ),
         Padding(
@@ -868,7 +918,13 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
             updateControls(interacted: true);
           },
           onPointerUp: (_) => endPointer(),
-          onPointerCancel: (_) => endPointer(),
+          onPointerCancel: (_) {
+            setState(() {
+              dragging = null;
+              draggingDuration = null;
+            });
+            endPointer();
+          },
           child: fullscreen
               ? fullscreenBody()
               : ListView(

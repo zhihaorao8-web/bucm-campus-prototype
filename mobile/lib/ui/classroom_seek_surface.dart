@@ -141,47 +141,68 @@ class _ClassroomSeekSurfaceState extends State<ClassroomSeekSurface> {
                 rect: previewArea(constraints.biggest),
                 child: IgnorePointer(
                   child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: DecoratedBox(
-                          key: const ValueKey('classroom-seek-preview'),
-                          decoration: BoxDecoration(
-                            color: Colors.black87,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '${widget.formatTime(target!)} / ${widget.formatTime(duration)}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${target! >= origin ? '前进' : '后退'} ${widget.formatTime((target! - origin).abs())} · 松手跳转',
-                                  style: const TextStyle(color: Colors.white70),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                    child: ClassroomSeekPreview(
+                      key: const ValueKey('classroom-seek-preview'),
+                      target: target!,
+                      duration: duration,
+                      origin: origin,
+                      formatTime: widget.formatTime,
                     ),
                   ),
                 ),
               ),
           ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Shared, non-interactive time display for picture swipes and slider drags.
+class ClassroomSeekPreview extends StatelessWidget {
+  const ClassroomSeekPreview({
+    super.key,
+    required this.target,
+    required this.duration,
+    required this.formatTime,
+    this.origin,
+  });
+  final int target, duration;
+  final int? origin;
+  final String Function(int) formatTime;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(16),
+    child: FittedBox(
+      fit: BoxFit.scaleDown,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${formatTime(target)} / ${formatTime(duration)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                origin == null
+                    ? '松手跳转'
+                    : '${target >= origin! ? '前进' : '后退'} ${formatTime((target - origin!).abs())} · 松手跳转',
+                style: const TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
         ),
       ),
     ),
