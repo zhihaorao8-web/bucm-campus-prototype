@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:campus_schedule/platform/test_diagnostics.dart';
 import 'package:campus_schedule/platform/classroom_api_reader.dart';
 import 'package:campus_schedule/domain/classroom.dart';
 
@@ -28,6 +30,37 @@ Map<String, dynamic> recordPage(int page, {int total = 11}) => {
   ),
 };
 void main() {
+  for (final waitingForAuthentication in [false, true]) {
+    test(
+      'bridge timeout preserves cancellation=$waitingForAuthentication',
+      () async {
+        var active = true;
+        final log = TestDiagnostics(enabled: true);
+        final reader = ClassroomApiReader((cmd) async {
+          if (cmd['action'] == 'cancel') return {'state': 'cancelled'};
+          if (waitingForAuthentication) active = false;
+          throw TimeoutException('SYNTHETIC_PRIVATE_ERROR');
+        }, diagnostics: log);
+        final expected = waitingForAuthentication ? 'cancelled' : 'timeout';
+        await expectLater(
+          reader.read(semester: c.semester, courses: [c], active: () => active),
+          throwsA(
+            isA<ClassroomApiFailure>().having(
+              (e) => e.state,
+              'state',
+              expected,
+            ),
+          ),
+        );
+        expect(
+          log.events.last['event'],
+          waitingForAuthentication ? 'cancelled' : 'requestTimeout',
+        );
+        expect(log.export(), isNot(contains('SYNTHETIC_PRIVATE_ERROR')));
+        expect(log.events.any((e) => e['event'] == 'invalidResponse'), isFalse);
+      },
+    );
+  }
   test(
     'new same-name source rejects stale grouping before reading pages',
     () async {

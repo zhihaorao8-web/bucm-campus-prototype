@@ -384,6 +384,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       bool activeRead() =>
           mounted &&
           foreground &&
+          connectionPhase != ClassroomConnectionPhase.authentication &&
           ticket == generation &&
           tabs.contains(tab) &&
           libraryRevision == library.revision;
@@ -400,7 +401,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                 functionBody:
                     '$adapter\n${bridge.replaceFirst('__RECORDING_API_COMMAND__', jsonEncode(command))}',
               )
-              .timeout(const Duration(seconds: 15));
+              .timeout(
+                Duration(seconds: command['action'] == 'cancel' ? 2 : 15),
+              );
           if (value?.error != null ||
               value?.value is! String ||
               (value!.value as String).length > 1024 * 1024) {

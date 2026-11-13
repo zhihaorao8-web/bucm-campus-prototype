@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../domain/classroom.dart';
 import 'test_diagnostics.dart';
 
@@ -125,9 +126,18 @@ class ClassroomApiReader {
       diagnostics.record(TestEvent.directReady, count: pages.length);
       return pages;
     } on ClassroomApiFailure catch (e) {
-      diagnostics.failure(e.state);
-      rethrow;
+      final state = active() ? e.state : 'cancelled';
+      diagnostics.failure(state);
+      throw ClassroomApiFailure(state);
+    } on TimeoutException {
+      final state = active() ? 'timeout' : 'cancelled';
+      diagnostics.failure(state);
+      throw ClassroomApiFailure(state);
     } catch (_) {
+      if (!active()) {
+        diagnostics.record(TestEvent.cancelled);
+        throw const ClassroomApiFailure('cancelled');
+      }
       diagnostics.record(TestEvent.invalidResponse);
       rethrow;
     } finally {

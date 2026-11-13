@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,6 +52,27 @@ class DirectController extends names.NameImportController {
   }
 }
 
+class AuthInterruptController extends DirectController {
+  AuthInterruptController() : super('success');
+  Completer<CallAsyncJavaScriptResult?>? pending;
+  @override
+  Future<CallAsyncJavaScriptResult?> callAsyncJavaScript({
+    required String functionBody,
+    Map<String, dynamic> arguments = const {},
+    ContentWorld? contentWorld,
+  }) {
+    if (pending == null && functionBody.contains('"action":"catalog"')) {
+      pending = Completer<CallAsyncJavaScriptResult?>();
+      return pending!.future;
+    }
+    return super.callAsyncJavaScript(
+      functionBody: functionBody,
+      arguments: arguments,
+      contentWorld: contentWorld,
+    );
+  }
+}
+
 void main() {
   setUpAll(() async {
     for (final file in [
@@ -62,6 +84,69 @@ void main() {
       await rootBundle.loadString('assets/$file');
     }
   });
+  testWidgets(
+    'authentication during pending request survives late timeout and resumes',
+    (tester) async {
+      TestDiagnostics.shared.clear();
+      final controller = AuthInterruptController();
+      final library = names.CapturingNameLibrary();
+      InAppWebViewPlatform.instance = fake.RecoveryPlatform(controller);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ClassroomCoursePage(
+            course: names.local,
+            importCourses: [names.local],
+            library: library,
+            onDetails: (_) {},
+            probe: (_) async => const AccessProbe(ProbeState.available),
+          ),
+        ),
+      );
+      Future<void> ticks(int n) async {
+        for (var i = 0; i < n; i++) {
+          await tester.pump(const Duration(seconds: 2));
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          );
+          await tester.pump();
+        }
+      }
+
+      await ticks(4);
+      expect(controller.pending, isNotNull);
+      controller.pendingState = 'authentication';
+      final params = controller.viewParams!;
+      params.onTitleChanged?.call(
+        params.controllerFromPlatform!(controller),
+        '合成认证',
+      );
+      await ticks(3);
+      controller.pending!.completeError(
+        TimeoutException('SYNTHETIC_PRIVATE_ERROR'),
+      );
+      await ticks(3);
+      expect(library.saves, 0);
+      expect(find.text('学校录播目录未能完整读取，原目录保留。请重新连接后重试。'), findsNothing);
+      expect(
+        TestDiagnostics.shared.events.any(
+          (e) => e['event'] == 'invalidResponse',
+        ),
+        isFalse,
+      );
+      expect(
+        TestDiagnostics.shared.events.any((e) => e['event'] == 'cancelled'),
+        isTrue,
+      );
+      controller.pendingState = null;
+      await ticks(12);
+      expect(library.saves, 1);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      ClassroomSessionCache.shared.clear();
+      expect(tester.takeException(), isNull);
+    },
+    skip: !const bool.fromEnvironment('CAMPUS_DIRECT_CATALOG'),
+  );
   for (final outcome in ['success', 'unsupported', 'forbidden']) {
     testWidgets('experimental directory import: $outcome', (tester) async {
       TestDiagnostics.shared.clear();
