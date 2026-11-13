@@ -1,68 +1,76 @@
-# BUCM Campus Prototype
+# 校园课表 · BUCM
 
-## Flutter Android 0.25（预发布）
+面向北京中医药大学的非官方 Flutter Android 课表与课程录播应用。本人在学校官方页面完成认证，应用在本机导入课表、整理录播目录并播放课程。
 
-当前Flutter版本按用户指定为`0.25`（Android内部版本号9），下载见[GitHub预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.25)。release模式APK沿用本机开发签名，不代表已建立生产签名流程。已有`v0.1.4`、`v0.1.5`历史标签保持不变。
+**当前版本：0.27 预发布 · Android 8.0 及以上。** 主线工程位于 `mobile/`，默认分支为 `main`。更新内容见 [CHANGELOG](CHANGELOG.md)。
 
-用户已确认Flutter Android课表与轻新课堂接入。`mobile/`包括官方页面登录、官方XLS自动导入与DOM备用读取、离线周/日课表、冲突并排、今日速览、轻新课堂原生录播列表与内置多画面播放器。设置和课表页均可“统一导入录播”，已导入列表重启保留，支持单课刷新；详细更新见[0.25更新日志](docs/releases/0.25.md)。应用不保存密码；会话失效需本人重新登录。直播入口仍未开放，不含实际直播、图书馆、提醒或社区。
+## 下载安装
 
-新包名与旧原型并存，需重新登录导入，不自动读取旧应用数据。Android复用已有Java XLS与作息解析器；iOS/Windows接入尚未完成。**原型真实学校验证不等于Flutter新应用通过验证。** 构建、架构和限制见[Flutter开发说明](docs/FLUTTER.md)，界面规范见[DESIGN.md](DESIGN.md)。下文记录保留的Java原型。
+| 安装包 | 适用场景 | 下载 |
+|---|---|---|
+| 正常版 release | 日常使用，关闭测试诊断与测试入口 | [0.27 正常版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.27/campus-schedule-0.27-android-release.apk) |
+| 测试版 debug | 问题排查，内置可复制、可清空的白名单诊断 | [0.27 测试版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.27/campus-schedule-0.27-android-debug.apk) |
 
-北京中医药大学校园数据提取可行性验证原型。当前重点是：用户在学校官方页面完成认证后，手机通过WebVPN进入本科教务页面，在本机读取本人课表数据。无需开发者自建服务器。
+[发布说明与 SHA-256 校验文件](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.27) · [详细版本说明](docs/releases/0.27.md)
 
-这是非官方研究原型，不代表学校提供了第三方开放API或正式单点登录接入授权。
+两个包来自同一源码，均启用本轮已确认的录播目录直取路径；包名、版本与本机开发签名一致，可以覆盖切换并保留数据。沿用既有 Flutter 预览版升级时无需清数据；与早期 Java 原型的包名不同。当前仍使用开发签名，正式生产签名方案尚未建立。仓库访问权限沿用原设置，下载需有仓库访问权限。
 
-## 进度
+## 已有功能
 
-已在Android真机上读取当前周课表和学期理论课表；2026-11-09在Android 16 AVD中复现官方认证后的读取路径，并通过官方XLS自动导入。25个源单元格拆为52段排课来源，合并21项完全重复，保存31条排课规则。**单元格数、排课段数均不是课程门数；完整学期准确导出尚未验证。**
+- **课表导入与离线查看**：通过官方页面导出 XLS，整批校验、去除完全重复并保存；支持今日/下一节、周视图、日视图、学期/周次切换、冲突并排与课程详情。失败保留原课表，提供备份恢复和导入变化摘要。
+- **课程录播**：统一导入或单课刷新，同学期精确名称匹配全部同名来源，完整分页成功后保存目录；离线可查看列表，播放时重新核对学校权限。优先在官方 WebView 会话内直接读取目录接口，保留页面路径作为兼容回退。
+- **多画面播放器**：PPT、教师与学生画面按实际来源选择；主小画面交换、小窗拖动/缩放、暂停、倍速、前后10秒和本机续播。主画面左右滑动预览进度，松手跳转。
+- **沉浸式横屏**：透明进度控件，闲置自动隐藏、轻点恢复；右上角单按钮打开不超过半屏的画面切换侧抽屉。
+- **外观与图标**：MIUIX 界面、悬浮玻璃底栏、深色模式、字号/对比度等偏好；43个统一的 IconMCP 离线 SVG 功能图标，许可随包提供。
 
-已验证可读字段：课程名、教师原文、星期、周次表达式、节次和地点。按用户规则的HH:mm映射和自动保存已有合成与AVD验证；不代表学校官方作息已独立认证，也不代表完整学期全部课程逐条核验完成。其他校园系统、独立HTTP JSON接口和后台提醒仍未验证完成。
+## 使用与数据保护
 
-详细记录见[验证状态与下一步](docs/STATUS.md)、[架构说明](docs/ARCHITECTURE.md)。真实课表、截图和认证信息只保留在本地，不上传；仓库中的[示例](examples/course-sample.synthetic.json)完全合成。
+首次打开学校页面，由本人扫码或输入凭据完成认证，再执行课表导入。课表导出流程保持原有实现；录播可从课程页或设置中的“统一导入录播”进入。自动访问按服务可达性选择学校直连或 WebVPN，保留手动选择，不读取 Wi-Fi 名称。
 
-## 目录
+应用不额外记录密码、验证码、Cookie 或令牌，不通过开发者服务器代理学校凭据；正常校验 TLS、学校域名与媒体路径。本机保存必要课表、录播目录及续播元数据，不下载视频或长期保存媒体 URL。退出学校会话会清理录播上下文与续播，离线课表保留。测试诊断仅含阶段、类别、计数和耗时，不含学校地址、课程或认证内容，不自动上传。
+
+## 验证范围
+
+已有合成测试、Android 构建和分项实机反馈：官方 XLS 导入保存、自动选择直连后的目录取数、录播画面/声音与续播、滑动进度/横屏侧抽屉、图标显示。各次证据归属具体测试包；0.27 的实际构建与发布结果记录在 [STATUS](docs/STATUS.md)。
+
+仍待独立验证：完整学期逐项准确性、完整课时与长期会话、开启水印的全部组合、真实认证失效恢复及更多网络/设备。学校 WebVPN 曾返回上游连接拒绝，当前没有恢复成功证据。**本机续播不等于学校观看记录。** 实际直播、学校观看记录上报、图书馆、提醒、社区、视频下载、后台播放及 iOS/Windows 交付均未开放。
+
+## 开发与构建
+
+工程结构：
 
 ```text
-AndroidManifest.xml          应用标识和版本
-assets/extract.js            WebView内的DOM读取逻辑
-src/cn/bucm/campusprobe/      Android界面、解析与早期试验代码
-tests/                       不访问学校系统的合成测试
-examples/                    合成字段示例
-docs/                        架构、验证状态和维护记录
-build.py                     轻量APK构建脚本
+mobile/                      Flutter Android 主应用与合成测试
+src/cn/bucm/campusprobe/      共享 Java XLS/作息/媒体解析及早期原型源码
+assets/                      受控公开网页脚本与许可
+scripts/                     准备、检查与构建工具
+design/                      品牌与离线 SVG 素材
+AndroidManifest.xml          唯一版本来源
+docs/                       生效需求、进度、验证与发布记录
 ```
 
-“自动进入课表并读取官方导出”入口：本人完成学校认证后，脚本进入本科教务的学期理论课表、选择全部周次、触发官方导出，在本机内存中读取二进制XLS，按用户作息自动映射精确时间、整批校验并去重保存，无需逐门确认。重复导入不累加，重启后保留。页面DOM读取保留为备用路径，也使用同一自动导入逻辑。文件中的“无课表课程”区域单独提示，尚未排入日历。
-
-时间按[用户提供并补充的规则](docs/COURSE_TIME_RULES.md)：白天保留授课分段，所有晚间组合统一18:00–20:25，第12节不额外延长。当前学期起点为用户确认的2026-09-07，其他学期首次设置一次；未知/冲突规则停止本批保存，不猜测缺失时间。
-
-当前保留早期本地课表与提醒试验，后续功能开发已暂停。源码中存在这些入口，不表示它们已通过完整验证。
-
-## 本地构建
-
-需要Python 3.10+、JDK 17+、Android SDK Platform 35和Build Tools 35.0.0，支持Windows与Linux。脚本测试另需Node.js。当前不是Gradle工程；XLS读取使用固定版本Apache POI HSSF及其依赖，不需要安装Maven。首次准备依赖需联网到公开Maven Central，之后检查和构建验证本地SHA-256锁定的JAR。
+Flutter SDK 固定为 `3.47.9` / `c197ca5199e9ee5661e865596c9c07294dfab51c`。根目录是轻量 Java 原型，**不是 Gradle 工程**；Android 主工程在 `mobile/android/`。Flutter 仍复用根目录的共享解析器，不应删除这些源码。
 
 ```powershell
 python scripts/dependencies.py
 python scripts/check.py
-python build.py --sdk C:\path\to\Android\Sdk --work .\build\local --output .\dist
+python scripts/prepare_flutter.py
+cd mobile
+flutter pub get --enforce-lockfile
+flutter analyze --no-pub
+flutter test --no-pub
+flutter test --no-pub --dart-define=CAMPUS_DIRECT_CATALOG=true test/classroom_api_reader_test.dart test/classroom_direct_import_test.dart
+flutter build apk --release --dart-define=CAMPUS_DIRECT_CATALOG=true --dart-define=CAMPUS_TEST_DIAGNOSTICS=false
 ```
 
-构建会运行Java解析检查、生成并签署开发APK、验证签名。后续覆盖安装需沿用相同的本地开发密钥；密钥位于指定work目录且被Git忽略，不用于正式发布。
+测试包改用 `--debug --dart-define=CAMPUS_DIRECT_CATALOG=true --dart-define=CAMPUS_TEST_DIAGNOSTICS=true`。本地依赖源应与锁文件/缓存匹配，Windows pub 缓存与工程放同盘；CI 使用官方源并保留锁定版本和摘要。两个模式顺序构建，避免插件注册表冲突。GitHub Actions 检查并生成两种临时签名预览包，最终升级附件另以可信本机签名构建并验签，见 [Flutter 开发说明](docs/FLUTTER.md) 与 [双包规范](docs/BUILD_VARIANTS.md)。
 
-GitHub Actions自动执行离线检查与APK构建，并保留临时开发签名的产物。CI不登录学校，不使用真实课程。详见[开发和CI说明](docs/DEVELOPMENT.md)。
+## 分支与文档
 
-## 真机验证
+- `main`：当前 Flutter Android 主线；本次以普通快进接续完整开发历史。
+- [`codex/legacy-java-prototype`](https://github.com/zhihaorao8-web/bucm-campus-prototype/tree/codex/legacy-java-prototype)：早期 Java 测试原型，固定保留原主线 `611ec8e`；旧版本标签与附件继续保留。
+- `codex/auto-course-import`：本轮开发来源分支；后续日常开发继续使用独立分支。
 
-1. 安装本地构建的APK，打开学校官方认证/WebVPN入口。
-2. 用户本人完成认证，从学校资源导航进入本科教务系统。
-3. 打开“个人课表信息 → 学期理论课表”，确认学期与周次筛选。
-4. 点击“自动导入”读取学校官方XLS，或使用“读取课表”备用DOM路径，按已配置规则自动保存。也可从首页的自动导出入口开始导航；认证仍需本人完成，新学期首次设置一次起点。
+[生效需求](docs/PROJECT_BRIEF.md) · [开发计划](docs/DEVELOPMENT_PLAN.md) · [验证证据](docs/STATUS.md) · [界面设计](DESIGN.md) · [版本规范](docs/VERSIONING.md) · [第三方许可](docs/THIRD_PARTY.md) · [图标来源](docs/ICON_SYSTEM.md)
 
-CI或自动测试不得使用真实账号，亦不应保存认证会话。
-
-## 版本
-
-当前Flutter维护版：`0.25`；此前Java原型维护版：`v0.1.5`；首个Git验证基线：`v0.1.4`。历史变化见[CHANGELOG](CHANGELOG.md)，分支、标签和发布规范见[版本管理](docs/VERSIONING.md)。Java原型0.1.0–0.1.3仅有此前本地迭代，不补造其Git历史。
-
-源码独立编写，参考过THUInfo与ZZUPocket的接入思路，未复制其应用源码。
+本项目为非官方研究与个人使用预发布，不代表学校开放了第三方 API 或正式单点登录接入。仓库与 CI 只允许合成样本，真实课程、截图、HAR、学校会话、设备标识及签名密钥不提交。
