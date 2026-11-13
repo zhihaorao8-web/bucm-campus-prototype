@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_miuix/miuix.dart';
 import '../application/appearance_controller.dart';
@@ -154,6 +155,9 @@ ThemeData appTheme(
     textTheme: text,
     splashFactory: NoSplash.splashFactory,
     appBarTheme: AppBarTheme(
+      systemOverlayStyle:
+          (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+              .copyWith(statusBarColor: Colors.transparent),
       backgroundColor: colors.surface,
       foregroundColor: colors.onSurface,
       elevation: 0,

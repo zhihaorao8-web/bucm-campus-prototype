@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:campus_schedule/platform/classroom_access.dart';
@@ -105,6 +106,18 @@ void main() {
           ),
         );
         expect(find.text('示例教师'), findsOneWidget);
+        final systemBar = tester
+            .widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+              find.descendant(
+                of: find.byType(SliverAppBar),
+                matching: find.byType(AnnotatedRegion<SystemUiOverlayStyle>),
+              ),
+            )
+            .value;
+        expect(
+          systemBar.statusBarIconBrightness,
+          dark ? Brightness.light : Brightness.dark,
+        );
         await tester.tap(find.text('课程信息'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('查看完整课程信息'));

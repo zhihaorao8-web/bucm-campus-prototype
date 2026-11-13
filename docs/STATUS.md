@@ -1,5 +1,11 @@
 # 进度与验证边界
 
+## 第五阶段分项：透明课程顶栏的系统栏覆盖（2026-11-14）
+
+- 在`c69c23c`模拟器小屏课程详情中继续观察到白色状态栏图标：Material透明AppBar自身覆盖根部AnnotatedRegion，自动按透明色推断出错误前景。AppBarTheme现显式设置当前主题的状态栏前景；透明顶栏和布局不变。
+- 课程页浅深色检查增加实际SliverAppBar生成的AnnotatedRegion断言；课程页/外观/课程交互共17项通过，静态分析无问题，日志`build/stage5-appbar-tests.log`、`stage5-appbar-analyze.log`。与本记录同次提交后再从干净源码构建复核。
+- 已安装`6d63db5`并原生核对外观开关：极光/周末/模糊/玻璃等均暴露checkable=true与正确checked=true，修正前均为false；完整TalkBack手势/语音仍未据此标记通过。
+
 ## 第五阶段分项：外观开关无障碍语义（2026-11-14）
 
 - 原生节点及合成语义树共同证实：MIUIX偏好整行没有正确暴露开关当前状态。外观开关增加单一语义节点，包含名称、摘要、toggled及enabled；禁用项不提供tap，实际指针与键盘组件保留。
