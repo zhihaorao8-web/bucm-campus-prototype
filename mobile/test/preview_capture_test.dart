@@ -243,12 +243,15 @@ void main() {
     await tester.pumpAndSettle();
     await capture('daily-large-text');
     // Capture real widget motion at fixed phases, not an image-editor effect.
-    await setup(ambient: true);
-    await tester.tap(find.text('先体验合成示例'));
-    await tester.pump(const Duration(milliseconds: 500));
-    for (var frame = 0; frame < 12; frame++) {
-      await capture('atmosphere-motion-${frame.toString().padLeft(2, '0')}');
-      await tester.pump(const Duration(seconds: 2));
+    for (final dark in [false, true]) {
+      await setup(ambient: true, dark: dark);
+      await tester.tap(find.text('先体验合成示例'));
+      await tester.pump(const Duration(milliseconds: 500));
+      for (var frame = 0; frame < 12; frame++) {
+        final prefix = dark ? 'dark-atmosphere' : 'atmosphere';
+        await capture('$prefix-motion-${frame.toString().padLeft(2, '0')}');
+        await tester.pump(const Duration(seconds: 2));
+      }
     }
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());

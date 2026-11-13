@@ -113,6 +113,10 @@ class _AuroraPainter extends CustomPainter {
   final Animation<double> phase;
   @override
   void paint(Canvas canvas, Size size) {
+    if (tab == 0) {
+      _paintDiffusion(canvas, size);
+      return;
+    }
     const palettes = [
       [Color(0xFF72D0FF), Color(0xFF91EACF), Color(0xFFFFD8AE)],
       [Color(0xFF6096FD), Color(0xFF6ED7B4), Color(0xFFCADFFF)],
@@ -142,6 +146,59 @@ class _AuroraPainter extends CustomPainter {
             ],
           ).createShader(Rect.fromCircle(center: center, radius: radius)),
       );
+    }
+  }
+
+  // Broad elliptical fields overlap beyond the viewport: no visible orb edges.
+  // Analytic falloff avoids adding a full-screen blur pass on every frame.
+  void _paintDiffusion(Canvas canvas, Size size) {
+    final bounds = Offset.zero & size;
+    canvas.drawRect(
+      bounds,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: dark
+              ? const [Color(0xFF070D14), Color(0xFF091313), Color(0xFF0B0C14)]
+              : const [Color(0xFFFAFDFF), Color(0xFFFCFEFC), Color(0xFFFFFCF9)],
+        ).createShader(bounds),
+    );
+    const hues = [
+      Color(0xFF6CCFFF),
+      Color(0xFF7FE8CD),
+      Color(0xFFFFD1A6),
+      Color(0xFFB8BBFF),
+    ];
+    final angle = phase.value * math.pi * 2;
+    for (var i = 0; i < hues.length; i++) {
+      final orbit = angle + i * math.pi / 2;
+      final center = Offset(
+        size.width * ([-.10, 1.04, .04, .98][i] + .13 * math.sin(orbit)),
+        size.height * ([.08, .32, .62, .92][i] + .045 * math.cos(orbit)),
+      );
+      final alpha = dark ? [.23, .20, .13, .15][i] : [.29, .25, .18, .15][i];
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.scale(
+        size.width * (1.08 + .05 * math.cos(orbit)),
+        size.height * (.43 + .025 * math.sin(orbit)),
+      );
+      canvas.drawCircle(
+        Offset.zero,
+        1,
+        Paint()
+          ..shader = RadialGradient(
+            stops: const [0, .22, .58, 1],
+            colors: [
+              hues[i].withValues(alpha: alpha),
+              hues[i].withValues(alpha: alpha * .84),
+              hues[i].withValues(alpha: alpha * .30),
+              hues[i].withValues(alpha: 0),
+            ],
+          ).createShader(const Rect.fromLTWH(-1, -1, 2, 2)),
+      );
+      canvas.restore();
     }
   }
 
