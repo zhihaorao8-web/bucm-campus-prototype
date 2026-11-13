@@ -28,7 +28,7 @@ class ScheduleModeSwitch extends StatelessWidget {
             alignment: daily ? Alignment.centerRight : Alignment.centerLeft,
             duration: MediaQuery.disableAnimationsOf(context)
                 ? Duration.zero
-                : const Duration(milliseconds: 280),
+                : const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
             child: FractionallySizedBox(
               widthFactor: .5,

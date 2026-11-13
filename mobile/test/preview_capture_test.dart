@@ -242,6 +242,33 @@ void main() {
     await tester.tap(find.text('日'));
     await tester.pumpAndSettle();
     await capture('daily-large-text');
+    // Navigation captures freeze only ambient light, retaining real UI motion.
+    Future<void> sampleTransition(
+      String name,
+      Future<void> Function() action,
+    ) async {
+      await capture('$name-00');
+      await action();
+      await tester.pump();
+      for (var frame = 1; frame <= 14; frame++) {
+        await tester.pump(const Duration(milliseconds: 20));
+        await capture('$name-${frame.toString().padLeft(2, '0')}');
+      }
+      await tester.pumpAndSettle();
+    }
+
+    await setup(data: weeklyPreviewData(schoolNow()));
+    await sampleTransition(
+      'navigation-transition',
+      () => tester.tap(find.byKey(const ValueKey('tab-1'))),
+    );
+    await sampleTransition('mode-transition', () => tester.tap(find.text('日')));
+    await tester.tap(find.text('周'));
+    await tester.pumpAndSettle();
+    await sampleTransition(
+      'week-transition',
+      () => tester.tap(find.byTooltip('下一周')),
+    );
     // Capture real widget motion at fixed phases, not an image-editor effect.
     for (final dark in [false, true]) {
       await setup(ambient: true, dark: dark);

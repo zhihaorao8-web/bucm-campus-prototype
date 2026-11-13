@@ -37,6 +37,9 @@ class _AppShellState extends ConsumerState<AppShell>
   bool daily = false, demo = false, busy = false;
   double tabDrag = 0;
   final navigation = PageController();
+  final dayController = ScrollController();
+  ScrollController get activeScroll =>
+      tab == 1 && daily ? dayController : pageControllers[tab];
   String? selectedSemester;
   DateTime now = schoolNow();
   late final Timer ticker;
@@ -101,6 +104,7 @@ class _AppShellState extends ConsumerState<AppShell>
   void dispose() {
     ticker.cancel();
     navigation.dispose();
+    dayController.dispose();
     badgeTicket++;
     badgeTimer?.cancel();
     classroomLibrary.changes.removeListener(refreshRecordingBadges);
@@ -208,14 +212,14 @@ class _AppShellState extends ConsumerState<AppShell>
         child: MiuixScaffold(
           containerColor: Colors.transparent,
           topBar: ListenableBuilder(
-            listenable: pageControllers[tab],
+            listenable: activeScroll,
             builder: (context, _) {
               final sample = tab == 0;
               final opaque =
                   MediaQuery.highContrastOf(context) ||
                   appearance.contrast > 0 ||
                   !appearance.blur;
-              final scroll = pageControllers[tab];
+              final scroll = activeScroll;
               final scrim = scroll.hasClients
                   ? (scroll.positions.last.pixels / 80).clamp(0.0, 1.0)
                   : 0.0;
@@ -619,39 +623,48 @@ class _AppShellState extends ConsumerState<AppShell>
           child: Text('当前日期不在已导入的教学周范围内'),
         ),
     ];
-    if (daily) {
-      return ListView(
-        key: const PageStorageKey('timetable-page'),
-        controller: pageControllers[1],
-        padding: pagePadding(insets),
-        children: [
-          ...header,
-          const SizedBox(height: 16),
-          WeekdayTabs(
-            day: day,
-            onSelected: (value) => setState(() => day = value),
+    final dailyView = ListView(
+      key: const PageStorageKey('timetable-day-page'),
+      controller: dayController,
+      padding: pagePadding(insets),
+      children: [
+        ...header,
+        const SizedBox(height: 16),
+        WeekdayTabs(
+          day: day,
+          onSelected: (value) => setState(() => day = value),
+        ),
+        const SizedBox(height: 24),
+        ScheduleContentTransition(
+          order:
+              selectedDate.millisecondsSinceEpoch ~/
+              Duration.millisecondsPerDay,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (events.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Center(child: Text('这一天没有排课')),
+                ),
+              for (final (index, event) in events.indexed)
+                CourseRow(
+                  event: event,
+                  hasRecordings: hasRecordings(event.course),
+                  colorIndex: index % 5,
+                  now: now,
+                  conflict: events.any(
+                    (other) => other != event && event.overlaps(other),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 24),
-          if (events.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 40),
-              child: Center(child: Text('这一天没有排课')),
-            ),
-          for (final (index, event) in events.indexed)
-            CourseRow(
-              event: event,
-              hasRecordings: hasRecordings(event.course),
-              colorIndex: index % 5,
-              now: now,
-              conflict: events.any(
-                (other) => other != event && event.overlaps(other),
-              ),
-            ),
-        ],
-      );
-    }
+        ),
+      ],
+    );
+
     final padding = pagePadding(insets, horizontal: 8);
-    return CustomScrollView(
+    final weeklyView = CustomScrollView(
       key: const PageStorageKey('timetable-page'),
       controller: pageControllers[1],
       slivers: [
@@ -685,15 +698,20 @@ class _AppShellState extends ConsumerState<AppShell>
               sliver: SliverToBoxAdapter(
                 child: SizedBox(
                   height: height,
-                  child: WeekGrid(
-                    courses: courses,
-                    hasRecordings: hasRecordings,
-                    monday: monday,
-                    today: now,
-                    onSelectDay: (value) => setState(() {
-                      day = value;
-                      daily = true;
-                    }),
+                  child: ScheduleContentTransition(
+                    order:
+                        monday.millisecondsSinceEpoch ~/
+                        Duration.millisecondsPerDay,
+                    child: WeekGrid(
+                      courses: courses,
+                      hasRecordings: hasRecordings,
+                      monday: monday,
+                      today: now,
+                      onSelectDay: (value) => setState(() {
+                        day = value;
+                        daily = true;
+                      }),
+                    ),
                   ),
                 ),
               ),
@@ -701,6 +719,11 @@ class _AppShellState extends ConsumerState<AppShell>
           },
         ),
       ],
+    );
+    return ScheduleModeTransition(
+      daily: daily,
+      weekly: weeklyView,
+      dailyView: dailyView,
     );
   }
 
