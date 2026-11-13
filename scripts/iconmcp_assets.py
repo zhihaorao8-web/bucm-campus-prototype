@@ -97,7 +97,8 @@ def main():
             (ASSETS / (icon['name'] + '.svg')).write_bytes(raw)
             icon.update(sha256=hashlib.sha256(raw).hexdigest(), label=metadata['label'], set=metadata['set'])
         MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    generate_catalog(check_assets())
+        generate_catalog(manifest)
+    check_assets()
     print(f"Verified {len(manifest['icons'])} local IconMCP SVGs; {'explicit fetch' if args.fetch else 'offline check'}.")
 
 

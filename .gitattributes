@@ -9,4 +9,5 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 *.png binary
+design/icons/iconmcp/*.svg text eol=lf
 *.apk binary
