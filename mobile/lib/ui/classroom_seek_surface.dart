@@ -12,6 +12,9 @@ class ClassroomSeekSurface extends StatefulWidget {
     required this.onSeek,
     required this.onInteraction,
     required this.child,
+    this.previewBottomInset = 0,
+    this.previewTopInset = 0,
+    this.previewExclusion,
   });
   final int position, duration;
   final bool enabled;
@@ -19,6 +22,8 @@ class ClassroomSeekSurface extends StatefulWidget {
   final ValueChanged<int> onSeek;
   final VoidCallback onInteraction;
   final Widget child;
+  final double previewBottomInset, previewTopInset;
+  final Rect? previewExclusion;
 
   @override
   State<ClassroomSeekSurface> createState() => _ClassroomSeekSurfaceState();
@@ -83,6 +88,24 @@ class _ClassroomSeekSurfaceState extends State<ClassroomSeekSurface> {
     }
   }
 
+  Rect previewArea(Size size) {
+    final top = widget.previewTopInset.clamp(0.0, size.height);
+    final bottom = (size.height - widget.previewBottomInset).clamp(
+      top,
+      size.height,
+    );
+    final area = Rect.fromLTRB(0, top, size.width, bottom);
+    final exclusion = widget.previewExclusion?.inflate(8).intersect(area);
+    if (exclusion == null || !area.overlaps(exclusion)) return area;
+    final choices = [
+      Rect.fromLTRB(area.left, area.top, exclusion.left, area.bottom),
+      Rect.fromLTRB(exclusion.right, area.top, area.right, area.bottom),
+      Rect.fromLTRB(area.left, area.top, area.right, exclusion.top),
+      Rect.fromLTRB(area.left, exclusion.bottom, area.right, area.bottom),
+    ]..sort((a, b) => (b.width * b.height).compareTo(a.width * a.height));
+    return choices.first;
+  }
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) => Listener(
@@ -114,40 +137,43 @@ class _ClassroomSeekSurfaceState extends State<ClassroomSeekSurface> {
           children: [
             widget.child,
             if (target != null)
-              IgnorePointer(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: DecoratedBox(
-                        key: const ValueKey('classroom-seek-preview'),
-                        decoration: BoxDecoration(
-                          color: Colors.black87,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
+              Positioned.fromRect(
+                rect: previewArea(constraints.biggest),
+                child: IgnorePointer(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: DecoratedBox(
+                          key: const ValueKey('classroom-seek-preview'),
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '${widget.formatTime(target!)} / ${widget.formatTime(duration)}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${widget.formatTime(target!)} / ${widget.formatTime(duration)}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${target! >= origin ? '前进' : '后退'} ${widget.formatTime((target! - origin).abs())} · 松手跳转',
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                            ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${target! >= origin ? '前进' : '后退'} ${widget.formatTime((target! - origin).abs())} · 松手跳转',
+                                  style: const TextStyle(color: Colors.white70),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

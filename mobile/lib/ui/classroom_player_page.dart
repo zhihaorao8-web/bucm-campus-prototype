@@ -207,8 +207,10 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     super.dispose();
   }
 
-  Future<void> restoreSystemUi() async {
-    await SystemChrome.setPreferredOrientations([]);
+  Future<void> restoreSystemUi({bool portrait = false}) async {
+    await SystemChrome.setPreferredOrientations(
+      portrait ? [DeviceOrientation.portraitUp] : [],
+    );
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   }
 
@@ -230,11 +232,23 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
         }
         await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       } else {
-        await restoreSystemUi();
+        await restoreSystemUi(portrait: true);
       }
       if (!mounted) await restoreSystemUi();
     } catch (_) {
       if (mounted) setState(() => fullscreen = !next);
+      try {
+        if (!next && mounted) {
+          await SystemChrome.setPreferredOrientations([
+            DeviceOrientation.landscapeLeft,
+            DeviceOrientation.landscapeRight,
+          ]);
+        } else {
+          await restoreSystemUi(portrait: mounted);
+        }
+      } catch (_) {
+        // A platform restriction must not leave the transition locked.
+      }
     } finally {
       changingFullscreen = false;
       updateControls();
@@ -285,27 +299,38 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     );
   }
 
-  Widget viewport() {
+  Widget viewport({double reservedBottom = 0}) {
     final state = player.state;
     return LayoutBuilder(
       builder: (context, constraints) {
-        var reservedTop = 12.0;
+        final watermarkLeft = fullscreen ? 72.0 : 16.0;
+        var reservedTop = fullscreen && controlsVisible ? 64.0 : 12.0;
         if (state.watermark.isNotEmpty) {
-          final painter = TextPainter(
-            text: TextSpan(
-              text: state.watermark,
-              style: DefaultTextStyle.of(
-                context,
-              ).style.merge(const TextStyle(fontSize: 12)),
-            ),
-            textDirection: Directionality.of(context),
-            textScaler: MediaQuery.textScalerOf(context),
-            maxLines: 4,
-            ellipsis: '…',
-          )..layout(maxWidth: math.max(0, constraints.maxWidth - 32));
-          reservedTop = 12 + painter.height + 8;
+          final painter =
+              TextPainter(
+                text: TextSpan(
+                  text: state.watermark,
+                  style: DefaultTextStyle.of(
+                    context,
+                  ).style.merge(const TextStyle(fontSize: 12)),
+                ),
+                textDirection: Directionality.of(context),
+                textScaler: MediaQuery.textScalerOf(context),
+                maxLines: 4,
+                ellipsis: '…',
+              )..layout(
+                maxWidth: math.max(
+                  0,
+                  constraints.maxWidth - watermarkLeft - 16,
+                ),
+              );
+          reservedTop = math.max(reservedTop, 12 + painter.height + 8);
           painter.dispose();
         }
+        final smallViewport = Size(
+          constraints.maxWidth,
+          math.max(0, constraints.maxHeight - reservedBottom),
+        );
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -324,13 +349,18 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                 onSeek: (position) =>
                     unawaited(player.command('seek', {'position': position})),
                 onInteraction: () => updateControls(interacted: true),
+                previewBottomInset: reservedBottom,
+                previewTopInset: reservedTop,
+                previewExclusion: state.small == null
+                    ? null
+                    : smallPlacement.resolve(smallViewport, reservedTop),
                 child: picture(state.main),
               ),
             ),
             if (state.small != null)
               ClassroomSmallWindow(
                 placement: smallPlacement,
-                viewport: constraints.biggest,
+                viewport: smallViewport,
                 reservedTop: reservedTop,
                 label: classroomViewName(state.small!),
                 picture: picture(state.small!),
@@ -341,7 +371,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
             if (state.watermark.isNotEmpty)
               Positioned(
                 top: 12,
-                left: 16,
+                left: watermarkLeft,
                 right: 16,
                 child: IgnorePointer(
                   child: Text(
@@ -399,7 +429,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     );
   }
 
-  Widget controls() {
+  Widget controls({bool overlay = false}) {
     final state = player.state;
     final error =
         player.failure ??
@@ -413,27 +443,30 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                 _ => '课堂视频未能播放，请检查网络后返回重试。',
               });
     final canControl = error == null && !(progress?.blocked ?? false);
+    final notices = <Widget>[
+      if (progress != null &&
+          progress!.blocked &&
+          !progress!.invalidated &&
+          progress!.choicePosition == null)
+        const Padding(
+          padding: EdgeInsets.all(12),
+          child: Text('正在核对本机进度与视频时长…'),
+        ),
+      if (progress?.warning != null)
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(progress!.warning!),
+        ),
+      if (error != null)
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(error, semanticsLabel: error),
+        ),
+    ];
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (progress != null &&
-            progress!.blocked &&
-            !progress!.invalidated &&
-            progress!.choicePosition == null)
-          const Padding(
-            padding: EdgeInsets.all(12),
-            child: Text('正在核对本机进度与视频时长…'),
-          ),
-        if (progress?.warning != null)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Text(progress!.warning!),
-          ),
-        if (error != null)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Text(error, semanticsLabel: error),
-          ),
+        if (!overlay) ...notices,
         Slider(
           semanticFormatterCallback: (value) => time(value.toInt()),
           value: (dragging ?? state.position.toDouble()).clamp(
@@ -475,7 +508,9 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
               Expanded(
                 child: Text(
                   '${time(state.position)} / ${time(state.duration)}',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: overlay ? Colors.white : null,
+                  ),
                 ),
               ),
               PopupMenuButton<double>(
@@ -498,7 +533,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
               ),
               IconButton(
                 tooltip: fullscreen ? '退出全屏' : '全屏',
-                onPressed: toggleFullscreen,
+                onPressed: changingFullscreen ? null : toggleFullscreen,
                 icon: Icon(
                   fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
                 ),
@@ -506,6 +541,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
             ],
           ),
         ),
+        if (overlay) ...notices,
         Wrap(
           alignment: WrapAlignment.center,
           crossAxisAlignment: WrapCrossAlignment.center,
@@ -557,14 +593,105 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     );
   }
 
+  Widget fullscreenBody() => LayoutBuilder(
+    builder: (context, constraints) {
+      final panelLimit = math.min(240.0, constraints.maxHeight * .55);
+      final overlayTheme = Theme.of(context).copyWith(
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.dark(
+          primary: Theme.of(context).colorScheme.primary,
+        ),
+        iconTheme: const IconThemeData(
+          color: Colors.white,
+          shadows: [Shadow(color: Colors.black87, blurRadius: 4)],
+        ),
+      );
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Semantics(
+            label: '轻点显示播放控制',
+            button: true,
+            onTap: () => updateControls(interacted: true),
+            child: GestureDetector(
+              key: const ValueKey('fullscreen-playback-surface'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => updateControls(interacted: true),
+              child: viewport(reservedBottom: controlsVisible ? panelLimit : 0),
+            ),
+          ),
+          if (controlsVisible) ...[
+            Positioned(
+              left: 8,
+              top: 8,
+              child: IconButton(
+                tooltip: '返回竖屏',
+                color: Colors.white,
+                style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                onPressed: changingFullscreen ? null : toggleFullscreen,
+                icon: const Icon(Icons.arrow_back),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: panelLimit),
+                child: Theme(
+                  data: overlayTheme,
+                  child: Material(
+                    key: const ValueKey('fullscreen-transparent-controls'),
+                    type: MaterialType.transparency,
+                    child: DefaultTextStyle.merge(
+                      style: const TextStyle(
+                        color: Colors.white,
+                        shadows: [Shadow(color: Colors.black87, blurRadius: 4)],
+                      ),
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          overlayColor: Colors.transparent,
+                          trackHeight: 3,
+                          activeTrackColor: overlayTheme.colorScheme.primary,
+                          inactiveTrackColor: Colors.white54,
+                          thumbColor: Colors.white,
+                        ),
+                        child: SingleChildScrollView(
+                          key: const ValueKey('fullscreen-controls-panel'),
+                          child: controls(overlay: true),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
+    },
+  );
+
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: !fullscreen,
+    canPop: !fullscreen && !changingFullscreen,
     onPopInvokedWithResult: (didPop, _) {
       if (!didPop) unawaited(toggleFullscreen());
     },
     child: Scaffold(
-      appBar: fullscreen ? null : AppBar(title: Text(widget.title)),
+      appBar: fullscreen
+          ? null
+          : AppBar(
+              title: Text(widget.title),
+              actions: [
+                TextButton.icon(
+                  onPressed: changingFullscreen ? null : toggleFullscreen,
+                  icon: const Icon(Icons.fullscreen),
+                  label: const Text('横屏'),
+                  style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
+                ),
+              ],
+            ),
       body: SafeArea(
         child: Listener(
           onPointerDown: (_) {
@@ -574,24 +701,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
           onPointerUp: (_) => endPointer(),
           onPointerCancel: (_) => endPointer(),
           child: fullscreen
-              ? Column(
-                  children: [
-                    Expanded(
-                      child: Semantics(
-                        label: '轻点显示播放控制',
-                        button: true,
-                        onTap: () => updateControls(interacted: true),
-                        child: GestureDetector(
-                          key: const ValueKey('fullscreen-playback-surface'),
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => updateControls(interacted: true),
-                          child: viewport(),
-                        ),
-                      ),
-                    ),
-                    if (controlsVisible) controls(),
-                  ],
-                )
+              ? fullscreenBody()
               : ListView(
                   children: [
                     AspectRatio(aspectRatio: 16 / 9, child: viewport()),

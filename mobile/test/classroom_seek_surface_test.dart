@@ -170,6 +170,20 @@ void main() {
         );
         expect(find.byTooltip('暂停'), findsOneWidget);
         expect(h.actions.where((a) => a == 'seek'), isEmpty);
+        expect(
+          tester
+              .getRect(find.byKey(const ValueKey('classroom-seek-preview')))
+              .overlaps(
+                tester.getRect(
+                  find.byKey(const ValueKey('classroom-small-window')),
+                ),
+              ),
+          isFalse,
+        );
+        await h.capture(
+          tester,
+          fullscreen ? 'seek-landscape' : 'seek-portrait',
+        );
         await gesture.up();
         await tester.pump();
         expect(h.actions.where((a) => a == 'seek').length, 1);

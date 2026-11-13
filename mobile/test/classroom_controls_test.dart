@@ -12,6 +12,7 @@ class ControlsHarness {
   final boundary = GlobalKey();
   final data = snapshot()..addAll({'playing': true, 'wanted': true});
   final actions = <String>[];
+  final systemCalls = <MethodCall>[];
   final accessible = ValueNotifier(false);
   late ClassroomPlayerController player;
   static const channel = MethodChannel('synthetic-idle-controls');
@@ -21,6 +22,7 @@ class ControlsHarness {
     Size size = const Size(900, 600),
     double textScale = 1,
     bool fullscreen = true,
+    Brightness brightness = Brightness.light,
   }) async {
     if (const bool.fromEnvironment('CAPTURE_PREVIEW')) {
       await tester.runAsync(() async {
@@ -42,10 +44,10 @@ class ControlsHarness {
     addTearDown(tester.view.resetDevicePixelRatio);
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    messenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      (_) async => null,
-    );
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      systemCalls.add(call);
+      return null;
+    });
     addTearDown(
       () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
     );
@@ -80,6 +82,7 @@ class ControlsHarness {
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
+            brightness: brightness,
             fontFamily: const bool.fromEnvironment('CAPTURE_PREVIEW')
                 ? 'PreviewChinese'
                 : null,
