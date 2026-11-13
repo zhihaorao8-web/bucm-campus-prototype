@@ -37,7 +37,15 @@ public final class ClassroomMediaTest {
         check(ClassroomMediaTransport.allowed("https://webvpn.bucm.edu.cn"+ClassroomMediaTransport.VPN_MEDIA2+"synthetic/segment.ts"));
         check(ClassroomMediaTransport.allowed("https://qxkt3.bucm.edu.cn:8880//synthetic/index.m3u8"));
         check(ClassroomMediaTransport.allowed("https://webvpn.bucm.edu.cn"+ClassroomMediaTransport.VPN_MEDIA3+"synthetic/segment.ts"));
-        check(!ClassroomMediaTransport.allowed("https://qxkt1.bucm.edu.cn:8880/synthetic/index.m3u8"));
+        check(ClassroomMediaTransport.allowed("https://qxkt1.bucm.edu.cn:8880//synthetic//index.m3u8"));
+        check(!ClassroomMediaTransport.allowed("https://qxkt5.bucm.edu.cn:8880/synthetic/index.m3u8"));
+        for(String bad:new String[]{"http://qxkt1.bucm.edu.cn:8880/x","https://qxkt1.bucm.edu.cn:8881/x","https://qxkt1.bucm.edu.cn.evil.test:8880/x","https://u:p@qxkt1.bucm.edu.cn:8880/x","https://qxkt1.bucm.edu.cn:8880/%2e%2e/x"}) check(!ClassroomMediaTransport.allowed(bad));
+        String firstNode="https://qxkt1.bucm.edu.cn:8880/synthetic/index.m3u8";
+        Fake firstNodeReply=new Fake(firstNode,new byte[]{7,8});
+        ClassroomMediaTransport firstNodeTransport=transport(firstNodeReply);
+        check(firstNodeTransport.open(firstNode,"https://qhz.bucm.edu.cn/coursePlatform/","Synthetic",0,-1)==2);
+        check(firstNodeReply.getRequestProperty("Referer")==null);
+        firstNodeTransport.close();
         check(!ClassroomMediaTransport.allowed("https://qxkt3.bucm.edu.cn:8881/synthetic/index.m3u8"));
         check(!ClassroomMediaTransport.allowed("https://webvpn.bucm.edu.cn"+ClassroomMediaTransport.VPN_MEDIA3.replace("3626/","3627/")+"synthetic/index.m3u8"));
         check(!ClassroomMediaTransport.allowed("https://webvpn.bucm.edu.cn"+ClassroomMediaTransport.VPN_MEDIA+"%2e%2e/other"));

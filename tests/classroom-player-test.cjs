@@ -22,7 +22,7 @@ function fixture(vpn = false, node = 4) {
   return {context, comp, Xhr, original, command, run, watermark, stops: () => stops, cancelled: () => cancelled};
 }
 (async () => {
-  for (const [vpn, node] of [[false, 2], [false, 3], [false, 4], [true, 2], [true, 3], [true, 4]]) {
+  for (const [vpn, node] of [[false, 1], [false, 2], [false, 3], [false, 4], [true, 2], [true, 3], [true, 4]]) {
     const f = fixture(vpn, node);
     assert.equal(f.command('install').state, 'installed');
     assert.equal(f.command('install').state, 'busy');
@@ -63,8 +63,21 @@ function fixture(vpn = false, node = 4) {
   assert.equal(wrong.command('capture').state, 'loading');wrong.command('abort');
   const bad = fixture();bad.command('install');bad.watermark({waterMark: '0'});bad.comp.videoInfo.teaStreamHlsUrl = 'http://qxkt4.bucm.edu.cn:8880/x';
   bad.command('capture');await new Promise(setImmediate);assert.equal(bad.command('capture').state, 'policy-boundary');bad.command('abort');
-  const unknown = fixture(false, 1);unknown.command('install');unknown.watermark({waterMark:'0'});
+  const mixed = fixture();mixed.command('install');mixed.watermark({waterMark:'0'});
+  mixed.comp.videoInfo.teaStreamHlsUrl = media.replace('qxkt4', 'qxkt1');
+  mixed.command('capture');await new Promise(setImmediate);
+  assert.equal(mixed.command('capture').state, 'ready');
+  const unverifiedVpn = fixture(true, 1);unverifiedVpn.command('install');unverifiedVpn.watermark({waterMark:'0'});
+  let unverifiedRequests = 0;
+  unverifiedVpn.context.fetch = async () => {unverifiedRequests++;throw new Error('Must not invent a tunnel');};
+  unverifiedVpn.command('capture');await new Promise(setImmediate);
+  assert.equal(unverifiedVpn.command('capture').state, 'policy-boundary');assert.equal(unverifiedRequests, 0);unverifiedVpn.command('abort');
+  const unknown = fixture(false, 5);unknown.command('install');unknown.watermark({waterMark:'0'});
   unknown.command('capture');await new Promise(setImmediate);assert.equal(unknown.command('capture').state,'policy-boundary');unknown.command('abort');
+  for (const invalid of ['http://qxkt1.bucm.edu.cn:8880/x', 'https://qxkt1.bucm.edu.cn:8881/x', 'https://qxkt1.bucm.edu.cn.evil.test:8880/x', 'https://u:p@qxkt1.bucm.edu.cn:8880/x']) {
+    const f = fixture();f.command('install');f.watermark({waterMark:'0'});f.comp.videoInfo.teaStreamHlsUrl = invalid;
+    f.command('capture');await new Promise(setImmediate);assert.equal(f.command('capture').state, 'policy-boundary');f.command('abort');
+  }
   const wrongTunnel = fixture(true, 3);wrongTunnel.command('install');wrongTunnel.watermark({waterMark:'0'});
   wrongTunnel.context.fetch = async () => ({ok:true,url:'https://webvpn.bucm.edu.cn/https-8880/unverified/synthetic/index.m3u8'});
   wrongTunnel.command('capture');await new Promise(setImmediate);assert.equal(wrongTunnel.command('capture').state,'policy-boundary');wrongTunnel.command('abort');

@@ -45,7 +45,7 @@ public final class ClassroomMediaTransport implements Closeable {
             if(lower.contains("%2e")||lower.contains("%2f")||lower.contains("%5c")) return false;
             // Preserve empty path segments; reject traversal without rewriting.
             for(String part:path.split("/",-1))if(part.equals(".")||part.equals(".."))return false;
-            return (("qxkt4.bucm.edu.cn".equals(host)||"qxkt2.bucm.edu.cn".equals(host)||"qxkt3.bucm.edu.cn".equals(host))&&u.getPort()==8880)||
+            return (("qxkt1.bucm.edu.cn".equals(host)||"qxkt4.bucm.edu.cn".equals(host)||"qxkt2.bucm.edu.cn".equals(host)||"qxkt3.bucm.edu.cn".equals(host))&&u.getPort()==8880)||
                 ("qhz.bucm.edu.cn".equals(host)&&(u.getPort()==-1||u.getPort()==443))||
                 ("webvpn.bucm.edu.cn".equals(host)&&(u.getPort()==-1||u.getPort()==443)&&(path.startsWith(VPN_MEDIA)||path.startsWith(VPN_MEDIA2)||path.startsWith(VPN_MEDIA3)));
             // Exact public host/port mapping observed in the authorized session;

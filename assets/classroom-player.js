@@ -87,17 +87,21 @@
         'qxkt4.bucm.edu.cn': '/https-8880/77726476706e69737468656265737421e1ef4a88737e6a457d05c7a99c406d3652/',
         'qxkt2.bucm.edu.cn': '/https-8880/77726476706e69737468656265737421e1ef4a88757e6a457d05c7a99c406d3643/'
       };
-      if (url.protocol !== 'https:' || !Object.prototype.hasOwnProperty.call(mappings, url.hostname) || url.port !== '8880' || url.username || url.password) throw new Error('boundary');
+      var knownNode = url.hostname === 'qxkt1.bucm.edu.cn' || Object.prototype.hasOwnProperty.call(mappings, url.hostname);
+      if (url.protocol !== 'https:' || !knownNode || url.port !== '8880' || url.username || url.password) throw new Error('boundary');
       // Direct media needs no tunnel URL discovery. Let the native transport
       // request it with its HTTPS/host/redirect/auth checks; a cross-origin
       // browser fetch would add an unrelated CORS requirement before playback.
       if (location.hostname === 'qhz.bucm.edu.cn') return {kind: f[0], url: url.href};
+      // qxkt1 HTTPS:8880 was observed in the authorized direct session. Its
+      // WebVPN mapping has not been verified; do not guess a tunnel prefix.
+      var expected = mappings[url.hostname];
+      if (!expected) throw new Error('boundary');
       // WebVPN's official fetch wrapper supplies the actual tunnel URL. Do not
       // invent an encrypted mapping or fall back to direct media off campus.
       var response = await fetch(url.href, {credentials: 'include', signal: AbortSignal.timeout(8000)});
       if (!response.ok) throw new Error('media');
       var actual = new URL(response.url);
-      var expected = mappings[url.hostname];
       if (location.hostname === 'webvpn.bucm.edu.cn' && (actual.protocol !== 'https:' || actual.hostname !== 'webvpn.bucm.edu.cn' || actual.port || !actual.pathname.startsWith(expected))) throw new Error('boundary');
       // Body is unused. Native HLS parsing/streaming starts only after teardown.
       if (response.body) await response.body.cancel();
