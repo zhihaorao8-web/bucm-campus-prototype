@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:campus_schedule/application/appearance_controller.dart';
+import 'support/memory_appearance.dart';
 import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/ui/course_widgets.dart';
 import 'package:campus_schedule/ui/week_grid.dart';
@@ -20,17 +23,24 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       final date = DateTime(2026, 9, 7), course = sample();
       final event = occurrencesOn([course], date).first;
-      Widget surface(Widget child) => MaterialApp(
-        theme: appTheme(Brightness.dark),
-        builder: (context, child) => MiuixThemeBridge(
-          child: MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.linear(1.5)),
-            child: child!,
+      Widget surface(Widget child) => ProviderScope(
+        overrides: [
+          appearanceRepositoryProvider.overrideWithValue(
+            MemoryAppearanceRepository(),
           ),
+        ],
+        child: MaterialApp(
+          theme: appTheme(Brightness.dark),
+          builder: (context, child) => MiuixThemeBridge(
+            child: MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(1.5)),
+              child: child!,
+            ),
+          ),
+          home: Scaffold(body: SingleChildScrollView(child: child)),
         ),
-        home: Scaffold(body: SingleChildScrollView(child: child)),
       );
       await tester.pumpWidget(
         surface(CourseRow(event: event, hasRecordings: true)),

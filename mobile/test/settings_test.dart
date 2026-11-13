@@ -41,7 +41,7 @@ void main() {
     );
   });
   testWidgets(
-    'settings removes old modules and preserves separate session/course confirmation',
+    'settings exposes new sync card and preserves separate session/course confirmation',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -77,7 +77,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('外观设置'), findsOneWidget);
       expect(find.text('登录与隐私'), findsOneWidget);
-      for (final removed in ['导入或刷新课表', '体验合成示例', '导入结果', '合成导入摘要']) {
+      expect(find.byKey(const ValueKey('schedule-sync-card')), findsOneWidget);
+      expect(find.text('导入或刷新课表'), findsOneWidget);
+      expect(find.text('本学期更新时间未知，已保存的课表可离线查看'), findsOneWidget);
+      for (final removed in ['体验合成示例', '导入结果', '合成导入摘要']) {
         expect(find.text(removed), findsNothing);
       }
       await reveal(tester, find.text('退出学校会话'));

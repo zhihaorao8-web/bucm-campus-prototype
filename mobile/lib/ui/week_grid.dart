@@ -600,7 +600,9 @@ class _WeekCourseCard extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                if (hasRecordings && box.maxWidth >= 64)
+                                if (hasRecordings &&
+                                    box.maxWidth >= 44 &&
+                                    available >= line * 7 + 24)
                                   AppIcon(
                                     AppIcons.mediaLibrary,
                                     size: 12,
