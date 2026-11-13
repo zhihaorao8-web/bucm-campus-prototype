@@ -5,6 +5,54 @@ import 'classroom_controls_test.dart' show ControlsHarness;
 
 void main() {
   testWidgets(
+    'one upper-right view button opens all view controls and hides with the seek bar',
+    (tester) async {
+      final h = ControlsHarness();
+      await h.open(tester, size: const Size(900, 500));
+      expect(find.byTooltip('选择主画面'), findsNothing);
+      expect(find.byTooltip('选择小窗画面'), findsNothing);
+      expect(find.byTooltip('交换主画面与小窗'), findsNothing);
+      expect(find.byTooltip('前进10秒'), findsNothing);
+      final button = tester.getRect(find.byTooltip('切换画面'));
+      expect(button.top, lessThan(64));
+      expect(button.right, greaterThan(800));
+      await tester.tap(find.byTooltip('切换画面'));
+      await tester.pumpAndSettle();
+      expect(find.text('切换课堂画面'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.tap(find.byKey(const ValueKey('main-view-teacher')));
+      await tester.pump();
+      expect(h.player.state.main, 'teacher');
+      expect(h.player.state.small, 'ppt');
+      await tester.tap(find.byKey(const ValueKey('small-view-off')));
+      await tester.pump();
+      expect(h.player.state.small, isNull);
+      await tester.tap(find.byKey(const ValueKey('small-view-student')));
+      await tester.pump();
+      expect(h.player.state.small, 'student');
+      await tester.tap(find.text('交换主画面与小窗'));
+      await tester.pump();
+      expect(h.player.state.main, 'student');
+      expect(h.player.state.small, 'teacher');
+      expect(h.player.state.wanted, isTrue);
+      await tester.pumpAndSettle();
+      await h.capture(tester, 'landscape-view-sheet');
+      await tester.tap(find.text('完成'));
+      await tester.pumpAndSettle();
+      await h.capture(tester, 'landscape-minimal');
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.byTooltip('切换画面'), findsNothing);
+      expect(find.byTooltip('关闭小窗'), findsNothing);
+      expect(find.byType(Slider), findsNothing);
+      await h.capture(tester, 'landscape-minimal-hidden');
+      await tester.tapAt(const Offset(150, 100));
+      await tester.pump();
+      expect(find.byTooltip('切换画面'), findsOneWidget);
+      expect(find.byType(Slider), findsOneWidget);
+      await h.close(tester);
+    },
+  );
+  testWidgets(
     'visible landscape entry keeps the same player and position; back restores portrait then system policy',
     (tester) async {
       final h = ControlsHarness();

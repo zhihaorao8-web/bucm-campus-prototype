@@ -67,7 +67,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(smallKey), findsNothing);
       expect(h.data['small'], isNull);
-      await tester.tap(find.text('显示小窗'));
+      await tester.tap(find.byTooltip('切换画面'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('small-view-teacher')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('完成'));
       await tester.pumpAndSettle();
       expect(window(tester), moved);
       await tester.tap(find.byKey(smallKey));

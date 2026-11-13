@@ -284,6 +284,121 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     layout(state.main, kind);
   }
 
+  Future<void> showViewSheet() async {
+    setMenuOpen(true);
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (context) => ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .85,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: ListenableBuilder(
+                    listenable: player,
+                    builder: (context, _) {
+                      final current = player.state;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '切换课堂画面',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('主画面'),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final kind in current.available)
+                                ChoiceChip(
+                                  key: ValueKey('main-view-$kind'),
+                                  label: Text(classroomViewName(kind)),
+                                  selected: current.main == kind,
+                                  onSelected: (selected) {
+                                    if (!selected) return;
+                                    layout(
+                                      kind,
+                                      kind == current.small
+                                          ? current.main
+                                          : current.small,
+                                    );
+                                  },
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('小窗'),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              ChoiceChip(
+                                key: const ValueKey('small-view-off'),
+                                label: const Text('关闭'),
+                                selected: current.small == null,
+                                onSelected: (selected) {
+                                  if (selected) closeSmall();
+                                },
+                              ),
+                              for (final kind in current.available.where(
+                                (kind) => kind != current.main,
+                              ))
+                                ChoiceChip(
+                                  key: ValueKey('small-view-$kind'),
+                                  label: Text(classroomViewName(kind)),
+                                  selected: current.small == kind,
+                                  onSelected: (selected) {
+                                    if (selected) layout(current.main, kind);
+                                  },
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          TextButton.icon(
+                            onPressed: current.small == null
+                                ? null
+                                : () => layout(current.small!, current.main),
+                            icon: const Icon(Icons.swap_horiz),
+                            label: const Text('交换主画面与小窗'),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('完成'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setMenuOpen(false);
+    }
+  }
+
   Widget picture(String kind) {
     final texture = player.state.texture(kind);
     return ColoredBox(
@@ -321,7 +436,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
               )..layout(
                 maxWidth: math.max(
                   0,
-                  constraints.maxWidth - watermarkLeft - 16,
+                  constraints.maxWidth - watermarkLeft - (fullscreen ? 72 : 16),
                 ),
               );
           reservedTop = math.max(reservedTop, 12 + painter.height + 8);
@@ -367,12 +482,13 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                 onSwap: () => layout(state.small!, state.main),
                 onClose: closeSmall,
                 onInteraction: () => updateControls(interacted: true),
+                showControls: !fullscreen || controlsVisible,
               ),
             if (state.watermark.isNotEmpty)
               Positioned(
                 top: 12,
                 left: watermarkLeft,
-                right: 16,
+                right: fullscreen ? 72 : 16,
                 child: IgnorePointer(
                   child: Text(
                     state.watermark,
@@ -542,60 +658,61 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
           ),
         ),
         if (overlay) ...notices,
-        Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            IconButton(
-              tooltip: '后退10秒',
-              onPressed: canControl && state.duration > 0
-                  ? () => player.command('seek', {
-                      'position': (state.position - 10000).clamp(
-                        0,
-                        state.duration,
-                      ),
-                    })
-                  : null,
-              icon: const Icon(Icons.replay_10),
-            ),
-            IconButton(
-              tooltip: '前进10秒',
-              onPressed: canControl && state.duration > 0
-                  ? () => player.command('seek', {
-                      'position': (state.position + 10000).clamp(
-                        0,
-                        state.duration,
-                      ),
-                    })
-                  : null,
-              icon: const Icon(Icons.forward_10),
-            ),
-            viewMenu(small: false),
-            viewMenu(small: true),
-            if (state.small == null)
-              TextButton.icon(
-                onPressed: state.available.any((kind) => kind != state.main)
-                    ? showSmall
+        if (!overlay)
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              IconButton(
+                tooltip: '后退10秒',
+                onPressed: canControl && state.duration > 0
+                    ? () => player.command('seek', {
+                        'position': (state.position - 10000).clamp(
+                          0,
+                          state.duration,
+                        ),
+                      })
                     : null,
-                icon: const Icon(Icons.picture_in_picture_alt_outlined),
-                label: const Text('显示小窗'),
+                icon: const Icon(Icons.replay_10),
               ),
-            IconButton(
-              tooltip: '交换主画面与小窗',
-              onPressed: state.small == null
-                  ? null
-                  : () => layout(state.small!, state.main),
-              icon: const Icon(Icons.swap_horiz),
-            ),
-          ],
-        ),
+              IconButton(
+                tooltip: '前进10秒',
+                onPressed: canControl && state.duration > 0
+                    ? () => player.command('seek', {
+                        'position': (state.position + 10000).clamp(
+                          0,
+                          state.duration,
+                        ),
+                      })
+                    : null,
+                icon: const Icon(Icons.forward_10),
+              ),
+              viewMenu(small: false),
+              viewMenu(small: true),
+              if (state.small == null)
+                TextButton.icon(
+                  onPressed: state.available.any((kind) => kind != state.main)
+                      ? showSmall
+                      : null,
+                  icon: const Icon(Icons.picture_in_picture_alt_outlined),
+                  label: const Text('显示小窗'),
+                ),
+              IconButton(
+                tooltip: '交换主画面与小窗',
+                onPressed: state.small == null
+                    ? null
+                    : () => layout(state.small!, state.main),
+                icon: const Icon(Icons.swap_horiz),
+              ),
+            ],
+          ),
       ],
     );
   }
 
   Widget fullscreenBody() => LayoutBuilder(
     builder: (context, constraints) {
-      final panelLimit = math.min(240.0, constraints.maxHeight * .55);
+      final panelLimit = math.min(160.0, constraints.maxHeight * .45);
       final overlayTheme = Theme.of(context).copyWith(
         brightness: Brightness.dark,
         colorScheme: ColorScheme.dark(
@@ -630,6 +747,19 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                 style: IconButton.styleFrom(backgroundColor: Colors.black54),
                 onPressed: changingFullscreen ? null : toggleFullscreen,
                 icon: const Icon(Icons.arrow_back),
+              ),
+            ),
+            Positioned(
+              right: 8,
+              top: 8,
+              child: IconButton(
+                tooltip: '切换画面',
+                color: Colors.white,
+                onPressed: showViewSheet,
+                icon: const Icon(
+                  Icons.video_settings_outlined,
+                  shadows: [Shadow(color: Colors.black87, blurRadius: 4)],
+                ),
               ),
             ),
             Positioned(

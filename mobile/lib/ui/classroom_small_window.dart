@@ -88,6 +88,7 @@ class ClassroomSmallWindow extends StatefulWidget {
     required this.onSwap,
     required this.onClose,
     required this.onInteraction,
+    this.showControls = true,
   });
   final ClassroomSmallWindowPlacement placement;
   final Size viewport;
@@ -95,6 +96,7 @@ class ClassroomSmallWindow extends StatefulWidget {
   final String label;
   final Widget picture;
   final VoidCallback onSwap, onClose, onInteraction;
+  final bool showControls;
 
   @override
   State<ClassroomSmallWindow> createState() => _ClassroomSmallWindowState();
@@ -194,33 +196,35 @@ class _ClassroomSmallWindowState extends State<ClassroomSmallWindow> {
                   },
                   child: widget.picture,
                 ),
-                Positioned(
-                  left: 6,
-                  top: 4,
-                  child: IgnorePointer(
-                    child: Text(
-                      widget.label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        backgroundColor: Colors.black54,
+                if (widget.showControls)
+                  Positioned(
+                    left: 6,
+                    top: 4,
+                    child: IgnorePointer(
+                      child: Text(
+                        widget.label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          backgroundColor: Colors.black54,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: IconButton(
-                    tooltip: '关闭小窗',
-                    onPressed: widget.onClose,
-                    color: Colors.white,
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.black54,
+                if (widget.showControls)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: IconButton(
+                      tooltip: '关闭小窗',
+                      onPressed: widget.onClose,
+                      color: Colors.white,
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.black54,
+                      ),
+                      icon: const Icon(Icons.close, size: 18),
                     ),
-                    icon: const Icon(Icons.close, size: 18),
                   ),
-                ),
               ],
             ),
           ),

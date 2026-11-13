@@ -253,7 +253,7 @@ void main() {
         find.byKey(const ValueKey('fullscreen-playback-surface')),
       );
       await tester.pump();
-      await tester.tap(find.byTooltip('选择主画面'));
+      await tester.tap(find.byTooltip('切换画面'));
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 6));
       expect(find.byTooltip('退出全屏'), findsOneWidget);

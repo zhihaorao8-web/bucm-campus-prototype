@@ -169,18 +169,24 @@ void main() {
     expect(systemCalls, contains('SystemChrome.setPreferredOrientations'));
     expect(find.byTooltip('退出全屏'), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.byTooltip('选择小窗画面'));
+    await tester.tap(find.byTooltip('切换画面'));
     await tester.pumpAndSettle();
     expect(find.text('学生'), findsNothing);
     expect(find.text('关闭小窗'), findsNothing);
-    await tester.tap(find.text('PPT').last);
-    await tester.pumpAndSettle();
     expect(
       tester
-          .widget<TextButton>(find.widgetWithText(TextButton, '显示小窗'))
+          .widget<TextButton>(find.widgetWithText(TextButton, '交换主画面与小窗'))
           .onPressed,
       isNull,
     );
+    expect(
+      tester
+          .widget<ChoiceChip>(find.byKey(const ValueKey('small-view-off')))
+          .selected,
+      isTrue,
+    );
+    await tester.tap(find.text('完成'));
+    await tester.pumpAndSettle();
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(AppBar), findsOneWidget);
