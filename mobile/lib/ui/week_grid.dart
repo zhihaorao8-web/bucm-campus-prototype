@@ -1,3 +1,4 @@
+import 'course_interaction.dart';
 import 'course_surface.dart';
 import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -106,6 +107,7 @@ class WeekGrid extends ConsumerStatefulWidget {
 
 class _WeekGridState extends ConsumerState<WeekGrid> {
   final preferred = <String, String>{};
+  bool opening = false;
   @override
   void didUpdateWidget(WeekGrid old) {
     super.didUpdateWidget(old);
@@ -117,20 +119,26 @@ class _WeekGridState extends ConsumerState<WeekGrid> {
   }
 
   Future<void> open(EventStack stack, Occurrence primary) async {
-    if (stack.events.length == 1) {
-      showCourseDetails(context, primary.course, date: primary.date);
-      return;
-    }
-    final choice = await showConflictCourses(
-      context,
-      stack.events,
-      primary.course,
-    );
-    if (!mounted || choice == null) return;
-    if (choice.$2) {
-      setState(() => preferred[stack.key] = choice.$1.id);
-    } else {
-      showCourseDetails(context, choice.$1, date: primary.date);
+    if (opening) return;
+    opening = true;
+    try {
+      if (stack.events.length == 1) {
+        await showCourseDetails(context, primary.course, date: primary.date);
+        return;
+      }
+      final choice = await showConflictCourses(
+        context,
+        stack.events,
+        primary.course,
+      );
+      if (!mounted || choice == null) return;
+      if (choice.$2) {
+        setState(() => preferred[stack.key] = choice.$1.id);
+      } else {
+        await showCourseDetails(context, choice.$1, date: primary.date);
+      }
+    } finally {
+      opening = false;
     }
   }
 
@@ -483,19 +491,21 @@ class _WeekCourseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final ink = AppColors.courseInk(context, colorIndex);
-    return CourseSurface(
+    return CoursePressable(
       radius: 8,
       dense: true,
-      color: soft
-          ? AppColors.courseAt(context, colorIndex)
-          : colors.surfaceContainer,
-      child: Material(
-        key: ValueKey('week-primary-${event.course.id}'),
-        color: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
+      onPressed: onTap,
+      child: CourseSurface(
+        radius: 8,
+        dense: true,
+        color: soft
+            ? AppColors.courseAt(context, colorIndex)
+            : colors.surfaceContainer,
+        child: Material(
+          key: ValueKey('week-primary-${event.course.id}'),
+          color: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          clipBehavior: Clip.antiAlias,
           child: Stack(
             children: [
               if (!soft)

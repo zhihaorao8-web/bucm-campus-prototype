@@ -1,3 +1,4 @@
+import 'course_interaction.dart';
 import 'course_surface.dart';
 import 'app_icons.dart';
 import 'package:flutter/material.dart';
@@ -14,12 +15,19 @@ String courseLocation(Course course) => course.place.isNotEmpty
     ? '线上课程'
     : '学校未提供地点';
 
-void showCourseDetails(BuildContext context, Course course, {DateTime? date}) {
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(
+Future<void> showCourseDetails(
+  BuildContext context,
+  Course course, {
+  DateTime? date,
+  Object? transitionTag,
+}) async {
+  await Navigator.of(context).push(
+    CourseDetailsRoute(
+      reducedMotion: MediaQuery.disableAnimationsOf(context),
       builder: (_) => ClassroomCoursePage(
         course: course,
         date: date,
+        transitionTag: transitionTag,
         onDetails: (context) => showCourseInformation(context, course),
       ),
     ),
@@ -136,89 +144,94 @@ class CourseRow extends ConsumerWidget {
     final active = now != null && event.activeAt(now!);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: CourseSurface(
-        color: surface,
-        translucent: translucent,
-        child: MiuixCard(
-          cornerRadius: 24,
-          insideMargin: const EdgeInsets.all(20),
-          onPressed: () =>
-              showCourseDetails(context, event.course, date: event.date),
-          feedbackType: MediaQuery.disableAnimationsOf(context)
-              ? MiuixPressFeedbackType.none
-              : MiuixPressFeedbackType.sink,
-          colors: MiuixCardColors(
-            color: Colors.transparent,
-            contentColor: colors.onSurface,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!soft) ...[
-                Container(
-                  key: const ValueKey('course-color-rail'),
-                  width: 3,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: ink,
-                    borderRadius: BorderRadius.circular(2),
+      child: CourseCardLink(
+        onOpen: (tag) => showCourseDetails(
+          context,
+          event.course,
+          date: event.date,
+          transitionTag: tag,
+        ),
+        child: CourseSurface(
+          color: surface,
+          translucent: translucent,
+          child: MiuixCard(
+            cornerRadius: 24,
+            insideMargin: const EdgeInsets.all(20),
+            colors: MiuixCardColors(
+              color: Colors.transparent,
+              contentColor: colors.onSurface,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!soft) ...[
+                  Container(
+                    key: const ValueKey('course-color-rail'),
+                    width: 3,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: ink,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-              ],
-              SizedBox(
-                width: 64 * MediaQuery.textScalerOf(context).scale(16) / 16,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      event.segment.start,
-                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                        fontFeatures: tabularTime,
+                  const SizedBox(width: 12),
+                ],
+                SizedBox(
+                  width: 64 * MediaQuery.textScalerOf(context).scale(16) / 16,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.segment.start,
+                        style: Theme.of(context).textTheme.titleMedium!
+                            .copyWith(fontFeatures: tabularTime),
                       ),
-                    ),
-                    Text(
-                      event.segment.end,
-                      style: TextStyle(
-                        color: colors.onSurfaceVariant,
-                        fontFeatures: tabularTime,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      event.course.name,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(courseLocation(event.course)),
-                    if (active || conflict)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          [if (active) '正在上课', if (conflict) '时段重叠'].join('，'),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: conflict ? colors.error : colors.primary,
-                          ),
+                      Text(
+                        event.segment.end,
+                        style: TextStyle(
+                          color: colors.onSurfaceVariant,
+                          fontFeatures: tabularTime,
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              if (hasRecordings)
-                const Tooltip(
-                  message: '本地目录中有可播放录播',
-                  child: AppIcon(AppIcons.mediaLibrary, size: 20),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.course.name,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(courseLocation(event.course)),
+                      if (active || conflict)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            [
+                              if (active) '正在上课',
+                              if (conflict) '时段重叠',
+                            ].join('，'),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: conflict ? colors.error : colors.primary,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              const AppIcon(AppIcons.chevronRight, size: 20),
-            ],
+                if (hasRecordings)
+                  const Tooltip(
+                    message: '本地目录中有可播放录播',
+                    child: AppIcon(AppIcons.mediaLibrary, size: 20),
+                  ),
+                const AppIcon(AppIcons.chevronRight, size: 20),
+              ],
+            ),
           ),
         ),
       ),

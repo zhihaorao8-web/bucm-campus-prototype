@@ -1,3 +1,4 @@
+import 'course_interaction.dart';
 import 'app_icon_controls.dart';
 import 'app_icons.dart';
 import 'dart:async';
@@ -61,8 +62,10 @@ class ClassroomCoursePage extends StatefulWidget {
     this.importCourses,
     this.onImportResult,
     this.progressStore,
+    this.transitionTag,
   });
   final Course course;
+  final Object? transitionTag;
   final DateTime? date;
   final void Function(BuildContext) onDetails;
   final ClassroomLinks? links;
@@ -1970,45 +1973,48 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           controller: scroll,
           padding: const EdgeInsets.all(16),
           children: [
-            MiuixCard(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      local.name,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(local.teacher.isEmpty ? '学校未提供教师' : local.teacher),
-                    Text(local.semester),
-                    Material(
-                      type: MaterialType.transparency,
-                      child: AppExpansionTile(
-                        tilePadding: EdgeInsets.zero,
-                        title: const Text('课程信息'),
-                        children: [
-                          Text(
-                            local.segments
-                                .map(
-                                  (segment) =>
-                                      '${segment.start}–${segment.end}',
-                                )
-                                .join(' · '),
-                          ),
-                          Text(local.place.isEmpty ? '学校未提供地点' : local.place),
-                          Text(
-                            '第${local.weeks}周 · 第${local.periods.join('、')}节',
-                          ),
-                          TextButton(
-                            onPressed: () => widget.onDetails(context),
-                            child: const Text('查看完整课程信息'),
-                          ),
-                        ],
+            CourseCardHero(
+              tag: widget.transitionTag,
+              child: MiuixCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        local.name,
+                        style: Theme.of(context).textTheme.headlineSmall,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(local.teacher.isEmpty ? '学校未提供教师' : local.teacher),
+                      Text(local.semester),
+                      Material(
+                        type: MaterialType.transparency,
+                        child: AppExpansionTile(
+                          tilePadding: EdgeInsets.zero,
+                          title: const Text('课程信息'),
+                          children: [
+                            Text(
+                              local.segments
+                                  .map(
+                                    (segment) =>
+                                        '${segment.start}–${segment.end}',
+                                  )
+                                  .join(' · '),
+                            ),
+                            Text(local.place.isEmpty ? '学校未提供地点' : local.place),
+                            Text(
+                              '第${local.weeks}周 · 第${local.periods.join('、')}节',
+                            ),
+                            TextButton(
+                              onPressed: () => widget.onDetails(context),
+                              child: const Text('查看完整课程信息'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

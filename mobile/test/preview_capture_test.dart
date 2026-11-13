@@ -269,6 +269,32 @@ void main() {
       'week-transition',
       () => tester.tap(find.byTooltip('下一周')),
     );
+    await setup();
+    await tester.tap(find.text('先体验合成示例'));
+    await tester.pumpAndSettle();
+    await capture('course-press-00');
+    final contact = await tester.startGesture(
+      tester.getCenter(find.byKey(const ValueKey('today-focus'))),
+    );
+    await tester.pump();
+    for (var frame = 1; frame <= 8; frame++) {
+      await tester.pump(const Duration(milliseconds: 20));
+      await capture('course-press-${frame.toString().padLeft(2, '0')}');
+    }
+    await contact.cancel();
+    await tester.pump();
+    for (var frame = 9; frame <= 24; frame++) {
+      await tester.pump(const Duration(milliseconds: 20));
+      await capture('course-press-${frame.toString().padLeft(2, '0')}');
+    }
+    await tester.pumpAndSettle();
+    await sampleTransition(
+      'course-open',
+      () => tester.tap(find.byKey(const ValueKey('today-focus'))),
+    );
+    await sampleTransition('course-return', () async {
+      Navigator.of(tester.element(find.text('课程课堂'))).pop();
+    });
     // Capture real widget motion at fixed phases, not an image-editor effect.
     for (final dark in [false, true]) {
       await setup(ambient: true, dark: dark);

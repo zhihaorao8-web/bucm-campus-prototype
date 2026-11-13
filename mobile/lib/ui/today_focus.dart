@@ -1,3 +1,4 @@
+import 'course_interaction.dart';
 import 'acrylic_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
@@ -29,146 +30,150 @@ class FocusCourseCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final active = event.activeAt(now);
     final motion = !MediaQuery.disableAnimationsOf(context);
-    return AcrylicSurface(
-      child: MiuixCard(
-        key: const ValueKey('today-focus'),
-        colors: MiuixCardColors(
-          color: Colors.transparent,
-          contentColor: colors.onSurface,
-        ),
-        cornerRadius: 28,
-        insideMargin: const EdgeInsets.all(22),
-        feedbackType: motion
-            ? MiuixPressFeedbackType.sink
-            : MiuixPressFeedbackType.none,
-        onPressed: () =>
-            showCourseDetails(context, event.course, date: event.date),
-        child: DefaultTextStyle(
-          style: Theme.of(
-            context,
-          ).textTheme.bodyLarge!.copyWith(color: colors.onSurface),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: active
-                              ? const Color(0xFF257A54)
-                              : colors.primary,
-                          boxShadow: MediaQuery.highContrastOf(context)
-                              ? null
-                              : [
-                                  BoxShadow(
-                                    color:
-                                        (active
-                                                ? const Color(0xFF257A54)
-                                                : colors.primary)
-                                            .withValues(alpha: .12),
-                                    spreadRadius: 4,
-                                  ),
-                                ],
+    return CourseCardLink(
+      radius: 28,
+      onOpen: (tag) => showCourseDetails(
+        context,
+        event.course,
+        date: event.date,
+        transitionTag: tag,
+      ),
+      child: AcrylicSurface(
+        child: MiuixCard(
+          key: const ValueKey('today-focus'),
+          colors: MiuixCardColors(
+            color: Colors.transparent,
+            contentColor: colors.onSurface,
+          ),
+          cornerRadius: 28,
+          insideMargin: const EdgeInsets.all(22),
+          child: DefaultTextStyle(
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge!.copyWith(color: colors.onSurface),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: active
+                                ? const Color(0xFF257A54)
+                                : colors.primary,
+                            boxShadow: MediaQuery.highContrastOf(context)
+                                ? null
+                                : [
+                                    BoxShadow(
+                                      color:
+                                          (active
+                                                  ? const Color(0xFF257A54)
+                                                  : colors.primary)
+                                              .withValues(alpha: .12),
+                                      spreadRadius: 4,
+                                    ),
+                                  ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          active ? '正在上课' : '下一节课',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.primaryContainer,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        active
+                            ? '剩 ${remainingMinutes(event.end, now)} 分钟'
+                            : event.start.difference(now).inMinutes < 60
+                            ? '${remainingMinutes(event.start, now)} 分钟后开始'
+                            : '${shortDate(event.date)} 周${weekdays[event.date.weekday - 1]}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: colors.onPrimaryContainer,
+                          fontFeatures: tabularTime,
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Text(
-                        active ? '正在上课' : '下一节课',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  event.segment.start,
+                  style: TextStyle(
+                    fontSize: 38,
+                    height: 1.1,
+                    fontWeight: FontWeight.w700,
+                    color: colors.primary,
+                    fontFeatures: tabularTime,
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.primaryContainer,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${event.segment.end} ${active ? '下课' : '结束'}',
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontFeatures: tabularTime,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  event.course.name,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  courseLocation(event.course),
+                  style: TextStyle(color: colors.onSurfaceVariant),
+                ),
+                if (active && overlaps > 1)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      active
-                          ? '剩 ${remainingMinutes(event.end, now)} 分钟'
-                          : event.start.difference(now).inMinutes < 60
-                          ? '${remainingMinutes(event.start, now)} 分钟后开始'
-                          : '${shortDate(event.date)} 周${weekdays[event.date.weekday - 1]}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: colors.onPrimaryContainer,
-                        fontFeatures: tabularTime,
-                      ),
+                      '有$overlaps门课程重叠',
+                      style: TextStyle(color: colors.error),
+                    ),
+                  ),
+                if (active) ...[
+                  const SizedBox(height: 20),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(end: lessonProgress(event, now)),
+                    duration: motion
+                        ? const Duration(milliseconds: 500)
+                        : Duration.zero,
+                    builder: (context, value, _) => LinearProgressIndicator(
+                      key: const ValueKey('today-lesson-progress'),
+                      value: value,
+                      minHeight: 4,
+                      borderRadius: BorderRadius.circular(4),
+                      backgroundColor: colors.primary.withValues(alpha: .09),
+                      semanticsLabel: '当前授课分段进度',
+                      semanticsValue:
+                          '${(lessonProgress(event, now) * 100).round()}%',
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                event.segment.start,
-                style: TextStyle(
-                  fontSize: 38,
-                  height: 1.1,
-                  fontWeight: FontWeight.w700,
-                  color: colors.primary,
-                  fontFeatures: tabularTime,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${event.segment.end} ${active ? '下课' : '结束'}',
-                style: TextStyle(
-                  color: colors.onSurfaceVariant,
-                  fontFeatures: tabularTime,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                event.course.name,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                courseLocation(event.course),
-                style: TextStyle(color: colors.onSurfaceVariant),
-              ),
-              if (active && overlaps > 1)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    '有$overlaps门课程重叠',
-                    style: TextStyle(color: colors.error),
-                  ),
-                ),
-              if (active) ...[
-                const SizedBox(height: 20),
-                TweenAnimationBuilder<double>(
-                  tween: Tween(end: lessonProgress(event, now)),
-                  duration: motion
-                      ? const Duration(milliseconds: 500)
-                      : Duration.zero,
-                  builder: (context, value, _) => LinearProgressIndicator(
-                    key: const ValueKey('today-lesson-progress'),
-                    value: value,
-                    minHeight: 4,
-                    borderRadius: BorderRadius.circular(4),
-                    backgroundColor: colors.primary.withValues(alpha: .09),
-                    semanticsLabel: '当前授课分段进度',
-                    semanticsValue:
-                        '${(lessonProgress(event, now) * 100).round()}%',
-                  ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
