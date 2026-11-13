@@ -2,6 +2,7 @@ import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -182,6 +183,13 @@ void main() {
         (v) => v.copyWith(mode: ThemeMode.light, accent: 0xffc05072),
       );
       await tester.pumpAndSettle();
+      SystemUiOverlayStyle systemBars() => tester
+          .widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+            find.byKey(const ValueKey('app-system-bars')),
+          )
+          .value;
+      expect(systemBars().statusBarIconBrightness, Brightness.dark);
+      expect(systemBars().systemNavigationBarIconBrightness, Brightness.dark);
       final manual = primary();
       await controller.change((v) => v.copyWith(monet: true));
       await tester.pumpAndSettle();
@@ -210,6 +218,8 @@ void main() {
         tester.widget<MiuixTopAppBar>(find.byType(MiuixTopAppBar)).blurred,
         isFalse,
       );
+      expect(systemBars().statusBarIconBrightness, Brightness.light);
+      expect(systemBars().systemNavigationBarIconBrightness, Brightness.light);
       final dock = tester.getRect(find.byKey(const ValueKey('dock-blur')));
       expect(dock.left, 0);
       expect(dock.right, 390);

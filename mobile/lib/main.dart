@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -63,10 +64,24 @@ class _CampusAppState extends ConsumerState<CampusApp>
         settings: settings,
         systemAccent: info?.systemAccent,
       ),
-      builder: (context, child) => InterfaceScale(
-        scale: settings.scale,
-        child: MiuixThemeBridge(child: child!),
-      ),
+      builder: (context, child) {
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          key: const ValueKey('app-system-bars'),
+          value: (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+              .copyWith(
+                statusBarColor: Colors.transparent,
+                systemNavigationBarColor: Colors.transparent,
+                systemNavigationBarIconBrightness: dark
+                    ? Brightness.light
+                    : Brightness.dark,
+              ),
+          child: InterfaceScale(
+            scale: settings.scale,
+            child: MiuixThemeBridge(child: child!),
+          ),
+        );
+      },
       home: const AppShell(),
     );
   }
