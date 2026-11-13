@@ -5,6 +5,45 @@ import 'classroom_controls_test.dart' show ControlsHarness;
 
 void main() {
   testWidgets(
+    'small dark landscape drawer stays within half width with fixed completion and barrier/back dismissal',
+    (tester) async {
+      final h = ControlsHarness();
+      await h.open(
+        tester,
+        size: const Size(640, 320),
+        textScale: 2,
+        brightness: Brightness.dark,
+      );
+      await tester.tap(find.byTooltip('切换画面'));
+      await tester.pumpAndSettle();
+      final drawer = tester.getRect(
+        find.byKey(const ValueKey('classroom-view-drawer')),
+      );
+      expect(drawer.width, lessThanOrEqualTo(320));
+      expect(drawer.right, 640);
+      expect(tester.getRect(find.text('完成')).bottom, lessThanOrEqualTo(320));
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('main-view-teacher')),
+      );
+      await tester.tap(find.byKey(const ValueKey('main-view-teacher')));
+      await tester.pumpAndSettle();
+      expect(h.player.state.main, 'teacher');
+      expect(tester.getRect(find.text('完成')).bottom, lessThanOrEqualTo(320));
+      await h.capture(tester, 'view-drawer-small-dark');
+      await tester.tapAt(const Offset(60, 150));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('classroom-view-drawer')), findsNothing);
+      expect(find.byTooltip('退出全屏'), findsOneWidget);
+      await tester.tap(find.byTooltip('切换画面'));
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('classroom-view-drawer')), findsNothing);
+      expect(find.byTooltip('退出全屏'), findsOneWidget);
+      await h.close(tester);
+    },
+  );
+  testWidgets(
     'one upper-right view button opens all view controls and hides with the seek bar',
     (tester) async {
       final h = ControlsHarness();
@@ -19,6 +58,11 @@ void main() {
       await tester.tap(find.byTooltip('切换画面'));
       await tester.pumpAndSettle();
       expect(find.text('切换课堂画面'), findsOneWidget);
+      final drawer = tester.getRect(
+        find.byKey(const ValueKey('classroom-view-drawer')),
+      );
+      expect(drawer.width, lessThanOrEqualTo(450));
+      expect(drawer.right, 900);
       await tester.pump(const Duration(seconds: 5));
       await tester.tap(find.byKey(const ValueKey('main-view-teacher')));
       await tester.pump();
@@ -36,7 +80,7 @@ void main() {
       expect(h.player.state.small, 'teacher');
       expect(h.player.state.wanted, isTrue);
       await tester.pumpAndSettle();
-      await h.capture(tester, 'landscape-view-sheet');
+      await h.capture(tester, 'landscape-view-drawer');
       await tester.tap(find.text('完成'));
       await tester.pumpAndSettle();
       await h.capture(tester, 'landscape-minimal');

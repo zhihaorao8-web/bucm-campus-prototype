@@ -284,113 +284,144 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     layout(state.main, kind);
   }
 
-  Future<void> showViewSheet() async {
+  Future<void> showViewDrawer() async {
     setMenuOpen(true);
     try {
-      await showModalBottomSheet<void>(
+      await showGeneralDialog<void>(
         context: context,
-        showDragHandle: true,
-        isScrollControlled: true,
-        useSafeArea: true,
-        builder: (context) => ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * .85,
+        barrierDismissible: true,
+        barrierLabel: '关闭画面设置',
+        barrierColor: Colors.black38,
+        transitionDuration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        transitionBuilder: (context, animation, _, child) => SlideTransition(
+          position: Tween(begin: const Offset(1, 0), end: Offset.zero).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                  child: ListenableBuilder(
-                    listenable: player,
-                    builder: (context, _) {
-                      final current = player.state;
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '切换课堂画面',
-                            style: Theme.of(context).textTheme.titleLarge,
+          child: child,
+        ),
+        pageBuilder: (context, _, _) => SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) => Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: math.min(360.0, constraints.maxWidth * .5),
+                height: constraints.maxHeight,
+                child: Material(
+                  key: const ValueKey('classroom-view-drawer'),
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: const BorderRadius.horizontal(
+                    left: Radius.circular(16),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(24),
+                          child: ListenableBuilder(
+                            listenable: player,
+                            builder: (context, _) {
+                              final current = player.state;
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '切换课堂画面',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleLarge,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const Text('主画面'),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      for (final kind in current.available)
+                                        ChoiceChip(
+                                          key: ValueKey('main-view-$kind'),
+                                          label: Text(classroomViewName(kind)),
+                                          selected: current.main == kind,
+                                          onSelected: (selected) {
+                                            if (!selected) return;
+                                            layout(
+                                              kind,
+                                              kind == current.small
+                                                  ? current.main
+                                                  : current.small,
+                                            );
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const Text('小窗'),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      ChoiceChip(
+                                        key: const ValueKey('small-view-off'),
+                                        label: const Text('关闭'),
+                                        selected: current.small == null,
+                                        onSelected: (selected) {
+                                          if (selected) closeSmall();
+                                        },
+                                      ),
+                                      for (final kind
+                                          in current.available.where(
+                                            (kind) => kind != current.main,
+                                          ))
+                                        ChoiceChip(
+                                          key: ValueKey('small-view-$kind'),
+                                          label: Text(classroomViewName(kind)),
+                                          selected: current.small == kind,
+                                          onSelected: (selected) {
+                                            if (selected) {
+                                              layout(current.main, kind);
+                                            }
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextButton.icon(
+                                    onPressed: current.small == null
+                                        ? null
+                                        : () => layout(
+                                            current.small!,
+                                            current.main,
+                                          ),
+                                    icon: const Icon(Icons.swap_horiz),
+                                    label: const Text('交换主画面与小窗'),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
-                          const SizedBox(height: 16),
-                          const Text('主画面'),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (final kind in current.available)
-                                ChoiceChip(
-                                  key: ValueKey('main-view-$kind'),
-                                  label: Text(classroomViewName(kind)),
-                                  selected: current.main == kind,
-                                  onSelected: (selected) {
-                                    if (!selected) return;
-                                    layout(
-                                      kind,
-                                      kind == current.small
-                                          ? current.main
-                                          : current.small,
-                                    );
-                                  },
-                                ),
-                            ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('完成'),
                           ),
-                          const SizedBox(height: 16),
-                          const Text('小窗'),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              ChoiceChip(
-                                key: const ValueKey('small-view-off'),
-                                label: const Text('关闭'),
-                                selected: current.small == null,
-                                onSelected: (selected) {
-                                  if (selected) closeSmall();
-                                },
-                              ),
-                              for (final kind in current.available.where(
-                                (kind) => kind != current.main,
-                              ))
-                                ChoiceChip(
-                                  key: ValueKey('small-view-$kind'),
-                                  label: Text(classroomViewName(kind)),
-                                  selected: current.small == kind,
-                                  onSelected: (selected) {
-                                    if (selected) layout(current.main, kind);
-                                  },
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton.icon(
-                            onPressed: current.small == null
-                                ? null
-                                : () => layout(current.small!, current.main),
-                            icon: const Icon(Icons.swap_horiz),
-                            label: const Text('交换主画面与小窗'),
-                          ),
-                        ],
-                      );
-                    },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('完成'),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       );
@@ -755,7 +786,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
               child: IconButton(
                 tooltip: '切换画面',
                 color: Colors.white,
-                onPressed: showViewSheet,
+                onPressed: showViewDrawer,
                 icon: const Icon(
                   Icons.video_settings_outlined,
                   shadows: [Shadow(color: Colors.black87, blurRadius: 4)],
