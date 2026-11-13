@@ -7,14 +7,14 @@ import 'app_icons.dart';
 /// HyperOS / MIUIX surfaces and typography, shared with Flutter route overlays.
 abstract final class AppColors {
   static const blue = Color(0xFF3482FF);
-  static const paper = Color(0xFFF7F7F7);
+  static const paper = Color(0xFFFAF9F6);
   static const night = Color(0xFF000000);
   static const courseLight = [
-    Color(0xFFEDF3FF),
-    Color(0xFFF3EFE8),
-    Color(0xFFEAF4F0),
-    Color(0xFFF8EEEE),
-    Color(0xFFF0EDFA),
+    Color(0xFFF2F6FF),
+    Color(0xFFFAF5EE),
+    Color(0xFFEFF8F3),
+    Color(0xFFFDF1F1),
+    Color(0xFFF5F0FC),
   ];
   static const courseDark = [
     Color(0xFF1E2B43),
@@ -36,7 +36,26 @@ abstract final class AppColors {
       Theme.of(context).brightness == Brightness.dark ? .18 : .94,
     ).toColor();
   }
+
+  static Color courseInk(BuildContext context, int index) {
+    if (MediaQuery.highContrastOf(context)) {
+      return Theme.of(context).colorScheme.onSurface;
+    }
+    const inks = [
+      Color(0xFF3B6EF6),
+      Color(0xFF9A6B2F),
+      Color(0xFF257A54),
+      Color(0xFFC23B3B),
+      Color(0xFF6E44B8),
+    ];
+    final ink = index < inks.length ? inks[index] : courseAt(context, index);
+    return Theme.of(context).brightness == Brightness.dark
+        ? HSLColor.fromColor(ink).withLightness(.76).toColor()
+        : ink;
+  }
 }
+
+const tabularTime = <FontFeature>[FontFeature.tabularFigures()];
 
 ThemeData appTheme(
   Brightness brightness, {
@@ -67,14 +86,14 @@ ThemeData appTheme(
         ).copyWith(
           primary: miuix.primary,
           onPrimary: miuix.onPrimary,
-          surface: miuix.surface,
-          onSurface: miuix.onSurface,
-          surfaceContainer: miuix.surfaceContainer,
+          surface: dark ? miuix.surface : AppColors.paper,
+          onSurface: dark ? miuix.onSurface : const Color(0xFF1E2022),
+          surfaceContainer: dark ? miuix.surfaceContainer : Colors.white,
           surfaceContainerHighest: miuix.secondaryVariant,
           onSurfaceVariant: dark
               ? const Color(0xFFABABAB)
-              : const Color(0xFF757575),
-          outlineVariant: miuix.dividerLine,
+              : const Color(0xFF5C6168),
+          outlineVariant: dark ? miuix.dividerLine : const Color(0x151C1E21),
           primaryContainer: dark
               ? const Color(0xFF182D4D)
               : const Color(0xFFEAF2FF),
@@ -168,6 +187,7 @@ ThemeData appTheme(
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: colors.surfaceContainer,
       showDragHandle: true,
+      modalBarrierColor: Colors.black.withValues(alpha: .28),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),

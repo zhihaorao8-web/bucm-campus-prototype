@@ -210,6 +210,36 @@ class AppearancePage extends ConsumerWidget {
         ]),
         settingsGroup([
           toggle(
+            '左上角极光',
+            '随页面切换柔和色调，高对比度时关闭',
+            AppIcons.sun,
+            p.aurora,
+            (v, value) => v.copyWith(aurora: value),
+          ),
+          toggle(
+            '宣纸微纹理',
+            '轻微纸感，不影响文字和触控',
+            AppIcons.wallpaper,
+            p.paperTexture,
+            (v, value) => v.copyWith(paperTexture: value),
+          ),
+          choice(
+            '课程卡片着色',
+            p.softCards ? '柔和全底' : '极简色条',
+            AppIcons.palette,
+            () async {
+              final value = await choose(context, '课程卡片着色', {
+                false: '极简色条',
+                true: '柔和全底',
+              }, p.softCards);
+              if (value != null && context.mounted) {
+                await save(context, ref, (v) => v.copyWith(softCards: value));
+              }
+            },
+          ),
+        ]),
+        settingsGroup([
+          toggle(
             '模糊',
             '启用顶栏和底栏的背景模糊',
             AppIcons.blur,

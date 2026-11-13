@@ -49,6 +49,8 @@
 
 ## 技术、设计和交付
 
+- 2026-11-13用户提供[UI设计提示词](requirements/UI_DESIGN_PROMPT_20261113.md)，要求优化当前前端，并确认冲突课程改为层叠卡片。按[适配计划](UI_REFRESH_PLAN.md)在既有Flutter实现：暖纸底与低饱和色、极光/纹理与卡片外观、今日进度/时间轴、周次及冲突抽屉、可选周末。保留相邻错色、深色/无障碍与录播入口；提示词的HTML技术栈及提醒/备注模块不自动进入本轮。
+
 - 2026-11-12用户确认未来GitHub发布同时构建debug测试包与正常使用包；debug内置诊断等测试能力，release关闭诊断与测试入口，实验功能开关独立。按[双包发布规范](BUILD_VARIANTS.md)执行，不自动发布或修改历史附件。
 
 - Flutter＋Riverpod分层，根Java原型仅作基线，Android经隔离适配层复用HSSF/作息解析，不宣称其他平台或纯Dart接入已完成。构建见[FLUTTER](FLUTTER.md)，依赖及许可见[THIRD_PARTY](THIRD_PARTY.md)。

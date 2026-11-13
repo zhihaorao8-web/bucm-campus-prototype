@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/appearance_controller.dart';
+import 'quiet_backdrop.dart';
 
 class SettingsScaffold extends ConsumerStatefulWidget {
   const SettingsScaffold({
@@ -31,28 +32,33 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
     return Scaffold(
       body: Stack(
         children: [
-          MiuixScaffold(
-            topBar: MiuixTopAppBar(
-              title: widget.title,
-              scrollBehavior: behavior,
-              blurred: settings.blur && !MediaQuery.highContrastOf(context),
-              navigationIcon: IconButton(
-                tooltip: '返回',
-                icon: const AppIcon(AppIcons.arrowBack),
-                onPressed: () => Navigator.maybePop(context),
-              ),
-            ),
-            content: (insets) => MiuixScrollBehaviorListener(
-              behavior: behavior,
-              child: ListView(
-                key: ValueKey('settings-route-${widget.title}'),
-                padding: EdgeInsets.fromLTRB(
-                  16 + insets.left,
-                  insets.top + 16,
-                  16 + insets.right,
-                  insets.bottom + 32,
+          QuietBackdrop(
+            tab: 2,
+            child: MiuixScaffold(
+              containerColor: Colors.transparent,
+              topBar: MiuixTopAppBar(
+                title: widget.title,
+              color: Theme.of(context).colorScheme.surface,
+                scrollBehavior: behavior,
+                blurred: settings.blur && !MediaQuery.highContrastOf(context),
+                navigationIcon: IconButton(
+                  tooltip: '返回',
+                  icon: const AppIcon(AppIcons.arrowBack),
+                  onPressed: () => Navigator.maybePop(context),
                 ),
-                children: widget.children,
+              ),
+              content: (insets) => MiuixScrollBehaviorListener(
+                behavior: behavior,
+                child: ListView(
+                  key: ValueKey('settings-route-${widget.title}'),
+                  padding: EdgeInsets.fromLTRB(
+                    16 + insets.left,
+                    insets.top + 16,
+                    16 + insets.right,
+                    insets.bottom + 32,
+                  ),
+                  children: widget.children,
+                ),
               ),
             ),
           ),

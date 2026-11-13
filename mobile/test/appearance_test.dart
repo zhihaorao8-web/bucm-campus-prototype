@@ -36,6 +36,9 @@ void main() {
         swipeBack: false,
         swipePages: true,
         scale: 1.2,
+        aurora: false,
+        paperTexture: false,
+        softCards: true,
       );
       await repo.save(settings);
       expect(
@@ -47,6 +50,24 @@ void main() {
       await expectLater(repo.load(), throwsFormatException);
       expect(await file.exists(), isTrue);
       expect((jsonDecode(await file.readAsString()) as Map)['scale'], 7);
+    },
+  );
+  test(
+    'old appearance files gain optional quiet-depth defaults without losing choices',
+    () {
+      final old = const AppearanceSettings(accent: 0xff00897b).toJson()
+        ..remove('aurora')
+        ..remove('paperTexture')
+        ..remove('softCards');
+      final loaded = AppearanceSettings.fromJson(old);
+      expect(loaded.accent, 0xff00897b);
+      expect(loaded.aurora, isTrue);
+      expect(loaded.paperTexture, isTrue);
+      expect(loaded.softCards, isFalse);
+      expect(
+        () => AppearanceSettings.fromJson({...old, 'aurora': 'true'}),
+        throwsFormatException,
+      );
     },
   );
   test(

@@ -35,7 +35,7 @@ class GlassNavigation extends ConsumerWidget {
         70.0 + (MediaQuery.textScalerOf(context).scale(13) - 13).clamp(0, 24);
     return SafeArea(
       top: false,
-      minimum: EdgeInsets.only(bottom: floating ? 12 : 0),
+      minimum: EdgeInsets.only(bottom: floating ? 20 : 0),
       child: Padding(
         padding: EdgeInsets.fromLTRB(
           floating ? 24 : 0,
@@ -110,9 +110,9 @@ class GlassNavigation extends ConsumerWidget {
                             Positioned.fill(
                               child: AnimatedAlign(
                                 duration: motion
-                                    ? const Duration(milliseconds: 240)
+                                    ? const Duration(milliseconds: 340)
                                     : Duration.zero,
-                                curve: Curves.easeOutCubic,
+                                curve: Curves.easeOutBack,
                                 alignment: Alignment(-1.0 + selected, 0),
                                 child: FractionallySizedBox(
                                   widthFactor: 1 / 3,

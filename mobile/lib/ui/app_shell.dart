@@ -18,6 +18,7 @@ import 'glass_navigation.dart';
 import 'appearance_page.dart';
 import 'project_info_page.dart';
 import 'classroom_import_page.dart';
+import 'quiet_backdrop.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -195,175 +196,187 @@ class _AppShellState extends ConsumerState<AppShell>
     final stored = ref.watch(scheduleProvider);
     final appearance = ref.watch(currentAppearanceProvider);
     return Scaffold(
-      body: MiuixScaffold(
-        topBar: MiuixTopAppBar(
-          key: ValueKey('topbar-$tab'),
-          title: ['今日', '课表', '设置'][tab],
-          scrollBehavior: scrollBehaviors[tab],
-          blurred: appearance.blur && !MediaQuery.highContrastOf(context),
-          blurRadius: 44,
-          blurTintAlpha: Theme.of(context).brightness == Brightness.dark
-              ? .82
-              : .72,
-          actions: [
-            if (demo)
-              TextButton(
-                onPressed: () => setState(() {
-                  demo = false;
-                  week = 0;
-                  selectedSemester = null;
-                }),
-                child: const Text('退出示例'),
-              ),
-            if (!demo && stored.hasValue && tab != 2)
-              Tooltip(
-                message: '导入或刷新课表',
-                child: MiuixIconButton(
-                  minWidth: 48,
-                  minHeight: 48,
-                  onPressed: openImport,
-                  child: const AppIcon(AppIcons.sync),
+      body: QuietBackdrop(
+        tab: tab,
+        child: MiuixScaffold(
+          containerColor: Colors.transparent,
+          topBar: MiuixTopAppBar(
+            key: ValueKey('topbar-$tab'),
+            title: ['今日', '课表', '设置'][tab],
+          color: Theme.of(context).colorScheme.surface,
+            scrollBehavior: scrollBehaviors[tab],
+            blurred: appearance.blur && !MediaQuery.highContrastOf(context),
+            blurRadius: 44,
+            blurTintAlpha: Theme.of(context).brightness == Brightness.dark
+                ? .82
+                : .72,
+            actions: [
+              if (demo)
+                TextButton(
+                  onPressed: () => setState(() {
+                    demo = false;
+                    week = 0;
+                    selectedSemester = null;
+                  }),
+                  child: const Text('退出示例'),
                 ),
-              ),
-            if (!demo && stored.hasValue && tab == 1)
-              Tooltip(
-                message: '统一导入录播',
-                child: MiuixIconButton(
-                  key: const ValueKey('classroom-import-button'),
-                  minWidth: 48,
-                  minHeight: 48,
-                  onPressed: importClassroom,
-                  child: const AppIcon(AppIcons.mediaLibrary),
-                ),
-              ),
-            const SizedBox(width: 8),
-          ],
-        ),
-        content: (insets) => MiuixScrollBehaviorListener(
-          key: ValueKey('scroll-page-$tab'),
-          behavior: scrollBehaviors[tab],
-          child: GestureDetector(
-            onHorizontalDragStart: appearance.swipePages
-                ? (_) => tabDrag = 0
-                : null,
-            onHorizontalDragUpdate: appearance.swipePages
-                ? (event) => tabDrag += event.delta.dx
-                : null,
-            onHorizontalDragEnd: appearance.swipePages
-                ? (event) {
-                    final velocity = event.primaryVelocity ?? 0;
-                    if (tabDrag.abs() > 64 || velocity.abs() > 450) {
-                      final direction = tabDrag.abs() > 16 ? tabDrag : velocity;
-                      setState(
-                        () =>
-                            tab = (tab + (direction < 0 ? 1 : -1)).clamp(0, 2),
-                      );
-                    }
-                  }
-                : null,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1000),
-                child: stored.when(
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(
-                      semanticsLabel: '正在读取本地课表',
-                    ),
+              if (!demo && stored.hasValue && tab != 2)
+                Tooltip(
+                  message: '导入或刷新课表',
+                  child: MiuixIconButton(
+                    minWidth: 48,
+                    minHeight: 48,
+                    onPressed: openImport,
+                    child: const AppIcon(AppIcons.sync),
                   ),
-                  error: (error, stack) => tab == 2
-                      ? settings(const ScheduleData(), insets)
-                      : Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text(
-                                '本地课表暂时无法读取，原文件已保留。重新导入成功后将替换无法读取的课表；也可在更多操作中恢复备份。',
-                              ),
-                              const SizedBox(height: 16),
-                              MiuixButton(
-                                colors: MiuixButtonDefaults.buttonColorsPrimary(
-                                  context,
-                                ),
-                                onPressed: openImport,
-                                child: const Text('重新导入'),
-                              ),
-                              PopupMenuButton<String>(
-                                tooltip: '更多恢复操作',
-                                onSelected: (action) async {
-                                  if (action == 'retry') {
-                                    ref.invalidate(scheduleProvider);
-                                    return;
-                                  }
-                                  if (!await confirm(
-                                    '恢复备份',
-                                    '将使用上一份有效备份替换当前课表，原文件仍保留。',
-                                  )) {
-                                    return;
-                                  }
-                                  try {
-                                    await ref
-                                        .read(scheduleProvider.notifier)
-                                        .restoreBackup();
-                                    if (mounted) message('已恢复备份课表');
-                                  } catch (_) {
-                                    if (mounted) {
-                                      message('没有可恢复的备份，或恢复未成功。原文件已保留，请重新导入。');
-                                    }
-                                  }
-                                },
-                                itemBuilder: (_) => const [
-                                  PopupMenuItem(
-                                    value: 'backup',
-                                    child: Text('恢复备份'),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'retry',
-                                    child: Text('重新读取'),
-                                  ),
-                                ],
-                                child: const Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Text('更多操作'),
-                                ),
-                              ),
-                            ],
+                ),
+              if (!demo && stored.hasValue && tab == 1)
+                Tooltip(
+                  message: '统一导入录播',
+                  child: MiuixIconButton(
+                    key: const ValueKey('classroom-import-button'),
+                    minWidth: 48,
+                    minHeight: 48,
+                    onPressed: importClassroom,
+                    child: const AppIcon(AppIcons.mediaLibrary),
+                  ),
+                ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          content: (insets) => MiuixScrollBehaviorListener(
+            key: ValueKey('scroll-page-$tab'),
+            behavior: scrollBehaviors[tab],
+            child: GestureDetector(
+              onHorizontalDragStart: appearance.swipePages
+                  ? (_) => tabDrag = 0
+                  : null,
+              onHorizontalDragUpdate: appearance.swipePages
+                  ? (event) => tabDrag += event.delta.dx
+                  : null,
+              onHorizontalDragEnd: appearance.swipePages
+                  ? (event) {
+                      final velocity = event.primaryVelocity ?? 0;
+                      if (tabDrag.abs() > 64 || velocity.abs() > 450) {
+                        final direction = tabDrag.abs() > 16
+                            ? tabDrag
+                            : velocity;
+                        setState(
+                          () => tab = (tab + (direction < 0 ? 1 : -1)).clamp(
+                            0,
+                            2,
                           ),
-                        ),
-                  data: (saved) {
-                    final data = demo ? demoSchedule(now) : saved;
-                    final semester = data.semesters.contains(selectedSemester)
-                        ? selectedSemester
-                        : data.semesters.firstOrNull;
-                    final courses = data.courses
-                        .where((c) => c.semester == semester)
-                        .toList();
-                    return tab == 2
-                        ? settings(data, insets)
-                        : courses.isEmpty
-                        ? ListView(
-                            key: PageStorageKey('empty-page-$tab'),
-                            controller: pageControllers[tab],
-                            padding: pagePadding(insets),
-                            children: [
-                              EmptySchedule(
-                                onImport: openImport,
-                                onDemo: startDemo,
-                              ),
-                            ],
-                          )
-                        : tab == 0
-                        ? home(data, courses, semester!, insets)
-                        : timetable(data, courses, semester!, insets);
-                  },
+                        );
+                      }
+                    }
+                  : null,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1000),
+                  child: stored.when(
+                    loading: () => const Center(
+                      child: CircularProgressIndicator(
+                        semanticsLabel: '正在读取本地课表',
+                      ),
+                    ),
+                    error: (error, stack) => tab == 2
+                        ? settings(const ScheduleData(), insets)
+                        : Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  '本地课表暂时无法读取，原文件已保留。重新导入成功后将替换无法读取的课表；也可在更多操作中恢复备份。',
+                                ),
+                                const SizedBox(height: 16),
+                                MiuixButton(
+                                  colors:
+                                      MiuixButtonDefaults.buttonColorsPrimary(
+                                        context,
+                                      ),
+                                  onPressed: openImport,
+                                  child: const Text('重新导入'),
+                                ),
+                                PopupMenuButton<String>(
+                                  tooltip: '更多恢复操作',
+                                  onSelected: (action) async {
+                                    if (action == 'retry') {
+                                      ref.invalidate(scheduleProvider);
+                                      return;
+                                    }
+                                    if (!await confirm(
+                                      '恢复备份',
+                                      '将使用上一份有效备份替换当前课表，原文件仍保留。',
+                                    )) {
+                                      return;
+                                    }
+                                    try {
+                                      await ref
+                                          .read(scheduleProvider.notifier)
+                                          .restoreBackup();
+                                      if (mounted) message('已恢复备份课表');
+                                    } catch (_) {
+                                      if (mounted) {
+                                        message(
+                                          '没有可恢复的备份，或恢复未成功。原文件已保留，请重新导入。',
+                                        );
+                                      }
+                                    }
+                                  },
+                                  itemBuilder: (_) => const [
+                                    PopupMenuItem(
+                                      value: 'backup',
+                                      child: Text('恢复备份'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'retry',
+                                      child: Text('重新读取'),
+                                    ),
+                                  ],
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Text('更多操作'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                    data: (saved) {
+                      final data = demo ? demoSchedule(now) : saved;
+                      final semester = data.semesters.contains(selectedSemester)
+                          ? selectedSemester
+                          : data.semesters.firstOrNull;
+                      final courses = data.courses
+                          .where((c) => c.semester == semester)
+                          .toList();
+                      return tab == 2
+                          ? settings(data, insets)
+                          : courses.isEmpty
+                          ? ListView(
+                              key: PageStorageKey('empty-page-$tab'),
+                              controller: pageControllers[tab],
+                              padding: pagePadding(insets),
+                              children: [
+                                EmptySchedule(
+                                  onImport: openImport,
+                                  onDemo: startDemo,
+                                ),
+                              ],
+                            )
+                          : tab == 0
+                          ? home(data, courses, semester!, insets)
+                          : timetable(data, courses, semester!, insets);
+                    },
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        bottomBar: GlassNavigation(
-          selected: tab,
-          onSelect: (value) => setState(() => tab = value),
+          bottomBar: GlassNavigation(
+            selected: tab,
+            onSelect: (value) => setState(() => tab = value),
+          ),
         ),
       ),
     );

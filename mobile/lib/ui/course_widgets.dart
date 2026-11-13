@@ -1,6 +1,8 @@
 import 'app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../application/appearance_controller.dart';
 import '../domain/schedule.dart';
 import 'app_theme.dart';
 import 'classroom_course_page.dart';
@@ -105,7 +107,7 @@ void showCourseInformation(BuildContext context, Course course) {
   );
 }
 
-class CourseRow extends StatelessWidget {
+class CourseRow extends ConsumerWidget {
   const CourseRow({
     super.key,
     required this.event,
@@ -120,8 +122,10 @@ class CourseRow extends StatelessWidget {
   final DateTime? now;
   final int colorIndex;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
+    final soft = ref.watch(currentAppearanceProvider).softCards;
+    final ink = AppColors.courseInk(context, colorIndex);
     final active = now != null && event.activeAt(now!);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -130,13 +134,30 @@ class CourseRow extends StatelessWidget {
         insideMargin: const EdgeInsets.all(20),
         onPressed: () =>
             showCourseDetails(context, event.course, date: event.date),
+        feedbackType: MediaQuery.disableAnimationsOf(context)
+            ? MiuixPressFeedbackType.none
+            : MiuixPressFeedbackType.sink,
         colors: MiuixCardColors(
-          color: AppColors.courseAt(context, colorIndex),
+          color: soft
+              ? AppColors.courseAt(context, colorIndex)
+              : colors.surfaceContainer,
           contentColor: colors.onSurface,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (!soft) ...[
+              Container(
+                key: const ValueKey('course-color-rail'),
+                width: 3,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: ink,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 12),
+            ],
             SizedBox(
               width: 64 * MediaQuery.textScalerOf(context).scale(16) / 16,
               child: Column(
@@ -144,11 +165,16 @@ class CourseRow extends StatelessWidget {
                 children: [
                   Text(
                     event.segment.start,
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                      fontFeatures: tabularTime,
+                    ),
                   ),
                   Text(
                     event.segment.end,
-                    style: TextStyle(color: colors.onSurfaceVariant),
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
+                      fontFeatures: tabularTime,
+                    ),
                   ),
                 ],
               ),

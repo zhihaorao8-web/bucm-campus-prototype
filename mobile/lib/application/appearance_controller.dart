@@ -19,6 +19,9 @@ class AppearanceSettings {
     this.swipeBack = true,
     this.swipePages = false,
     this.scale = 1,
+    this.aurora = true,
+    this.paperTexture = true,
+    this.softCards = false,
   });
   final ThemeMode mode;
   final bool monet,
@@ -31,6 +34,7 @@ class AppearanceSettings {
   final int accent;
   final DynamicSchemeVariant variant;
   final double contrast, scale;
+  final bool aurora, paperTexture, softCards;
   AppearanceSettings copyWith({
     ThemeMode? mode,
     bool? monet,
@@ -44,6 +48,9 @@ class AppearanceSettings {
     bool? swipeBack,
     bool? swipePages,
     double? scale,
+    bool? aurora,
+    bool? paperTexture,
+    bool? softCards,
   }) => AppearanceSettings(
     mode: mode ?? this.mode,
     monet: monet ?? this.monet,
@@ -57,6 +64,9 @@ class AppearanceSettings {
     swipeBack: swipeBack ?? this.swipeBack,
     swipePages: swipePages ?? this.swipePages,
     scale: scale ?? this.scale,
+    aurora: aurora ?? this.aurora,
+    paperTexture: paperTexture ?? this.paperTexture,
+    softCards: softCards ?? this.softCards,
   );
   Map<String, Object> toJson() => {
     'schema': 1,
@@ -72,6 +82,9 @@ class AppearanceSettings {
     'swipeBack': swipeBack,
     'swipePages': swipePages,
     'scale': scale,
+    'aurora': aurora,
+    'paperTexture': paperTexture,
+    'softCards': softCards,
   };
   factory AppearanceSettings.fromJson(Map<String, dynamic> json) {
     if (json['schema'] != 1) throw const FormatException('外观设置版本不支持');
@@ -85,6 +98,9 @@ class AppearanceSettings {
       'predictiveBack',
       'swipeBack',
       'swipePages',
+      'aurora',
+      'paperTexture',
+      'softCards',
     ]) {
       if (values[name] is! bool) throw const FormatException('外观设置格式错误');
     }
@@ -120,6 +136,9 @@ class AppearanceSettings {
         predictiveBack: values['predictiveBack'] as bool,
         swipeBack: values['swipeBack'] as bool,
         swipePages: values['swipePages'] as bool,
+        aurora: values['aurora'] as bool,
+        paperTexture: values['paperTexture'] as bool,
+        softCards: values['softCards'] as bool,
       );
     } on Object {
       throw const FormatException('外观设置格式错误');

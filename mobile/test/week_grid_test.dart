@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_miuix/miuix.dart';
 import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/ui/week_grid.dart';
 import 'package:campus_schedule/ui/course_widgets.dart';
@@ -97,16 +96,19 @@ void main() {
         expect(rows.evaluate().length, greaterThanOrEqualTo(2));
         final rowColors = [
           for (var i = 0; i < rows.evaluate().length; i++)
-            tester
-                .widget<MiuixCard>(
-                  find
-                      .descendant(
-                        of: rows.at(i),
-                        matching: find.byType(MiuixCard),
-                      )
-                      .first,
-                )
-                .colors!
+            (tester
+                        .widget<Container>(
+                          find
+                              .descendant(
+                                of: rows.at(i),
+                                matching: find.byKey(
+                                  const ValueKey('course-color-rail'),
+                                ),
+                              )
+                              .first,
+                        )
+                        .decoration!
+                    as BoxDecoration)
                 .color,
         ];
         for (var i = 1; i < rowColors.length; i++) {
