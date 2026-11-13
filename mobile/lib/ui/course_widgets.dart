@@ -115,16 +115,34 @@ class CourseRow extends ConsumerWidget {
     this.now,
     this.colorIndex = 0,
     this.hasRecordings = false,
+    this.translucent = false,
   });
   final Occurrence event;
   final bool conflict;
   final bool hasRecordings;
+  final bool translucent;
   final DateTime? now;
   final int colorIndex;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
-    final soft = ref.watch(currentAppearanceProvider).softCards;
+    final appearance = ref.watch(currentAppearanceProvider);
+    final soft = appearance.softCards;
+    final tinted =
+        translucent &&
+        appearance.blur &&
+        appearance.glass &&
+        appearance.contrast <= 0 &&
+        !MediaQuery.highContrastOf(context);
+    final surface = soft
+        ? AppColors.courseAt(context, colorIndex)
+        : colors.surfaceContainer;
+    // Denser than the focus card: the timeline remains the quieter layer.
+    final fill = tinted
+        ? surface.withValues(
+            alpha: Theme.of(context).brightness == Brightness.dark ? .64 : .78,
+          )
+        : surface;
     final ink = AppColors.courseInk(context, colorIndex);
     final active = now != null && event.activeAt(now!);
     return Padding(
@@ -137,12 +155,7 @@ class CourseRow extends ConsumerWidget {
         feedbackType: MediaQuery.disableAnimationsOf(context)
             ? MiuixPressFeedbackType.none
             : MiuixPressFeedbackType.sink,
-        colors: MiuixCardColors(
-          color: soft
-              ? AppColors.courseAt(context, colorIndex)
-              : colors.surfaceContainer,
-          contentColor: colors.onSurface,
-        ),
+        colors: MiuixCardColors(color: fill, contentColor: colors.onSurface),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

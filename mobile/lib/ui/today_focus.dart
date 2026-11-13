@@ -332,6 +332,7 @@ class _TimelineEvent extends StatelessWidget {
             child: Opacity(
               opacity: ended && !MediaQuery.highContrastOf(context) ? .72 : 1,
               child: CourseRow(
+                translucent: true,
                 event: event,
                 now: now,
                 colorIndex: colorIndex,
