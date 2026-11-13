@@ -20,6 +20,7 @@ class ControlsHarness {
     WidgetTester tester, {
     Size size = const Size(900, 600),
     double textScale = 1,
+    bool fullscreen = true,
   }) async {
     if (const bool.fromEnvironment('CAPTURE_PREVIEW')) {
       await tester.runAsync(() async {
@@ -111,11 +112,13 @@ class ControlsHarness {
     );
     await tester.tap(find.text('打开合成课堂'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.byTooltip('全屏'), 160);
-    await tester.ensureVisible(find.byTooltip('全屏'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('全屏'));
-    await tester.pumpAndSettle();
+    if (fullscreen) {
+      await tester.scrollUntilVisible(find.byTooltip('全屏'), 160);
+      await tester.ensureVisible(find.byTooltip('全屏'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('全屏'));
+      await tester.pumpAndSettle();
+    }
   }
 
   Future<void> refresh(WidgetTester tester) async {

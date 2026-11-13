@@ -6,6 +6,7 @@ import '../platform/classroom_player.dart';
 import '../data/classroom_playback_progress.dart';
 import '../application/classroom_playback_progress_session.dart';
 import 'classroom_small_window.dart';
+import 'classroom_seek_surface.dart';
 
 /// Original MIUIX-aligned controls. Interaction reference: fluttercommunity/chewie
 /// (MIT), https://github.com/fluttercommunity/chewie. No upstream code copied.
@@ -310,7 +311,21 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
           children: [
             Semantics(
               label: '${classroomViewName(state.main)}主画面',
-              child: picture(state.main),
+              hint: '左右滑动调整进度，松手跳转',
+              child: ClassroomSeekSurface(
+                position: state.position,
+                duration: state.duration,
+                enabled:
+                    foreground &&
+                    state.error == null &&
+                    player.failure == null &&
+                    !(progress?.blocked ?? false),
+                formatTime: time,
+                onSeek: (position) =>
+                    unawaited(player.command('seek', {'position': position})),
+                onInteraction: () => updateControls(interacted: true),
+                child: picture(state.main),
+              ),
             ),
             if (state.small != null)
               ClassroomSmallWindow(
@@ -584,7 +599,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                     const Padding(
                       padding: EdgeInsets.all(16),
                       child: Text(
-                        '单指拖动、双指缩放小窗，点按可交换主画面。学校观看记录尚未接入，本地播放不代表学校记录已更新。',
+                        '左右滑动主画面调整进度，松手跳转；单指拖动、双指缩放小窗，点按可交换主画面。学校观看记录尚未接入，本地播放不代表学校记录已更新。',
                       ),
                     ),
                   ],
