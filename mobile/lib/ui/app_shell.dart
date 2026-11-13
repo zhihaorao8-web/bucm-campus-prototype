@@ -20,6 +20,7 @@ import 'project_info_page.dart';
 import 'classroom_import_page.dart';
 import 'quiet_backdrop.dart';
 import 'today_focus.dart';
+import 'week_navigation.dart';
 import 'app_theme.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -546,60 +547,27 @@ class _AppShellState extends ConsumerState<AppShell>
         children: [
           Expanded(child: termSelector(data, semester)),
           const SizedBox(width: 8),
-          SizedBox(
-            width: 116,
-            child: MiuixTabRow(
-              tabs: const ['周', '日'],
-              minWidth: 46,
-              maxWidth: 46,
-              itemSpacing: 4,
-              selectedTabIndex: daily ? 1 : 0,
-              onTabSelected: (value) => setState(() => daily = value == 1),
-            ),
+          ScheduleModeSwitch(
+            daily: daily,
+            onChanged: (value) => setState(() => daily = value),
           ),
         ],
       ),
-      Row(
-        children: [
-          IconButton(
-            tooltip: '上一周',
-            onPressed: selectedWeek > 1
-                ? () => setState(() => week = selectedWeek - 1)
-                : null,
-            icon: const AppIcon(AppIcons.chevronLeft),
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  '第 $selectedWeek 周',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                Text(
-                  '${monday.month}/${monday.day} – ${calendarAdd(monday, 6).month}/${calendarAdd(monday, 6).day}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: () => setState(() {
-              week = currentWeek.clamp(1, maximum);
-              day = now.weekday;
-            }),
-            child: const Text('本周'),
-          ),
-          IconButton(
-            tooltip: '下一周',
-            onPressed: selectedWeek < maximum
-                ? () => setState(() => week = selectedWeek + 1)
-                : null,
-            icon: const AppIcon(AppIcons.chevronRight),
-          ),
-        ],
+      WeekNavigation(
+        week: selectedWeek,
+        range:
+            '${monday.month}/${monday.day} – ${calendarAdd(monday, 6).month}/${calendarAdd(monday, 6).day}',
+        isCurrent: selectedWeek == currentWeek,
+        onPrevious: selectedWeek > 1
+            ? () => setState(() => week = selectedWeek - 1)
+            : null,
+        onNext: selectedWeek < maximum
+            ? () => setState(() => week = selectedWeek + 1)
+            : null,
+        onCurrent: () => setState(() {
+          week = currentWeek.clamp(1, maximum);
+          day = now.weekday;
+        }),
       ),
       if (currentWeek < 1 || currentWeek > maximum)
         const Padding(
@@ -630,6 +598,7 @@ class _AppShellState extends ConsumerState<AppShell>
               event: event,
               hasRecordings: hasRecordings(event.course),
               colorIndex: index % 5,
+              now: now,
               conflict: events.any(
                 (other) => other != event && event.overlaps(other),
               ),

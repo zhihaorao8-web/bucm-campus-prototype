@@ -68,25 +68,49 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('tab-1')));
         await tester.pumpAndSettle();
-        Color? color(String id, String start) => tester
-            .widget<Material>(
-              find
-                  .descendant(
-                    of: find.byKey(ValueKey('week-event-$id-$start')),
-                    matching: find.byType(Material),
-                  )
-                  .first,
-            )
-            .color;
+        Color? color(String id, String start) =>
+            (tester
+                        .widget<DecoratedBox>(
+                          find
+                              .descendant(
+                                of: find.byKey(
+                                  ValueKey('week-event-$id-$start'),
+                                ),
+                                matching: find.byKey(
+                                  const ValueKey('week-color-rail'),
+                                ),
+                              )
+                              .first,
+                        )
+                        .decoration
+                    as BoxDecoration)
+                .color;
         final morning = [
-          for (var d = 1; d <= 5; d++) color('morning-$d', '08:30'),
+          for (var d in [1, 2, 3, 5]) color('morning-$d', '08:30'),
         ];
         for (var d = 0; d < 2; d++) {
           expect(morning[d], isNot(morning[d + 1]));
         }
-        expect(morning[2], isNot(color('conflict', '08:30')));
-        expect(color('conflict', '08:30'), isNot(morning[3]));
-        expect(morning[3], isNot(morning[4]));
+        final stack = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.key.toString().contains('week-stack-'),
+        );
+        final stackColor =
+            (tester
+                        .widget<DecoratedBox>(
+                          find.descendant(
+                            of: stack,
+                            matching: find.byKey(
+                              const ValueKey('week-color-rail'),
+                            ),
+                          ),
+                        )
+                        .decoration
+                    as BoxDecoration)
+                .color;
+        expect(morning[2], isNot(stackColor));
+        expect(stackColor, isNot(morning[3]));
         expect(morning[1], isNot(color('split', '13:30')));
         expect(color('split', '13:30'), isNot(color('split', '15:30')));
         expect(color('split', '15:30'), isNot(color('evening-2', '18:00')));
@@ -176,7 +200,7 @@ void main() {
     );
   }
   testWidgets(
-    'conflicts remain separate, partial segments retain duration and details open',
+    'conflicts stack at full column width; drawer exposes all and can change priority',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -188,13 +212,39 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('tab-1')));
       await tester.pumpAndSettle();
-      final first = tester.getRect(
-        find.byKey(const ValueKey('week-event-morning-4-08:30')),
+      final stack = find.byWidgetPredicate(
+        (widget) =>
+            widget is Semantics &&
+            widget.key.toString().contains('week-stack-'),
       );
-      final overlap = tester.getRect(
-        find.byKey(const ValueKey('week-event-conflict-08:30')),
+      final ordinary = tester.getRect(
+        find.byKey(const ValueKey('week-event-morning-5-08:30')),
       );
-      expect(first.overlaps(overlap), isFalse);
+      expect(tester.getRect(stack).width, closeTo(ordinary.width, .1));
+      expect(find.text('+1 冲突'), findsOneWidget);
+      await tester.tap(stack);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('conflict-details-conflict')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('conflict-details-morning-4')),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('prefer-course-morning-4')),
+      );
+      await tester.tap(find.byKey(const ValueKey('prefer-course-morning-4')));
+      await tester.pumpAndSettle();
+      expect(find.text('重叠课程'), findsNothing);
+      expect(
+        find.descendant(
+          of: stack,
+          matching: find.byKey(const ValueKey('week-primary-morning-4')),
+        ),
+        findsOneWidget,
+      );
       final full = tester.getRect(
         find.byKey(const ValueKey('week-event-split-13:30')),
       );

@@ -39,6 +39,7 @@ void main() {
         aurora: false,
         paperTexture: false,
         softCards: true,
+        showWeekend: true,
       );
       await repo.save(settings);
       expect(
@@ -58,12 +59,14 @@ void main() {
       final old = const AppearanceSettings(accent: 0xff00897b).toJson()
         ..remove('aurora')
         ..remove('paperTexture')
-        ..remove('softCards');
+        ..remove('softCards')
+        ..remove('showWeekend');
       final loaded = AppearanceSettings.fromJson(old);
       expect(loaded.accent, 0xff00897b);
       expect(loaded.aurora, isTrue);
       expect(loaded.paperTexture, isTrue);
       expect(loaded.softCards, isFalse);
+      expect(loaded.showWeekend, isFalse);
       expect(
         () => AppearanceSettings.fromJson({...old, 'aurora': 'true'}),
         throwsFormatException,

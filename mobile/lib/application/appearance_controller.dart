@@ -22,6 +22,7 @@ class AppearanceSettings {
     this.aurora = true,
     this.paperTexture = true,
     this.softCards = false,
+    this.showWeekend = false,
   });
   final ThemeMode mode;
   final bool monet,
@@ -34,7 +35,7 @@ class AppearanceSettings {
   final int accent;
   final DynamicSchemeVariant variant;
   final double contrast, scale;
-  final bool aurora, paperTexture, softCards;
+  final bool aurora, paperTexture, softCards, showWeekend;
   AppearanceSettings copyWith({
     ThemeMode? mode,
     bool? monet,
@@ -51,6 +52,7 @@ class AppearanceSettings {
     bool? aurora,
     bool? paperTexture,
     bool? softCards,
+    bool? showWeekend,
   }) => AppearanceSettings(
     mode: mode ?? this.mode,
     monet: monet ?? this.monet,
@@ -67,6 +69,7 @@ class AppearanceSettings {
     aurora: aurora ?? this.aurora,
     paperTexture: paperTexture ?? this.paperTexture,
     softCards: softCards ?? this.softCards,
+    showWeekend: showWeekend ?? this.showWeekend,
   );
   Map<String, Object> toJson() => {
     'schema': 1,
@@ -85,6 +88,7 @@ class AppearanceSettings {
     'aurora': aurora,
     'paperTexture': paperTexture,
     'softCards': softCards,
+    'showWeekend': showWeekend,
   };
   factory AppearanceSettings.fromJson(Map<String, dynamic> json) {
     if (json['schema'] != 1) throw const FormatException('外观设置版本不支持');
@@ -101,6 +105,7 @@ class AppearanceSettings {
       'aurora',
       'paperTexture',
       'softCards',
+      'showWeekend',
     ]) {
       if (values[name] is! bool) throw const FormatException('外观设置格式错误');
     }
@@ -139,6 +144,7 @@ class AppearanceSettings {
         aurora: values['aurora'] as bool,
         paperTexture: values['paperTexture'] as bool,
         softCards: values['softCards'] as bool,
+        showWeekend: values['showWeekend'] as bool,
       );
     } on Object {
       throw const FormatException('外观设置格式错误');

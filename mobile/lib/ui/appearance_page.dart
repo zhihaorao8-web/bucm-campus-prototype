@@ -237,6 +237,13 @@ class AppearancePage extends ConsumerWidget {
               }
             },
           ),
+          toggle(
+            '显示周末列',
+            '周表扩展为七天；关闭时仍可在日视图查看周末',
+            AppIcons.calendarWeek,
+            p.showWeekend,
+            (v, value) => v.copyWith(showWeekend: value),
+          ),
         ]),
         settingsGroup([
           toggle(

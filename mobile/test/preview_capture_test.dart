@@ -214,6 +214,16 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tab-1')));
       await tester.pumpAndSettle();
       await capture(dark ? 'week-overview-dark' : 'week-overview');
+      final conflict = find.byWidgetPredicate(
+        (widget) =>
+            widget is Semantics &&
+            widget.key.toString().contains('week-stack-'),
+      );
+      await tester.tap(conflict);
+      await tester.pumpAndSettle();
+      await capture(dark ? 'conflict-drawer-dark' : 'conflict-drawer-light');
+      await tester.tap(find.byTooltip('关闭重叠课程'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('日'));
       await tester.pumpAndSettle();
       await capture(dark ? 'daily-dark' : 'daily');
