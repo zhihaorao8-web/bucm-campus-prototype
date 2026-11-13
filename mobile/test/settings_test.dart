@@ -8,6 +8,8 @@ import 'package:campus_schedule/main.dart';
 import 'package:campus_schedule/application/appearance_controller.dart';
 import 'package:campus_schedule/application/schedule_controller.dart';
 import 'package:campus_schedule/domain/schedule.dart';
+import 'package:campus_schedule/data/classroom_library.dart';
+import 'package:campus_schedule/data/classroom_playback_progress.dart';
 import 'package:campus_schedule/platform/app_platform.dart';
 import 'package:campus_schedule/platform/school_adapter.dart';
 import 'package:campus_schedule/ui/project_info_page.dart';
@@ -20,7 +22,7 @@ import 'support/memory_appearance.dart';
 import 'ui_test.dart' show app;
 
 Future<void> reveal(WidgetTester tester, Finder target) async {
-  final list = find.byType(ListView).last;
+  final list = find.byType(CustomScrollView).last;
   if (target.evaluate().isEmpty) {
     await tester.scrollUntilVisible(
       target,
@@ -35,6 +37,116 @@ Future<void> reveal(WidgetTester tester, Finder target) async {
 }
 
 void main() {
+  // Shared queues must be created outside each widget test's FakeAsync zone.
+  setUpAll(() {
+    expect(ClassroomLibrary.shared.revision, 0);
+    expect(ClassroomPlaybackProgressStore.shared.revision, 0);
+  });
+  for (final scale in [1.0, 1.5]) {
+    testWidgets('settings reverse keyboard focus clears the header: $scale', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final nodes = List.generate(10, (_) => FocusNode());
+      addTearDown(() {
+        for (final node in nodes) {
+          node.dispose();
+        }
+      });
+      const settings = AppearanceSettings();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [currentAppearanceProvider.overrideWithValue(settings)],
+          child: MaterialApp(
+            theme: appTheme(Brightness.dark, settings: settings),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                padding: const EdgeInsets.only(top: 24, bottom: 20),
+                textScaler: TextScaler.linear(scale),
+              ),
+              child: MiuixThemeBridge(child: child!),
+            ),
+            home: SettingsScaffold(
+              title: '设置合成测试',
+              children: [
+                for (var i = 0; i < nodes.length; i++)
+                  settingsGroup([
+                    ListTile(
+                      key: ValueKey('focus-setting-$i'),
+                      focusNode: nodes[i],
+                      title: Text('设置项目 $i'),
+                      onTap: () {},
+                    ),
+                  ]),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final last = find.byKey(const ValueKey('focus-setting-9'));
+      await tester.scrollUntilVisible(last, 180);
+      await Scrollable.ensureVisible(tester.element(last));
+      nodes.last.requestFocus();
+      await tester.pumpAndSettle();
+      for (var i = nodes.length - 2; i >= 0; i--) {
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.shift);
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.shift);
+        await tester.pumpAndSettle();
+        expect(
+          nodes[i].hasFocus,
+          isTrue,
+          reason:
+              'setting $i; focused: ${nodes.indexWhere((node) => node.hasFocus)}',
+        );
+        final tile = tester.getRect(find.byKey(ValueKey('focus-setting-$i')));
+        final header = tester.getRect(find.byType(MiuixTopAppBar));
+        expect(tile.top, greaterThanOrEqualTo(header.bottom - .5));
+        expect(tile.bottom, lessThanOrEqualTo(700.5));
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+  for (final scale in [1.0, 1.5]) {
+    testWidgets('settings homepage reveal clears the header: $scale', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        app(MemoryRepository(const ScheduleData()), dark: true, scale: scale),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.pumpAndSettle();
+      await tester.drag(
+        find.byKey(const PageStorageKey('settings-page')),
+        const Offset(0, -420),
+      );
+      await tester.pumpAndSettle();
+      final appearance = find.text('外观设置');
+      await reveal(tester, appearance);
+      await Scrollable.ensureVisible(tester.element(appearance));
+      await tester.pumpAndSettle();
+      final header = tester.getRect(find.byType(MiuixTopAppBar));
+      expect(
+        tester.getRect(appearance).top,
+        greaterThanOrEqualTo(header.bottom),
+      );
+      await tester.tap(appearance);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('settings-route-外观设置')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
   for (final mode in [
     'glass',
     'no-blur',
@@ -95,7 +207,7 @@ void main() {
         tester.widget<MiuixTopAppBar>(header).blurTintAlpha,
         closeTo(.04, .001),
       );
-      await tester.drag(find.byType(ListView), const Offset(0, -300));
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
       await tester.pumpAndSettle();
       expect(
         tester.widget<MiuixTopAppBar>(header).blurTintAlpha,
@@ -171,16 +283,33 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 80));
       });
       await tester.pumpAndSettle();
+      final sessionControl = find.ancestor(
+        of: find.text('退出学校会话'),
+        matching: find.byType(MiuixBasicComponent),
+      );
       // File cleanup spans multiple IO completions outside the fake test clock.
-      for (var i = 0; i < 6; i++) {
+      for (
+        var i = 0;
+        i < 100 && !tester.widget<MiuixBasicComponent>(sessionControl).enabled;
+        i++
+      ) {
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 20)),
         );
         await tester.pumpAndSettle();
       }
+      expect(
+        tester.widget<MiuixBasicComponent>(sessionControl).enabled,
+        isTrue,
+      );
       expect(sessionClears, 1);
       expect(repo.value.courses.length, 1);
       await reveal(tester, find.text('清空本地课表'));
+      final clearControl = find.ancestor(
+        of: find.text('清空本地课表'),
+        matching: find.byType(MiuixBasicComponent),
+      );
+      expect(tester.widget<MiuixBasicComponent>(clearControl).enabled, isTrue);
       await tester.tap(find.text('清空本地课表'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('取消'));

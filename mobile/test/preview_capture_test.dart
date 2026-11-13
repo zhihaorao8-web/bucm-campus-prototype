@@ -46,16 +46,24 @@ void main() {
       double scale = 1,
       double width = 390,
       ScheduleData? data,
+      AppearanceSettings? settings,
+      bool highContrast = false,
+      bool reducedMotion = false,
     }) async {
       await tester.pumpWidget(const SizedBox());
       tester.view.physicalSize = Size(width, 844);
-      final theme = appTheme(dark ? Brightness.dark : Brightness.light);
+      final theme = appTheme(
+        dark ? Brightness.dark : Brightness.light,
+        settings: settings ?? const AppearanceSettings(),
+      );
       await tester.pumpWidget(
         RepaintBoundary(
           key: boundary,
           child: ProviderScope(
             overrides: [
               ambientMotionEnabledProvider.overrideWithValue(ambient),
+              if (settings != null)
+                currentAppearanceProvider.overrideWithValue(settings),
               appearanceRepositoryProvider.overrideWithValue(
                 MemoryAppearanceRepository(),
               ),
@@ -80,9 +88,11 @@ void main() {
               supportedLocales: const [Locale('zh', 'CN')],
               localizationsDelegates: GlobalMaterialLocalizations.delegates,
               builder: (context, child) => MediaQuery(
-                data: MediaQuery.of(
-                  context,
-                ).copyWith(textScaler: TextScaler.linear(scale)),
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(scale),
+                  highContrast: highContrast,
+                  disableAnimations: reducedMotion,
+                ),
                 child: MiuixThemeBridge(child: child!),
               ),
               home: const AppShell(),
@@ -274,6 +284,65 @@ void main() {
       await tester.tap(find.text('完成').last);
       await tester.pumpAndSettle();
       expect(find.text('课程课堂'), findsOneWidget);
+    }
+    for (final variant in ['large', 'no-glass', 'contrast', 'reduced']) {
+      await setup(
+        dark: variant != 'large',
+        width: 320,
+        scale: 1.5,
+        settings: AppearanceSettings(glass: variant != 'no-glass'),
+        highContrast: variant == 'contrast',
+        reducedMotion: variant == 'reduced',
+      );
+      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.pumpAndSettle();
+      await capture('stage4-settings-$variant');
+      await tester.tap(find.text('外观设置'));
+      await tester.pumpAndSettle();
+      await capture('stage4-appearance-$variant');
+      await tester.tap(find.byTooltip('返回'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-0')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('先体验合成示例'));
+      await tester.tap(find.text('先体验合成示例'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('today-focus')));
+      await tester.pumpAndSettle();
+      await capture('stage4-course-$variant');
+      await tester.tap(find.text('课程信息'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('查看完整课程信息'));
+      await tester.tap(find.text('查看完整课程信息'));
+      await tester.pumpAndSettle();
+      await capture('stage4-information-$variant');
+      await tester.ensureVisible(find.text('完成').last);
+      await tester.tap(find.text('完成').last);
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await setup(
+        dark: variant != 'large',
+        width: 320,
+        scale: 1.5,
+        data: weeklyPreviewData(schoolNow()),
+        settings: AppearanceSettings(glass: variant != 'no-glass'),
+        highContrast: variant == 'contrast',
+        reducedMotion: variant == 'reduced',
+      );
+      await tester.tap(find.byKey(const ValueKey('tab-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.key.toString().contains('week-stack-'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await capture('stage4-conflict-$variant');
+      await tester.tap(find.byTooltip('关闭重叠课程'));
+      await tester.pumpAndSettle();
     }
     // Navigation captures freeze only ambient light, retaining real UI motion.
     Future<void> sampleTransition(

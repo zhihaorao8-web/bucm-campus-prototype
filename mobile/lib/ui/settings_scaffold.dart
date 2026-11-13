@@ -64,18 +64,26 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
                   ),
                 ),
               ),
-              content: (insets) => MiuixScrollBehaviorListener(
-                behavior: behavior,
-                child: ListView(
-                  key: ValueKey('settings-route-${widget.title}'),
-                  controller: scroll,
-                  padding: EdgeInsets.fromLTRB(
-                    16 + insets.left,
-                    insets.top + 16,
-                    16 + insets.right,
-                    insets.bottom + 32,
+              content: (insets) => FocusTraversalGroup(
+                child: MiuixScrollBehaviorListener(
+                  behavior: behavior,
+                  child: CustomScrollView(
+                    key: ValueKey('settings-route-${widget.title}'),
+                    controller: scroll,
+                    slivers: [
+                      // The externally painted bar must count as viewport obstruction.
+                      PinnedHeaderSliver(child: SizedBox(height: insets.top)),
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(
+                          16 + insets.left,
+                          16,
+                          16 + insets.right,
+                          insets.bottom + 32,
+                        ),
+                        sliver: SliverList.list(children: widget.children),
+                      ),
+                    ],
                   ),
-                  children: widget.children,
                 ),
               ),
             ),

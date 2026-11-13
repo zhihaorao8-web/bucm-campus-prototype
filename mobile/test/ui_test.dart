@@ -84,7 +84,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<ListView>(find.byKey(const PageStorageKey('settings-page')))
+            .widget<CustomScrollView>(
+              find.byKey(const PageStorageKey('settings-page')),
+            )
             .controller!
             .offset,
         0,
