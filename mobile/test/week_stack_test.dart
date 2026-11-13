@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_miuix/miuix.dart';
 import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/application/appearance_controller.dart';
 import 'package:campus_schedule/ui/week_grid.dart';
@@ -63,6 +64,17 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tab-1')));
       await tester.pumpAndSettle();
       expect(find.text('第 10 周'), findsOneWidget);
+      final modeButtons = find.descendant(
+        of: find.byType(ScheduleModeSwitch),
+        matching: find.byType(MiuixPressable),
+      );
+      for (final element in modeButtons.evaluate()) {
+        final size = tester.getSize(
+          find.byElementPredicate((candidate) => candidate == element),
+        );
+        expect(size.width, greaterThanOrEqualTo(48));
+        expect(size.height, greaterThanOrEqualTo(48));
+      }
       expect(find.text('本周'), findsNothing);
       await tester.drag(
         find.byKey(const ValueKey('week-navigation')),

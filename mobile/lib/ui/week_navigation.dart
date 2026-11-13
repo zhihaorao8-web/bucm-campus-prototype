@@ -16,7 +16,7 @@ class ScheduleModeSwitch extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Container(
       width: 112,
-      height: 48,
+      height: 56,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: colors.onSurface.withValues(alpha: .055),
