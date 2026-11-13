@@ -12,6 +12,7 @@ import '../data/classroom_library.dart';
 import '../domain/schedule.dart';
 import '../platform/school_adapter.dart';
 import 'course_widgets.dart';
+import 'course_surface.dart';
 import 'import_page.dart';
 import 'week_grid.dart';
 import 'weekday_tabs.dart';
@@ -214,11 +215,12 @@ class _AppShellState extends ConsumerState<AppShell>
           topBar: ListenableBuilder(
             listenable: activeScroll,
             builder: (context, _) {
-              final sample = tab == 0;
+              final sample = tab != 1;
               final opaque =
                   MediaQuery.highContrastOf(context) ||
                   appearance.contrast > 0 ||
-                  !appearance.blur;
+                  !appearance.blur ||
+                  (tab == 2 && !appearance.glass);
               final scroll = activeScroll;
               final scrim = scroll.hasClients
                   ? (scroll.positions.last.pixels / 80).clamp(0.0, 1.0)
@@ -745,7 +747,7 @@ class _AppShellState extends ConsumerState<AppShell>
         ),
         const SizedBox(height: 24),
         sectionLabel('外观'),
-        MiuixCard(
+        QuietCard(
           cornerRadius: 24,
           insideMargin: EdgeInsets.zero,
           child: AppArrowPreference(
@@ -759,7 +761,7 @@ class _AppShellState extends ConsumerState<AppShell>
         ),
         const SizedBox(height: 24),
         sectionLabel('轻新课堂'),
-        MiuixCard(
+        QuietCard(
           cornerRadius: 24,
           insideMargin: EdgeInsets.zero,
           child: AppArrowPreference(
@@ -772,7 +774,7 @@ class _AppShellState extends ConsumerState<AppShell>
         ),
         const SizedBox(height: 24),
         sectionLabel('登录与隐私'),
-        MiuixCard(
+        QuietCard(
           cornerRadius: 24,
           insideMargin: EdgeInsets.zero,
           child: Column(
@@ -824,7 +826,7 @@ class _AppShellState extends ConsumerState<AppShell>
           ),
         ),
         const SizedBox(height: 24),
-        MiuixCard(
+        QuietCard(
           cornerRadius: 24,
           insideMargin: EdgeInsets.zero,
           child: AppArrowPreference(

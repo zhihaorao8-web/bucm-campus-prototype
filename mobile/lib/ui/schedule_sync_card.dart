@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_miuix/miuix.dart';
+import 'course_surface.dart';
 import '../domain/schedule.dart';
 import 'app_icons.dart';
 import 'app_theme.dart';
@@ -19,7 +19,7 @@ class ScheduleSyncCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return MiuixCard(
+    return QuietCard(
       key: const ValueKey('schedule-sync-card'),
       cornerRadius: 24,
       insideMargin: const EdgeInsets.all(20),

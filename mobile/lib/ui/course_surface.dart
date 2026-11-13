@@ -1,6 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/appearance_controller.dart';
+
+class QuietCard extends StatelessWidget {
+  const QuietCard({
+    super.key,
+    required this.child,
+    this.cornerRadius = 24,
+    this.insideMargin = EdgeInsets.zero,
+  });
+  final Widget child;
+  final double cornerRadius;
+  final EdgeInsetsGeometry insideMargin;
+
+  @override
+  Widget build(BuildContext context) => CourseSurface(
+    radius: cornerRadius,
+    child: MiuixCard(
+      cornerRadius: cornerRadius,
+      insideMargin: insideMargin,
+      colors: MiuixCardColors(
+        color: Colors.transparent,
+        contentColor: Theme.of(context).colorScheme.onSurface,
+      ),
+      child: child,
+    ),
+  );
+}
 
 /// Lightweight acrylic for course lists and dense grids. The background is
 /// already diffused, so these surfaces need no individual backdrop filters.

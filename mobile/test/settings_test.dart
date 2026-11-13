@@ -11,6 +11,10 @@ import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/platform/app_platform.dart';
 import 'package:campus_schedule/platform/school_adapter.dart';
 import 'package:campus_schedule/ui/project_info_page.dart';
+import 'package:campus_schedule/ui/settings_scaffold.dart';
+import 'package:campus_schedule/ui/course_surface.dart';
+import 'package:campus_schedule/ui/app_theme.dart';
+import 'package:flutter_miuix/miuix.dart';
 import 'schedule_test.dart' show MemoryRepository, sample;
 import 'support/memory_appearance.dart';
 import 'ui_test.dart' show app;
@@ -31,6 +35,76 @@ Future<void> reveal(WidgetTester tester, Finder target) async {
 }
 
 void main() {
+  for (final mode in [
+    'glass',
+    'no-blur',
+    'no-glass',
+    'contrast',
+    'system-contrast',
+  ]) {
+    testWidgets('settings surfaces and scrolled header: $mode', (tester) async {
+      tester.view.physicalSize = const Size(320, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final settings = AppearanceSettings(
+        blur: mode != 'no-blur',
+        glass: mode != 'no-glass',
+        contrast: mode == 'contrast' ? 1 : 0,
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [currentAppearanceProvider.overrideWithValue(settings)],
+          child: MaterialApp(
+            theme: appTheme(Brightness.dark, settings: settings),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                highContrast: mode == 'system-contrast',
+                textScaler: const TextScaler.linear(1.5),
+              ),
+              child: MiuixThemeBridge(child: child!),
+            ),
+            home: SettingsScaffold(
+              title: '设置合成测试',
+              children: [
+                for (var i = 0; i < 12; i++)
+                  settingsGroup([ListTile(title: Text('设置项目 $i'))]),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final header = find.byType(MiuixTopAppBar);
+      expect(tester.widget<MiuixTopAppBar>(header).blurred, mode == 'glass');
+      final surface = find.byType(CourseSurface).first;
+      final decoration =
+          tester
+                  .widget<DecoratedBox>(
+                    find
+                        .descendant(
+                          of: surface,
+                          matching: find.byType(DecoratedBox),
+                        )
+                        .first,
+                  )
+                  .decoration
+              as BoxDecoration;
+      expect(decoration.gradient != null, mode == 'glass');
+      expect(
+        tester.widget<MiuixTopAppBar>(header).blurTintAlpha,
+        closeTo(.04, .001),
+      );
+      await tester.drag(find.byType(ListView), const Offset(0, -300));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<MiuixTopAppBar>(header).blurTintAlpha,
+        closeTo(.8, .001),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
   test('build identity distinguishes unknown, clean and modified sources', () {
     expect(const AppPlatformInfo().sourceLabel, '源码未知');
     expect(const AppPlatformInfo(source: 'untrusted text').sourceLabel, '源码未知');

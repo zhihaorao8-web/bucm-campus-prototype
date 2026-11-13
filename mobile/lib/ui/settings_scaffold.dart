@@ -4,6 +4,7 @@ import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/appearance_controller.dart';
 import 'quiet_backdrop.dart';
+import 'course_surface.dart';
 
 class SettingsScaffold extends ConsumerStatefulWidget {
   const SettingsScaffold({
@@ -19,9 +20,11 @@ class SettingsScaffold extends ConsumerStatefulWidget {
 
 class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
   final behavior = miuixScrollBehavior(snapOnRelease: false);
+  final scroll = ScrollController();
   double drag = 0;
   @override
   void dispose() {
+    scroll.dispose();
     behavior.state.dispose();
     super.dispose();
   }
@@ -36,21 +39,36 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
             tab: 2,
             child: MiuixScaffold(
               containerColor: Colors.transparent,
-              topBar: MiuixTopAppBar(
-                title: widget.title,
-              color: Theme.of(context).colorScheme.surface,
-                scrollBehavior: behavior,
-                blurred: settings.blur && !MediaQuery.highContrastOf(context),
-                navigationIcon: IconButton(
-                  tooltip: '返回',
-                  icon: const AppIcon(AppIcons.arrowBack),
-                  onPressed: () => Navigator.maybePop(context),
+              topBar: ListenableBuilder(
+                listenable: scroll,
+                builder: (context, _) => MiuixTopAppBar(
+                  title: widget.title,
+                  color: Theme.of(context).colorScheme.surface,
+                  scrollBehavior: behavior,
+                  blurred:
+                      settings.blur &&
+                      settings.glass &&
+                      settings.contrast <= 0 &&
+                      !MediaQuery.highContrastOf(context),
+                  blurRadius: 20,
+                  blurTintAlpha:
+                      .04 +
+                      .76 *
+                          (scroll.hasClients
+                              ? (scroll.offset / 80).clamp(0.0, 1.0)
+                              : 0.0),
+                  navigationIcon: IconButton(
+                    tooltip: '返回',
+                    icon: const AppIcon(AppIcons.arrowBack),
+                    onPressed: () => Navigator.maybePop(context),
+                  ),
                 ),
               ),
               content: (insets) => MiuixScrollBehaviorListener(
                 behavior: behavior,
                 child: ListView(
                   key: ValueKey('settings-route-${widget.title}'),
+                  controller: scroll,
                   padding: EdgeInsets.fromLTRB(
                     16 + insets.left,
                     insets.top + 16,
@@ -88,7 +106,7 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
 
 Widget settingsGroup(List<Widget> children) => Padding(
   padding: const EdgeInsets.only(bottom: 16),
-  child: MiuixCard(
+  child: QuietCard(
     cornerRadius: 24,
     insideMargin: EdgeInsets.zero,
     child: Column(children: children),
