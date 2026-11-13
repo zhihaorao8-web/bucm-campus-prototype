@@ -1,11 +1,14 @@
 # 进度与验证边界
 
-## 2026-11-13 0.27发布准备
+## 2026-11-13 0.27已发布与Flutter主线
 
-- 用户明确授权当前成果成为main并发布0.27，正常版也启用当前目录直取。远端codex/legacy-java-prototype已核对为原main 611ec8e；主线可普通快进，不需强推。
-- 当前准备版本0.27/code11（pubspec 0.27.0+11）、README/仓库说明及双包顺序构建/日志保存；旧原型构建工作流从当前主线移除，历史分支保留。源码的实验默认值不变，由0.27构建命令明确开启目录直取；release仍硬关闭诊断。
-- 发布准备检查通过：完整离线Java/JS/素材摘要、Flutter静态分析、默认178项通过/8项条件跳过、显式直取21项通过。顺序双包脚本实际构建debug与release成功，版本/正常包名/模式、同一既有证书、ZIP和公开脚本/43个SVG/品牌/许可一致及测试数据排除检查通过；均为未提交源码的预检查包，不能作为最终附件。独立无学校会话模拟器的R8 release合成XLS解析1项通过，隔离包名releasetest。
-- 精确SHA提交后的干净双包、CI、main快进与Release尚待执行；旧测试包实机证据保留各自归属，不标记0.27已发布或新版已实机通过。
+- 用户明确授权0.27双包预发布、主页重写及当前Flutter历史成为main，并确认正常版启用目录直取。原main `611ec8e1de1fba3c0ced47f9bbf2a4d37300b70c`已保留远端`codex/legacy-java-prototype`；main普通快进至发布源码，无强推。仓库保持私有，名称不变，简介/主页链接/主题标签已更新，旧发布与附件保留。
+- 发布源码及新标签v0.27固定为`b678cc643525115bb4ca43c872ce84e87e010418`，Android 0.27/code11，pubspec 0.27.0+11。[精确源码CI](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/43378358316)成功，分析、合成检查、顺序debug/release构建、双包产物和详细日志附件均成功。正常版与debug均显式开启CAMPUS_DIRECT_CATALOG；仅debug诊断开启，release保持kDebugMode硬关闭，源码未传define的实验默认值不变。
+- 本地完整离线Java/JS/素材摘要、Flutter静态分析通过；默认178项通过/8项条件跳过，显式直取21项通过。独立无学校会话模拟器的R8合成XLS解析1项通过（隔离包名releasetest）；隔离测试后从上述干净提交重新顺序构建两个正常包名最终APK。
+- 两包包名/版本/模式、精确干净源码标识、同一既有开发证书、ZIP、公开脚本/43个SVG/品牌/许可一致及合成媒体/测试数据排除检查通过。签名证书SHA256为`4584a62b3daab61954f0842f65c4d7974f9cf9bb84155b150741b7d538faf40c`，生产签名方案尚未建立；CI临时签名预览不作为最终升级附件。
+- 最终release在独立模拟器启动，项目信息显示发布构建、0.27(11)、源码b678cc64，检查到页底无诊断入口。最终debug实际DEBUGGABLE标志通过，显示调试构建/同版本/同源码，诊断入口可达，复制与清空控件可操作。本地取样脚本曾漏读uiautomator的stderr，已修正输出判断并使用唯一文件重新核对；不据旧XML或进程退出推断业务失败，未因此改APK。
+- [v0.27预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.27)已公开，Release ID 443908407。四附件在草稿上传后逐一与GitHub返回的大小和SHA256比对一致再公开：两个APK、SHA256SUMS.txt及build-metadata.json。正常包`campus-schedule-0.27-android-release.apk`为63,890,802字节，SHA256 `908abc6789ae9fb6e2509e3ff61ff8a7e9008b24b90c127782641a83e2b33535`；debug包`campus-schedule-0.27-android-debug.apk`为185,645,856字节，SHA256 `365f2f064502301c4c3e7564fa99525bfd15473f26769c6372163acc733f9028`。元数据记录配置/签名/CI及验证范围，未上传密钥、课程或学校会话。
+- 本轮未向手机安装0.27，未新增学校请求或登录。此前0.26测试包的直取、播放/续播、沉浸控件和图标反馈仍归各自包；不能等同0.27真机全部通过。WebVPN上游拒绝、真实认证失效恢复、完整学期准确性、完整课时/长期会话及全部水印/设备/网络组合继续未解决或未验证。发布后的证据文档提交不移动v0.27或重建替换附件。
 
 ## 2026-11-13 全应用IconMCP界面替换
 
