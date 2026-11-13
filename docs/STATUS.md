@@ -1,3 +1,13 @@
+# 2026-11-14正常使用APK本地交付
+
+- 用户要求生成不带日志功能的正常APK；未修改应用源码或版本。从干净`c5337a283d1ee2cf1e3124a7efd477ef4e7952d2`构建正常包名`cn.bucm.campus_schedule`，0.27/code11，`--release --target-platform android-arm,android-arm64,android-x64`，显式`CAMPUS_DIRECT_CATALOG=true`、`CAMPUS_TEST_DIAGNOSTICS=false`。普通pub流程重新生成插件注册表，未使用`--no-pub`构建APK。
+- 构建退出0，日志`build/normal-release-20261114.log`；本地交付`dist/campus-schedule-0.27-android-release-f786ad63.apk`，64349734字节，SHA256 `f786ad6321f9089b2f16583cc18e0782b27be925ec704af8ba031906f2c8c0f5`，同目录附`.apk.sha256`。ZIP完整、三架构AOT、干净完整源码资源标识、59份声明资源及15份原生资产逐字节核验通过；无密钥/HAR/XLS测试文件或隔离媒体夹具。
+- aapt2确认正常包名/版本、非debuggable且无READ_LOGS权限；apksigner验签通过，证书SHA256 `4584a62b3daab61954f0842f65c4d7974f9cf9bb84155b150741b7d538faf40c`，沿用既有兼容本地开发签名，尚非生产签名。核验记录`build/normal-release-20261114-verification.json`。
+- 测试诊断受release硬门控关闭，不收集业务诊断记录、不显示测试入口；三个架构AOT均未包含测试入口及其说明字符串。相同define配置下诊断/设置17项检查通过，日志`build/normal-release-20261114-tests.log`。既有WebView调试日志和原生播放器日志关闭设置保留；不将此描述为Android系统及第三方组件绝无错误输出。
+- 本轮仅构建、核验及交付；未安装本包、访问学校或新跑远端CI，未改版本/标签/公开Release附件。此前263项回归与profile模拟器证据仍属于各自源码/模式，不冒充本release设备复测；第五阶段用户审核与物理手机性能/完整读屏仍待验。构建产物及原始日志只保留忽略的本地目录；本记录随后普通提交推送当前分支。
+
+下方为此前各分项记录。
+
 # 2026-11-14一级切换与日期栏修订完成，停审
 
 - 一级切换`ee2a7c1`、日期栏磨砂`87b096f`均已独立检查并普通推送。已复现的43逻辑像素垂直跳动由共享顶栏换高/共享内边距重布局造成；现每页顶栏、弥散背景和正文作为整体沿原260ms强缓出分页移动，提前布局三个保留页，底栏固定且同进度，返回位置保留。
