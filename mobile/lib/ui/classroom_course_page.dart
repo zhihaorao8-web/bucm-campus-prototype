@@ -730,6 +730,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   }
 
   void requireAuthentication(_SchoolTab tab) {
+    if (connectionPhase != ClassroomConnectionPhase.authentication) {
+      // Login completing quickly must not reactivate a pre-login read.
+      generation++;
+    }
     TestDiagnostics.shared.record(TestEvent.authenticationNeeded);
     authVisible = true;
     fetchedAt = null;
@@ -1111,6 +1115,15 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
             await collectNameMatches(tab, matches);
           } finally {
             importingPage = false;
+            // A poll may have seen the authenticated catalog while the old
+            // read still held the collection lock. Resume after releasing it.
+            if (mounted &&
+                foreground &&
+                ticket != generation &&
+                tabs.contains(tab) &&
+                !importFinished) {
+              scheduleRead(tab);
+            }
           }
           return;
         }

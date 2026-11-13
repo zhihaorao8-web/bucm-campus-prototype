@@ -30,6 +30,37 @@ Map<String, dynamic> recordPage(int page, {int total = 11}) => {
   ),
 };
 void main() {
+  test(
+    'every read owns its commands and cleanup with a distinct request id',
+    () async {
+      final commands = <Map<String, Object>>[];
+      final reader = ClassroomApiReader((cmd) async {
+        commands.add(cmd);
+        return {
+          'state': cmd['action'] == 'catalog' ? 'unsupported' : 'cancelled',
+        };
+      });
+      for (var i = 0; i < 2; i++) {
+        await reader.read(
+          semester: c.semester,
+          courses: [c],
+          active: () => true,
+        );
+      }
+      expect(commands.map((c) => c['action']), [
+        'catalog',
+        'cancel',
+        'catalog',
+        'cancel',
+      ]);
+      final first = commands[0]['requestId'];
+      final second = commands[2]['requestId'];
+      expect(first, matches(RegExp(r'^directory_[1-9]\d{0,14}$')));
+      expect(second, isNot(first));
+      expect(commands[1]['requestId'], first);
+      expect(commands[3]['requestId'], second);
+    },
+  );
   for (final waitingForAuthentication in [false, true]) {
     test(
       'bridge timeout preserves cancellation=$waitingForAuthentication',

@@ -16,6 +16,7 @@ class ClassroomApiReader {
     : diagnostics = diagnostics ?? TestDiagnostics.shared;
   final RecordingApiCall call;
   final TestDiagnostics diagnostics;
+  static int _nextRequestId = 0;
 
   Future<List<RecordingPage>?> read({
     required String semester,
@@ -23,6 +24,9 @@ class ClassroomApiReader {
     required bool Function() active,
     Set<String> skipCourseIds = const {},
   }) async {
+    final requestId = 'directory_${++_nextRequestId}';
+    Future<Map<String, dynamic>> invoke(Map<String, Object> command) =>
+        call({...command, 'requestId': requestId});
     void check() {
       if (!active()) throw const ClassroomApiFailure('cancelled');
     }
@@ -40,7 +44,7 @@ class ClassroomApiReader {
       diagnostics.record(TestEvent.directoryStart, count: courses.length);
       diagnostics.record(TestEvent.catalogRequest);
       final catalogClock = Stopwatch()..start();
-      final catalog = await call({'action': 'catalog', 'semester': semester});
+      final catalog = await invoke({'action': 'catalog', 'semester': semester});
       check();
       diagnostics.officialContext(catalog['officialContext']);
       if (catalog['state'] == 'unsupported') {
@@ -91,7 +95,7 @@ class ClassroomApiReader {
           check();
           diagnostics.record(TestEvent.pageRequest);
           final pageClock = Stopwatch()..start();
-          final reply = await call({
+          final reply = await invoke({
             'action': 'records',
             'id': course.id,
             'page': page,
@@ -148,7 +152,7 @@ class ClassroomApiReader {
     } finally {
       // Tear down request context on completion and all error/cancellation paths.
       try {
-        await call({'action': 'cancel'});
+        await invoke({'action': 'cancel'});
       } catch (_) {
         /* Page may have closed. */
       }
