@@ -1,6 +1,7 @@
 import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_miuix/miuix.dart';
@@ -249,6 +250,7 @@ void main() {
   testWidgets(
     'appearance controls save and disabled glass requires floating blur',
     (tester) async {
+      final semantics = tester.ensureSemantics();
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -296,9 +298,46 @@ void main() {
       );
       await Scrollable.ensureVisible(tester.element(blur), alignment: .5);
       await tester.pumpAndSettle();
+      expect(
+        tester.getSemantics(blur),
+        matchesSemantics(
+          label: '模糊\n启用顶栏和底栏的背景模糊',
+          hasToggledState: true,
+          isToggled: true,
+          hasEnabledState: true,
+          isEnabled: true,
+          hasTapAction: true,
+        ),
+      );
       await tester.tap(blur);
       await tester.pumpAndSettle();
       expect(repo.value.blur, isFalse);
+      expect(
+        tester.getSemantics(blur),
+        matchesSemantics(
+          label: '模糊\n启用顶栏和底栏的背景模糊',
+          hasToggledState: true,
+          hasEnabledState: true,
+          isEnabled: true,
+          hasTapAction: true,
+        ),
+      );
+      final node = tester.getSemantics(blur);
+      node.owner!.performAction(node.id, ui.SemanticsAction.tap);
+      await tester.pumpAndSettle();
+      expect(repo.value.blur, isTrue);
+      await tester.tap(blur);
+      await tester.pumpAndSettle();
+      expect(repo.value.blur, isFalse);
+      expect(
+        tester.getSemantics(find.byKey(const ValueKey('appearance-液态玻璃'))),
+        matchesSemantics(
+          label: '液态玻璃\n悬浮底栏的高光与半透明玻璃效果',
+          hasToggledState: true,
+          isToggled: true,
+          hasEnabledState: true,
+        ),
+      );
       expect(
         tester
             .widget<MiuixSwitchPreference>(
@@ -341,6 +380,7 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
+      semantics.dispose();
     },
   );
 }

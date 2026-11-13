@@ -83,15 +83,25 @@ class AppearancePage extends ConsumerWidget {
       bool value,
       AppearanceSettings Function(AppearanceSettings, bool) change, {
       bool enabled = true,
-    }) => MiuixSwitchPreference(
-      key: ValueKey('appearance-$title'),
-      title: title,
-      summary: summary,
-      startAction: AppIcon(icon),
-      value: value,
+    }) => Semantics(
+      container: true,
+      excludeSemantics: true,
+      label: '$title\n$summary',
+      toggled: value,
       enabled: ready && enabled,
-      onChanged: (value) =>
-          save(context, ref, (previous) => change(previous, value)),
+      onTap: ready && enabled
+          ? () => save(context, ref, (previous) => change(previous, !value))
+          : null,
+      child: MiuixSwitchPreference(
+        key: ValueKey('appearance-$title'),
+        title: title,
+        summary: summary,
+        startAction: AppIcon(icon),
+        value: value,
+        enabled: ready && enabled,
+        onChanged: (value) =>
+            save(context, ref, (previous) => change(previous, value)),
+      ),
     );
     Widget choice(
       String title,
