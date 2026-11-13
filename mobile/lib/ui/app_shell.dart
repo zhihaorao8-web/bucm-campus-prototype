@@ -21,6 +21,7 @@ import 'classroom_import_page.dart';
 import 'quiet_backdrop.dart';
 import 'today_focus.dart';
 import 'week_navigation.dart';
+import 'schedule_sync_card.dart';
 import 'app_theme.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -660,106 +661,119 @@ class _AppShellState extends ConsumerState<AppShell>
     );
   }
 
-  Widget settings(ScheduleData data, EdgeInsets insets) => ListView(
-    key: const PageStorageKey('settings-page'),
-    controller: pageControllers[2],
-    padding: pagePadding(insets),
-    children: [
-      sectionLabel('外观'),
-      MiuixCard(
-        cornerRadius: 24,
-        insideMargin: EdgeInsets.zero,
-        child: AppArrowPreference(
-          title: '外观设置',
-          summary: '主题、颜色、底栏与界面缩放',
-          startAction: const AppIcon(AppIcons.palette),
-          onClick: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const AppearancePage()),
+  Widget settings(ScheduleData data, EdgeInsets insets) {
+    final semester = data.semesters.contains(selectedSemester)
+        ? selectedSemester
+        : data.semesters.firstOrNull;
+    return ListView(
+      key: const PageStorageKey('settings-page'),
+      controller: pageControllers[2],
+      padding: pagePadding(insets),
+      children: [
+        sectionLabel('教务同步'),
+        ScheduleSyncCard(
+          semester: semester,
+          updated: semester == null ? null : data.lastImportFor(semester),
+          demo: demo,
+          onImport: busy ? null : openImport,
+        ),
+        const SizedBox(height: 24),
+        sectionLabel('外观'),
+        MiuixCard(
+          cornerRadius: 24,
+          insideMargin: EdgeInsets.zero,
+          child: AppArrowPreference(
+            title: '外观设置',
+            summary: '主题、颜色、底栏与界面缩放',
+            startAction: const AppIcon(AppIcons.palette),
+            onClick: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const AppearancePage()),
+            ),
           ),
         ),
-      ),
-      const SizedBox(height: 24),
-      sectionLabel('轻新课堂'),
-      MiuixCard(
-        cornerRadius: 24,
-        insideMargin: EdgeInsets.zero,
-        child: AppArrowPreference(
-          title: '统一导入录播',
-          summary: '当前学期课表课程 · 导入后直接查看列表',
-          startAction: const AppIcon(AppIcons.mediaLibrary),
-          enabled: !busy && !demo && data.courses.isNotEmpty,
-          onClick: importClassroom,
+        const SizedBox(height: 24),
+        sectionLabel('轻新课堂'),
+        MiuixCard(
+          cornerRadius: 24,
+          insideMargin: EdgeInsets.zero,
+          child: AppArrowPreference(
+            title: '统一导入录播',
+            summary: '当前学期课表课程 · 导入后直接查看列表',
+            startAction: const AppIcon(AppIcons.mediaLibrary),
+            enabled: !busy && !demo && data.courses.isNotEmpty,
+            onClick: importClassroom,
+          ),
         ),
-      ),
-      const SizedBox(height: 24),
-      sectionLabel('登录与隐私'),
-      MiuixCard(
-        cornerRadius: 24,
-        insideMargin: EdgeInsets.zero,
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Text(
-                '密码只在学校官方页面输入。应用不保存密码，不上传课表。学校会话失效后，需要你重新登录。',
-                style: TextStyle(fontSize: 16, height: 1.5),
+        const SizedBox(height: 24),
+        sectionLabel('登录与隐私'),
+        MiuixCard(
+          cornerRadius: 24,
+          insideMargin: EdgeInsets.zero,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Text(
+                  '密码只在学校官方页面输入。应用不保存密码，不上传课表。学校会话失效后，需要你重新登录。',
+                  style: TextStyle(fontSize: 16, height: 1.5),
+                ),
               ),
-            ),
-            AppArrowPreference(
-              title: '退出学校会话',
-              summary: '保留离线课表，清除录播目录与本机观看进度',
-              enabled: !busy,
-              startAction: const AppIcon(AppIcons.logOut),
-              onClick: () async {
-                if (!await confirm(
-                  '退出学校会话？',
-                  '将清除学校网页会话、已导入的录播目录和本机观看进度，离线课表继续保留。',
-                )) {
-                  return;
-                }
-                await runAction(() async {
-                  await SchoolAdapter().clearSession();
-                  if (mounted) message('已清除本机学校会话');
-                });
-              },
-            ),
-            AppArrowPreference(
-              title: '清空本地课表',
-              summary: '删除所有学期的本地课程',
-              startAction: const AppIcon(AppIcons.trash),
-              enabled: !busy && !demo && data.courses.isNotEmpty,
-              onClick: () async {
-                if (!await confirm('清空本地课表？', '将删除所有学期的本地课程。之后可以重新从学校导入。')) {
-                  return;
-                }
-                await runAction(() async {
-                  await ref.read(scheduleProvider.notifier).clear();
-                  if (mounted) {
-                    selectTerm(null);
-                    message('已清空本地课表');
+              AppArrowPreference(
+                title: '退出学校会话',
+                summary: '保留离线课表，清除录播目录与本机观看进度',
+                enabled: !busy,
+                startAction: const AppIcon(AppIcons.logOut),
+                onClick: () async {
+                  if (!await confirm(
+                    '退出学校会话？',
+                    '将清除学校网页会话、已导入的录播目录和本机观看进度，离线课表继续保留。',
+                  )) {
+                    return;
                   }
-                });
-              },
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 24),
-      MiuixCard(
-        cornerRadius: 24,
-        insideMargin: EdgeInsets.zero,
-        child: AppArrowPreference(
-          key: const ValueKey('project-info-entry'),
-          title: '项目信息',
-          summary: '应用版本、开发者与源代码',
-          startAction: const AppIcon(AppIcons.info),
-          onClick: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const ProjectInfoPage()),
+                  await runAction(() async {
+                    await SchoolAdapter().clearSession();
+                    if (mounted) message('已清除本机学校会话');
+                  });
+                },
+              ),
+              AppArrowPreference(
+                title: '清空本地课表',
+                summary: '删除所有学期的本地课程',
+                startAction: const AppIcon(AppIcons.trash),
+                enabled: !busy && !demo && data.courses.isNotEmpty,
+                onClick: () async {
+                  if (!await confirm('清空本地课表？', '将删除所有学期的本地课程。之后可以重新从学校导入。')) {
+                    return;
+                  }
+                  await runAction(() async {
+                    await ref.read(scheduleProvider.notifier).clear();
+                    if (mounted) {
+                      selectTerm(null);
+                      message('已清空本地课表');
+                    }
+                  });
+                },
+              ),
+            ],
           ),
         ),
-      ),
-    ],
-  );
+        const SizedBox(height: 24),
+        MiuixCard(
+          cornerRadius: 24,
+          insideMargin: EdgeInsets.zero,
+          child: AppArrowPreference(
+            key: const ValueKey('project-info-entry'),
+            title: '项目信息',
+            summary: '应用版本、开发者与源代码',
+            startAction: const AppIcon(AppIcons.info),
+            onClick: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ProjectInfoPage()),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget sectionLabel(String text) => Padding(
     padding: const EdgeInsets.only(left: 8, bottom: 12),
