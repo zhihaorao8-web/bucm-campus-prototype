@@ -319,7 +319,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.drag(
         find.byKey(const PageStorageKey('settings-page')),
-        const Offset(180, 0),
+        const Offset(260, 0),
       );
       await tester.pumpAndSettle();
       expect(

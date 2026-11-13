@@ -11,8 +11,10 @@ class GlassNavigation extends ConsumerWidget {
     super.key,
     required this.selected,
     required this.onSelect,
+    this.position,
   });
   final int selected;
+  final double? position;
   final ValueChanged<int> onSelect;
   static const labels = ['今日', '课表', '设置'];
   static const icons = [AppIcons.sun, AppIcons.calendarWeek, AppIcons.sliders];
@@ -109,11 +111,14 @@ class GlassNavigation extends ConsumerWidget {
                           children: [
                             Positioned.fill(
                               child: AnimatedAlign(
-                                duration: motion
-                                    ? const Duration(milliseconds: 340)
+                                duration: motion && position == null
+                                    ? const Duration(milliseconds: 260)
                                     : Duration.zero,
-                                curve: Curves.easeOutBack,
-                                alignment: Alignment(-1.0 + selected, 0),
+                                curve: Curves.easeOutCubic,
+                                alignment: Alignment(
+                                  -1.0 + (position ?? selected),
+                                  0,
+                                ),
                                 child: FractionallySizedBox(
                                   widthFactor: 1 / 3,
                                   heightFactor: 1,
