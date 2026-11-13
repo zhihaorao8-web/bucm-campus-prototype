@@ -211,7 +211,7 @@ class AppearancePage extends ConsumerWidget {
         settingsGroup([
           toggle(
             '左上角极光',
-            '随页面切换柔和色调，高对比度时关闭',
+            '今日页柔光缓慢流转；减少动画时静止，高对比度时关闭',
             AppIcons.sun,
             p.aurora,
             (v, value) => v.copyWith(aurora: value),

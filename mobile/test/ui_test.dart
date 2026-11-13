@@ -1,3 +1,4 @@
+import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +21,7 @@ Widget app(
   bool reduceMotion = false,
 }) => ProviderScope(
   overrides: [
+    ambientMotionEnabledProvider.overrideWithValue(false),
     repositoryProvider.overrideWithValue(repo),
     appearanceRepositoryProvider.overrideWithValue(
       MemoryAppearanceRepository(),

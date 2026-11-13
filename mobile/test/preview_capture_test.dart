@@ -1,3 +1,4 @@
+import 'package:campus_schedule/ui/quiet_backdrop.dart';
 // Optional visual QA using synthetic data only. Not a school screenshot capture.
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -41,6 +42,7 @@ void main() {
     final boundary = GlobalKey();
     Future<void> setup({
       bool dark = false,
+      bool ambient = false,
       double scale = 1,
       double width = 390,
       ScheduleData? data,
@@ -53,6 +55,7 @@ void main() {
           key: boundary,
           child: ProviderScope(
             overrides: [
+              ambientMotionEnabledProvider.overrideWithValue(ambient),
               appearanceRepositoryProvider.overrideWithValue(
                 MemoryAppearanceRepository(),
               ),
@@ -87,7 +90,11 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      if (ambient) {
+        await tester.pump(const Duration(milliseconds: 500));
+      } else {
+        await tester.pumpAndSettle();
+      }
     }
 
     Future<void> capture(String name) async {
@@ -235,6 +242,14 @@ void main() {
     await tester.tap(find.text('日'));
     await tester.pumpAndSettle();
     await capture('daily-large-text');
+    // Capture real widget motion at fixed phases, not an image-editor effect.
+    await setup(ambient: true);
+    await tester.tap(find.text('先体验合成示例'));
+    await tester.pump(const Duration(milliseconds: 500));
+    for (var frame = 0; frame < 12; frame++) {
+      await capture('atmosphere-motion-${frame.toString().padLeft(2, '0')}');
+      await tester.pump(const Duration(seconds: 2));
+    }
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   }, skip: !const bool.fromEnvironment('CAPTURE_PREVIEW'));

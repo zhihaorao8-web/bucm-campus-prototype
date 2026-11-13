@@ -1,3 +1,4 @@
+import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -155,6 +156,7 @@ void main() {
       });
       final container = ProviderContainer(
         overrides: [
+          ambientMotionEnabledProvider.overrideWithValue(false),
           appearanceRepositoryProvider.overrideWithValue(
             MemoryAppearanceRepository(),
           ),

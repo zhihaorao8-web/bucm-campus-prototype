@@ -204,49 +204,65 @@ class _AppShellState extends ConsumerState<AppShell>
         tab: tab,
         child: MiuixScaffold(
           containerColor: Colors.transparent,
-          topBar: MiuixTopAppBar(
-            key: ValueKey('topbar-$tab'),
-            title: ['今日', '课表', '设置'][tab],
-            color: Theme.of(context).colorScheme.surface,
-            scrollBehavior: scrollBehaviors[tab],
-            blurred: appearance.blur && !MediaQuery.highContrastOf(context),
-            blurRadius: 44,
-            blurTintAlpha: Theme.of(context).brightness == Brightness.dark
-                ? .82
-                : .72,
-            actions: [
-              if (demo)
-                TextButton(
-                  onPressed: () => setState(() {
-                    demo = false;
-                    week = 0;
-                    selectedSemester = null;
-                  }),
-                  child: const Text('退出示例'),
-                ),
-              if (!demo && stored.hasValue && tab != 2)
-                Tooltip(
-                  message: '导入或刷新课表',
-                  child: MiuixIconButton(
-                    minWidth: 48,
-                    minHeight: 48,
-                    onPressed: openImport,
-                    child: const AppIcon(AppIcons.sync),
-                  ),
-                ),
-              if (!demo && stored.hasValue && tab == 1)
-                Tooltip(
-                  message: '统一导入录播',
-                  child: MiuixIconButton(
-                    key: const ValueKey('classroom-import-button'),
-                    minWidth: 48,
-                    minHeight: 48,
-                    onPressed: importClassroom,
-                    child: const AppIcon(AppIcons.mediaLibrary),
-                  ),
-                ),
-              const SizedBox(width: 8),
-            ],
+          topBar: ListenableBuilder(
+            listenable: pageControllers[tab],
+            builder: (context, _) {
+              final sample = tab == 0;
+              final opaque =
+                  MediaQuery.highContrastOf(context) ||
+                  appearance.contrast > 0 ||
+                  !appearance.blur;
+              final scroll = pageControllers[tab];
+              final scrim = scroll.hasClients
+                  ? (scroll.positions.last.pixels / 80).clamp(0.0, 1.0)
+                  : 0.0;
+              return MiuixTopAppBar(
+                key: ValueKey('topbar-$tab'),
+                title: ['今日', '课表', '设置'][tab],
+                color: Theme.of(context).colorScheme.surface,
+                scrollBehavior: scrollBehaviors[tab],
+                blurred: !opaque,
+                blurRadius: sample ? 20 : 44,
+                blurTintAlpha: sample
+                    ? .04 + .76 * scrim
+                    : Theme.of(context).brightness == Brightness.dark
+                    ? .82
+                    : .72,
+                actions: [
+                  if (demo)
+                    TextButton(
+                      onPressed: () => setState(() {
+                        demo = false;
+                        week = 0;
+                        selectedSemester = null;
+                      }),
+                      child: const Text('退出示例'),
+                    ),
+                  if (!demo && stored.hasValue && tab != 2)
+                    Tooltip(
+                      message: '导入或刷新课表',
+                      child: MiuixIconButton(
+                        minWidth: 48,
+                        minHeight: 48,
+                        onPressed: openImport,
+                        child: const AppIcon(AppIcons.sync),
+                      ),
+                    ),
+                  if (!demo && stored.hasValue && tab == 1)
+                    Tooltip(
+                      message: '统一导入录播',
+                      child: MiuixIconButton(
+                        key: const ValueKey('classroom-import-button'),
+                        minWidth: 48,
+                        minHeight: 48,
+                        onPressed: importClassroom,
+                        child: const AppIcon(AppIcons.mediaLibrary),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                ],
+              );
+            },
           ),
           content: (insets) => MiuixScrollBehaviorListener(
             key: ValueKey('scroll-page-$tab'),

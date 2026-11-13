@@ -1,3 +1,4 @@
+import 'acrylic_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import '../domain/schedule.dart';
@@ -28,22 +29,15 @@ class FocusCourseCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final active = event.activeAt(now);
     final motion = !MediaQuery.disableAnimationsOf(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: colors.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .035),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return AcrylicSurface(
       child: MiuixCard(
         key: const ValueKey('today-focus'),
+        colors: MiuixCardColors(
+          color: Colors.transparent,
+          contentColor: colors.onSurface,
+        ),
         cornerRadius: 28,
-        insideMargin: const EdgeInsets.all(24),
+        insideMargin: const EdgeInsets.all(22),
         feedbackType: motion
             ? MiuixPressFeedbackType.sink
             : MiuixPressFeedbackType.none,
@@ -118,11 +112,11 @@ class FocusCourseCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 16),
               Text(
                 event.segment.start,
                 style: TextStyle(
-                  fontSize: 44,
+                  fontSize: 38,
                   height: 1.1,
                   fontWeight: FontWeight.w700,
                   color: colors.primary,
@@ -137,7 +131,7 @@ class FocusCourseCard extends StatelessWidget {
                   fontFeatures: tabularTime,
                 ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 16),
               Text(
                 event.course.name,
                 style: Theme.of(context).textTheme.titleLarge,

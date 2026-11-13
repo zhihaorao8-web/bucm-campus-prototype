@@ -1,3 +1,4 @@
+import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -78,7 +79,10 @@ void main() {
     () async {
       final repo = MemoryAppearanceRepository();
       final container = ProviderContainer(
-        overrides: [appearanceRepositoryProvider.overrideWithValue(repo)],
+        overrides: [
+          ambientMotionEnabledProvider.overrideWithValue(false),
+          appearanceRepositoryProvider.overrideWithValue(repo),
+        ],
       );
       addTearDown(container.dispose);
       await container.read(appearanceProvider.future);
@@ -150,6 +154,7 @@ void main() {
       final repo = MemoryAppearanceRepository();
       final container = ProviderContainer(
         overrides: [
+          ambientMotionEnabledProvider.overrideWithValue(false),
           appearanceRepositoryProvider.overrideWithValue(repo),
           repositoryProvider.overrideWithValue(
             MemoryRepository(const ScheduleData()),
@@ -241,6 +246,7 @@ void main() {
       final repo = MemoryAppearanceRepository();
       final container = ProviderContainer(
         overrides: [
+          ambientMotionEnabledProvider.overrideWithValue(false),
           appearanceRepositoryProvider.overrideWithValue(repo),
           repositoryProvider.overrideWithValue(
             MemoryRepository(const ScheduleData()),
