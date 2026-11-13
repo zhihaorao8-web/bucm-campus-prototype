@@ -1,0 +1,324 @@
+{
+  "schema": 1,
+  "source": "https://iconmcp.com/mcp",
+  "licence": "https://iconmcp.com/licence",
+  "style": {
+    "style": "outline",
+    "size": 24,
+    "stroke": 1.75,
+    "radius": 2
+  },
+  "icons": {
+    "sun": {
+      "name": "sun",
+      "sha256": "d12525683a2dad6e86993d9539a545caa698b68e4fe48246581b2294515b0761",
+      "label": "Sun",
+      "set": "generic"
+    },
+    "calendar": {
+      "name": "calendar",
+      "sha256": "086cd86e79b5227bcf7ea2a02f1c1eedf53b71ed12430b4bb4c7ca1145c1481f",
+      "label": "Calendar",
+      "set": "generic"
+    },
+    "calendarWeek": {
+      "name": "calendar-week",
+      "sha256": "7fef0ddf2477728b555916ec13730882e171d0b9670b1f84217b1d4f047ea2f1",
+      "label": "Week calendar",
+      "set": "time"
+    },
+    "sliders": {
+      "name": "sliders",
+      "sha256": "c71c85bce6129ac8d9d83738d34dcebb23bcc7675db6d111cf8553033af9d7a7",
+      "label": "Adjust",
+      "set": "generic"
+    },
+    "arrowBack": {
+      "name": "arrow-left",
+      "directional": true,
+      "sha256": "cf8152ce25f46f4e53a2ef8a02bd069b82c8537ecf94e58947e04e60086a5a1c",
+      "label": "Arrow left",
+      "set": "generic"
+    },
+    "chevronLeft": {
+      "name": "chevron-left",
+      "directional": true,
+      "sha256": "4a4842bb02fc177164a5e0314ab681c62acc50ffa6b0fa1b20f162336f11e3ba",
+      "label": "Chevron left",
+      "set": "generic"
+    },
+    "chevronRight": {
+      "name": "chevron-right",
+      "directional": true,
+      "sha256": "8781a6acd6738b1caa5a6939ba42415423650cc31c0af435cc3ceb93acb4d0db",
+      "label": "Chevron right",
+      "set": "generic"
+    },
+    "chevronDown": {
+      "name": "chevron-down",
+      "sha256": "b9e370f91fe3136ff019aecb4d10273e02cb7f6a0ef0cb2c6a2d55794fbb125f",
+      "label": "Chevron down",
+      "set": "generic"
+    },
+    "chevronUp": {
+      "name": "chevron-up",
+      "sha256": "1f7ff23f8b0c162354cc5ccf9501f6e9bffa60e6225735ccfa4b085eec92865d",
+      "label": "Chevron up",
+      "set": "generic"
+    },
+    "sync": {
+      "name": "sync",
+      "sha256": "b31cb869c8bf801c8d7752645dc9c2ffc009c88c2068b6201f943641bc98d7fc",
+      "label": "Sync",
+      "set": "arrows"
+    },
+    "refresh": {
+      "name": "refresh",
+      "sha256": "d0b4e8da8ddc594dcd7552dcb2f47dc8cf2101e0f5c3d6fc9223b4b5a4afee9d",
+      "label": "Refresh",
+      "set": "generic"
+    },
+    "mediaLibrary": {
+      "name": "media-library",
+      "sha256": "65feb78084b44dc2d5b6f0e627e9782f62becd21bfe82b82ba13ca369f6e3992",
+      "label": "Media library",
+      "set": "media"
+    },
+    "trash": {
+      "name": "trash",
+      "sha256": "d28de1ec9c6a6dd39b6c5b84e076cf38e7f85c610e5af605cabe649ac025fe65",
+      "label": "Trash",
+      "set": "generic"
+    },
+    "logOut": {
+      "name": "log-out",
+      "directional": true,
+      "sha256": "a13787cfea0d1db84ec7c6cd08d089d024f59db99a48a3ee6f6d300b2bc4b81a",
+      "label": "Log out",
+      "set": "generic"
+    },
+    "info": {
+      "name": "info",
+      "sha256": "700e077281a2de12b7c44d8a92ca3e4095381257c59f2a45bf46992fe5e819aa",
+      "label": "Info",
+      "set": "generic"
+    },
+    "check": {
+      "name": "check",
+      "sha256": "d5a98373c768f5d25b78b245ff447a92b6cdc97f4ca17e0bcc8b067389d7ad62",
+      "label": "Check",
+      "set": "generic"
+    },
+    "palette": {
+      "name": "palette",
+      "sha256": "cc597b0fbe94ededb993e85ae1eace34f625d23e39d179dd560e52476462b86b",
+      "label": "Palette",
+      "set": "editor"
+    },
+    "pipette": {
+      "name": "pipette",
+      "sha256": "fba7a78bcb5d62dcb73d4c00e652439a6c359ecc5bdbe3f02ca4f0cbe25b46c1",
+      "label": "Eyedropper",
+      "set": "editor"
+    },
+    "contrast": {
+      "name": "contrast",
+      "sha256": "43409e7a33015e85b89a6b6224eabbea17ee8aa1cdd5f3720ae06ed2b1992bf7",
+      "label": "Contrast",
+      "set": "photo"
+    },
+    "blur": {
+      "name": "blur",
+      "sha256": "6f778299f983ace0d4c554e868881b9f6e0e763d970d1482e17647f15172bb58",
+      "label": "Blur",
+      "set": "photo"
+    },
+    "dock": {
+      "name": "dock",
+      "sha256": "59332cb442df4af07b04bd9aca96e2ecaf2328f64d5edfc034a8c3dfcf03b305",
+      "label": "Dock",
+      "set": "interface"
+    },
+    "droplet": {
+      "name": "droplet",
+      "sha256": "a14e854f4b03097ea7d72a23806c6d9ca103bedb261d3dffd0658c345374a282",
+      "label": "Droplet",
+      "set": "weather"
+    },
+    "swipe": {
+      "name": "gesture-swipe",
+      "sha256": "12fef6f3667cda3ed3d12349604aa4d1ba97cf7733c1a9a62fea42af4d78194e",
+      "label": "Swipe right",
+      "set": "people"
+    },
+    "swapHorizontal": {
+      "name": "swap-horizontal",
+      "sha256": "c6d39a9d641a4bdbb7d9a73c8c943cdf9a2843bb1df6c7c49095d16a95793a1a",
+      "label": "Swap horizontal",
+      "set": "arrows"
+    },
+    "fontSize": {
+      "name": "font-size",
+      "sha256": "ca0ad34a5269b3c231da7fd364585f5124d439c85dd93c4ab01ce9cf5c7a05f9",
+      "label": "Font size",
+      "set": "editor"
+    },
+    "wallpaper": {
+      "name": "virtual-background",
+      "sha256": "b2be8fcfee478d70ccf654a0c1c2ab4cc8ee16ad6a33e5cd0146c88d53e7aba3",
+      "label": "Virtual background",
+      "set": "communication"
+    },
+    "pause": {
+      "name": "pause",
+      "sha256": "243f80fbadf2c94f9d7c8cc719340e82ddc0c577f22395e05ebfd5f09a350931",
+      "label": "Pause",
+      "set": "media"
+    },
+    "playCircle": {
+      "name": "play-circle",
+      "sha256": "86f0ee13aaa09c14852180e3232e45600a6f4a7d32d958473b1849ca08afb31d",
+      "label": "Play circle",
+      "set": "media"
+    },
+    "play": {
+      "name": "play",
+      "sha256": "c431238bae8b96dffe59d2f734646f0efcbb7f0c37660014a81dc17fefa2e521",
+      "label": "Play",
+      "set": "media"
+    },
+    "fullscreen": {
+      "name": "maximize",
+      "sha256": "97f084b70f04d6f67442eff600b9103a92b9c9deb392d63f85b3e3e5fda203ed",
+      "label": "Maximize",
+      "set": "editor"
+    },
+    "fullscreenExit": {
+      "name": "minimize",
+      "sha256": "b45e61ed33f3daf58135f66dd2c759a18b848c6d2d745bb2a9791f11eae4d4eb",
+      "label": "Minimize",
+      "set": "editor"
+    },
+    "pictureInPicture": {
+      "name": "picture-in-picture",
+      "sha256": "89d6c5b2ca0111018da4e9e2bfd6a21302cefc9775cbacf63a7852422fa6f964",
+      "label": "Picture in picture",
+      "set": "interface"
+    },
+    "videoSettings": {
+      "name": "video-settings",
+      "sha256": "18536c47ba53a081f6b1101dc0510715d766bb273b380d38c889e854090eb4cf",
+      "label": "Video settings",
+      "set": "media"
+    },
+    "back10": {
+      "name": "skip-back-10",
+      "sha256": "803a9a0298c5cdfade5fcc77c2f12202a70d7ad53091d2056b2d2b197b8398e4",
+      "label": "Back 10 seconds",
+      "set": "media"
+    },
+    "forward10": {
+      "name": "skip-forward-10",
+      "sha256": "51c0880fae2c8461500af3533cc5000f81c943a0d4e6d03a1ac9e4b17253c951",
+      "label": "Skip 10 seconds",
+      "set": "media"
+    },
+    "download": {
+      "name": "download",
+      "sha256": "779022c0f384c97f76ab3131e2f3b2b212a24eeae03823d3966e917a7bbb10b8",
+      "label": "Download",
+      "set": "generic"
+    },
+    "zoomIn": {
+      "name": "zoom-in",
+      "sha256": "13f3fedec941d25e863810249c0222fd8093b5c4fe72b6d5ee265b4bd56c6a4b",
+      "label": "Zoom in",
+      "set": "interface"
+    },
+    "zoomOut": {
+      "name": "zoom-out",
+      "sha256": "4a234b6ed188f17941c4203f09354486ad304b8c3bb4f8fd6434f473a30b8473",
+      "label": "Zoom out",
+      "set": "interface"
+    },
+    "zoomFit": {
+      "name": "zoom-fit",
+      "sha256": "a019201327ef49ca5db7cbbd24d3151907486f9cccbe7b891c0f6b01269d3869",
+      "label": "Zoom to fit",
+      "set": "interface"
+    },
+    "copy": {
+      "name": "copy",
+      "sha256": "90069e973dcf4ea2a2eca70b5a231539b0f09d3a3479b5a252a591ac7b7e3055",
+      "label": "Copy",
+      "set": "generic"
+    },
+    "code": {
+      "name": "code",
+      "sha256": "bab541e115f6227766b5c8d9a61414d51af2a5e86ee7087bfbd25767a1f50814",
+      "label": "Code",
+      "set": "editor"
+    },
+    "close": {
+      "name": "close",
+      "sha256": "488911a566cd82d3412e5781028b46163c2c18a725da5f734f6f4c568efdd329",
+      "label": "Close",
+      "set": "generic"
+    },
+    "moreVertical": {
+      "name": "more-vertical",
+      "sha256": "323c7c1cf8ea56d9952b2f837684a9e20a417c4e040e81d8fb316948d9a6a7c3",
+      "label": "More vertical",
+      "set": "generic"
+    }
+  },
+  "materialAliases": {
+    "wb_sunny_outlined": "sun",
+    "calendar_month": "calendar",
+    "calendar_month_outlined": "calendar",
+    "calendar_view_week_outlined": "calendarWeek",
+    "tune": "sliders",
+    "tune_outlined": "sliders",
+    "arrow_back": "arrowBack",
+    "chevron_left": "chevronLeft",
+    "chevron_right": "chevronRight",
+    "expand_more": "chevronDown",
+    "sync_outlined": "sync",
+    "refresh": "refresh",
+    "video_library_outlined": "mediaLibrary",
+    "delete_outline": "trash",
+    "logout": "logOut",
+    "info_outline": "info",
+    "check": "check",
+    "palette_outlined": "palette",
+    "color_lens_outlined": "palette",
+    "colorize_outlined": "pipette",
+    "contrast": "contrast",
+    "blur_on": "blur",
+    "dock_outlined": "dock",
+    "water_drop_outlined": "droplet",
+    "swipe_outlined": "swipe",
+    "swipe_right_alt": "swipe",
+    "swap_horiz": "swapHorizontal",
+    "format_size": "fontSize",
+    "wallpaper_outlined": "wallpaper",
+    "pause": "pause",
+    "pause_rounded": "pause",
+    "play_circle_outline": "playCircle",
+    "play_arrow_rounded": "play",
+    "fullscreen": "fullscreen",
+    "fullscreen_exit": "fullscreenExit",
+    "picture_in_picture_alt_outlined": "pictureInPicture",
+    "video_settings_outlined": "videoSettings",
+    "replay_10": "back10",
+    "forward_10": "forward10",
+    "download_outlined": "download",
+    "zoom_in": "zoomIn",
+    "zoom_out": "zoomOut",
+    "fit_screen": "zoomFit",
+    "copy": "copy",
+    "copy_outlined": "copy",
+    "code": "code",
+    "close": "close"
+  }
+}

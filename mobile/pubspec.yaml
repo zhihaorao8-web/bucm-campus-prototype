@@ -14,6 +14,7 @@ dependencies:
   flutter_inappwebview: ^6.1.5
   path_provider: ^2.1.5
   flutter_miuix: 1.3.0
+  flutter_svg: 2.4.0
 dev_dependencies:
   integration_test:
     sdk: flutter
@@ -23,6 +24,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/icons/iconmcp/
     - assets/extract.js
     - assets/school-viewport.js
     - assets/export-nav.js

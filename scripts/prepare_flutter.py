@@ -12,6 +12,9 @@ from scripts.dependencies import dependencies
 
 def main():
     app = ROOT / 'mobile'
+    from scripts.iconmcp_assets import check_assets
+    check_assets()
+    shutil.copytree(ROOT / 'design/icons/iconmcp', app / 'assets/icons/iconmcp', dirs_exist_ok=True)
     target = app / 'android/app'
     if not (target / 'build.gradle.kts').exists():
         raise SystemExit('Generate the Android host with flutter create first; see docs/FLUTTER.md.')

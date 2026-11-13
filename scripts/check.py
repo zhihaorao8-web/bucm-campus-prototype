@@ -14,6 +14,8 @@ import os
 
 
 def main():
+    from scripts.iconmcp_assets import check_assets
+    check_assets()
     work = ROOT / 'build' / 'checks'
     work.mkdir(parents=True, exist_ok=True)
     classes = Path(tempfile.mkdtemp(prefix='run-', dir=work)).resolve()

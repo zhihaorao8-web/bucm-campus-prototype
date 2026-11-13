@@ -7,9 +7,11 @@ import 'ui/app_theme.dart';
 import 'application/appearance_controller.dart';
 import 'platform/app_platform.dart';
 import 'ui/interface_scale.dart';
+import 'ui/app_icons.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  registerAppIconLicenses();
   // The plugin's debug event logger may include navigation URLs or page messages.
   PlatformInAppWebViewController.debugLoggingSettings.enabled = false;
   runApp(const ProviderScope(child: CampusApp()));
