@@ -1,3 +1,4 @@
+import 'course_surface.dart';
 import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/appearance_controller.dart';
@@ -482,143 +483,145 @@ class _WeekCourseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final ink = AppColors.courseInk(context, colorIndex);
-    return Material(
-      key: ValueKey('week-primary-${event.course.id}'),
+    return CourseSurface(
+      radius: 8,
+      dense: true,
       color: soft
           ? AppColors.courseAt(context, colorIndex)
           : colors.surfaceContainer,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: colors.outlineVariant, width: .5),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Stack(
-          children: [
-            if (!soft)
-              Positioned(
-                top: 5,
-                bottom: 5,
-                left: 0,
-                width: 3,
-                child: DecoratedBox(
-                  key: const ValueKey('week-color-rail'),
-                  decoration: BoxDecoration(
-                    color: ink,
-                    borderRadius: BorderRadius.circular(2),
+      child: Material(
+        key: ValueKey('week-primary-${event.course.id}'),
+        color: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Stack(
+            children: [
+              if (!soft)
+                Positioned(
+                  top: 5,
+                  bottom: 5,
+                  left: 0,
+                  width: 3,
+                  child: DecoratedBox(
+                    key: const ValueKey('week-color-rail'),
+                    decoration: BoxDecoration(
+                      color: ink,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              Positioned.fill(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(soft ? 4 : 7, 4, 3, 4),
+                  child: LayoutBuilder(
+                    builder: (context, box) {
+                      final line =
+                          MediaQuery.textScalerOf(context).scale(12) * 1.25;
+                      final badge = additional > 0 && box.maxHeight >= 28;
+                      final available = box.maxHeight - (badge ? 14 : 0);
+                      final showPlace =
+                          available >= line * 3 + 3 && box.maxWidth >= 22;
+                      final showTeacher =
+                          available >= line * 4 + 6 && box.maxWidth >= 44;
+                      final lines =
+                          ((available -
+                                      (showPlace ? line + 3 : 0) -
+                                      (showTeacher ? line + 3 : 0)) /
+                                  line)
+                              .floor()
+                              .clamp(1, 4);
+                      return ClipRect(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (badge)
+                              SizedBox(
+                                height: 14,
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      '+$additional 冲突',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        color: colors.error,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            Flexible(
+                              child: Text(
+                                event.course.name,
+                                maxLines: lines,
+                                overflow: TextOverflow.clip,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  height: 1.25,
+                                  fontWeight: FontWeight.w600,
+                                  color: soft ? ink : colors.onSurface,
+                                ),
+                              ),
+                            ),
+                            if (showPlace) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                additional > 0
+                                    ? '${event.segment.start}–${event.segment.end}'
+                                    : '@${courseLocation(event.course)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  height: 1.25,
+                                  color: soft ? ink : colors.onSurfaceVariant,
+                                  fontFeatures: tabularTime,
+                                ),
+                              ),
+                            ],
+                            if (showTeacher &&
+                                event.course.teacher.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      event.course.teacher,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        height: 1.25,
+                                        color: soft
+                                            ? ink
+                                            : colors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                  if (hasRecordings &&
+                                      box.maxWidth >= 44 &&
+                                      available >= line * 7 + 24)
+                                    AppIcon(
+                                      AppIcons.mediaLibrary,
+                                      size: 12,
+                                      color: ink,
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
-            Positioned.fill(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(soft ? 4 : 7, 4, 3, 4),
-                child: LayoutBuilder(
-                  builder: (context, box) {
-                    final line =
-                        MediaQuery.textScalerOf(context).scale(12) * 1.25;
-                    final badge = additional > 0 && box.maxHeight >= 28;
-                    final available = box.maxHeight - (badge ? 14 : 0);
-                    final showPlace =
-                        available >= line * 3 + 3 && box.maxWidth >= 22;
-                    final showTeacher =
-                        available >= line * 4 + 6 && box.maxWidth >= 44;
-                    final lines =
-                        ((available -
-                                    (showPlace ? line + 3 : 0) -
-                                    (showTeacher ? line + 3 : 0)) /
-                                line)
-                            .floor()
-                            .clamp(1, 4);
-                    return ClipRect(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (badge)
-                            SizedBox(
-                              height: 14,
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    '+$additional 冲突',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                      color: colors.error,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          Flexible(
-                            child: Text(
-                              event.course.name,
-                              maxLines: lines,
-                              overflow: TextOverflow.clip,
-                              style: TextStyle(
-                                fontSize: 12,
-                                height: 1.25,
-                                fontWeight: FontWeight.w600,
-                                color: soft ? ink : colors.onSurface,
-                              ),
-                            ),
-                          ),
-                          if (showPlace) ...[
-                            const SizedBox(height: 3),
-                            Text(
-                              additional > 0
-                                  ? '${event.segment.start}–${event.segment.end}'
-                                  : '@${courseLocation(event.course)}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 10,
-                                height: 1.25,
-                                color: soft ? ink : colors.onSurfaceVariant,
-                                fontFeatures: tabularTime,
-                              ),
-                            ),
-                          ],
-                          if (showTeacher &&
-                              event.course.teacher.isNotEmpty) ...[
-                            const SizedBox(height: 3),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    event.course.teacher,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      height: 1.25,
-                                      color: soft
-                                          ? ink
-                                          : colors.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ),
-                                if (hasRecordings &&
-                                    box.maxWidth >= 44 &&
-                                    available >= line * 7 + 24)
-                                  AppIcon(
-                                    AppIcons.mediaLibrary,
-                                    size: 12,
-                                    color: ink,
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
