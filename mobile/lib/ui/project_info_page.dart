@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../platform/app_platform.dart';
+import '../platform/test_diagnostics.dart';
+import 'test_diagnostics_page.dart';
 import 'settings_scaffold.dart';
 
 const developerName = 'Muzhi';
@@ -135,6 +137,19 @@ class ProjectInfoPage extends ConsumerWidget {
             ],
           ),
         ),
+        if (TestDiagnostics.available) heading('测试工具'),
+        if (TestDiagnostics.available)
+          settingsGroup([
+            MiuixArrowPreference(
+              title: '测试诊断',
+              summary: '查看、复制或清空本次导入记录',
+              onClick: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const TestDiagnosticsPage(),
+                ),
+              ),
+            ),
+          ]),
         heading('开发者信息'),
         settingsGroup([
           MiuixArrowPreference(

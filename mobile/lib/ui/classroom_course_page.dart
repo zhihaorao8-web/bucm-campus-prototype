@@ -14,6 +14,7 @@ import '../domain/classroom.dart';
 import '../domain/schedule.dart';
 import '../platform/classroom_access.dart';
 import '../platform/classroom_api_reader.dart';
+import '../platform/test_diagnostics.dart';
 import '../platform/classroom_read_progress.dart';
 import '../platform/classroom_policy.dart';
 import '../platform/classroom_player.dart';
@@ -344,9 +345,15 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
 
   Future<void> finishNameImport(_SchoolTab tab) async {
     final saved = collection.merge(DateTime.now());
-    await library.save(localCourse, saved, revision: libraryRevision);
+    try {
+      await library.save(localCourse, saved, revision: libraryRevision);
+    } catch (_) {
+      TestDiagnostics.shared.record(TestEvent.importSaveFailed);
+      rethrow;
+    }
     if (!mounted) return;
     if (libraryRevision != library.revision) throw const FormatException();
+    TestDiagnostics.shared.record(TestEvent.importSaved);
     if (!bulk) archive = saved;
     imported++;
     if (bulk) importProgress.update(importIndex, ImportTaskStatus.completed);
@@ -358,6 +365,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     List<ClassroomCourse> matches,
   ) async {
     if (matches.isEmpty) {
+      TestDiagnostics.shared.record(TestEvent.unmatched);
       if (bulk) {
         importProgress.update(
           importIndex,
@@ -396,6 +404,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           if (value?.error != null ||
               value?.value is! String ||
               (value!.value as String).length > 1024 * 1024) {
+            TestDiagnostics.shared.record(TestEvent.bridgeFailed);
             throw const ClassroomApiFailure('error');
           }
           return Map<String, dynamic>.from(
@@ -706,6 +715,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   }
 
   void requireAuthentication(_SchoolTab tab) {
+    TestDiagnostics.shared.record(TestEvent.authenticationNeeded);
     authVisible = true;
     fetchedAt = null;
     freshReadPending = false;
@@ -965,6 +975,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   }
 
   void reportServiceUnavailable(_SchoolTab tab) {
+    TestDiagnostics.shared.record(TestEvent.requestFailed);
     poll?.cancel();
     tab.loadTimer?.cancel();
     tab.loadTimer = null;
@@ -1006,6 +1017,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         return;
       }
       if (data['state'] == 'forbidden' || data['state'] == 'error') {
+        TestDiagnostics.shared.failure(data['state'] as String?);
         fetchedAt = null;
         freshReadPending = false;
         if (bulk) {
@@ -1399,6 +1411,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     final operation = ++playbackGeneration;
     poll?.cancel();
     ClassroomPlayerState? prepared;
+    TestDiagnostics.shared.record(TestEvent.mediaPrepare);
     var handedToPlayer = false;
     tab.purpose = _Purpose.playback;
     setState(() {
@@ -1418,6 +1431,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           .invokeMapMethod<Object?, Object?>('prepare')
           .timeout(const Duration(seconds: 25));
       prepared = ClassroomPlayerState(data!);
+      TestDiagnostics.shared.record(TestEvent.mediaReady);
       if (!mounted || operation != playbackGeneration) return;
       await script(tab, {'action': 'returnRecords'});
       livePage = null;
@@ -1449,6 +1463,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         fetchedAt = null;
       }
     } catch (error) {
+      TestDiagnostics.shared.mediaFailure(
+        error is PlatformException ? error.code : null,
+      );
       fetchedAt = null;
       freshReadPending = false;
       if (mounted && operation == playbackGeneration) {

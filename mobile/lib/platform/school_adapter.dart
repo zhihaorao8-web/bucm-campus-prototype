@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import '../domain/schedule.dart';
 import 'classroom_session_cache.dart';
+import 'test_diagnostics.dart';
 import '../data/classroom_library.dart';
 import '../data/classroom_playback_progress.dart';
 
@@ -82,6 +83,7 @@ class SchoolAdapter {
   }
 
   Future<void> clearSession() async {
+    TestDiagnostics.shared.clear();
     ClassroomSessionCache.shared.clear();
     await Future.wait<void>([
       ClassroomLibrary.shared.clear(),

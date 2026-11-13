@@ -1,4 +1,5 @@
 import '../domain/classroom.dart';
+import 'test_diagnostics.dart';
 
 typedef RecordingApiCall =
     Future<Map<String, dynamic>> Function(Map<String, Object> command);
@@ -10,8 +11,10 @@ class ClassroomApiFailure implements Exception {
 
 /// Opt-in directory transport; no navigation, persistence or playback authority.
 class ClassroomApiReader {
-  ClassroomApiReader(this.call);
+  ClassroomApiReader(this.call, {TestDiagnostics? diagnostics})
+    : diagnostics = diagnostics ?? TestDiagnostics.shared;
   final RecordingApiCall call;
+  final TestDiagnostics diagnostics;
 
   Future<List<RecordingPage>?> read({
     required String semester,
@@ -33,9 +36,18 @@ class ClassroomApiReader {
 
     try {
       check();
+      diagnostics.record(TestEvent.directoryStart, count: courses.length);
+      diagnostics.record(TestEvent.catalogRequest);
+      final catalogClock = Stopwatch()..start();
       final catalog = await call({'action': 'catalog', 'semester': semester});
       check();
-      if (catalog['state'] == 'unsupported') return null;
+      if (catalog['state'] == 'unsupported') {
+        diagnostics.record(
+          TestEvent.fallbackUnsupported,
+          elapsedMs: catalogClock.elapsedMilliseconds,
+        );
+        return null;
+      }
       checked(catalog, 'catalog');
       final fresh = (catalog['courses'] as List)
           .map(
@@ -43,6 +55,11 @@ class ClassroomApiReader {
                 ClassroomCourse.fromJson(Map<String, dynamic>.from(v as Map)),
           )
           .toList();
+      diagnostics.record(
+        TestEvent.catalogReady,
+        elapsedMs: catalogClock.elapsedMilliseconds,
+        count: fresh.length,
+      );
       if (catalog['semester'] != semester ||
           fresh.any((c) => c.semester != semester) ||
           fresh.map((c) => c.id).toSet().length != fresh.length) {
@@ -70,6 +87,8 @@ class ClassroomApiReader {
         final seen = <String>{};
         for (var page = 1; page <= 1000; page++) {
           check();
+          diagnostics.record(TestEvent.pageRequest);
+          final pageClock = Stopwatch()..start();
           final data = checked(
             await call({'action': 'records', 'id': course.id, 'page': page}),
             'records',
@@ -90,6 +109,11 @@ class ClassroomApiReader {
             throw const ClassroomApiFailure('invalid-data');
           }
           pages.add(value);
+          diagnostics.record(
+            TestEvent.pageReady,
+            elapsedMs: pageClock.elapsedMilliseconds,
+            count: value.records.length,
+          );
           if (!value.hasNext) break;
           if (page == 1000) throw const ClassroomApiFailure('invalid-data');
         }
@@ -98,7 +122,14 @@ class ClassroomApiReader {
         }
       }
       check();
+      diagnostics.record(TestEvent.directReady, count: pages.length);
       return pages;
+    } on ClassroomApiFailure catch (e) {
+      diagnostics.failure(e.state);
+      rethrow;
+    } catch (_) {
+      diagnostics.record(TestEvent.invalidResponse);
+      rethrow;
     } finally {
       // Tear down request context on completion and all error/cancellation paths.
       try {

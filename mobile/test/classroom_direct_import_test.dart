@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:campus_schedule/platform/classroom_access.dart';
 import 'package:campus_schedule/platform/classroom_session_cache.dart';
+import 'package:campus_schedule/platform/test_diagnostics.dart';
 import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'classroom_name_merge_test.dart' as names;
 import 'classroom_recovery_page_test.dart' as fake;
@@ -63,6 +64,7 @@ void main() {
   });
   for (final outcome in ['success', 'unsupported', 'forbidden']) {
     testWidgets('experimental directory import: $outcome', (tester) async {
+      TestDiagnostics.shared.clear();
       final controller = DirectController(outcome);
       final library = names.CapturingNameLibrary();
       InAppWebViewPlatform.instance = fake.RecoveryPlatform(controller);
@@ -85,6 +87,14 @@ void main() {
         await tester.pump();
       }
       if (outcome == 'success') {
+        expect(
+          TestDiagnostics.shared.events.any((e) => e['event'] == 'directReady'),
+          isTrue,
+        );
+        expect(
+          TestDiagnostics.shared.events.any((e) => e['event'] == 'importSaved'),
+          isTrue,
+        );
         expect(library.saves, 1);
         expect(library.value.courses.length, 2);
         expect(controller.visited, isEmpty);
@@ -95,9 +105,25 @@ void main() {
           'cancel',
         ]);
       } else if (outcome == 'unsupported') {
+        expect(
+          TestDiagnostics.shared.events.any(
+            (e) => e['event'] == 'fallbackUnsupported',
+          ),
+          isTrue,
+        );
         expect(library.saves, 1);
         expect(controller.visited, ['a', 'b']);
       } else {
+        expect(
+          TestDiagnostics.shared.events.any(
+            (e) => e['event'] == 'permissionDenied',
+          ),
+          isTrue,
+        );
+        expect(
+          TestDiagnostics.shared.events.any((e) => e['event'] == 'importSaved'),
+          isFalse,
+        );
         expect(library.saves, 0);
         expect(controller.visited, isEmpty);
       }
