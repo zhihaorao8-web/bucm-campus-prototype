@@ -99,29 +99,67 @@ void main() {
     );
   }
 
-  testWidgets('Today header gains reading protection on scroll', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 640);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(
-      app(MemoryRepository(weeklyPreviewData(DateTime.now()))),
+  for (final dark in [false, true]) {
+    testWidgets(
+      'main headers share blur and follow the active scroll dark=$dark',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(
+          app(MemoryRepository(weeklyPreviewData(DateTime.now())), dark: dark),
+        );
+        await tester.pumpAndSettle();
+        final radius = tester
+            .widget<MiuixTopAppBar>(find.byKey(const ValueKey('topbar-0')))
+            .blurRadius;
+        for (final (index, page) in [
+          (0, 'today-page'),
+          (1, 'timetable-page'),
+          (1, 'timetable-day-page'),
+          (2, 'settings-page'),
+        ]) {
+          await tester.tap(find.byKey(ValueKey('tab-$index')));
+          await tester.pumpAndSettle();
+          if (page == 'timetable-day-page') {
+            await tester.tap(find.text('日'));
+            await tester.pumpAndSettle();
+          }
+          final header = find.byKey(ValueKey('topbar-$index'));
+          final initial = tester.widget<MiuixTopAppBar>(header).blurTintAlpha;
+          expect(initial, closeTo(.04, .001));
+          expect(tester.widget<MiuixTopAppBar>(header).blurRadius, radius);
+          expect(tester.widget<MiuixTopAppBar>(header).blurred, isTrue);
+          await tester.drag(
+            find.byKey(PageStorageKey(page)),
+            const Offset(0, -240),
+          );
+          await tester.pumpAndSettle();
+          expect(
+            tester.widget<MiuixTopAppBar>(header).blurTintAlpha,
+            greaterThan(initial),
+          );
+        }
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(QuietBackdrop)),
+        );
+        await container
+            .read(appearanceProvider.notifier)
+            .change((p) => p.copyWith(glass: false));
+        for (final index in [0, 1, 2]) {
+          await tester.tap(find.byKey(ValueKey('tab-$index')));
+          await tester.pumpAndSettle();
+          expect(
+            tester
+                .widget<MiuixTopAppBar>(find.byKey(ValueKey('topbar-$index')))
+                .blurred,
+            isFalse,
+          );
+        }
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
     );
-    await tester.pumpAndSettle();
-    final header = find.byKey(const ValueKey('topbar-0'));
-    final initial = tester.widget<MiuixTopAppBar>(header).blurTintAlpha;
-    await tester.drag(
-      find.byKey(const PageStorageKey('today-page')),
-      const Offset(0, -240),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      tester.widget<MiuixTopAppBar>(header).blurTintAlpha,
-      greaterThan(initial),
-    );
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
+  }
 }

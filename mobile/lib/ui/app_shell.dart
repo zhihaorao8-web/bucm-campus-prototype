@@ -215,12 +215,11 @@ class _AppShellState extends ConsumerState<AppShell>
           topBar: ListenableBuilder(
             listenable: activeScroll,
             builder: (context, _) {
-              final sample = tab != 1;
               final opaque =
                   MediaQuery.highContrastOf(context) ||
                   appearance.contrast > 0 ||
                   !appearance.blur ||
-                  (tab == 2 && !appearance.glass);
+                  !appearance.glass;
               final scroll = activeScroll;
               final scrim = scroll.hasClients
                   ? (scroll.positions.last.pixels / 80).clamp(0.0, 1.0)
@@ -231,12 +230,8 @@ class _AppShellState extends ConsumerState<AppShell>
                 color: Theme.of(context).colorScheme.surface,
                 scrollBehavior: scrollBehaviors[tab],
                 blurred: !opaque,
-                blurRadius: sample ? 20 : 44,
-                blurTintAlpha: sample
-                    ? .04 + .76 * scrim
-                    : Theme.of(context).brightness == Brightness.dark
-                    ? .82
-                    : .72,
+                blurRadius: 20,
+                blurTintAlpha: .04 + .76 * scrim,
                 actions: [
                   if (demo)
                     TextButton(
