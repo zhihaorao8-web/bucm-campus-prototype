@@ -71,6 +71,8 @@ flutter build apk --release --dart-define=CAMPUS_DIRECT_CATALOG=true --dart-defi
 - [`codex/legacy-java-prototype`](https://github.com/zhihaorao8-web/bucm-campus-prototype/tree/codex/legacy-java-prototype)：早期 Java 测试原型，固定保留原主线 `611ec8e`；旧版本标签与附件继续保留。
 - `codex/auto-course-import`：本轮开发来源分支；后续日常开发继续使用独立分支。
 
+当前UI开发进度：第一、二阶段已验收，第三阶段已实现并推送、待审核，第四与第五阶段未启动。接续请从[当前开发进度](docs/DEVELOPMENT_PLAN.md)与[UI分阶段计划](docs/ATMOSPHERE_UI_PLAN.md)读取；当前工作分支为`codex/quiet-ui-refresh`，最新实现`f55cb64`。这些UI修改尚未构建新APK或发布。
+
 [生效需求](docs/PROJECT_BRIEF.md) · [开发计划](docs/DEVELOPMENT_PLAN.md) · [验证证据](docs/STATUS.md) · [界面设计](DESIGN.md) · [版本规范](docs/VERSIONING.md) · [第三方许可](docs/THIRD_PARTY.md) · [图标来源](docs/ICON_SYSTEM.md)
 
 本项目为非官方研究与个人使用预发布，不代表学校开放了第三方 API 或正式单点登录接入。仓库与 CI 只允许合成样本，真实课程、截图、HAR、学校会话、设备标识及签名密钥不提交。
