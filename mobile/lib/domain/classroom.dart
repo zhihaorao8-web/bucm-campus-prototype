@@ -1,7 +1,12 @@
 import 'schedule.dart';
 
-String classroomName(String value) =>
+/// Keep the original v1 spelling for persisted local-course keys.
+String classroomStoredName(String value) =>
     value.trim().replaceAll(RegExp(r'[\s\u00a0\u3000]+'), ' ');
+
+/// Only parenthesis width is equivalent; contents and the full title remain.
+String classroomName(String value) =>
+    classroomStoredName(value).replaceAll('（', '(').replaceAll('）', ')');
 
 /// All exact names in the same semester, independently of teacher/class.
 /// Conflicting school IDs are rejected rather than selecting arbitrary data.

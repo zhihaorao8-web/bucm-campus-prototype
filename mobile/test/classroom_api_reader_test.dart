@@ -30,6 +30,64 @@ Map<String, dynamic> recordPage(int page, {int total = 11}) => {
   ),
 };
 void main() {
+  for (final includeBoth in [false, true]) {
+    test(
+      'parenthesis variants validate the complete source group, both=$includeBoth',
+      () async {
+        final first = ClassroomCourse.fromJson({
+          ...c.toJson(),
+          'name': '合成课程Ⅱ(方向甲)',
+        });
+        final second = ClassroomCourse.fromJson({
+          ...c.toJson(),
+          'id': 'b',
+          'name': '合成课程Ⅱ（方向甲）',
+        });
+        final calls = <String>[];
+        final reader = ClassroomApiReader((command) async {
+          calls.add(command['action'] as String);
+          if (command['action'] == 'catalog') {
+            return {
+              'state': 'catalog',
+              'semester': c.semester,
+              'courses': [first.toJson(), second.toJson()],
+            };
+          }
+          if (command['action'] == 'cancel') return {'state': 'cancelled'};
+          return {
+            'state': 'records',
+            'course': command['id'] == 'a' ? first.toJson() : second.toJson(),
+            'page': 1,
+            'pageSize': 10,
+            'total': 0,
+            'records': <Object>[],
+          };
+        });
+        final result = reader.read(
+          semester: c.semester,
+          courses: [first, if (includeBoth) second],
+          active: () => true,
+        );
+        if (includeBoth) {
+          expect((await result)?.length, 2);
+          expect(calls, ['catalog', 'records', 'records', 'cancel']);
+        } else {
+          await expectLater(
+            result,
+            throwsA(
+              isA<ClassroomApiFailure>().having(
+                (e) => e.state,
+                'state',
+                'catalog-changed',
+              ),
+            ),
+          );
+          expect(calls, ['catalog', 'cancel']);
+        }
+      },
+    );
+  }
+
   test(
     'every read owns its commands and cleanup with a distinct request id',
     () async {

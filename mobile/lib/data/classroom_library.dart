@@ -136,8 +136,11 @@ class ClassroomLibrary {
   int get revision => _revision;
   final changes = ValueNotifier<int>(0);
   void _changed() => changes.value++;
-  static String key(Course course) =>
-      jsonEncode([course.semester, course.id, classroomName(course.name)]);
+  static String key(Course course) => jsonEncode([
+    course.semester,
+    course.id,
+    classroomStoredName(course.name),
+  ]);
   Future<File> _file() async {
     final folder = directory ?? await getApplicationSupportDirectory();
     await folder.create(recursive: true);

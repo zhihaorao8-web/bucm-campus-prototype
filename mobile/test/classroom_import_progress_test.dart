@@ -5,6 +5,23 @@ import 'schedule_test.dart' show sample;
 
 void main() {
   test(
+    'parenthesis variants share one task while different content stays separate',
+    () {
+      final first = Course.fromJson(sample().toJson()..['name'] = '合成课程Ⅱ(方向甲)');
+      final second = Course.fromJson(
+        sample(id: 'second').toJson()..['name'] = '合成课程Ⅱ（方向甲）',
+      );
+      final different = Course.fromJson(
+        sample(id: 'third').toJson()..['name'] = '合成课程Ⅱ（方向乙）',
+      );
+      final progress = ClassroomImportProgress([first, second, different]);
+      expect(progress.items.length, 2);
+      expect(progress.items.first.courses, [first, second]);
+      expect(progress.items.first.course.name, first.name);
+    },
+  );
+
+  test(
     'same semester normalized names share one task regardless of teacher and local id',
     () {
       final second = Course.fromJson(

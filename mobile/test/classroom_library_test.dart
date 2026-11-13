@@ -56,6 +56,40 @@ void main() {
     await directory.delete(recursive: true);
   });
   test(
+    'legacy full-width keys remain readable and display original school titles',
+    () async {
+      final oldLocal = Course.fromJson(local.toJson()..['name'] = '合成课程Ⅱ（方向甲）');
+      final data = page(1, total: 1, ids: [1]).toJson();
+      (data['course'] as Map)['name'] = oldLocal.name;
+      final oldArchive = ClassroomArchive([
+        RecordingPage.fromJson(data),
+      ], DateTime.utc(2031));
+      final oldKey = jsonEncode([
+        oldLocal.semester,
+        oldLocal.id,
+        oldLocal.name,
+      ]);
+      await File('${directory.path}/classroom-library-v1.json').writeAsString(
+        jsonEncode({
+          'schema': 1,
+          'courses': {oldKey: oldArchive.toJson()},
+        }),
+      );
+      expect(ClassroomLibrary.key(oldLocal), oldKey);
+      expect((await library.lookup(oldLocal))?.course.name, oldLocal.name);
+      final halfLocal = Course.fromJson(
+        oldLocal.toJson()..['name'] = '合成课程Ⅱ(方向甲)',
+      );
+      await library.save(
+        halfLocal,
+        ClassroomArchive.merge([oldArchive], DateTime.utc(2031)),
+        revision: library.revision,
+      );
+      expect((await library.lookup(halfLocal))?.course.name, oldLocal.name);
+      expect((await library.availability([oldLocal, halfLocal])).length, 2);
+    },
+  );
+  test(
     'local availability distinguishes unknown, empty, unpublished and playable, clearing invalidates badges',
     () async {
       expect(await library.availability([local]), isEmpty);
