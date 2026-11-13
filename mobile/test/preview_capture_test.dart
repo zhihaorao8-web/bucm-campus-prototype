@@ -19,6 +19,9 @@ import 'package:campus_schedule/application/appearance_controller.dart';
 import 'package:campus_schedule/platform/app_platform.dart';
 
 void main() {
+  const captureEnabled =
+      bool.fromEnvironment('CAPTURE_PREVIEW') ||
+      bool.fromEnvironment('CAPTURE_REVIEW_FIX');
   testWidgets('capture synthetic UI previews', (tester) async {
     const fontPath = String.fromEnvironment(
       'PREVIEW_FONT',
@@ -132,6 +135,41 @@ void main() {
       });
     }
 
+    if (const bool.fromEnvironment('CAPTURE_REVIEW_FIX')) {
+      for (final dark in [false, true]) {
+        for (final large in [false, true]) {
+          final name =
+              'review-${dark ? 'dark' : 'light'}-${large ? 'large' : 'normal'}';
+          await setup(
+            dark: dark,
+            width: large ? 320 : 390,
+            scale: large ? 1.5 : 1,
+            data: weeklyPreviewData(schoolNow()),
+          );
+          await tester.tap(find.byKey(const ValueKey('tab-1')));
+          await tester.pumpAndSettle();
+          await capture('$name-week');
+          await tester.drag(
+            find.byKey(const PageStorageKey('timetable-page')),
+            const Offset(0, -170),
+          );
+          await tester.pumpAndSettle();
+          await capture('$name-week-scrolled');
+          await tester.tap(find.text('日'));
+          await tester.pumpAndSettle();
+          await capture('$name-day');
+          await tester.tap(find.byKey(const ValueKey('tab-2')));
+          await tester.pumpAndSettle();
+          await capture('$name-settings');
+          await tester.tap(find.text('外观设置'));
+          await tester.pumpAndSettle();
+          await capture('$name-appearance');
+          expect(tester.takeException(), isNull);
+        }
+      }
+      await tester.pumpWidget(const SizedBox());
+      return;
+    }
     await setup();
     await capture('empty');
     await tester.tap(find.text('先体验合成示例'));
@@ -410,5 +448,5 @@ void main() {
     }
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
-  }, skip: !const bool.fromEnvironment('CAPTURE_PREVIEW'));
+  }, skip: !captureEnabled);
 }

@@ -337,16 +337,17 @@ class _WeekGridState extends ConsumerState<WeekGrid> {
                           ),
                         ),
                       for (var day = 0; day <= count; day++)
-                        Positioned(
-                          left: gutter + day * col,
-                          top: 0,
-                          bottom: 0,
-                          child: VerticalDivider(
-                            width: 1,
-                            thickness: .5,
-                            color: colors.outlineVariant,
+                        for (final (first, last) in [(0, 2), (2, 4), (4, 5)])
+                          Positioned(
+                            left: gutter + day * col,
+                            top: blockTop(first),
+                            height: (last - first) * row,
+                            child: VerticalDivider(
+                              width: 1,
+                              thickness: .5,
+                              color: colors.outlineVariant,
+                            ),
                           ),
-                        ),
                       for (final (index, label) in [(2, '午休'), (4, '晚休')])
                         Positioned(
                           top: blockTop(index) - rest,
@@ -354,7 +355,7 @@ class _WeekGridState extends ConsumerState<WeekGrid> {
                           right: 0,
                           height: rest,
                           child: ColoredBox(
-                            color: colors.surface,
+                            color: Colors.transparent,
                             child: Row(
                               children: [
                                 Expanded(

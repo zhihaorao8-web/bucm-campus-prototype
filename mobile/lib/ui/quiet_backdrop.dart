@@ -166,7 +166,7 @@ class _AuroraPainter extends CustomPainter {
   final Animation<double> phase;
   @override
   void paint(Canvas canvas, Size size) {
-    if (tab == 0) {
+    if (tab == 0 || dark) {
       _paintDiffusion(canvas, size);
       return;
     }
@@ -175,26 +175,19 @@ class _AuroraPainter extends CustomPainter {
       [Color(0xFF6096FD), Color(0xFF6ED7B4), Color(0xFFCADFFF)],
       [Color(0xFFA882F5), Color(0xFFF5C391), Color(0xFFE1CEFA)],
     ];
-    final sample = tab == 0;
-    final angle = phase.value * math.pi * 2;
     for (var i = 0; i < 3; i++) {
-      final orbit = angle + i * math.pi * 2 / 3;
-      final center = sample
-          ? Offset(
-              size.width * ([.12, .93, .10][i] + .10 * math.sin(orbit)),
-              size.height * ([.13, .36, .57][i] + .045 * math.cos(orbit)),
-            )
-          : Offset(size.width * [.05, .52, .2][i], [40.0, 60.0, 160.0][i]);
-      final radius = size.width.clamp(280.0, 480.0) * (sample ? .88 : .55);
+      final center = Offset(
+        size.width * [.05, .52, .2][i],
+        [40.0, 60.0, 160.0][i],
+      );
+      final radius = size.width.clamp(280.0, 480.0) * .55;
       canvas.drawCircle(
         center,
         radius,
         Paint()
           ..shader = RadialGradient(
             colors: [
-              palettes[tab][i].withValues(
-                alpha: sample ? (dark ? .18 : .24) : (dark ? .09 : .20),
-              ),
+              palettes[tab][i].withValues(alpha: .20),
               palettes[tab][i].withValues(alpha: 0),
             ],
           ).createShader(Rect.fromCircle(center: center, radius: radius)),
@@ -217,13 +210,30 @@ class _AuroraPainter extends CustomPainter {
               : const [Color(0xFFFAFDFF), Color(0xFFFCFEFC), Color(0xFFFFFCF9)],
         ).createShader(bounds),
     );
-    const hues = [
+    const todayHues = [
       Color(0xFF6CCFFF),
       Color(0xFF7FE8CD),
       Color(0xFFFFD1A6),
       Color(0xFFB8BBFF),
     ];
-    final angle = phase.value * math.pi * 2;
+    // Reading pages use the same broad diffusion, with their existing palettes
+    // and a fixed phase. Only Today owns continuous ambient motion.
+    final hues = switch (tab) {
+      1 => const [
+        Color(0xFF6096FD),
+        Color(0xFF6ED7B4),
+        Color(0xFFCADFFF),
+        Color(0xFFB8BBFF),
+      ],
+      2 => const [
+        Color(0xFFA882F5),
+        Color(0xFFF5C391),
+        Color(0xFFE1CEFA),
+        Color(0xFF72D0FF),
+      ],
+      _ => todayHues,
+    };
+    final angle = tab == 0 ? phase.value * math.pi * 2 : 0.0;
     for (var i = 0; i < hues.length; i++) {
       final orbit = angle + i * math.pi / 2;
       final center = Offset(

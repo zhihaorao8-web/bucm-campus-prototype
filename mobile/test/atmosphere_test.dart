@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +14,84 @@ import 'schedule_test.dart' show MemoryRepository;
 import 'week_grid_test.dart' show weeklyPreviewData;
 
 void main() {
+  for (final tab in [1, 2]) {
+    testWidgets('dark reading light fields reach the page body tab=$tab', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final boundary = GlobalKey();
+      Future<List<int>> pixels(Size size, bool lights) async {
+        tester.view.physicalSize = size;
+        await tester.pumpWidget(
+          ProviderScope(
+            key: ValueKey(lights),
+            overrides: [
+              currentAppearanceProvider.overrideWithValue(
+                AppearanceSettings(aurora: lights, paperTexture: false),
+              ),
+            ],
+            child: MaterialApp(
+              theme: appTheme(Brightness.dark),
+              home: RepaintBoundary(
+                key: boundary,
+                child: QuietBackdrop(tab: tab, child: const SizedBox()),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.binding.transientCallbackCount,
+          0,
+          reason: 'Reading pages must remain static',
+        );
+        return (await tester.runAsync(() async {
+          final render =
+              boundary.currentContext!.findRenderObject()!
+                  as RenderRepaintBoundary;
+          final image = await render.toImage();
+          final bytes = await image.toByteData(
+            format: ui.ImageByteFormat.rawRgba,
+          );
+          final colors = <int>[];
+          for (final point in [
+            const Offset(.12, .15),
+            const Offset(.88, .40),
+            const Offset(.14, .66),
+            const Offset(.80, .88),
+          ]) {
+            final offset =
+                ((point.dy * image.height).floor() * image.width +
+                    (point.dx * image.width).floor()) *
+                4;
+            colors.addAll(bytes!.buffer.asUint8List(offset, 3));
+          }
+          image.dispose();
+          return colors;
+        }))!;
+      }
+
+      for (final size in [const Size(390, 844), const Size(320, 720)]) {
+        final lit = await pixels(size, true);
+        final plain = await pixels(size, false);
+        for (var i = 0; i < 4; i++) {
+          final difference = List.generate(
+            3,
+            (c) => (lit[i * 3 + c] - plain[i * 3 + c]).abs(),
+          ).reduce((a, b) => a + b);
+          expect(
+            difference,
+            greaterThan(18),
+            reason:
+                'Dark light field must remain visible at body sample $i, $size',
+          );
+        }
+      }
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
   testWidgets(
     'ambient motion stops in background, hidden routes and reduced motion',
     (tester) async {
