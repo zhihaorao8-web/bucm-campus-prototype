@@ -842,10 +842,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     } else if (tabs.isNotEmpty && automaticEntry) {
       final tab = tabs[active];
       if (loading) {
-        tab.loadTimer = Timer(
-          const Duration(seconds: 30),
-          () => recoverPageLoad(tab),
-        );
+        armPageLoadTimeout(tab);
       }
       scheduleRead(tabs[active], restart: true);
     }
@@ -947,9 +944,56 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       recoverPageLoad(tab);
       return;
     }
+    armPageLoadTimeout(tab);
+  }
+
+  void armPageLoadTimeout(_SchoolTab tab) {
     tab.loadTimer ??= Timer(const Duration(seconds: 30), () {
-      if (loading) recoverPageLoad(tab);
+      tab.loadTimer = null;
+      unawaited(checkPageLoadTimeout(tab));
     });
+  }
+
+  bool pageLoadPending(_SchoolTab tab) =>
+      mounted &&
+      foreground &&
+      tabs.contains(tab) &&
+      tabs[active] == tab &&
+      loading &&
+      !tab.loadTimedOut;
+
+  void completeDocumentLoad(_SchoolTab tab) {
+    tab.loadTimer?.cancel();
+    tab.loadTimer = null;
+    tab.ccLoads = 0;
+    if (loading) setState(() => loading = false);
+  }
+
+  Future<void> checkPageLoadTimeout(_SchoolTab tab) async {
+    if (!pageLoadPending(tab)) return;
+    final ticket = generation;
+    try {
+      // A slow optional resource may keep WebView's load-stop pending after
+      // the official SPA is already usable. Check its bounded state once.
+      final data = await script(tab, {
+        'action': 'snapshot',
+      }).timeout(const Duration(seconds: 3));
+      if (!pageLoadPending(tab) || ticket != generation) return;
+      if (const {
+        'catalog',
+        'records',
+        'authentication',
+        'forbidden',
+        'error',
+        'serviceUnavailable',
+      }.contains(data['state'])) {
+        await inspect(tab, snapshot: data);
+        return;
+      }
+    } catch (_) {
+      // A stalled or unreadable document still uses the existing recovery UI.
+    }
+    if (pageLoadPending(tab) && ticket == generation) recoverPageLoad(tab);
   }
 
   void recoverPageLoad(_SchoolTab tab) {
@@ -1016,7 +1060,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     });
   }
 
-  Future<void> inspect(_SchoolTab tab) async {
+  Future<void> inspect(_SchoolTab tab, {Map<String, dynamic>? snapshot}) async {
     if (!mounted ||
         !foreground ||
         !tabs.contains(tab) ||
@@ -1027,8 +1071,18 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     attempts++;
     final ticket = generation;
     try {
-      final data = await script(tab, {'action': 'snapshot'});
+      final data = snapshot ?? await script(tab, {'action': 'snapshot'});
       if (!mounted || ticket != generation || !tabs.contains(tab)) return;
+      if (const {
+        'catalog',
+        'records',
+        'authentication',
+        'forbidden',
+        'error',
+        'serviceUnavailable',
+      }.contains(data['state'])) {
+        completeDocumentLoad(tab);
+      }
       if (data['state'] == 'serviceUnavailable') {
         reportServiceUnavailable(tab);
         return;
@@ -1216,6 +1270,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           return;
         }
         if (state == 'authentication') {
+          completeDocumentLoad(tab);
           requireAuthentication(tab);
           return;
         }
@@ -1774,6 +1829,18 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                             poll?.cancel();
                             setState(() => loading = true);
                             watchPageLoad(tab, url?.toString() ?? '');
+                          }
+                        },
+                        onPageCommitVisible: (_, _) {
+                          if (mounted &&
+                              foreground &&
+                              tabs.isNotEmpty &&
+                              tabs[active] == tab &&
+                              !tab.loadTimedOut &&
+                              tab.purpose != _Purpose.playback) {
+                            // Read the committed document without waiting for
+                            // every stylesheet/image/analytics request to end.
+                            scheduleRead(tab, restart: true);
                           }
                         },
                         onLoadStop: (_, _) {

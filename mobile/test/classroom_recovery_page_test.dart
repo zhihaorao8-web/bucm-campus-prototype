@@ -17,6 +17,8 @@ class RecoveryController extends PlatformInAppWebViewController {
       );
   String state = 'authentication';
   String snapshotState = 'navigate';
+  Map<String, dynamic>? snapshotData;
+  Completer<dynamic>? snapshotPending;
   bool created = false;
   PlatformInAppWebViewWidgetCreationParams? viewParams;
   int reads = 0;
@@ -31,7 +33,8 @@ class RecoveryController extends PlatformInAppWebViewController {
       final text = RegExp(r'var command = (.*);').firstMatch(source)!.group(1)!;
       final action = (jsonDecode(text) as Map)['action'] as String;
       commands.add(action);
-      return jsonEncode({'state': snapshotState});
+      if (snapshotPending != null) return snapshotPending!.future;
+      return jsonEncode(snapshotData ?? {'state': snapshotState});
     }
     return jsonEncode({
       'state': state,
@@ -205,6 +208,98 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });
+
+  for (final event in ['history', 'commit', 'deadline']) {
+    testWidgets('readable SPA without load-stop recovers through $event', (
+      tester,
+    ) async {
+      final controller = await open(tester, direct: true);
+      final params = controller.viewParams!;
+      final web = params.controllerFromPlatform!(controller);
+      const page = 'https://qhz.bucm.edu.cn/coursePlatform/';
+      controller.snapshotData = {'state': 'catalog', 'courses': <Object>[]};
+      params.onLoadStart!(web, WebUri(page));
+      if (event == 'history') {
+        params.onUpdateVisitedHistory!(web, WebUri(page), false);
+      } else if (event == 'commit') {
+        params.onPageCommitVisible?.call(web, WebUri(page));
+      }
+      await tick(tester, event == 'deadline' ? 19 : 6);
+      expect(find.textContaining('学校页面加载超时'), findsNothing);
+      expect(find.textContaining('当前页面没有该学期的课程'), findsOneWidget);
+      await tick(tester, 19);
+      expect(find.textContaining('学校页面加载超时'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('visible authentication cancels the document load deadline', (
+    tester,
+  ) async {
+    final controller = await open(tester, direct: true);
+    final params = controller.viewParams!;
+    final web = params.controllerFromPlatform!(controller);
+    controller.snapshotState = 'authentication';
+    params.onLoadStart!(web, WebUri(classroomProbe));
+    params.onUpdateVisitedHistory!(web, WebUri(classroomProbe), false);
+    await tick(tester, 22);
+    expect(find.textContaining('学校页面加载超时'), findsNothing);
+    expect(find.textContaining('请在学校官方页面完成认证'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets(
+    'late load-deadline probe cannot replace a newer authentication page',
+    (tester) async {
+      final controller = await open(tester, direct: true);
+      final params = controller.viewParams!;
+      final web = params.controllerFromPlatform!(controller);
+      final pending = Completer<dynamic>();
+      controller.snapshotPending = pending;
+      params.onLoadStart!(
+        web,
+        WebUri('https://qhz.bucm.edu.cn/coursePlatform/'),
+      );
+      await tick(tester, 15);
+      controller.snapshotPending = null;
+      controller.snapshotState = 'authentication';
+      params.onLoadStart!(web, WebUri(classroomProbe));
+      params.onUpdateVisitedHistory!(web, WebUri(classroomProbe), false);
+      pending.complete(jsonEncode({'state': 'catalog', 'courses': <Object>[]}));
+      await tick(tester, 20);
+      expect(find.textContaining('当前页面没有该学期的课程'), findsNothing);
+      expect(find.textContaining('学校页面加载超时'), findsNothing);
+      expect(find.textContaining('请在学校官方页面完成认证'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'unresponsive deadline probe stays bounded and ignores a late readable result',
+    (tester) async {
+      final controller = await open(tester, direct: true);
+      final params = controller.viewParams!;
+      final web = params.controllerFromPlatform!(controller);
+      final pending = Completer<dynamic>();
+      controller.snapshotPending = pending;
+      params.onLoadStart!(
+        web,
+        WebUri('https://qhz.bucm.edu.cn/coursePlatform/'),
+      );
+      await tick(tester, 18);
+      expect(find.textContaining('学校页面加载超时'), findsOneWidget);
+      pending.complete(jsonEncode({'state': 'catalog', 'courses': <Object>[]}));
+      controller.snapshotPending = null;
+      await tester.pump();
+      expect(find.textContaining('学校页面加载超时'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    },
+  );
 
   testWidgets('认证等待→门户超时→继续导入→后台暂停恢复→未知路径提示', (tester) async {
     final controller = await open(tester);
