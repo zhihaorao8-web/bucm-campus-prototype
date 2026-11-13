@@ -35,102 +35,82 @@ Future<void> showCourseDetails(
 }
 
 void showCourseInformation(BuildContext context, Course course) {
-  showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    showDragHandle: false,
-    sheetAnimationStyle:
-        MediaQuery.disableAnimationsOf(context) ||
-            FocusManager.instance.highlightMode ==
-                FocusHighlightMode.traditional
-        ? AnimationStyle.noAnimation
-        : const AnimationStyle(
-            duration: Duration(milliseconds: 280),
-            reverseDuration: Duration(milliseconds: 220),
-          ),
-    builder: (context) => QuietSheet(
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                course.name,
-                style: Theme.of(context).textTheme.headlineMedium,
+  showQuietSheet<void>(
+    context,
+    builder: (context) => SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              course.name,
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 24),
+            for (final item in <(String, String)>[
+              ('教师', course.teacher.isEmpty ? '未识别教师信息' : course.teacher),
+              (
+                '数据来源',
+                switch (course.dataSource) {
+                  'official-xls' => '学校官方 Excel 导出',
+                  'dom' => '学校课表页面读取',
+                  'synthetic' => '合成示例',
+                  _ => '未记录来源',
+                },
               ),
-              const SizedBox(height: 24),
-              for (final item in <(String, String)>[
-                ('教师', course.teacher.isEmpty ? '未识别教师信息' : course.teacher),
-                (
-                  '数据来源',
-                  switch (course.dataSource) {
-                    'official-xls' => '学校官方 Excel 导出',
-                    'dom' => '学校课表页面读取',
-                    'synthetic' => '合成示例',
-                    _ => '未记录来源',
-                  },
-                ),
-                ('地点', courseLocation(course)),
-                ('授课周次', '${course.weeks}周，星期${weekdays[course.day - 1]}'),
-                ('节次', course.periods.join('、')),
-                (
-                  '北京时间',
-                  course.segments.map((s) => '${s.start}–${s.end}').join('\n'),
-                ),
-                (
-                  '学期',
-                  '${course.semester}\n第1周周一 ${isoDate(course.termStart)}',
-                ),
-              ])
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 88,
-                        child: Text(
-                          item.$1,
-                          style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
+              ('地点', courseLocation(course)),
+              ('授课周次', '${course.weeks}周，星期${weekdays[course.day - 1]}'),
+              ('节次', course.periods.join('、')),
+              (
+                '北京时间',
+                course.segments.map((s) => '${s.start}–${s.end}').join('\n'),
+              ),
+              ('学期', '${course.semester}\n第1周周一 ${isoDate(course.termStart)}'),
+            ])
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 88,
+                      child: Text(
+                        item.$1,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          item.$2,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        item.$2,
+                        style: Theme.of(context).textTheme.bodyLarge,
                       ),
-                    ],
-                  ),
-                ),
-              const Divider(),
-              Text(
-                '时间按你确认的作息规则显示。${course.deliverySource == 'user-weekend-rule' ? '周末线上授课标记来自你的说明；原始地点保持不变。' : ''}',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: MiuixButton(
-                  colors: MiuixButtonDefaults.buttonColorsPrimary(context),
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('完成'),
-                ),
+            const Divider(),
+            Text(
+              '时间按你确认的作息规则显示。${course.deliverySource == 'user-weekend-rule' ? '周末线上授课标记来自你的说明；原始地点保持不变。' : ''}',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: MiuixButton(
+                colors: MiuixButtonDefaults.buttonColorsPrimary(context),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('完成'),
+              ),
+            ),
+          ],
         ),
       ),
     ),

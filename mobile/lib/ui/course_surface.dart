@@ -3,6 +3,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/appearance_controller.dart';
+import 'navigation_motion.dart';
+
+Future<T?> showQuietSheet<T>(
+  BuildContext context, {
+  required WidgetBuilder builder,
+  String? barrierLabel,
+  BoxConstraints? constraints,
+}) => showModalBottomSheet<T>(
+  context: context,
+  isScrollControlled: true,
+  useSafeArea: true,
+  backgroundColor: Colors.transparent,
+  showDragHandle: false,
+  barrierLabel: barrierLabel,
+  constraints: constraints,
+  // Keyboard or mouse (traditional highlight) opens at once so focus lands without a wait.
+  sheetAnimationStyle:
+      MediaQuery.disableAnimationsOf(context) ||
+          FocusManager.instance.highlightMode == FocusHighlightMode.traditional
+      ? AnimationStyle.noAnimation
+      : const AnimationStyle(
+          duration: Duration(milliseconds: 280),
+          reverseDuration: Duration(milliseconds: 220),
+          curve: navigationCurve,
+          reverseCurve: FlippedCurve(navigationCurve),
+        ),
+  builder: (context) => QuietSheet(child: builder(context)),
+);
 
 class QuietSheet extends ConsumerWidget {
   const QuietSheet({super.key, required this.child});

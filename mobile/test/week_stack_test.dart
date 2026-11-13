@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/application/appearance_controller.dart';
+import 'package:campus_schedule/ui/course_surface.dart';
+import 'package:campus_schedule/ui/navigation_motion.dart';
 import 'package:campus_schedule/ui/week_grid.dart';
 import 'package:campus_schedule/ui/week_navigation.dart';
 import 'schedule_test.dart' show MemoryRepository, sample;
@@ -161,4 +163,150 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  Finder conflictStack() => find.byWidgetPredicate(
+    (widget) =>
+        widget is Semantics && widget.key.toString().contains('week-stack-'),
+  );
+  Future<void> openWeek(
+    WidgetTester tester, {
+    bool reduceMotion = false,
+  }) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      app(
+        MemoryRepository(weeklyPreviewData(schoolNow())),
+        reduceMotion: reduceMotion,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tab-1')));
+    await tester.pumpAndSettle();
+  }
+
+  for (final opaque in [false, true]) {
+    testWidgets(
+      'conflict drawer is one quiet sheet and dismisses without a choice; opaque=$opaque',
+      (tester) async {
+        await openWeek(tester);
+        if (opaque) {
+          await ProviderScope.containerOf(tester.element(find.byType(WeekGrid)))
+              .read(appearanceProvider.notifier)
+              .change((v) => v.copyWith(glass: false));
+          await tester.pumpAndSettle();
+        }
+        final stack = conflictStack();
+        bool primary(String id) => find
+            .descendant(
+              of: stack,
+              matching: find.byKey(ValueKey('week-primary-$id')),
+            )
+            .evaluate()
+            .isNotEmpty;
+        final before = primary('conflict');
+        await tester.tap(stack);
+        await tester.pump();
+        final sheet = find.byType(QuietSheet);
+        final route =
+            ModalRoute.of(tester.element(sheet))! as ModalBottomSheetRoute;
+        expect(route.transitionDuration, const Duration(milliseconds: 280));
+        expect(
+          route.reverseTransitionDuration,
+          const Duration(milliseconds: 220),
+        );
+        expect(route.sheetAnimationStyle?.curve, navigationCurve);
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(of: sheet, matching: find.byType(QuietCard)),
+          findsNWidgets(2),
+        );
+        expect(
+          tester
+              .widget<BackdropFilter>(
+                find.descendant(
+                  of: sheet,
+                  matching: find.byType(BackdropFilter),
+                ),
+              )
+              .enabled,
+          !opaque,
+        );
+        for (final element in find.byType(BackdropFilter).evaluate()) {
+          if ((element.widget as BackdropFilter).enabled) {
+            expect(
+              (element.renderObject! as RenderBox).size.height,
+              lessThan(844),
+            );
+          }
+        }
+        final surface = tester.widget<DecoratedBox>(
+          find
+              .descendant(
+                of: find
+                    .descendant(of: sheet, matching: find.byType(CourseSurface))
+                    .first,
+                matching: find.byType(DecoratedBox),
+              )
+              .first,
+        );
+        expect((surface.decoration as BoxDecoration).gradient == null, opaque);
+        expect(find.text('设为优先显示'), findsOneWidget);
+        expect(find.text('当前优先显示'), findsOneWidget);
+        expect(find.text('查看课程与录播'), findsNWidgets(2));
+        expect(find.text('合成教师'), findsWidgets);
+        await tester.tapAt(const Offset(195, 40));
+        await tester.pumpAndSettle();
+        expect(sheet, findsNothing);
+        expect(find.text('课程信息'), findsNothing);
+        expect(primary('conflict'), before);
+        await tester.tap(stack);
+        await tester.pumpAndSettle();
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(sheet, findsNothing);
+        expect(primary('conflict'), before);
+        await tester.tap(stack);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('关闭重叠课程'));
+        await tester.pumpAndSettle();
+        expect(sheet, findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+  for (final keyboard in [false, true]) {
+    testWidgets(
+      'conflict drawer appears at once for ${keyboard ? 'keyboard focus' : 'reduced motion'}',
+      (tester) async {
+        if (keyboard) {
+          FocusManager.instance.highlightStrategy =
+              FocusHighlightStrategy.alwaysTraditional;
+          addTearDown(
+            () => FocusManager.instance.highlightStrategy =
+                FocusHighlightStrategy.automatic,
+          );
+        }
+        await openWeek(tester, reduceMotion: !keyboard);
+        await tester.tap(conflictStack());
+        await tester.pump();
+        final sheet = find.byType(QuietSheet);
+        final route =
+            ModalRoute.of(tester.element(sheet))! as ModalBottomSheetRoute;
+        expect(route.transitionDuration, Duration.zero);
+        expect(route.reverseTransitionDuration, Duration.zero);
+        await tester.pump();
+        final shown = tester.getRect(sheet);
+        await tester.pumpAndSettle();
+        expect(tester.getRect(sheet), shown);
+        await tester.tap(find.byTooltip('关闭重叠课程'));
+        await tester.pump();
+        await tester.pump();
+        expect(sheet, findsNothing);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
 }
