@@ -5,8 +5,15 @@ import '../application/appearance_controller.dart';
 
 /// A clipped, translucent course surface. Text is painted after the blur.
 class AcrylicSurface extends ConsumerWidget {
-  const AcrylicSurface({super.key, required this.child});
+  const AcrylicSurface({
+    super.key,
+    required this.child,
+    this.radius = 28,
+    this.blurKey = const ValueKey('focus-acrylic-blur'),
+  });
   final Widget child;
+  final double radius;
+  final Key blurKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -20,7 +27,7 @@ class AcrylicSurface extends ConsumerWidget {
         !settings.glass;
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(radius),
         boxShadow: opaque
             ? null
             : [
@@ -33,14 +40,11 @@ class AcrylicSurface extends ConsumerWidget {
               ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(radius),
         child: BackdropFilter(
-          key: const ValueKey('focus-acrylic-blur'),
+          key: blurKey,
           enabled: !opaque,
-          filter: ui.ImageFilter.blur(
-            sigmaX: 10,
-            sigmaY: 10,
-          ),
+          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: opaque ? colors.surfaceContainer : null,
@@ -56,7 +60,7 @@ class AcrylicSurface extends ConsumerWidget {
                             .withValues(alpha: dark ? .16 : .26),
                       ],
                     ),
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(radius),
               border: Border.all(
                 width: .8,
                 color: opaque

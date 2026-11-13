@@ -21,7 +21,8 @@ import 'package:campus_schedule/platform/app_platform.dart';
 void main() {
   const captureEnabled =
       bool.fromEnvironment('CAPTURE_PREVIEW') ||
-      bool.fromEnvironment('CAPTURE_REVIEW_FIX');
+      bool.fromEnvironment('CAPTURE_REVIEW_FIX') ||
+      bool.fromEnvironment('CAPTURE_NAVIGATION_FIX');
   testWidgets('capture synthetic UI previews', (tester) async {
     const fontPath = String.fromEnvironment(
       'PREVIEW_FONT',
@@ -135,6 +136,60 @@ void main() {
       });
     }
 
+    Future<void> sampleTransition(
+      String name,
+      Future<void> Function() action,
+    ) async {
+      await capture('$name-00');
+      await action();
+      await tester.pump();
+      for (var frame = 1; frame <= 14; frame++) {
+        await tester.pump(const Duration(milliseconds: 20));
+        await capture('$name-${frame.toString().padLeft(2, '0')}');
+      }
+      await tester.pumpAndSettle();
+    }
+
+    if (const bool.fromEnvironment('CAPTURE_NAVIGATION_FIX')) {
+      for (final dark in [false, true]) {
+        final label = dark ? 'dark' : 'light';
+        await setup(dark: dark, data: weeklyPreviewData(schoolNow()));
+        await tester.drag(
+          find.byKey(const PageStorageKey('today-page')),
+          const Offset(0, -220),
+        );
+        await tester.pumpAndSettle();
+        await sampleTransition(
+          'navfix-$label-adjacent',
+          () => tester.tap(find.byKey(const ValueKey('tab-1'))),
+        );
+        await tester.tap(find.byKey(const ValueKey('tab-0')));
+        await tester.pumpAndSettle();
+        await sampleTransition(
+          'navfix-$label-direct',
+          () => tester.tap(find.byKey(const ValueKey('tab-2'))),
+        );
+        await tester.tap(find.byKey(const ValueKey('tab-1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('日'));
+        await tester.pumpAndSettle();
+        await capture('navfix-$label-date-controls');
+      }
+      await setup(
+        dark: true,
+        width: 320,
+        scale: 1.5,
+        data: weeklyPreviewData(schoolNow()),
+      );
+      await tester.tap(find.byKey(const ValueKey('tab-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('日'));
+      await tester.pumpAndSettle();
+      await capture('navfix-dark-large-date-controls');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      return;
+    }
     if (const bool.fromEnvironment('CAPTURE_REVIEW_FIX')) {
       for (final dark in [false, true]) {
         for (final large in [false, true]) {
@@ -383,20 +438,6 @@ void main() {
       await tester.pumpAndSettle();
     }
     // Navigation captures freeze only ambient light, retaining real UI motion.
-    Future<void> sampleTransition(
-      String name,
-      Future<void> Function() action,
-    ) async {
-      await capture('$name-00');
-      await action();
-      await tester.pump();
-      for (var frame = 1; frame <= 14; frame++) {
-        await tester.pump(const Duration(milliseconds: 20));
-        await capture('$name-${frame.toString().padLeft(2, '0')}');
-      }
-      await tester.pumpAndSettle();
-    }
-
     await setup(data: weeklyPreviewData(schoolNow()));
     await sampleTransition(
       'navigation-transition',
