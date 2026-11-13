@@ -7,25 +7,31 @@ if (location.protocol !== 'https:' || location.port ||
   return JSON.stringify({state:'untrusted'});
 }
 const key = '__campusRecordingApiV1';
+// This is the official document's category, not a Wi-Fi or network inference.
+function result(data) {
+  return JSON.stringify({...data, officialContext:
+    location.hostname === 'webvpn.bucm.edu.cn' ? 'webvpn' :
+      location.hostname === 'qhz.bucm.edu.cn' ? 'direct' : 'unknown'});
+}
 if (command.action === 'cancel') {
   if (window[key]) window[key].cancel();
   delete window[key];
-  return JSON.stringify({state:'cancelled'});
+  return result({state:'cancelled'});
 }
-if (!['catalog','records'].includes(command.action)) return JSON.stringify({state:'unsupported'});
+if (!['catalog','records'].includes(command.action)) return result({state:'unsupported'});
 if (!window[key]) {
-  if (!Array.isArray(window.webpackJsonp) || typeof window.createCampusRecordingApi !== 'function') return JSON.stringify({state:'unsupported'});
+  if (!Array.isArray(window.webpackJsonp) || typeof window.createCampusRecordingApi !== 'function') return result({state:'unsupported'});
   let req;
   const id = 'campus_directory_' + Date.now() + '_' + Math.random().toString(36).slice(2);
   try {
     window.webpackJsonp.push([[id],{[id]:(m,e,r)=>{req=r;}},[[id]]]);
     // Current official bundle capability. A changed bundle falls back before requesting.
-    if (!req || !req.m || !req.m.b775) return JSON.stringify({state:'unsupported'});
+    if (!req || !req.m || !req.m.b775) return result({state:'unsupported'});
     const client = req('b775').a;
-    if (typeof client !== 'function') return JSON.stringify({state:'unsupported'});
+    if (typeof client !== 'function') return result({state:'unsupported'});
     window[key] = window.createCampusRecordingApi(client, location);
   } catch (_) {
-    return JSON.stringify({state:'unsupported'});
+    return result({state:'unsupported'});
   } finally {
     if (req && req.m) delete req.m[id];
     if (req && req.c) delete req.c[id];
@@ -36,10 +42,10 @@ if (command.action === 'catalog') {
   function walk(v,depth) { if(!v || depth>20 || components.length>=500)return;components.push(v);(v.$children||[]).forEach(c=>walk(c,depth+1)); }
   walk(document.querySelector('#app')?.__vue__,0);
   const catalog = components.find(v=>Array.isArray(v.courseList));
-  if (!catalog || catalog.activeName === '1') return JSON.stringify({state:'unsupported'});
+  if (!catalog || catalog.activeName === '1') return result({state:'unsupported'});
   const raw = String(catalog.xqCode || '');
   const m = raw.match(/^(20\d{2})-?(20\d{2})-?0?([12])$/);
-  if (!m || m[1]+'-'+m[2]+'-'+m[3] !== command.semester) return JSON.stringify({state:'unsupported'});
-  return JSON.stringify(await window[key].catalog(raw,catalog.boy));
+  if (!m || m[1]+'-'+m[2]+'-'+m[3] !== command.semester) return result({state:'unsupported'});
+  return result(await window[key].catalog(raw,catalog.boy));
 }
-return JSON.stringify(await window[key].records(command.id,command.page));
+return result(await window[key].records(command.id,command.page));

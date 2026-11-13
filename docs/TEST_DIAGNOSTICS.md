@@ -31,6 +31,12 @@
 | mediaPrepare / mediaReady | 开始或取得原生播放准备结果；不等于已听到声音、持续播放或完整课时通过 |
 | mediaNetwork / mediaBoundary / mediaWatermark / mediaFailed | 原有播放准备错误的白名单类别，不输出地址或完整错误 |
 | unmatched | 当前同名任务未匹配；不当作网络故障 |
+| accessAutomatic / accessDirect / accessWebVpn | 本次请求的访问方式，不代表探测或连接已经成功 |
+| selectedDirect / selectedWebVpn | 访问探测/手动选择最终决定的入口类别，不代表已完成认证 |
+| officialContextDirect / officialContextWebVpn / officialContextUnknown | 实际目录请求所在的官方文档类别，由桥接按白名单主机计算；不输出地址，也不据此推断Wi-Fi、校园网、系统VPN或全部网络跳转 |
+| upstreamConnectionFailed | 学校WebVPN已加载的上游连接错误页，不混作密码错误或TLS错误 |
+
+2026-11-13后续：旧记录中的directReady只表示接口直取，不等于网络直连。新路径类别补充已通过JS桥接、隐私及相关页面合成检查，待新包真实验证。正常桥接超时记requestTimeout；若期间已进入认证或读取代次失效，则迟到错误记cancelled，不覆盖正在等待认证的界面。
 
 导出额外注明schema、固定scope、诊断是否启用、直取编译开关状态，不包含认证或设备字段。日志为空可能是尚未执行相关操作或已清除；不得仅凭空记录断言网络或学校接口失败。
 

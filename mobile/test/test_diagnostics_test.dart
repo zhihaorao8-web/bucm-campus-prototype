@@ -12,11 +12,12 @@ void main() {
     final log = TestDiagnostics(enabled: true, capacity: 2);
     log.record(TestEvent.directoryStart, count: 3);
     log.failure('secret-token https://private.test');
+    log.officialContext('secret-token https://private.test');
     log.record(TestEvent.directReady, elapsedMs: -1, count: 999999);
     final data = jsonDecode(log.export()) as Map;
-    expect(data['dropped'], 1);
+    expect(data['dropped'], 2);
     expect((data['events'] as List).length, 2);
-    expect(log.events.first['event'], 'requestFailed');
+    expect(log.events.first['event'], 'officialContextUnknown');
     expect(log.events.last['elapsedMs'], 0);
     expect(log.events.last['count'], 10000);
     expect(log.export(), isNot(contains('secret-token')));

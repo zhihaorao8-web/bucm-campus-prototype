@@ -642,6 +642,11 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   Future<void> connect([
     ClassroomAccess mode = ClassroomAccess.automatic,
   ]) async {
+    TestDiagnostics.shared.record(switch (mode) {
+      ClassroomAccess.automatic => TestEvent.accessAutomatic,
+      ClassroomAccess.direct => TestEvent.accessDirect,
+      ClassroomAccess.vpn => TestEvent.accessWebVpn,
+    });
     fetchedAt = null;
     readProgress.reset();
     livePage = null;
@@ -675,6 +680,13 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
             mode == ClassroomAccess.vpn ? '已选择学校 WebVPN。' : '已选择直接访问。',
           );
     if (!mounted || ticket != generation) return;
+    if (decision.url != null) {
+      TestDiagnostics.shared.record(
+        decision.mode == ClassroomAccess.vpn
+            ? TestEvent.selectedWebVpn
+            : TestEvent.selectedDirect,
+      );
+    }
     setState(() {
       clearTabs();
       catalog = null;
@@ -978,7 +990,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   }
 
   void reportServiceUnavailable(_SchoolTab tab) {
-    TestDiagnostics.shared.record(TestEvent.requestFailed);
+    TestDiagnostics.shared.record(TestEvent.upstreamConnectionFailed);
     poll?.cancel();
     tab.loadTimer?.cancel();
     tab.loadTimer = null;

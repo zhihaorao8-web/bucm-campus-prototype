@@ -25,6 +25,15 @@ enum TestEvent {
   mediaNetwork,
   mediaBoundary,
   mediaWatermark,
+  accessAutomatic,
+  accessDirect,
+  accessWebVpn,
+  selectedDirect,
+  selectedWebVpn,
+  officialContextDirect,
+  officialContextWebVpn,
+  officialContextUnknown,
+  upstreamConnectionFailed,
 }
 
 /// Only fixed enums and bounded numeric fields enter stored/exported events.
@@ -71,6 +80,11 @@ class TestDiagnostics extends ChangeNotifier {
     'MEDIA_BOUNDARY' || 'UNTRUSTED_PAGE' => TestEvent.mediaBoundary,
     'WATERMARK' || 'POLICY' => TestEvent.mediaWatermark,
     _ => TestEvent.mediaFailed,
+  });
+  void officialContext(Object? value) => record(switch (value) {
+    'direct' => TestEvent.officialContextDirect,
+    'webvpn' => TestEvent.officialContextWebVpn,
+    _ => TestEvent.officialContextUnknown,
   });
   void clear() {
     _events.clear();

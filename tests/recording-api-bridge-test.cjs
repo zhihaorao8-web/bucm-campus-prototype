@@ -15,7 +15,16 @@ function setup(){
 async function run(env,cmd,location=loc){return JSON.parse(await new AsyncFunction('window','document','location',source.replace('__RECORDING_API_COMMAND__',JSON.stringify(cmd)))(env.window,env.document,location));}
 (async()=>{
  const env=setup();
- assert.equal((await run(env,{action:'catalog',semester:'2030-2031-1'})).state,'catalog');
+ const direct=await run(env,{action:'catalog',semester:'2030-2031-1'});
+ assert.equal(direct.state,'catalog');assert.equal(direct.officialContext,'direct');
+ const vpn=await run(setup(),{action:'catalog',semester:'2030-2031-1'},
+  {...loc,hostname:'webvpn.bucm.edu.cn',pathname:'/https/77726476706e69737468656265737421e1ff5bd225256b5d300d8db9d6562d/coursePlatform/'});
+ assert.equal(vpn.officialContext,'webvpn');assert(!JSON.stringify(vpn).includes('https://'));
+ const moving={...loc},redirected=setup();
+ redirected.window.createCampusRecordingApi=()=>({catalog:async()=>{
+  moving.hostname='unrecognized.test';return {state:'cancelled'};
+ }});
+ assert.equal((await run(redirected,{action:'catalog',semester:'2030-2031-1'},moving)).officialContext,'unknown');
  assert.equal(env.calls(),1);assert.deepEqual(Object.keys(env.req.m),['b775']);
  assert.equal((await run(env,{action:'arbitrary',url:'https://evil.test'})).state,'unsupported');
  assert.equal((await run(env,{action:'cancel'})).state,'cancelled');assert(!env.window.__campusRecordingApiV1);

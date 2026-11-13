@@ -42,6 +42,7 @@ class ClassroomApiReader {
       final catalogClock = Stopwatch()..start();
       final catalog = await call({'action': 'catalog', 'semester': semester});
       check();
+      diagnostics.officialContext(catalog['officialContext']);
       if (catalog['state'] == 'unsupported') {
         diagnostics.record(
           TestEvent.fallbackUnsupported,
@@ -90,10 +91,14 @@ class ClassroomApiReader {
           check();
           diagnostics.record(TestEvent.pageRequest);
           final pageClock = Stopwatch()..start();
-          final data = checked(
-            await call({'action': 'records', 'id': course.id, 'page': page}),
-            'records',
-          );
+          final reply = await call({
+            'action': 'records',
+            'id': course.id,
+            'page': page,
+          });
+          check();
+          diagnostics.officialContext(reply['officialContext']);
+          final data = checked(reply, 'records');
           final value = RecordingPage.fromJson(data);
           if (value.course.id != course.id ||
               value.course.semester != semester ||
