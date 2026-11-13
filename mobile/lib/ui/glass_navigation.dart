@@ -22,16 +22,13 @@ class GlassNavigation extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(currentAppearanceProvider);
     final floating = settings.floating;
-    final glass =
-        floating &&
-        settings.glass &&
-        settings.blur &&
-        !MediaQuery.highContrastOf(context);
+    final highContrast =
+        MediaQuery.highContrastOf(context) || settings.contrast > 0;
+    final glass = floating && settings.glass && settings.blur && !highContrast;
     final radius = floating ? 40.0 : 0.0;
     final theme = Theme.of(context), colors = Theme.of(context).colorScheme;
     final dark = theme.brightness == Brightness.dark;
-    final opaque =
-        MediaQuery.highContrastOf(context) || !settings.blur || !floating;
+    final opaque = highContrast || !settings.blur || !floating;
     final motion = !MediaQuery.disableAnimationsOf(context);
     final height =
         70.0 + (MediaQuery.textScalerOf(context).scale(13) - 13).clamp(0, 24);

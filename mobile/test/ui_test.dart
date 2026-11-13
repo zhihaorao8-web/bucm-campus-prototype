@@ -18,13 +18,14 @@ Widget app(
   bool dark = false,
   double scale = 1,
   bool highContrast = false,
+  double colorContrast = 0,
   bool reduceMotion = false,
 }) => ProviderScope(
   overrides: [
     ambientMotionEnabledProvider.overrideWithValue(false),
     repositoryProvider.overrideWithValue(repo),
     appearanceRepositoryProvider.overrideWithValue(
-      MemoryAppearanceRepository(),
+      MemoryAppearanceRepository(AppearanceSettings(contrast: colorContrast)),
     ),
     appInfoProvider.overrideWith(
       (ref) async => const AppPlatformInfo(
@@ -106,36 +107,46 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
-  testWidgets(
-    'high contrast uses opaque dock and reduced motion keeps tabs operable',
-    (tester) async {
-      await tester.pumpWidget(
-        app(
-          MemoryRepository(const ScheduleData()),
-          highContrast: true,
-          reduceMotion: true,
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<BackdropFilter>(find.byKey(const ValueKey('dock-blur')))
-            .enabled,
-        isFalse,
-      );
-      await tester.tap(find.byKey(const ValueKey('tab-2')));
-      await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<Semantics>(find.byKey(const ValueKey('tab-2')))
-            .properties
-            .selected,
-        isTrue,
-      );
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox());
-    },
-  );
+  for (final contrast in [0.0, .5, 1.0]) {
+    testWidgets(
+      'high contrast uses opaque dock and reduced motion keeps tabs operable: app=$contrast',
+      (tester) async {
+        await tester.pumpWidget(
+          app(
+            MemoryRepository(const ScheduleData()),
+            highContrast: contrast == 0,
+            colorContrast: contrast,
+            reduceMotion: true,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<BackdropFilter>(find.byKey(const ValueKey('dock-blur')))
+              .enabled,
+          isFalse,
+        );
+        final filter = tester.widget<BackdropFilter>(
+          find.byKey(const ValueKey('dock-blur')),
+        );
+        final material =
+            (filter.child! as DecoratedBox).decoration as BoxDecoration;
+        expect(material.color!.a, 1);
+        expect(material.gradient, isNull);
+        await tester.tap(find.byKey(const ValueKey('tab-2')));
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<Semantics>(find.byKey(const ValueKey('tab-2')))
+              .properties
+              .selected,
+          isTrue,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
   testWidgets(
     'floating glass dock has real blur, safe hit targets and reachable page end',
     (tester) async {
