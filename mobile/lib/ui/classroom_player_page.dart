@@ -41,6 +41,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
   final smallPlacement = ClassroomSmallWindowPlacement();
   ClassroomPlaybackProgressSession? progress;
   bool resumeDialogOpen = false;
+  Animation<double>? entryAnimation;
   ClassroomPlayerController get player => widget.controller;
   bool get canScrub =>
       foreground &&
@@ -103,6 +104,15 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
       resumeDialogOpen = false;
       return;
     }
+    final route = ModalRoute.of(context);
+    if (!foreground ||
+        (route != null &&
+            (!route.isCurrent ||
+                route.offstage ||
+                !(route.animation?.isCompleted ?? true)))) {
+      resumeDialogOpen = false;
+      return;
+    }
     final choice = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -145,9 +155,19 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
     resumeDialogOpen = false;
   }
 
+  void entryStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.completed) progressChanged();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final animation = ModalRoute.of(context)?.animation;
+    if (animation != entryAnimation) {
+      entryAnimation?.removeStatusListener(entryStatusChanged);
+      entryAnimation = animation;
+      entryAnimation?.addStatusListener(entryStatusChanged);
+    }
     accessibleNavigation = MediaQuery.accessibleNavigationOf(context);
     updateControls();
   }
@@ -204,6 +224,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     foreground = state == AppLifecycleState.resumed;
+    if (foreground) progressChanged();
     if (!foreground) setState(invalidateSliderDrag);
     updateControls();
     if (state != AppLifecycleState.resumed) unawaited(player.command('pause'));
@@ -214,6 +235,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
 
   @override
   void dispose() {
+    entryAnimation?.removeStatusListener(entryStatusChanged);
     controlsTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     player.removeListener(changed);

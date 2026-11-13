@@ -11,6 +11,7 @@ import 'package:campus_schedule/application/classroom_playback_progress_session.
 import 'package:campus_schedule/platform/classroom_player.dart';
 import 'package:campus_schedule/platform/school_adapter.dart';
 import 'package:campus_schedule/ui/classroom_player_page.dart';
+import 'package:campus_schedule/ui/classroom_player_route.dart';
 import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'package:campus_schedule/platform/classroom_access.dart';
 import 'package:campus_schedule/platform/classroom_session_cache.dart';
@@ -132,6 +133,10 @@ class ProgressHarness {
 }
 
 void main() {
+  setUpAll(() async {
+    await rootBundle.loadString('assets/classroom.js');
+    await rootBundle.loadString('assets/classroom-entry.js');
+  });
   test(
     'resume boundaries reject short, completed, unknown or changed duration',
     () {
@@ -537,6 +542,175 @@ void main() {
       }
     });
   });
+
+  for (final outcome in ['ready', 'failure', 'background', 'closed']) {
+    testWidgets('native preparation preserves entry boundary: $outcome', (
+      tester,
+    ) async {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      final cache = ClassroomSessionCache.shared;
+      cache.clear();
+      cache.putWorkspace(
+        ClassroomSession(
+          view: InAppWebViewKeepAlive(),
+          records: sources.single('a').pages.single,
+          entry: vpnEntry,
+          fetchedAt: DateTime.now(),
+        ),
+        revision: cache.revision,
+      );
+      final school = sources.NameImportController()..failSecond = false;
+      InAppWebViewPlatform.instance = fake.RecoveryPlatform(school);
+      final gate = Completer<Map<String, Object?>>();
+      final calls = <String>[];
+      const channel = MethodChannel('cn.bucm.campus/playback');
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+        call,
+      ) async {
+        calls.add(call.method);
+        if (call.method == 'prepare') return gate.future;
+        return ['begin', 'cancel', 'dispose'].contains(call.method)
+            ? null
+            : (snapshot()..['position'] = 0);
+      });
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          channel,
+          null,
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ClassroomCoursePage(
+            course: sources.local,
+            library: MemoryClassroomLibrary(sources.single('a')),
+            progressStore: MemoryProgress(),
+            onDetails: (_) {},
+            probe: (_) async => const AccessProbe(ProbeState.available),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('来源a的回放'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('来源a的回放'));
+      for (var i = 0; i < 12 && !calls.contains('prepare'); i++) {
+        await tester.pump(const Duration(seconds: 2));
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+      }
+      expect(calls.where((c) => c == 'prepare').length, 1);
+      expect(find.byType(ClassroomPlayerPage), findsNothing);
+      expect(find.byType(PlaybackButtonExpansion), findsNothing);
+      await tester.tap(find.text('来源a的回放'), warnIfMissed: false);
+      if (outcome == 'background') {
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      } else if (outcome == 'closed') {
+        await tester.pumpWidget(const SizedBox());
+      }
+      if (outcome == 'failure') {
+        gate.completeError(PlatformException(code: 'MEDIA'));
+      } else {
+        gate.complete(snapshot()..['position'] = 0);
+      }
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      if (outcome == 'ready') {
+        expect(find.byType(PlaybackButtonExpansion), findsOneWidget);
+        await tester.pumpAndSettle();
+        expect(find.byType(ClassroomPlayerPage), findsOneWidget);
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        expect(find.text('来源a的回放'), findsOneWidget);
+      } else {
+        expect(find.byType(ClassroomPlayerPage), findsNothing);
+        expect(find.byType(PlaybackButtonExpansion), findsNothing);
+        if (outcome == 'failure') {
+          expect(find.text('学校媒体暂时无法初始化，请返回后重试。'), findsOneWidget);
+        }
+      }
+      expect(calls.where((c) => c == 'prepare').length, 1);
+      if (outcome != 'failure') {
+        expect(calls.where((c) => c == 'dispose').length, 1);
+      }
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      cache.clear();
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final cancel in [false, true]) {
+    testWidgets('resume waits for entry; cancelled=$cancel', (tester) async {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      final navigator = GlobalKey<NavigatorState>();
+      final store = MemoryProgress();
+      final id = identity();
+      store.values[id.key] = progress(60000);
+      const channel = MethodChannel('synthetic-entry');
+      final calls = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+        call,
+      ) async {
+        calls.add(call.method);
+        return call.method == 'dispose' ? null : (snapshot()..['position'] = 0);
+      });
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          channel,
+          null,
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: navigator,
+          home: const Scaffold(body: Text('合成录播列表')),
+        ),
+      );
+      navigator.currentState!.push(
+        ClassroomPlayerRoute(
+          origin: const Rect.fromLTWH(300, 400, 48, 48),
+          color: Colors.blue,
+          iconColor: Colors.white,
+          reducedMotion: false,
+          builder: (_) => ClassroomPlayerPage(
+            title: '合成播放',
+            controller: ClassroomPlayerController(
+              ClassroomPlayerState(snapshot()..['position'] = 0),
+              channel: channel,
+            ),
+            identity: id,
+            progressStore: store,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('继续观看？'), findsNothing);
+      expect(find.byType(PlaybackButtonExpansion), findsOneWidget);
+      expect(calls.where((c) => c == 'play'), isEmpty);
+      if (cancel) {
+        navigator.currentState!.pop();
+        await tester.pumpAndSettle();
+        expect(find.text('继续观看？'), findsNothing);
+        expect(find.text('合成录播列表'), findsOneWidget);
+      } else {
+        await tester.pumpAndSettle();
+        expect(find.text('继续观看？'), findsOneWidget);
+        expect(store.reads, 1);
+        await tester.tap(find.text('返回列表'));
+        await tester.pumpAndSettle();
+      }
+      expect(calls.where((c) => c == 'dispose').length, 1);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
 
   testWidgets(
     'course playback checks native preparation before loading the exact source progress',

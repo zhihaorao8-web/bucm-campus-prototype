@@ -7,6 +7,55 @@ import '../data/classroom_timeline.dart';
 import '../domain/classroom.dart';
 import '../domain/schedule.dart';
 
+class ClassroomRecordingTile extends StatefulWidget {
+  const ClassroomRecordingTile({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.onPlay,
+    this.selected = false,
+  });
+  final String title, subtitle;
+  final ValueChanged<GlobalKey>? onPlay;
+  final bool selected;
+
+  @override
+  State<ClassroomRecordingTile> createState() => _ClassroomRecordingTileState();
+}
+
+class _ClassroomRecordingTileState extends State<ClassroomRecordingTile> {
+  final button = GlobalKey();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return MiuixCard(
+      child: Material(
+        type: MaterialType.transparency,
+        child: ListTile(
+          selected: widget.selected,
+          title: Text(widget.title),
+          subtitle: Text(widget.subtitle),
+          isThreeLine: true,
+          trailing: Container(
+            key: button,
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: colors.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: AppIcon(AppIcons.play, size: 24, color: colors.onPrimary),
+            ),
+          ),
+          onTap: widget.onPlay == null ? null : () => widget.onPlay!(button),
+        ),
+      ),
+    );
+  }
+}
+
 class ClassroomRecordingTimeline extends StatelessWidget {
   const ClassroomRecordingTimeline({
     super.key,
@@ -23,7 +72,7 @@ class ClassroomRecordingTimeline extends StatelessWidget {
   final DateTime? date;
   final int page, lessonPage;
   final ValueChanged<int> onPage, onLessonPage;
-  final void Function(ClassroomRecording, String) onPlay;
+  final void Function(ClassroomRecording, String, GlobalKey) onPlay;
   final bool busy;
 
   Widget group(
@@ -57,22 +106,16 @@ class ClassroomRecordingTimeline extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-          MiuixCard(
-            child: Material(
-              type: MaterialType.transparency,
-              child: ListTile(
-                selected: lesson,
-                title: Text(visible[i].record.label),
-                subtitle: Text(
-                  '来源：${visible[i].course.teacher.isEmpty ? '学校未提供教师' : visible[i].course.teacher}${visible[i].course.group.isEmpty ? '' : ' · ${visible[i].course.group}'}\n${visible[i].record.place.isEmpty ? '学校未提供地点' : visible[i].record.place} · ${visible[i].record.published ? '已发布' : '未发布或暂不可观看'}',
-                ),
-                isThreeLine: true,
-                trailing: const AppIcon(AppIcons.playCircle),
-                onTap: busy || !visible[i].record.published
-                    ? null
-                    : () => onPlay(visible[i].record, visible[i].course.id),
-              ),
-            ),
+          ClassroomRecordingTile(
+            key: ValueKey((visible[i].course.id, visible[i].record.id)),
+            selected: lesson,
+            title: visible[i].record.label,
+            subtitle:
+                '来源：${visible[i].course.teacher.isEmpty ? '学校未提供教师' : visible[i].course.teacher}${visible[i].course.group.isEmpty ? '' : ' · ${visible[i].course.group}'}\n${visible[i].record.place.isEmpty ? '学校未提供地点' : visible[i].record.place} · ${visible[i].record.published ? '已发布' : '未发布或暂不可观看'}',
+            onPlay: busy || !visible[i].record.published
+                ? null
+                : (button) =>
+                      onPlay(visible[i].record, visible[i].course.id, button),
           ),
         ],
         if (entries.isNotEmpty) ...[

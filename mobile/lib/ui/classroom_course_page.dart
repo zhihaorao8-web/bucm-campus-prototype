@@ -23,6 +23,7 @@ import '../platform/classroom_policy.dart';
 import '../platform/classroom_player.dart';
 import '../platform/classroom_session_cache.dart';
 import 'classroom_player_page.dart';
+import 'classroom_player_route.dart';
 import 'classroom_connection_card.dart';
 import 'classroom_recording_timeline.dart';
 import 'course_widgets.dart' show showCourseInformation;
@@ -113,6 +114,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   late final int libraryRevision;
   ClassroomArchive? archive;
   ClassroomRecording? queuedPlayback;
+  GlobalKey? playbackButton;
+  bool playbackReducedMotion = false;
   String? queuedCourseId;
   bool autoCollecting = false;
   final collection = ClassroomImportCollection();
@@ -1455,8 +1458,15 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   Future<void> playNative(
     ClassroomRecording record, {
     String? sourceCourseId,
+    GlobalKey? button,
   }) async {
     if (busy || !record.published) return;
+    if (button != null) {
+      playbackButton = button;
+      playbackReducedMotion =
+          MediaQuery.disableAnimationsOf(context) ||
+          FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
+    }
     final targetCourse =
         sourceCourseId ?? recordings?.course.id ?? selected?.id;
     final sourcePage = targetCourse == null
@@ -1526,15 +1536,25 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       tab.purpose = _Purpose.records;
       if (!mounted || operation != playbackGeneration) return;
       setState(() {
-        busy = false;
         showWeb = false;
         connectionPhase = ClassroomConnectionPhase.idle;
         message = null;
       });
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted || operation != playbackGeneration || !foreground) return;
+      final navigator = Navigator.of(context);
+      final colors = Theme.of(context).colorScheme;
+      final origin = playbackButtonRect(playbackButton, navigator);
+      playbackButton = null;
       handedToPlayer = true;
       final controller = ClassroomPlayerController(prepared);
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
+      await navigator.push(
+        ClassroomPlayerRoute(
+          origin: origin,
+          color: colors.primary,
+          iconColor: colors.onPrimary,
+          reducedMotion:
+              playbackReducedMotion || MediaQuery.disableAnimationsOf(context),
           builder: (_) => ClassroomPlayerPage(
             title: record.label,
             controller: controller,
@@ -2101,8 +2121,11 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                     lessonPage: lessonPage,
                     onPage: (value) => setState(() => timelinePage = value),
                     onLessonPage: (value) => setState(() => lessonPage = value),
-                    onPlay: (record, courseId) =>
-                        playNative(record, sourceCourseId: courseId),
+                    onPlay: (record, courseId, button) => playNative(
+                      record,
+                      sourceCourseId: courseId,
+                      button: button,
+                    ),
                   )
                 else ...[
                   if (recordings!.records.isEmpty)
@@ -2111,27 +2134,21 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                       child: Text('学校当前没有可显示的录播记录。'),
                     ),
                   for (final record in recordings!.records)
-                    MiuixCard(
-                      child: Material(
-                        type: MaterialType.transparency,
-                        child: ListTile(
-                          selected:
-                              widget.date != null &&
-                              isoDate(widget.date!) == isoDate(record.date),
-                          title: Text(record.label),
-                          subtitle: Text(
-                            '${record.place.isEmpty ? '学校未提供地点' : record.place}\n${record.published ? '已发布' : '未发布或暂不可观看'}',
-                          ),
-                          isThreeLine: true,
-                          trailing: const AppIcon(AppIcons.playCircle),
-                          onTap: busy || !record.published
-                              ? null
-                              : () => playNative(
-                                  record,
-                                  sourceCourseId: recordings!.course.id,
-                                ),
-                        ),
-                      ),
+                    ClassroomRecordingTile(
+                      key: ValueKey((recordings!.course.id, record.id)),
+                      selected:
+                          widget.date != null &&
+                          isoDate(widget.date!) == isoDate(record.date),
+                      title: record.label,
+                      subtitle:
+                          '${record.place.isEmpty ? '学校未提供地点' : record.place}\n${record.published ? '已发布' : '未发布或暂不可观看'}',
+                      onPlay: busy || !record.published
+                          ? null
+                          : (button) => playNative(
+                              record,
+                              sourceCourseId: recordings!.course.id,
+                              button: button,
+                            ),
                     ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2368,11 +2385,22 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
             key: const ValueKey('school-browser-layer'),
             child: Offstage(offstage: !browserVisible, child: browser()),
           ),
-        if (!browserVisible)
-          Positioned.fill(
-            key: const ValueKey('recording-native-layer'),
-            child: native(),
+        Positioned.fill(
+          key: const ValueKey('recording-native-position'),
+          child: Offstage(
+            offstage: browserVisible,
+            child: TickerMode(
+              enabled: !browserVisible,
+              child: ExcludeFocus(
+                excluding: browserVisible,
+                child: KeyedSubtree(
+                  key: const ValueKey('recording-native-layer'),
+                  child: native(),
+                ),
+              ),
+            ),
           ),
+        ),
       ],
     ),
   );
