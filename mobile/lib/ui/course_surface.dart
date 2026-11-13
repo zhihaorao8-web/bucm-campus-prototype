@@ -1,7 +1,50 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/appearance_controller.dart';
+
+class QuietSheet extends ConsumerWidget {
+  const QuietSheet({super.key, required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(currentAppearanceProvider);
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final opaque =
+        !settings.blur ||
+        !settings.glass ||
+        settings.contrast > 0 ||
+        MediaQuery.highContrastOf(context);
+    const radius = BorderRadius.vertical(top: Radius.circular(28));
+    return ClipRRect(
+      borderRadius: radius,
+      child: BackdropFilter(
+        enabled: !opaque,
+        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Material(
+          color: Colors.transparent,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.surface.withValues(
+                alpha: opaque ? 1 : (dark ? .92 : .90),
+              ),
+              borderRadius: radius,
+              border: Border.all(
+                width: .7,
+                color: opaque
+                    ? colors.outlineVariant
+                    : Colors.white.withValues(alpha: dark ? .12 : .75),
+              ),
+            ),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class QuietCard extends StatelessWidget {
   const QuietCard({

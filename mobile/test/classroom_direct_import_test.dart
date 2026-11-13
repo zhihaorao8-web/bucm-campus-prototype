@@ -10,6 +10,7 @@ import 'package:campus_schedule/platform/test_diagnostics.dart';
 import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'classroom_name_merge_test.dart' as names;
 import 'classroom_recovery_page_test.dart' as fake;
+import 'support/memory_appearance.dart';
 
 class DirectController extends names.NameImportController {
   DirectController(this.outcome) {
@@ -97,13 +98,15 @@ void main() {
         final library = names.CapturingNameLibrary();
         InAppWebViewPlatform.instance = fake.RecoveryPlatform(controller);
         await tester.pumpWidget(
-          MaterialApp(
-            home: ClassroomCoursePage(
-              course: names.local,
-              importCourses: [names.local],
-              library: library,
-              onDetails: (_) {},
-              probe: (_) async => const AccessProbe(ProbeState.available),
+          appearanceScope(
+            MaterialApp(
+              home: ClassroomCoursePage(
+                course: names.local,
+                importCourses: [names.local],
+                library: library,
+                onDetails: (_) {},
+                probe: (_) async => const AccessProbe(ProbeState.available),
+              ),
             ),
           ),
         );
@@ -179,13 +182,15 @@ void main() {
       final library = names.CapturingNameLibrary();
       InAppWebViewPlatform.instance = fake.RecoveryPlatform(controller);
       await tester.pumpWidget(
-        MaterialApp(
-          home: ClassroomCoursePage(
-            course: names.local,
-            importCourses: [names.local],
-            library: library,
-            onDetails: (_) {},
-            probe: (_) async => const AccessProbe(ProbeState.available),
+        appearanceScope(
+          MaterialApp(
+            home: ClassroomCoursePage(
+              course: names.local,
+              importCourses: [names.local],
+              library: library,
+              onDetails: (_) {},
+              probe: (_) async => const AccessProbe(ProbeState.available),
+            ),
           ),
         ),
       );

@@ -11,6 +11,7 @@ import 'classroom_player_test.dart' show snapshot;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:campus_schedule/ui/classroom_player_route.dart';
 import 'package:campus_schedule/ui/classroom_recording_timeline.dart';
+import 'support/memory_appearance.dart';
 
 void main() {
   for (final reduced in [false, true]) {
@@ -28,36 +29,41 @@ void main() {
       final focus = FocusNode();
       addTearDown(focus.dispose);
       await tester.pumpWidget(
-        MaterialApp(
-          navigatorKey: navigator,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
-            child: child!,
-          ),
-          home: Scaffold(
-            body: Align(
-              alignment: Alignment.bottomCenter,
-              child: ClassroomRecordingTile(
-                title: '合成回放',
-                subtitle: '合成教师\n合成教室',
-                onPlay: (button) {
-                  origin = playbackButtonRect(button, navigator.currentState!);
-                  route = ClassroomPlayerRoute(
-                    origin: origin,
-                    color: Colors.blue,
-                    iconColor: Colors.white,
-                    reducedMotion: reduced,
-                    builder: (_) => Scaffold(
-                      appBar: AppBar(title: const Text('合成播放页')),
-                      body: TextButton(
-                        focusNode: focus,
-                        onPressed: () => activations++,
-                        child: const Text('播放控制'),
+        appearanceScope(
+          MaterialApp(
+            navigatorKey: navigator,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.bottomCenter,
+                child: ClassroomRecordingTile(
+                  title: '合成回放',
+                  subtitle: '合成教师\n合成教室',
+                  onPlay: (button) {
+                    origin = playbackButtonRect(
+                      button,
+                      navigator.currentState!,
+                    );
+                    route = ClassroomPlayerRoute(
+                      origin: origin,
+                      color: Colors.blue,
+                      iconColor: Colors.white,
+                      reducedMotion: reduced,
+                      builder: (_) => Scaffold(
+                        appBar: AppBar(title: const Text('合成播放页')),
+                        body: TextButton(
+                          focusNode: focus,
+                          onPressed: () => activations++,
+                          child: const Text('播放控制'),
+                        ),
                       ),
-                    ),
-                  );
-                  navigator.currentState!.push(route!);
-                },
+                    );
+                    navigator.currentState!.push(route!);
+                  },
+                ),
               ),
             ),
           ),
@@ -287,59 +293,61 @@ void main() {
         mode == 'dark' ? Brightness.dark : Brightness.light,
       );
       await tester.pumpWidget(
-        MaterialApp(
-          theme: theme.copyWith(
-            textTheme: theme.textTheme.apply(fontFamily: 'PreviewChinese'),
-          ),
-          locale: const Locale('zh', 'CN'),
-          supportedLocales: const [Locale('zh', 'CN')],
-          localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          builder: (context, child) => MiuixThemeBridge(
-            child: MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: TextScaler.linear(mode == 'large' ? 1.5 : 1),
-              ),
-              child: RepaintBoundary(key: boundary, child: child!),
+        appearanceScope(
+          MaterialApp(
+            theme: theme.copyWith(
+              textTheme: theme.textTheme.apply(fontFamily: 'PreviewChinese'),
             ),
-          ),
-          home: Builder(
-            builder: (context) => Scaffold(
-              appBar: AppBar(title: const Text('课程课堂')),
-              body: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Text(
-                    '中医基础理论',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const Text('合成教师\n2030–2031学年第一学期'),
-                  const SizedBox(height: 32),
-                  const Text('10月1日 · 合成录播'),
-                  const SizedBox(height: 12),
-                  ClassroomRecordingTile(
-                    title: '第一讲 · 阴阳学说',
-                    subtitle: '合成教师 · 合成班\n合成教室 · 已发布',
-                    onPlay: (button) {
-                      final navigator = Navigator.of(context);
-                      final player = ClassroomPlayerController(
-                        ClassroomPlayerState(snapshot()..['textures'] = []),
-                        channel: channel,
-                      );
-                      navigator.push(
-                        ClassroomPlayerRoute(
-                          origin: playbackButtonRect(button, navigator),
-                          color: theme.colorScheme.primary,
-                          iconColor: theme.colorScheme.onPrimary,
-                          reducedMotion: false,
-                          builder: (_) => ClassroomPlayerPage(
-                            title: '第一讲 · 阴阳学说',
-                            controller: player,
+            locale: const Locale('zh', 'CN'),
+            supportedLocales: const [Locale('zh', 'CN')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            builder: (context, child) => MiuixThemeBridge(
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(mode == 'large' ? 1.5 : 1),
+                ),
+                child: RepaintBoundary(key: boundary, child: child!),
+              ),
+            ),
+            home: Builder(
+              builder: (context) => Scaffold(
+                appBar: AppBar(title: const Text('课程课堂')),
+                body: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Text(
+                      '中医基础理论',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const Text('合成教师\n2030–2031学年第一学期'),
+                    const SizedBox(height: 32),
+                    const Text('10月1日 · 合成录播'),
+                    const SizedBox(height: 12),
+                    ClassroomRecordingTile(
+                      title: '第一讲 · 阴阳学说',
+                      subtitle: '合成教师 · 合成班\n合成教室 · 已发布',
+                      onPlay: (button) {
+                        final navigator = Navigator.of(context);
+                        final player = ClassroomPlayerController(
+                          ClassroomPlayerState(snapshot()..['textures'] = []),
+                          channel: channel,
+                        );
+                        navigator.push(
+                          ClassroomPlayerRoute(
+                            origin: playbackButtonRect(button, navigator),
+                            color: theme.colorScheme.primary,
+                            iconColor: theme.colorScheme.onPrimary,
+                            reducedMotion: false,
+                            builder: (_) => ClassroomPlayerPage(
+                              title: '第一讲 · 阴阳学说',
+                              controller: player,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -368,12 +376,14 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: ClassroomRecordingTile(
-            title: '未发布',
-            subtitle: '暂无权限\n合成记录',
-            onPlay: null,
+      appearanceScope(
+        const MaterialApp(
+          home: Scaffold(
+            body: ClassroomRecordingTile(
+              title: '未发布',
+              subtitle: '暂无权限\n合成记录',
+              onPlay: null,
+            ),
           ),
         ),
       ),

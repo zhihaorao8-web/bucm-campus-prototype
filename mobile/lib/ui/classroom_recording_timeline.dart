@@ -1,7 +1,7 @@
 import 'app_icon_controls.dart';
 import 'app_icons.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_miuix/miuix.dart';
+import 'course_surface.dart';
 import '../data/classroom_library.dart';
 import '../data/classroom_timeline.dart';
 import '../domain/classroom.dart';
@@ -29,7 +29,7 @@ class _ClassroomRecordingTileState extends State<ClassroomRecordingTile> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return MiuixCard(
+    return QuietCard(
       child: Material(
         type: MaterialType.transparency,
         child: ListTile(

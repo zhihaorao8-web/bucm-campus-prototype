@@ -6,6 +6,7 @@ import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'schedule_test.dart' show sample;
+import 'support/memory_appearance.dart';
 
 // Render a synthetic login surface without a browser or school credentials.
 class LoginSurfacePlatform extends InAppWebViewPlatform {
@@ -39,19 +40,21 @@ void main() {
       );
       final probes = <String>[];
       await tester.pumpWidget(
-        MaterialApp(
-          home: ClassroomCoursePage(
-            course: school,
-            importCourses: [school],
-            onDetails: (_) {},
-            probe: (url) async {
-              probes.add(url);
-              return AccessProbe(
-                url == classroomProbe && !directAvailable
-                    ? ProbeState.unavailable
-                    : ProbeState.available,
-              );
-            },
+        appearanceScope(
+          MaterialApp(
+            home: ClassroomCoursePage(
+              course: school,
+              importCourses: [school],
+              onDetails: (_) {},
+              probe: (url) async {
+                probes.add(url);
+                return AccessProbe(
+                  url == classroomProbe && !directAvailable
+                      ? ProbeState.unavailable
+                      : ProbeState.available,
+                );
+              },
+            ),
           ),
         ),
       );
@@ -85,17 +88,19 @@ void main() {
         );
         var opened = false;
         await tester.pumpWidget(
-          MaterialApp(
-            theme: appTheme(dark ? Brightness.dark : Brightness.light),
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: const TextScaler.linear(1.5)),
-              child: child!,
-            ),
-            home: ClassroomCoursePage(
-              course: synthetic,
-              onDetails: (_) => opened = true,
+          appearanceScope(
+            MaterialApp(
+              theme: appTheme(dark ? Brightness.dark : Brightness.light),
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: const TextScaler.linear(1.5)),
+                child: child!,
+              ),
+              home: ClassroomCoursePage(
+                course: synthetic,
+                onDetails: (_) => opened = true,
+              ),
             ),
           ),
         );

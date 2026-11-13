@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/appearance_controller.dart';
@@ -6,7 +7,59 @@ import '../application/appearance_controller.dart';
 /// Injectable clock policy for deterministic screenshots; production animates.
 final ambientMotionEnabledProvider = Provider<bool>((ref) => true);
 
-/// Only the Today sample animates until the other stages are approved.
+/// Pinned so reveal and focus traversal treat the bar as obstruction.
+class QuietSliverAppBar extends ConsumerWidget {
+  const QuietSliverAppBar({
+    super.key,
+    required this.title,
+    required this.scroll,
+    this.actions,
+  });
+  final Widget title;
+  final ScrollController scroll;
+  final List<Widget>? actions;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(currentAppearanceProvider);
+    final opaque =
+        !settings.blur ||
+        !settings.glass ||
+        settings.contrast > 0 ||
+        MediaQuery.highContrastOf(context);
+    return SliverAppBar(
+      pinned: true,
+      title: title,
+      actions: actions,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      flexibleSpace: ListenableBuilder(
+        listenable: scroll,
+        builder: (context, _) => ClipRect(
+          child: BackdropFilter(
+            enabled: !opaque,
+            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: ColoredBox(
+              key: const ValueKey('quiet-appbar-scrim'),
+              color: Theme.of(context).colorScheme.surface.withValues(
+                alpha: opaque
+                    ? 1
+                    : .04 +
+                          .76 *
+                              (scroll.hasClients
+                                  ? (scroll.offset / 80).clamp(0.0, 1.0)
+                                  : 0.0),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Only Today uses a continuous ambient clock; reading pages stay still.
 class QuietBackdrop extends ConsumerStatefulWidget {
   const QuietBackdrop({super.key, required this.tab, required this.child});
   final int tab;

@@ -19,6 +19,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'classroom_recovery_page_test.dart' as fake;
 import 'classroom_name_merge_test.dart' as sources;
 import 'support/memory_classroom_library.dart';
+import 'support/memory_appearance.dart';
 import 'classroom_player_test.dart' show snapshot;
 
 ClassroomPlaybackIdentity identity({
@@ -580,13 +581,15 @@ void main() {
         ),
       );
       await tester.pumpWidget(
-        MaterialApp(
-          home: ClassroomCoursePage(
-            course: sources.local,
-            library: MemoryClassroomLibrary(sources.single('a')),
-            progressStore: MemoryProgress(),
-            onDetails: (_) {},
-            probe: (_) async => const AccessProbe(ProbeState.available),
+        appearanceScope(
+          MaterialApp(
+            home: ClassroomCoursePage(
+              course: sources.local,
+              library: MemoryClassroomLibrary(sources.single('a')),
+              progressStore: MemoryProgress(),
+              onDetails: (_) {},
+              probe: (_) async => const AccessProbe(ProbeState.available),
+            ),
           ),
         ),
       );
@@ -750,13 +753,15 @@ void main() {
       });
       addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
       await tester.pumpWidget(
-        MaterialApp(
-          home: ClassroomCoursePage(
-            course: sources.local,
-            library: MemoryClassroomLibrary(sources.merged()),
-            progressStore: store,
-            onDetails: (_) {},
-            probe: (_) async => const AccessProbe(ProbeState.available),
+        appearanceScope(
+          MaterialApp(
+            home: ClassroomCoursePage(
+              course: sources.local,
+              library: MemoryClassroomLibrary(sources.merged()),
+              progressStore: store,
+              onDetails: (_) {},
+              probe: (_) async => const AccessProbe(ProbeState.available),
+            ),
           ),
         ),
       );

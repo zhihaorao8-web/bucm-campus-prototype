@@ -1,4 +1,13 @@
 import 'package:campus_schedule/application/appearance_controller.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+Widget appearanceScope(Widget child) => ProviderScope(
+  overrides: [
+    currentAppearanceProvider.overrideWithValue(const AppearanceSettings()),
+  ],
+  child: child,
+);
 
 class MemoryAppearanceRepository implements AppearanceRepository {
   MemoryAppearanceRepository([this.value = const AppearanceSettings()]);

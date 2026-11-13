@@ -9,6 +9,7 @@ import 'package:campus_schedule/data/classroom_library.dart';
 import 'package:campus_schedule/data/classroom_timeline.dart';
 import 'package:campus_schedule/domain/classroom.dart';
 import 'package:campus_schedule/ui/classroom_recording_timeline.dart';
+import 'support/memory_appearance.dart';
 
 ClassroomArchive source(String id) => ClassroomArchive([
   for (var page = 1; page <= 2; page++)
@@ -60,34 +61,37 @@ void main() {
       tester.view.physicalSize = Size(dark ? 320 : 390, 844);
       final boundary = GlobalKey();
       await tester.pumpWidget(
-        RepaintBoundary(
-          key: boundary,
-          child: MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: appTheme(dark ? Brightness.dark : Brightness.light).copyWith(
-              textTheme: appTheme(
-                dark ? Brightness.dark : Brightness.light,
-              ).textTheme.apply(fontFamily: 'PreviewChinese'),
-            ),
-            builder: (context, child) => MiuixThemeBridge(child: child!),
-            home: Builder(
-              builder: (context) => MediaQuery(
-                data: MediaQuery.of(
-                  context,
-                ).copyWith(textScaler: TextScaler.linear(dark ? 1.5 : 1)),
-                child: Scaffold(
-                  appBar: AppBar(title: const Text('合成录播预览')),
-                  body: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: ClassroomRecordingTimeline(
-                      archive: archive,
-                      date: DateTime(2030, 9, 9),
-                      busy: false,
-                      page: 1,
-                      lessonPage: 1,
-                      onPage: (_) {},
-                      onLessonPage: (_) {},
-                      onPlay: (_, _, _) {},
+        appearanceScope(
+          RepaintBoundary(
+            key: boundary,
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: appTheme(dark ? Brightness.dark : Brightness.light)
+                  .copyWith(
+                    textTheme: appTheme(
+                      dark ? Brightness.dark : Brightness.light,
+                    ).textTheme.apply(fontFamily: 'PreviewChinese'),
+                  ),
+              builder: (context, child) => MiuixThemeBridge(child: child!),
+              home: Builder(
+                builder: (context) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: TextScaler.linear(dark ? 1.5 : 1)),
+                  child: Scaffold(
+                    appBar: AppBar(title: const Text('合成录播预览')),
+                    body: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: ClassroomRecordingTimeline(
+                        archive: archive,
+                        date: DateTime(2030, 9, 9),
+                        busy: false,
+                        page: 1,
+                        lessonPage: 1,
+                        onPage: (_) {},
+                        onLessonPage: (_) {},
+                        onPlay: (_, _, _) {},
+                      ),
                     ),
                   ),
                 ),
@@ -136,19 +140,21 @@ void main() {
       var lessonPage = 1;
       String? played;
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: StatefulBuilder(
-              builder: (context, setState) => SingleChildScrollView(
-                child: ClassroomRecordingTimeline(
-                  archive: archive,
-                  date: DateTime(2030, 9, 9),
-                  busy: false,
-                  page: 1,
-                  lessonPage: lessonPage,
-                  onPage: (_) {},
-                  onLessonPage: (value) => setState(() => lessonPage = value),
-                  onPlay: (record, id, _) => played = '$id:${record.id}',
+        appearanceScope(
+          MaterialApp(
+            home: Scaffold(
+              body: StatefulBuilder(
+                builder: (context, setState) => SingleChildScrollView(
+                  child: ClassroomRecordingTimeline(
+                    archive: archive,
+                    date: DateTime(2030, 9, 9),
+                    busy: false,
+                    page: 1,
+                    lessonPage: lessonPage,
+                    onPage: (_) {},
+                    onLessonPage: (value) => setState(() => lessonPage = value),
+                    onPlay: (record, id, _) => played = '$id:${record.id}',
+                  ),
                 ),
               ),
             ),

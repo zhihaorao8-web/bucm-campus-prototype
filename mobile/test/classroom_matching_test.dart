@@ -7,6 +7,7 @@ import 'package:campus_schedule/platform/classroom_access.dart';
 import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'schedule_test.dart' show sample;
 import 'support/memory_classroom_library.dart';
+import 'support/memory_appearance.dart';
 
 void main() {
   final local = Course.fromJson(
@@ -70,12 +71,14 @@ void main() {
     }
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: ClassroomCoursePage(
-          course: local,
-          library: MemoryClassroomLibrary(),
-          onDetails: (_) {},
-          probe: probe,
+      appearanceScope(
+        MaterialApp(
+          home: ClassroomCoursePage(
+            course: local,
+            library: MemoryClassroomLibrary(),
+            onDetails: (_) {},
+            probe: probe,
+          ),
         ),
       ),
     );
@@ -85,11 +88,15 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     calls.clear();
     await tester.pumpWidget(
-      MaterialApp(
-        home: ClassroomCoursePage(
-          course: Course.fromJson(local.toJson()..['dataSource'] = 'synthetic'),
-          onDetails: (_) {},
-          probe: probe,
+      appearanceScope(
+        MaterialApp(
+          home: ClassroomCoursePage(
+            course: Course.fromJson(
+              local.toJson()..['dataSource'] = 'synthetic',
+            ),
+            onDetails: (_) {},
+            probe: probe,
+          ),
         ),
       ),
     );
@@ -100,12 +107,14 @@ void main() {
   testWidgets('离开页面后忽略迟到的自动连接结果', (tester) async {
     final response = Completer<AccessProbe>();
     await tester.pumpWidget(
-      MaterialApp(
-        home: ClassroomCoursePage(
-          course: local,
-          library: MemoryClassroomLibrary(),
-          onDetails: (_) {},
-          probe: (_) => response.future,
+      appearanceScope(
+        MaterialApp(
+          home: ClassroomCoursePage(
+            course: local,
+            library: MemoryClassroomLibrary(),
+            onDetails: (_) {},
+            probe: (_) => response.future,
+          ),
         ),
       ),
     );

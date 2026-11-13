@@ -242,6 +242,28 @@ void main() {
     await tester.tap(find.text('日'));
     await tester.pumpAndSettle();
     await capture('daily-large-text');
+    for (final variant in ['light', 'dark', 'large']) {
+      await setup(
+        dark: variant == 'dark',
+        width: variant == 'large' ? 320 : 390,
+        scale: variant == 'large' ? 1.5 : 1,
+      );
+      await tester.tap(find.text('先体验合成示例'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('today-focus')));
+      await tester.pumpAndSettle();
+      await capture('stage4-course-$variant');
+      await tester.tap(find.text('课程信息'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('查看完整课程信息'));
+      await tester.tap(find.text('查看完整课程信息'));
+      await tester.pumpAndSettle();
+      await capture('stage4-information-$variant');
+      await tester.ensureVisible(find.text('完成').last);
+      await tester.tap(find.text('完成').last);
+      await tester.pumpAndSettle();
+      expect(find.text('课程课堂'), findsOneWidget);
+    }
     // Navigation captures freeze only ambient light, retaining real UI motion.
     Future<void> sampleTransition(
       String name,

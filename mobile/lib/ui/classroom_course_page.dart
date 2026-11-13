@@ -1,4 +1,6 @@
 import 'course_interaction.dart';
+import 'course_surface.dart';
+import 'quiet_backdrop.dart';
 import 'app_icon_controls.dart';
 import 'app_icons.dart';
 import 'dart:async';
@@ -1978,238 +1980,270 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         (a, b) =>
             (b.matches(local) ? 1 : 0).compareTo(a.matches(local) ? 1 : 0),
       );
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('课程课堂'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('完成'),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: ListView(
+    return QuietBackdrop(
+      tab: 1,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: CustomScrollView(
+          key: const ValueKey('course-detail-list'),
           controller: scroll,
-          padding: const EdgeInsets.all(16),
-          children: [
-            CourseCardHero(
-              tag: widget.transitionTag,
-              child: MiuixCard(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        local.name,
-                        style: Theme.of(context).textTheme.headlineSmall,
+          slivers: [
+            QuietSliverAppBar(
+              scroll: scroll,
+              title: const Text('课程课堂'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('完成'),
+                ),
+              ],
+            ),
+            SliverSafeArea(
+              top: false,
+              sliver: SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverList.list(
+                  children: [
+                    CourseCardHero(
+                      tag: widget.transitionTag,
+                      child: QuietCard(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                local.name,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineSmall,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                local.teacher.isEmpty
+                                    ? '学校未提供教师'
+                                    : local.teacher,
+                              ),
+                              Text(local.semester),
+                              Material(
+                                type: MaterialType.transparency,
+                                child: AppExpansionTile(
+                                  tilePadding: EdgeInsets.zero,
+                                  title: const Text('课程信息'),
+                                  children: [
+                                    Text(
+                                      local.segments
+                                          .map(
+                                            (segment) =>
+                                                '${segment.start}–${segment.end}',
+                                          )
+                                          .join(' · '),
+                                    ),
+                                    Text(
+                                      local.place.isEmpty
+                                          ? '学校未提供地点'
+                                          : local.place,
+                                    ),
+                                    Text(
+                                      '第${local.weeks}周 · 第${local.periods.join('、')}节',
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          widget.onDetails(context),
+                                      child: const Text('查看完整课程信息'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(local.teacher.isEmpty ? '学校未提供教师' : local.teacher),
-                      Text(local.semester),
-                      Material(
-                        type: MaterialType.transparency,
-                        child: AppExpansionTile(
-                          tilePadding: EdgeInsets.zero,
-                          title: const Text('课程信息'),
+                    ),
+                    const SizedBox(height: 16),
+                    MiuixTabRow(
+                      tabs: const ['录播', '直播'],
+                      selectedTabIndex: section,
+                      onTabSelected: (i) => setState(() => section = i),
+                    ),
+                    const SizedBox(height: 16),
+                    if (section == 1)
+                      const QuietCard(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text('学校直播暂未开放\n开放后将在这里提供有权限的课堂直播。'),
+                        ),
+                      )
+                    else ...[
+                      if (!synthetic)
+                        ClassroomConnectionCard(
+                          status: connectionStatus,
+                          directoryLabel: archive != null
+                              ? '已导入的录播列表 · 更新于 ${schoolTimestamp(archive!.importedAt)} · 可刷新'
+                              : recordings != null
+                              ? '本次读取的录播列表 · 尚未保存完整目录'
+                              : '尚未导入录播目录',
+                          busy: busy,
+                          onRetry: archive != null
+                              ? refreshRecordings
+                              : retryCurrent,
+                          onOpenSchool: openSchoolPage,
+                        ),
+                      if (synthetic && message != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(message!),
+                        ),
+                      if (synthetic)
+                        const Text('合成示例不连接学校；请使用本人导入的课程。')
+                      else if (collecting) ...[
+                        const LinearProgressIndicator(),
+                        Text(
+                          '正在汇总同名课程：$sourceIndex / ${importMatches?.length ?? 0}',
+                        ),
+                        if (!busy)
+                          TextButton(
+                            onPressed: retryCurrent,
+                            child: const Text('继续导入'),
+                          ),
+                      ],
+                      if (!synthetic && recordings != null) ...[
+                        if (archive != null)
+                          Text(
+                            archive!.nameMatched
+                                ? '已按名称合并 ${archive!.courses.length} 门学校课程（按日期汇总）'
+                                : '旧目录尚未汇总同名课程，请刷新录播或统一导入。',
+                          ),
+                        if (archive == null)
+                          Text(
+                            '当前回放来源：${recordings!.course.name} · ${recordings!.course.teacher}',
+                          ),
+                        if (widget.date != null && archive == null)
+                          Text(
+                            recordings!.records.any(
+                                  (v) =>
+                                      isoDate(v.date) == isoDate(widget.date!),
+                                )
+                                ? '已标记 ${shortDate(widget.date!)} 的授课记录'
+                                : '本页没有 ${shortDate(widget.date!)} 的录播，可查看其他记录或翻页。',
+                          ),
+                        Wrap(
                           children: [
-                            Text(
-                              local.segments
-                                  .map(
-                                    (segment) =>
-                                        '${segment.start}–${segment.end}',
-                                  )
-                                  .join(' · '),
-                            ),
-                            Text(local.place.isEmpty ? '学校未提供地点' : local.place),
-                            Text(
-                              '第${local.weeks}周 · 第${local.periods.join('、')}节',
+                            TextButton(
+                              onPressed: busy ? null : refreshRecordings,
+                              child: const Text('刷新录播'),
                             ),
                             TextButton(
-                              onPressed: () => widget.onDetails(context),
-                              child: const Text('查看完整课程信息'),
+                              onPressed: busy ? null : changeCourse,
+                              child: const Text('重新匹配同名课程'),
                             ),
                           ],
                         ),
-                      ),
+                        if (archive != null)
+                          ClassroomRecordingTimeline(
+                            archive: archive!,
+                            date: widget.date,
+                            busy: busy,
+                            page: timelinePage,
+                            lessonPage: lessonPage,
+                            onPage: (value) =>
+                                setState(() => timelinePage = value),
+                            onLessonPage: (value) =>
+                                setState(() => lessonPage = value),
+                            onPlay: (record, courseId, button) => playNative(
+                              record,
+                              sourceCourseId: courseId,
+                              button: button,
+                            ),
+                          )
+                        else ...[
+                          if (recordings!.records.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Text('学校当前没有可显示的录播记录。'),
+                            ),
+                          for (final record in recordings!.records)
+                            ClassroomRecordingTile(
+                              key: ValueKey((recordings!.course.id, record.id)),
+                              selected:
+                                  widget.date != null &&
+                                  isoDate(widget.date!) == isoDate(record.date),
+                              title: record.label,
+                              subtitle:
+                                  '${record.place.isEmpty ? '学校未提供地点' : record.place}\n${record.published ? '已发布' : '未发布或暂不可观看'}',
+                              onPlay: busy || !record.published
+                                  ? null
+                                  : (button) => playNative(
+                                      record,
+                                      sourceCourseId: recordings!.course.id,
+                                      button: button,
+                                    ),
+                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              TextButton(
+                                onPressed: busy || displayPage == 1
+                                    ? null
+                                    : () => changePage(displayPage - 1),
+                                child: const Text('上一页'),
+                              ),
+                              Text(
+                                '第 $displayPage 页 · 共 ${archive?.total ?? recordings!.total} 条',
+                              ),
+                              TextButton(
+                                onPressed:
+                                    busy ||
+                                        (archive != null
+                                            ? displayPage >=
+                                                  archive!.pages.length
+                                            : !recordings!.hasNext)
+                                    ? null
+                                    : () => changePage(displayPage + 1),
+                                child: const Text('下一页'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ] else if (catalog != null) ...[
+                        const Text('按同学期课程名称汇总全部回放，教师和班级仅用于显示来源。'),
+                        for (final course in candidates)
+                          QuietCard(
+                            child: Material(
+                              type: MaterialType.transparency,
+                              child: ListTile(
+                                title: Text(course.name),
+                                subtitle: Text(
+                                  '${course.teacher}\n${course.code} · ${course.group}',
+                                ),
+                                isThreeLine: true,
+                                onTap: busy ? null : retryCurrent,
+                              ),
+                            ),
+                          ),
+                        TextButton(
+                          onPressed: busy
+                              ? null
+                              : () {
+                                  setState(() {
+                                    active = catalogTab;
+                                    showWeb = true;
+                                  });
+                                  scheduleRead(tabs[catalogTab], restart: true);
+                                },
+                          child: const Text('返回官方页面切换学期'),
+                        ),
+                      ] else if (!synthetic)
+                        MiuixButton(
+                          onPressed: busy ? null : () => connect(),
+                          child: const Text('重新获取学校录播'),
+                        ),
                     ],
-                  ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            MiuixTabRow(
-              tabs: const ['录播', '直播'],
-              selectedTabIndex: section,
-              onTabSelected: (i) => setState(() => section = i),
-            ),
-            const SizedBox(height: 16),
-            if (section == 1)
-              const MiuixCard(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text('学校直播暂未开放\n开放后将在这里提供有权限的课堂直播。'),
-                ),
-              )
-            else ...[
-              if (!synthetic)
-                ClassroomConnectionCard(
-                  status: connectionStatus,
-                  directoryLabel: archive != null
-                      ? '已导入的录播列表 · 更新于 ${schoolTimestamp(archive!.importedAt)} · 可刷新'
-                      : recordings != null
-                      ? '本次读取的录播列表 · 尚未保存完整目录'
-                      : '尚未导入录播目录',
-                  busy: busy,
-                  onRetry: archive != null ? refreshRecordings : retryCurrent,
-                  onOpenSchool: openSchoolPage,
-                ),
-              if (synthetic && message != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(message!),
-                ),
-              if (synthetic)
-                const Text('合成示例不连接学校；请使用本人导入的课程。')
-              else if (collecting) ...[
-                const LinearProgressIndicator(),
-                Text('正在汇总同名课程：$sourceIndex / ${importMatches?.length ?? 0}'),
-                if (!busy)
-                  TextButton(
-                    onPressed: retryCurrent,
-                    child: const Text('继续导入'),
-                  ),
-              ],
-              if (!synthetic && recordings != null) ...[
-                if (archive != null)
-                  Text(
-                    archive!.nameMatched
-                        ? '已按名称合并 ${archive!.courses.length} 门学校课程（按日期汇总）'
-                        : '旧目录尚未汇总同名课程，请刷新录播或统一导入。',
-                  ),
-                if (archive == null)
-                  Text(
-                    '当前回放来源：${recordings!.course.name} · ${recordings!.course.teacher}',
-                  ),
-                if (widget.date != null && archive == null)
-                  Text(
-                    recordings!.records.any(
-                          (v) => isoDate(v.date) == isoDate(widget.date!),
-                        )
-                        ? '已标记 ${shortDate(widget.date!)} 的授课记录'
-                        : '本页没有 ${shortDate(widget.date!)} 的录播，可查看其他记录或翻页。',
-                  ),
-                Wrap(
-                  children: [
-                    TextButton(
-                      onPressed: busy ? null : refreshRecordings,
-                      child: const Text('刷新录播'),
-                    ),
-                    TextButton(
-                      onPressed: busy ? null : changeCourse,
-                      child: const Text('重新匹配同名课程'),
-                    ),
-                  ],
-                ),
-                if (archive != null)
-                  ClassroomRecordingTimeline(
-                    archive: archive!,
-                    date: widget.date,
-                    busy: busy,
-                    page: timelinePage,
-                    lessonPage: lessonPage,
-                    onPage: (value) => setState(() => timelinePage = value),
-                    onLessonPage: (value) => setState(() => lessonPage = value),
-                    onPlay: (record, courseId, button) => playNative(
-                      record,
-                      sourceCourseId: courseId,
-                      button: button,
-                    ),
-                  )
-                else ...[
-                  if (recordings!.records.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Text('学校当前没有可显示的录播记录。'),
-                    ),
-                  for (final record in recordings!.records)
-                    ClassroomRecordingTile(
-                      key: ValueKey((recordings!.course.id, record.id)),
-                      selected:
-                          widget.date != null &&
-                          isoDate(widget.date!) == isoDate(record.date),
-                      title: record.label,
-                      subtitle:
-                          '${record.place.isEmpty ? '学校未提供地点' : record.place}\n${record.published ? '已发布' : '未发布或暂不可观看'}',
-                      onPlay: busy || !record.published
-                          ? null
-                          : (button) => playNative(
-                              record,
-                              sourceCourseId: recordings!.course.id,
-                              button: button,
-                            ),
-                    ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton(
-                        onPressed: busy || displayPage == 1
-                            ? null
-                            : () => changePage(displayPage - 1),
-                        child: const Text('上一页'),
-                      ),
-                      Text(
-                        '第 $displayPage 页 · 共 ${archive?.total ?? recordings!.total} 条',
-                      ),
-                      TextButton(
-                        onPressed:
-                            busy ||
-                                (archive != null
-                                    ? displayPage >= archive!.pages.length
-                                    : !recordings!.hasNext)
-                            ? null
-                            : () => changePage(displayPage + 1),
-                        child: const Text('下一页'),
-                      ),
-                    ],
-                  ),
-                ],
-              ] else if (catalog != null) ...[
-                const Text('按同学期课程名称汇总全部回放，教师和班级仅用于显示来源。'),
-                for (final course in candidates)
-                  MiuixCard(
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: ListTile(
-                        title: Text(course.name),
-                        subtitle: Text(
-                          '${course.teacher}\n${course.code} · ${course.group}',
-                        ),
-                        isThreeLine: true,
-                        onTap: busy ? null : retryCurrent,
-                      ),
-                    ),
-                  ),
-                TextButton(
-                  onPressed: busy
-                      ? null
-                      : () {
-                          setState(() {
-                            active = catalogTab;
-                            showWeb = true;
-                          });
-                          scheduleRead(tabs[catalogTab], restart: true);
-                        },
-                  child: const Text('返回官方页面切换学期'),
-                ),
-              ] else if (!synthetic)
-                MiuixButton(
-                  onPressed: busy ? null : () => connect(),
-                  child: const Text('重新获取学校录播'),
-                ),
-            ],
-            const SizedBox(height: 24),
           ],
         ),
       ),

@@ -12,6 +12,7 @@ import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'schedule_test.dart' show sample;
 import 'support/memory_classroom_library.dart';
+import 'support/memory_appearance.dart';
 import 'classroom_recovery_page_test.dart' as fake;
 
 class NameImportController extends fake.RecoveryController {
@@ -168,13 +169,15 @@ void main() {
         ),
       );
       await tester.pumpWidget(
-        MaterialApp(
-          home: ClassroomCoursePage(
-            course: local,
-            library: MemoryClassroomLibrary(merged()),
-            onDetails: (_) {},
-            probe: (_) async =>
-                throw StateError('retained view must be reused'),
+        appearanceScope(
+          MaterialApp(
+            home: ClassroomCoursePage(
+              course: local,
+              library: MemoryClassroomLibrary(merged()),
+              onDetails: (_) {},
+              probe: (_) async =>
+                  throw StateError('retained view must be reused'),
+            ),
           ),
         ),
       );
@@ -211,20 +214,22 @@ void main() {
     final library = CapturingNameLibrary();
     InAppWebViewPlatform.instance = fake.RecoveryPlatform(controller);
     await tester.pumpWidget(
-      MaterialApp(
-        home: ClassroomCoursePage(
-          course: local,
-          importCourses: [
-            local,
-            Course.fromJson(
-              local.toJson()
-                ..['id'] = 'unmatched-local'
-                ..['name'] = '未匹配合成课程',
-            ),
-          ],
-          library: library,
-          onDetails: (_) {},
-          probe: (_) async => const AccessProbe(ProbeState.available),
+      appearanceScope(
+        MaterialApp(
+          home: ClassroomCoursePage(
+            course: local,
+            importCourses: [
+              local,
+              Course.fromJson(
+                local.toJson()
+                  ..['id'] = 'unmatched-local'
+                  ..['name'] = '未匹配合成课程',
+              ),
+            ],
+            library: library,
+            onDetails: (_) {},
+            probe: (_) async => const AccessProbe(ProbeState.available),
+          ),
         ),
       ),
     );
@@ -282,12 +287,14 @@ void main() {
       ),
     );
     await tester.pumpWidget(
-      MaterialApp(
-        home: ClassroomCoursePage(
-          course: local,
-          library: library,
-          onDetails: (_) {},
-          probe: (_) async => const AccessProbe(ProbeState.available),
+      appearanceScope(
+        MaterialApp(
+          home: ClassroomCoursePage(
+            course: local,
+            library: library,
+            onDetails: (_) {},
+            probe: (_) async => const AccessProbe(ProbeState.available),
+          ),
         ),
       ),
     );
@@ -395,15 +402,17 @@ void main() {
   testWidgets('离线目录按日期汇总不同来源，同名不同老师均可见且不执行网络检测', (tester) async {
     var probes = 0;
     await tester.pumpWidget(
-      MaterialApp(
-        home: ClassroomCoursePage(
-          course: local,
-          library: MemoryClassroomLibrary(merged()),
-          onDetails: (_) {},
-          probe: (_) async {
-            probes++;
-            throw StateError('no network');
-          },
+      appearanceScope(
+        MaterialApp(
+          home: ClassroomCoursePage(
+            course: local,
+            library: MemoryClassroomLibrary(merged()),
+            onDetails: (_) {},
+            probe: (_) async {
+              probes++;
+              throw StateError('no network');
+            },
+          ),
         ),
       ),
     );

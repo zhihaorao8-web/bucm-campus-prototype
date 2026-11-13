@@ -9,6 +9,7 @@ import 'package:campus_schedule/platform/classroom_access.dart';
 import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'schedule_test.dart' show sample;
 import 'package:campus_schedule/platform/classroom_session_cache.dart';
+import 'support/memory_appearance.dart';
 
 class RecoveryController extends PlatformInAppWebViewController {
   RecoveryController()
@@ -103,19 +104,21 @@ void main() {
       sample().toJson()..['dataSource'] = 'school',
     );
     await tester.pumpWidget(
-      MaterialApp(
-        home: ClassroomCoursePage(
-          course: course,
-          importCourses: [course],
-          onDetails: (_) {},
-          probe:
-              probe ??
-              (url) async => AccessProbe(
-                failure ??
-                    (direct || url == vpnEntry
-                        ? ProbeState.available
-                        : ProbeState.unavailable),
-              ),
+      appearanceScope(
+        MaterialApp(
+          home: ClassroomCoursePage(
+            course: course,
+            importCourses: [course],
+            onDetails: (_) {},
+            probe:
+                probe ??
+                (url) async => AccessProbe(
+                  failure ??
+                      (direct || url == vpnEntry
+                          ? ProbeState.available
+                          : ProbeState.unavailable),
+                ),
+          ),
         ),
       ),
     );

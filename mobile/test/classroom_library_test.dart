@@ -8,6 +8,7 @@ import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'schedule_test.dart' show sample;
 import 'support/memory_classroom_library.dart';
+import 'support/memory_appearance.dart';
 
 void main() {
   late Directory directory;
@@ -270,15 +271,17 @@ void main() {
     final restored = await tester.runAsync(() => library.lookup(local));
     var probes = 0;
     await tester.pumpWidget(
-      MaterialApp(
-        home: ClassroomCoursePage(
-          course: local,
-          library: MemoryClassroomLibrary(restored),
-          onDetails: (_) {},
-          probe: (_) async {
-            probes++;
-            throw StateError('Must not connect');
-          },
+      appearanceScope(
+        MaterialApp(
+          home: ClassroomCoursePage(
+            course: local,
+            library: MemoryClassroomLibrary(restored),
+            onDetails: (_) {},
+            probe: (_) async {
+              probes++;
+              throw StateError('Must not connect');
+            },
+          ),
         ),
       ),
     );

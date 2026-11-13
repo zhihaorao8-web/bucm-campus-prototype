@@ -16,6 +16,7 @@ import 'package:campus_schedule/ui/classroom_connection_card.dart';
 import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'package:campus_schedule/ui/classroom_recording_timeline.dart';
 import 'classroom_recovery_page_test.dart' as fake;
+import 'support/memory_appearance.dart';
 import 'classroom_name_merge_test.dart'
     show local, source, NameImportController;
 
@@ -86,37 +87,39 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         var retries = 0, opens = 0;
         await tester.pumpWidget(
-          RepaintBoundary(
-            key: boundary,
-            child: MaterialApp(
-              theme: appTheme(dark ? Brightness.dark : Brightness.light)
-                  .copyWith(
-                    textTheme:
-                        appTheme(
-                          dark ? Brightness.dark : Brightness.light,
-                        ).textTheme.apply(
-                          fontFamily: capture ? 'PreviewChinese' : null,
-                        ),
-                  ),
-              builder: (context, child) => MiuixThemeBridge(
-                child: MediaQuery(
-                  data: MediaQuery.of(
-                    context,
-                  ).copyWith(textScaler: const TextScaler.linear(2)),
-                  child: child!,
-                ),
-              ),
-              home: Scaffold(
-                body: SingleChildScrollView(
-                  child: ClassroomConnectionCard(
-                    status: const ClassroomConnectionStatus(
-                      ClassroomConnectionPhase.unavailable,
-                      '更新失败，已导入目录保留。',
+          appearanceScope(
+            RepaintBoundary(
+              key: boundary,
+              child: MaterialApp(
+                theme: appTheme(dark ? Brightness.dark : Brightness.light)
+                    .copyWith(
+                      textTheme:
+                          appTheme(
+                            dark ? Brightness.dark : Brightness.light,
+                          ).textTheme.apply(
+                            fontFamily: capture ? 'PreviewChinese' : null,
+                          ),
                     ),
-                    directoryLabel: '本地目录 · 更新于 2026-10-02 08:00',
-                    busy: false,
-                    onRetry: () => retries++,
-                    onOpenSchool: () => opens++,
+                builder: (context, child) => MiuixThemeBridge(
+                  child: MediaQuery(
+                    data: MediaQuery.of(
+                      context,
+                    ).copyWith(textScaler: const TextScaler.linear(2)),
+                    child: child!,
+                  ),
+                ),
+                home: Scaffold(
+                  body: SingleChildScrollView(
+                    child: ClassroomConnectionCard(
+                      status: const ClassroomConnectionStatus(
+                        ClassroomConnectionPhase.unavailable,
+                        '更新失败，已导入目录保留。',
+                      ),
+                      directoryLabel: '本地目录 · 更新于 2026-10-02 08:00',
+                      busy: false,
+                      onRetry: () => retries++,
+                      onOpenSchool: () => opens++,
+                    ),
                   ),
                 ),
               ),
@@ -183,20 +186,22 @@ void main() {
         InAppWebViewPlatform.instance = fake.RecoveryPlatform(controller);
         var probes = 0;
         await tester.pumpWidget(
-          MaterialApp(
-            home: ClassroomCoursePage(
-              course: local,
-              date: DateTime(2026, 10, 1),
-              library: library,
-              onDetails: (_) {},
-              probe: (url) async {
-                probes++;
-                return AccessProbe(
-                  url == vpnEntry
-                      ? ProbeState.available
-                      : ProbeState.unavailable,
-                );
-              },
+          appearanceScope(
+            MaterialApp(
+              home: ClassroomCoursePage(
+                course: local,
+                date: DateTime(2026, 10, 1),
+                library: library,
+                onDetails: (_) {},
+                probe: (url) async {
+                  probes++;
+                  return AccessProbe(
+                    url == vpnEntry
+                        ? ProbeState.available
+                        : ProbeState.unavailable,
+                  );
+                },
+              ),
             ),
           ),
         );

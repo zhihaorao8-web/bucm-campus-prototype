@@ -9,12 +9,18 @@ import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'package:campus_schedule/ui/course_interaction.dart';
 import 'package:campus_schedule/ui/course_widgets.dart';
+import 'package:campus_schedule/ui/course_surface.dart';
 import 'package:campus_schedule/ui/today_focus.dart';
 import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'support/memory_appearance.dart';
 import 'schedule_test.dart' show sample;
 
-Widget frame(Widget child, {bool reduced = false}) => ProviderScope(
+Widget frame(
+  Widget child, {
+  bool reduced = false,
+  bool contrast = false,
+  double scale = 1,
+}) => ProviderScope(
   overrides: [
     appearanceRepositoryProvider.overrideWithValue(
       MemoryAppearanceRepository(),
@@ -26,7 +32,11 @@ Widget frame(Widget child, {bool reduced = false}) => ProviderScope(
     supportedLocales: const [Locale('zh', 'CN')],
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
     builder: (context, child) => MediaQuery(
-      data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
+      data: MediaQuery.of(context).copyWith(
+        disableAnimations: reduced,
+        highContrast: contrast,
+        textScaler: TextScaler.linear(scale),
+      ),
       child: MiuixThemeBridge(child: child!),
     ),
     home: Scaffold(body: SingleChildScrollView(child: child)),
@@ -34,6 +44,55 @@ Widget frame(Widget child, {bool reduced = false}) => ProviderScope(
 );
 
 void main() {
+  for (final contrast in [false, true]) {
+    testWidgets(
+      'full course sheet keeps fields and dismissal at large text; contrast=$contrast',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final course = Course.fromJson({
+          ...sample().toJson(),
+          'dataSource': 'synthetic',
+        });
+        await tester.pumpWidget(
+          frame(
+            Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showCourseInformation(context, course),
+                child: const Text('完整信息'),
+              ),
+            ),
+            contrast: contrast,
+            reduced: contrast,
+            scale: 1.5,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('完整信息'));
+        await tester.pumpAndSettle();
+        final sheet = find.byType(QuietSheet);
+        expect(sheet, findsOneWidget);
+        expect(tester.getRect(sheet).top, greaterThanOrEqualTo(0));
+        expect(find.text(course.name), findsOneWidget);
+        expect(find.text('合成示例'), findsOneWidget);
+        final filter = tester.widget<BackdropFilter>(
+          find.descendant(of: sheet, matching: find.byType(BackdropFilter)),
+        );
+        expect(filter.enabled, !contrast);
+        await tester.ensureVisible(find.text('北京时间'));
+        await tester.pumpAndSettle();
+        expect(find.text('08:30–10:00'), findsOneWidget);
+        await tester.ensureVisible(find.text('完成'));
+        await tester.tap(find.text('完成'));
+        await tester.pumpAndSettle();
+        expect(sheet, findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
   for (final reduced in [false, true]) {
     testWidgets(
       'press cancellation restores card and does not activate; reduced=$reduced',
@@ -133,6 +192,17 @@ void main() {
         expect(page, findsOneWidget);
         final route = ModalRoute.of(tester.element(page))!;
         expect(route, isA<CourseDetailsRoute>());
+        final bar = tester.getRect(
+          find.descendant(of: page, matching: find.byType(AppBar)),
+        );
+        final summary = tester.getRect(
+          find.descendant(of: page, matching: find.byType(QuietCard)).first,
+        );
+        expect(summary.top, closeTo(bar.bottom + 16, .5));
+        expect(
+          tester.getRect(find.byKey(const ValueKey('course-detail-list'))).top,
+          bar.top,
+        );
         expect(
           route.transitionDuration,
           reduced ? Duration.zero : const Duration(milliseconds: 280),

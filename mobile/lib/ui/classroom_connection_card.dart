@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_miuix/miuix.dart';
+import 'course_surface.dart';
 import '../application/classroom_connection_status.dart';
 
 class ClassroomConnectionCard extends StatelessWidget {
@@ -18,7 +18,7 @@ class ClassroomConnectionCard extends StatelessWidget {
   final VoidCallback? onRetry, onOpenSchool;
 
   @override
-  Widget build(BuildContext context) => MiuixCard(
+  Widget build(BuildContext context) => QuietCard(
     child: Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
