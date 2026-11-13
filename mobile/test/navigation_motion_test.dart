@@ -9,6 +9,88 @@ import 'schedule_test.dart' show MemoryRepository;
 import 'week_grid_test.dart' show weeklyPreviewData;
 
 void main() {
+  for (final (dark, scale) in [
+    (false, 1.0),
+    (true, 1.0),
+    (false, 1.5),
+    (true, 1.5),
+  ]) {
+    testWidgets(
+      'switching a collapsed page never shifts its content vertically dark=$dark scale=$scale',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(
+          app(
+            MemoryRepository(weeklyPreviewData(DateTime.now())),
+            dark: dark,
+            scale: scale,
+          ),
+        );
+        await tester.pumpAndSettle();
+        final today = find.byKey(const PageStorageKey('today-page'));
+        await tester.drag(today, const Offset(0, -220));
+        await tester.pumpAndSettle();
+        final anchor = find.byKey(
+          const ValueKey('today-focus'),
+          skipOffstage: false,
+        );
+        final before = tester.getTopLeft(anchor).dy;
+        final scroll = tester.widget<ListView>(today).controller!;
+        final offset = scroll.offset;
+        final target = find.byKey(
+          const ValueKey('topbar-1'),
+          skipOffstage: false,
+        );
+        final targetY = tester.getTopLeft(target).dy;
+        final targetHeight = tester.getSize(target).height;
+        await tester.tap(find.byKey(const ValueKey('tab-1')));
+        await tester.pump();
+        for (var frame = 0; frame < 10; frame++) {
+          await tester.pump(const Duration(milliseconds: 20));
+          expect(scroll.offset, closeTo(offset, .01));
+          expect(
+            tester.getTopLeft(anchor).dy,
+            closeTo(before, .5),
+            reason:
+                'Outgoing body must not relayout when another header expands (frame $frame)',
+          );
+          expect(tester.getTopLeft(target).dy, closeTo(targetY, .5));
+          expect(tester.getSize(target).height, closeTo(targetHeight, .5));
+        }
+        await tester.pumpAndSettle();
+        final settingsTitle = find.descendant(
+          of: find.byKey(
+            const PageStorageKey('settings-page'),
+            skipOffstage: false,
+          ),
+          matching: find.text('教务同步', skipOffstage: false),
+        );
+        final settingsY = tester.getTopLeft(settingsTitle).dy;
+        await tester.tap(find.byKey(const ValueKey('tab-0')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('tab-2')));
+        await tester.pump();
+        for (var frame = 0; frame < 13; frame++) {
+          await tester.pump(const Duration(milliseconds: 20));
+          expect(
+            tester.getTopLeft(settingsTitle).dy,
+            closeTo(settingsY, .5),
+            reason:
+                'Cold non-adjacent destination must already have its final insets',
+          );
+        }
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('tab-0')));
+        await tester.pumpAndSettle();
+        expect(scroll.offset, closeTo(offset, .01));
+        expect(tester.getTopLeft(anchor).dy, closeTo(before, .5));
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
   Future<void> mount(WidgetTester tester, {bool reduced = false}) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

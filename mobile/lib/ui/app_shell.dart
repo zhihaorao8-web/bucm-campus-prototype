@@ -3,6 +3,7 @@ import 'app_icon_controls.dart';
 import 'app_icons.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_miuix/miuix.dart';
 import '../application/schedule_controller.dart';
@@ -39,8 +40,8 @@ class _AppShellState extends ConsumerState<AppShell>
   double tabDrag = 0;
   final navigation = PageController();
   final dayController = ScrollController();
-  ScrollController get activeScroll =>
-      tab == 1 && daily ? dayController : pageControllers[tab];
+  ScrollController scrollFor(int index) =>
+      index == 1 && daily ? dayController : pageControllers[index];
   String? selectedSemester;
   DateTime now = schoolNow();
   late final Timer ticker;
@@ -208,118 +209,137 @@ class _AppShellState extends ConsumerState<AppShell>
     final stored = ref.watch(scheduleProvider);
     final appearance = ref.watch(currentAppearanceProvider);
     return Scaffold(
-      body: QuietBackdrop(
-        tab: tab,
-        child: MiuixScaffold(
-          containerColor: Colors.transparent,
-          topBar: ListenableBuilder(
-            listenable: activeScroll,
-            builder: (context, _) {
-              final opaque =
-                  MediaQuery.highContrastOf(context) ||
-                  appearance.contrast > 0 ||
-                  !appearance.blur ||
-                  !appearance.glass;
-              final scroll = activeScroll;
-              final scrim = scroll.hasClients
-                  ? (scroll.positions.last.pixels / 80).clamp(0.0, 1.0)
-                  : 0.0;
-              return MiuixTopAppBar(
-                key: ValueKey('topbar-$tab'),
-                title: ['今日', '课表', '设置'][tab],
-                color: Theme.of(context).colorScheme.surface,
-                scrollBehavior: scrollBehaviors[tab],
-                blurred: !opaque,
-                blurRadius: 20,
-                blurTintAlpha: .04 + .76 * scrim,
-                actions: [
-                  if (demo)
-                    TextButton(
-                      onPressed: () => setState(() {
-                        demo = false;
-                        week = 0;
-                        selectedSemester = null;
-                      }),
-                      child: const Text('退出示例'),
-                    ),
-                  if (!demo && stored.hasValue && tab != 2)
-                    Tooltip(
-                      message: '导入或刷新课表',
-                      child: MiuixIconButton(
-                        minWidth: 48,
-                        minHeight: 48,
-                        onPressed: openImport,
-                        child: const AppIcon(AppIcons.sync),
-                      ),
-                    ),
-                  if (!demo && stored.hasValue && tab == 1)
-                    Tooltip(
-                      message: '统一导入录播',
-                      child: MiuixIconButton(
-                        key: const ValueKey('classroom-import-button'),
-                        minWidth: 48,
-                        minHeight: 48,
-                        onPressed: importClassroom,
-                        child: const AppIcon(AppIcons.mediaLibrary),
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-                ],
-              );
-            },
-          ),
-          content: (insets) => GestureDetector(
-            onHorizontalDragStart:
-                appearance.swipePages && MediaQuery.disableAnimationsOf(context)
-                ? (_) => tabDrag = 0
-                : null,
-            onHorizontalDragUpdate:
-                appearance.swipePages && MediaQuery.disableAnimationsOf(context)
-                ? (event) => tabDrag += event.delta.dx
-                : null,
-            onHorizontalDragEnd:
-                appearance.swipePages && MediaQuery.disableAnimationsOf(context)
-                ? (event) {
-                    final velocity = event.primaryVelocity ?? 0;
-                    if (tabDrag.abs() > 64 || velocity.abs() > 450) {
-                      final direction = tabDrag.abs() > 16 ? tabDrag : velocity;
-                      selectTab((tab + (direction < 0 ? 1 : -1)).clamp(0, 2));
-                    }
+      body: MiuixScaffold(
+        containerColor: Colors.transparent,
+        content: (dockInsets) => GestureDetector(
+          onHorizontalDragStart:
+              appearance.swipePages && MediaQuery.disableAnimationsOf(context)
+              ? (_) => tabDrag = 0
+              : null,
+          onHorizontalDragUpdate:
+              appearance.swipePages && MediaQuery.disableAnimationsOf(context)
+              ? (event) => tabDrag += event.delta.dx
+              : null,
+          onHorizontalDragEnd:
+              appearance.swipePages && MediaQuery.disableAnimationsOf(context)
+              ? (event) {
+                  final velocity = event.primaryVelocity ?? 0;
+                  if (tabDrag.abs() > 64 || velocity.abs() > 450) {
+                    final direction = tabDrag.abs() > 16 ? tabDrag : velocity;
+                    selectTab((tab + (direction < 0 ? 1 : -1)).clamp(0, 2));
                   }
-                : null,
-            child: PageView(
-              key: const ValueKey('main-navigation-pager'),
-              controller: navigation,
-              physics:
-                  appearance.swipePages &&
-                      !MediaQuery.disableAnimationsOf(context)
-                  ? const PageScrollPhysics()
-                  : const NeverScrollableScrollPhysics(),
-              onPageChanged: (value) => setState(() => tab = value),
-              children: [
-                for (var index = 0; index < 3; index++)
-                  RetainedNavigationPage(
-                    key: ValueKey('navigation-page-$index'),
-                    controller: navigation,
-                    index: index,
-                    selected: tab,
-                    child: navigationPage(index, insets, stored),
+                }
+              : null,
+          child: PageView(
+            key: const ValueKey('main-navigation-pager'),
+            controller: navigation,
+            allowImplicitScrolling: true,
+            scrollCacheExtent: const ScrollCacheExtent.viewport(2),
+            physics:
+                appearance.swipePages &&
+                    !MediaQuery.disableAnimationsOf(context)
+                ? const PageScrollPhysics()
+                : const NeverScrollableScrollPhysics(),
+            onPageChanged: (value) => setState(() => tab = value),
+            children: [
+              for (var index = 0; index < 3; index++)
+                RetainedNavigationPage(
+                  key: ValueKey('navigation-page-$index'),
+                  controller: navigation,
+                  index: index,
+                  selected: tab,
+                  child: QuietBackdrop(
+                    tab: index,
+                    child: MiuixScaffold(
+                      key: ValueKey('main-page-scaffold-$index'),
+                      containerColor: Colors.transparent,
+                      contentWindowInsets: EdgeInsets.fromLTRB(
+                        dockInsets.left,
+                        MediaQuery.paddingOf(context).top,
+                        dockInsets.right,
+                        dockInsets.bottom,
+                      ),
+                      topBar: navigationHeader(index, stored, appearance),
+                      content: (insets) =>
+                          navigationPage(index, insets, stored),
+                    ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
-          bottomBar: AnimatedBuilder(
-            animation: navigation,
-            builder: (context, _) => GlassNavigation(
-              selected: tab,
-              position: navigationPosition(navigation, tab),
-              onSelect: selectTab,
-            ),
+        ),
+        bottomBar: AnimatedBuilder(
+          animation: navigation,
+          builder: (context, _) => GlassNavigation(
+            selected: tab,
+            position: navigationPosition(navigation, tab),
+            onSelect: selectTab,
           ),
         ),
       ),
     );
   }
+
+  Widget navigationHeader(
+    int index,
+    AsyncValue<ScheduleData> stored,
+    AppearanceSettings appearance,
+  ) => ListenableBuilder(
+    listenable: scrollFor(index),
+    builder: (context, _) {
+      final opaque =
+          MediaQuery.highContrastOf(context) ||
+          appearance.contrast > 0 ||
+          !appearance.blur ||
+          !appearance.glass;
+      final scroll = scrollFor(index);
+      final scrim = scroll.hasClients
+          ? (scroll.positions.last.pixels / 80).clamp(0.0, 1.0)
+          : 0.0;
+      return MiuixTopAppBar(
+        key: ValueKey('topbar-$index'),
+        title: ['今日', '课表', '设置'][index],
+        color: Theme.of(context).colorScheme.surface,
+        scrollBehavior: scrollBehaviors[index],
+        blurred: !opaque,
+        blurRadius: 20,
+        blurTintAlpha: .04 + .76 * scrim,
+        actions: [
+          if (demo)
+            TextButton(
+              onPressed: () => setState(() {
+                demo = false;
+                week = 0;
+                selectedSemester = null;
+              }),
+              child: const Text('退出示例'),
+            ),
+          if (!demo && stored.hasValue && index != 2)
+            Tooltip(
+              message: '导入或刷新课表',
+              child: MiuixIconButton(
+                minWidth: 48,
+                minHeight: 48,
+                onPressed: openImport,
+                child: const AppIcon(AppIcons.sync),
+              ),
+            ),
+          if (!demo && stored.hasValue && index == 1)
+            Tooltip(
+              message: '统一导入录播',
+              child: MiuixIconButton(
+                key: const ValueKey('classroom-import-button'),
+                minWidth: 48,
+                minHeight: 48,
+                onPressed: importClassroom,
+                child: const AppIcon(AppIcons.mediaLibrary),
+              ),
+            ),
+          const SizedBox(width: 8),
+        ],
+      );
+    },
+  );
 
   EdgeInsets pagePadding(EdgeInsets insets, {double horizontal = 24}) =>
       EdgeInsets.fromLTRB(

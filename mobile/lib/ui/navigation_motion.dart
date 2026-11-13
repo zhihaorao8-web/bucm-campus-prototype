@@ -39,7 +39,10 @@ class _RetainedNavigationPageState extends State<RetainedNavigationPage>
             enabled: selected,
             child: ExcludeSemantics(
               excluding: !selected,
-              child: IgnorePointer(ignoring: !selected, child: child),
+              child: ExcludeFocus(
+                excluding: !selected,
+                child: IgnorePointer(ignoring: !selected, child: child),
+              ),
             ),
           ),
         );
