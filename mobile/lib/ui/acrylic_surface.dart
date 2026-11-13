@@ -26,7 +26,7 @@ class AcrylicSurface extends ConsumerWidget {
             : [
                 BoxShadow(
                   color: (dark ? Colors.black : const Color(0xFF75AFC2))
-                      .withValues(alpha: dark ? .16 : .045),
+                      .withValues(alpha: dark ? .04 : .045),
                   blurRadius: 20,
                   offset: const Offset(0, 6),
                 ),
@@ -38,8 +38,8 @@ class AcrylicSurface extends ConsumerWidget {
           key: const ValueKey('focus-acrylic-blur'),
           enabled: !opaque,
           filter: ui.ImageFilter.blur(
-            sigmaX: dark ? 16 : 10,
-            sigmaY: dark ? 16 : 10,
+            sigmaX: 10,
+            sigmaY: 10,
           ),
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -51,9 +51,9 @@ class AcrylicSurface extends ConsumerWidget {
                       end: Alignment.bottomRight,
                       colors: [
                         (dark ? const Color(0xFF252F38) : Colors.white)
-                            .withValues(alpha: dark ? .86 : .46),
+                            .withValues(alpha: dark ? .30 : .46),
                         (dark ? const Color(0xFF252F38) : Colors.white)
-                            .withValues(alpha: dark ? .76 : .26),
+                            .withValues(alpha: dark ? .16 : .26),
                       ],
                     ),
               borderRadius: BorderRadius.circular(28),
