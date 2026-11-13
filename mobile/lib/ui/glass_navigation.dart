@@ -1,3 +1,4 @@
+import 'app_icons.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
@@ -14,11 +15,7 @@ class GlassNavigation extends ConsumerWidget {
   final int selected;
   final ValueChanged<int> onSelect;
   static const labels = ['今日', '课表', '设置'];
-  static const icons = [
-    Icons.wb_sunny_outlined,
-    Icons.calendar_view_week_outlined,
-    Icons.tune_outlined,
-  ];
+  static const icons = [AppIcons.sun, AppIcons.calendarWeek, AppIcons.sliders];
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(currentAppearanceProvider);
@@ -158,7 +155,7 @@ class GlassNavigation extends ConsumerWidget {
                                               mainAxisAlignment:
                                                   MainAxisAlignment.center,
                                               children: [
-                                                Icon(
+                                                AppIcon(
                                                   icons[index],
                                                   size: 25,
                                                   color: selected == index

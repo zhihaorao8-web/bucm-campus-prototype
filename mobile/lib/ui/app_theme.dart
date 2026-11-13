@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_miuix/miuix.dart';
 import '../application/appearance_controller.dart';
+import 'app_icons.dart';
 
 /// HyperOS / MIUIX surfaces and typography, shared with Flutter route overlays.
 abstract final class AppColors {
@@ -115,6 +116,10 @@ ThemeData appTheme(
       );
   return ThemeData(
     useMaterial3: true,
+    actionIconTheme: ActionIconThemeData(
+      backButtonIconBuilder: (_) => const AppIcon(AppIcons.arrowBack),
+      closeButtonIconBuilder: (_) => const AppIcon(AppIcons.close),
+    ),
     pageTransitionsTheme: PageTransitionsTheme(
       builders: {
         TargetPlatform.android: settings.predictiveBack

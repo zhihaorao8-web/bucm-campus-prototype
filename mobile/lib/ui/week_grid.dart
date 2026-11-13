@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'app_icons.dart';
 import '../domain/schedule.dart';
 import 'app_theme.dart';
 import 'course_widgets.dart';
@@ -360,9 +361,8 @@ class WeekGrid extends StatelessWidget {
                                                 Align(
                                                   alignment:
                                                       Alignment.centerRight,
-                                                  child: Icon(
-                                                    Icons
-                                                        .video_library_outlined,
+                                                  child: AppIcon(
+                                                    AppIcons.mediaLibrary,
                                                     size: 12,
                                                     color: ink,
                                                   ),

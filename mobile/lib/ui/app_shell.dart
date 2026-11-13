@@ -1,3 +1,5 @@
+import 'app_icon_controls.dart';
+import 'app_icons.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -220,7 +222,7 @@ class _AppShellState extends ConsumerState<AppShell>
                   minWidth: 48,
                   minHeight: 48,
                   onPressed: openImport,
-                  child: const Icon(Icons.sync_outlined),
+                  child: const AppIcon(AppIcons.sync),
                 ),
               ),
             if (!demo && stored.hasValue && tab == 1)
@@ -231,7 +233,7 @@ class _AppShellState extends ConsumerState<AppShell>
                   minWidth: 48,
                   minHeight: 48,
                   onPressed: importClassroom,
-                  child: const Icon(Icons.video_library_outlined),
+                  child: const AppIcon(AppIcons.mediaLibrary),
                 ),
               ),
             const SizedBox(width: 8),
@@ -390,7 +392,7 @@ class _AppShellState extends ConsumerState<AppShell>
         child: DropdownButton<String>(
           value: semester,
           isExpanded: true,
-          icon: const Icon(Icons.expand_more),
+          icon: const AppIcon(AppIcons.chevronDown),
           items: data.semesters
               .map(
                 (s) => DropdownMenuItem(
@@ -576,7 +578,7 @@ class _AppShellState extends ConsumerState<AppShell>
             onPressed: selectedWeek > 1
                 ? () => setState(() => week = selectedWeek - 1)
                 : null,
-            icon: const Icon(Icons.chevron_left),
+            icon: const AppIcon(AppIcons.chevronLeft),
           ),
           Expanded(
             child: Column(
@@ -607,7 +609,7 @@ class _AppShellState extends ConsumerState<AppShell>
             onPressed: selectedWeek < maximum
                 ? () => setState(() => week = selectedWeek + 1)
                 : null,
-            icon: const Icon(Icons.chevron_right),
+            icon: const AppIcon(AppIcons.chevronRight),
           ),
         ],
       ),
@@ -710,10 +712,10 @@ class _AppShellState extends ConsumerState<AppShell>
       MiuixCard(
         cornerRadius: 24,
         insideMargin: EdgeInsets.zero,
-        child: MiuixArrowPreference(
+        child: AppArrowPreference(
           title: '外观设置',
           summary: '主题、颜色、底栏与界面缩放',
-          startAction: const Icon(Icons.palette_outlined),
+          startAction: const AppIcon(AppIcons.palette),
           onClick: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const AppearancePage()),
           ),
@@ -724,10 +726,10 @@ class _AppShellState extends ConsumerState<AppShell>
       MiuixCard(
         cornerRadius: 24,
         insideMargin: EdgeInsets.zero,
-        child: MiuixArrowPreference(
+        child: AppArrowPreference(
           title: '统一导入录播',
           summary: '当前学期课表课程 · 导入后直接查看列表',
-          startAction: const Icon(Icons.video_library_outlined),
+          startAction: const AppIcon(AppIcons.mediaLibrary),
           enabled: !busy && !demo && data.courses.isNotEmpty,
           onClick: importClassroom,
         ),
@@ -746,11 +748,11 @@ class _AppShellState extends ConsumerState<AppShell>
                 style: TextStyle(fontSize: 16, height: 1.5),
               ),
             ),
-            MiuixArrowPreference(
+            AppArrowPreference(
               title: '退出学校会话',
               summary: '保留离线课表，清除录播目录与本机观看进度',
               enabled: !busy,
-              startAction: const Icon(Icons.logout),
+              startAction: const AppIcon(AppIcons.logOut),
               onClick: () async {
                 if (!await confirm(
                   '退出学校会话？',
@@ -764,10 +766,10 @@ class _AppShellState extends ConsumerState<AppShell>
                 });
               },
             ),
-            MiuixArrowPreference(
+            AppArrowPreference(
               title: '清空本地课表',
               summary: '删除所有学期的本地课程',
-              startAction: const Icon(Icons.delete_outline),
+              startAction: const AppIcon(AppIcons.trash),
               enabled: !busy && !demo && data.courses.isNotEmpty,
               onClick: () async {
                 if (!await confirm('清空本地课表？', '将删除所有学期的本地课程。之后可以重新从学校导入。')) {
@@ -789,11 +791,11 @@ class _AppShellState extends ConsumerState<AppShell>
       MiuixCard(
         cornerRadius: 24,
         insideMargin: EdgeInsets.zero,
-        child: MiuixArrowPreference(
+        child: AppArrowPreference(
           key: const ValueKey('project-info-entry'),
           title: '项目信息',
           summary: '应用版本、开发者与源代码',
-          startAction: const Icon(Icons.info_outline),
+          startAction: const AppIcon(AppIcons.info),
           onClick: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const ProjectInfoPage()),
           ),

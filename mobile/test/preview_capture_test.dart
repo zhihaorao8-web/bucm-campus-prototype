@@ -91,6 +91,11 @@ void main() {
     }
 
     Future<void> capture(String name) async {
+      expect(
+        find.byType(Icon),
+        findsNothing,
+        reason: 'Legacy font icons remain in the $name application preview',
+      );
       final images = tester.widgetList<Image>(find.byType(Image)).toList();
       await tester.runAsync(() async {
         for (final image in images) {

@@ -1,3 +1,5 @@
+import 'app_icon_controls.dart';
+import 'app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -54,7 +56,9 @@ class AppearancePage extends ConsumerWidget {
           ListTile(
             title: Text(entry.value),
             selected: entry.key == current,
-            trailing: entry.key == current ? const Icon(Icons.check) : null,
+            trailing: entry.key == current
+                ? const AppIcon(AppIcons.check)
+                : null,
             leading: entry.key is int
                 ? CircleAvatar(
                     radius: 12,
@@ -75,7 +79,7 @@ class AppearancePage extends ConsumerWidget {
     Widget toggle(
       String title,
       String summary,
-      IconData icon,
+      AppIconData icon,
       bool value,
       AppearanceSettings Function(AppearanceSettings, bool) change, {
       bool enabled = true,
@@ -83,7 +87,7 @@ class AppearancePage extends ConsumerWidget {
       key: ValueKey('appearance-$title'),
       title: title,
       summary: summary,
-      startAction: Icon(icon),
+      startAction: AppIcon(icon),
       value: value,
       enabled: ready && enabled,
       onChanged: (value) =>
@@ -92,13 +96,13 @@ class AppearancePage extends ConsumerWidget {
     Widget choice(
       String title,
       String summary,
-      IconData icon,
+      AppIconData icon,
       VoidCallback onTap, {
       bool enabled = true,
-    }) => MiuixArrowPreference(
+    }) => AppArrowPreference(
       title: title,
       summary: summary,
-      startAction: Icon(icon),
+      startAction: AppIcon(icon),
       enabled: ready && enabled,
       onClick: onTap,
     );
@@ -139,7 +143,7 @@ class AppearancePage extends ConsumerWidget {
           toggle(
             '启用 Monet 颜色',
             info?.systemAccent != null ? '从系统壁纸提取强调色' : '当前设备未提供动态颜色，使用手动强调色',
-            Icons.wallpaper_outlined,
+            AppIcons.wallpaper,
             p.monet,
             (v, value) => v.copyWith(monet: value),
             enabled: info?.systemAccent != null,
@@ -149,7 +153,7 @@ class AppearancePage extends ConsumerWidget {
             p.monet && info?.systemAccent != null
                 ? '跟随系统壁纸'
                 : accentChoices[p.accent] ?? '自定义',
-            Icons.colorize_outlined,
+            AppIcons.pipette,
             () async {
               final color = await choose(
                 context,
@@ -166,7 +170,7 @@ class AppearancePage extends ConsumerWidget {
           choice(
             '色彩风格',
             variantChoices[p.variant] ?? p.variant.name,
-            Icons.palette_outlined,
+            AppIcons.palette,
             () async {
               final variant = await choose(
                 context,
@@ -180,7 +184,7 @@ class AppearancePage extends ConsumerWidget {
             },
           ),
           const ListTile(
-            leading: Icon(Icons.color_lens_outlined),
+            leading: AppIcon(AppIcons.palette),
             title: Text('色彩标准'),
             subtitle: Text('Material 3'),
           ),
@@ -191,7 +195,7 @@ class AppearancePage extends ConsumerWidget {
                 : p.contrast == .5
                 ? '中对比度'
                 : '高对比度',
-            Icons.contrast,
+            AppIcons.contrast,
             () async {
               final value = await choose(context, '色彩对比度', {
                 0.0: '标准',
@@ -208,21 +212,21 @@ class AppearancePage extends ConsumerWidget {
           toggle(
             '模糊',
             '启用顶栏和底栏的背景模糊',
-            Icons.blur_on,
+            AppIcons.blur,
             p.blur,
             (v, value) => v.copyWith(blur: value),
           ),
           toggle(
             '悬浮底栏',
             '使用 Apple 风格的悬浮底栏',
-            Icons.dock_outlined,
+            AppIcons.dock,
             p.floating,
             (v, value) => v.copyWith(floating: value),
           ),
           toggle(
             '液态玻璃',
             '悬浮底栏的高光与半透明玻璃效果',
-            Icons.water_drop_outlined,
+            AppIcons.droplet,
             p.glass,
             (v, value) => v.copyWith(glass: value),
             enabled: p.floating && p.blur,
@@ -232,7 +236,7 @@ class AppearancePage extends ConsumerWidget {
           toggle(
             '预测性返回动画',
             '子页面跟随系统返回手势预览（Android 14 及以上）',
-            Icons.swipe_outlined,
+            AppIcons.swipe,
             p.predictiveBack,
             (v, value) => v.copyWith(predictiveBack: value),
             enabled: (info?.sdk ?? 0) >= 34,
@@ -240,14 +244,14 @@ class AppearancePage extends ConsumerWidget {
           toggle(
             '横移返回手势',
             '从子页面左侧边缘右滑返回',
-            Icons.swipe_right_alt,
+            AppIcons.swipe,
             p.swipeBack,
             (v, value) => v.copyWith(swipeBack: value),
           ),
           toggle(
             '页面切换手势',
             '在主页面横向滑动切换今日、课表和设置',
-            Icons.swap_horiz,
+            AppIcons.swapHorizontal,
             p.swipePages,
             (v, value) => v.copyWith(swipePages: value),
           ),
@@ -273,7 +277,7 @@ class _ScaleSettingState extends ConsumerState<_ScaleSetting> {
     return Column(
       children: [
         ListTile(
-          leading: const Icon(Icons.format_size),
+          leading: const AppIcon(AppIcons.fontSize),
           title: const Text('界面缩放'),
           subtitle: const Text('调整整体界面比例，保留系统字号设置'),
           trailing: Text('${(value * 100).round()}%'),
@@ -362,12 +366,8 @@ class ThemePhonePreview extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   for (var i = 0; i < 3; i++)
-                    Icon(
-                      [
-                        Icons.wb_sunny_outlined,
-                        Icons.calendar_month,
-                        Icons.tune,
-                      ][i],
+                    AppIcon(
+                      [AppIcons.sun, AppIcons.calendar, AppIcons.sliders][i],
                       size: 12,
                       color: i == 2 ? c.primary : c.onSurfaceVariant,
                     ),

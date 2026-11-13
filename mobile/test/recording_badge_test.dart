@@ -4,9 +4,13 @@ import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/ui/course_widgets.dart';
 import 'package:campus_schedule/ui/week_grid.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
+import 'package:campus_schedule/ui/app_icons.dart';
 import 'schedule_test.dart' show sample;
 
 void main() {
+  Finder recordingIcon() => find.byWidgetPredicate(
+    (widget) => widget is AppIcon && widget.icon == AppIcons.mediaLibrary,
+  );
   testWidgets(
     'local playback badge is explicit in rows and does not force icons into tight grid cells',
     (tester) async {
@@ -36,7 +40,7 @@ void main() {
       expect(find.text(course.name), findsOneWidget);
       await tester.pumpWidget(surface(CourseRow(event: event)));
       await tester.pumpAndSettle();
-      expect(find.byIcon(Icons.video_library_outlined), findsNothing);
+      expect(recordingIcon(), findsNothing);
       await tester.pumpWidget(
         surface(
           SizedBox(
@@ -51,7 +55,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byIcon(Icons.video_library_outlined), findsNothing);
+      expect(recordingIcon(), findsNothing);
       expect(
         find.byWidgetPredicate(
           (widget) =>
@@ -76,7 +80,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byIcon(Icons.video_library_outlined), findsWidgets);
+      expect(recordingIcon(), findsWidgets);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },

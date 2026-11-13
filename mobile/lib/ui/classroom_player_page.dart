@@ -1,3 +1,4 @@
+import 'app_icons.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -398,7 +399,9 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                                             current.small!,
                                             current.main,
                                           ),
-                                    icon: const Icon(Icons.swap_horiz),
+                                    icon: const AppIcon(
+                                      AppIcons.swapHorizontal,
+                                    ),
                                     label: const Text('交换主画面与小窗'),
                                   ),
                                 ],
@@ -569,8 +572,15 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
       ],
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-        child: Text(
-          '${small ? '小窗' : '主画面'} · ${small && state.small == null ? '已关闭' : classroomViewName(small ? state.small! : state.main)} ▾',
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${small ? '小窗' : '主画面'} · ${small && state.small == null ? '已关闭' : classroomViewName(small ? state.small! : state.main)}',
+            ),
+            const SizedBox(width: 4),
+            const AppIcon(AppIcons.chevronDown, size: 16),
+          ],
         ),
       ),
     );
@@ -648,9 +658,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                 onPressed: canControl
                     ? () => player.command(state.wanted ? 'pause' : 'play')
                     : null,
-                icon: Icon(
-                  state.wanted ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                ),
+                icon: AppIcon(state.wanted ? AppIcons.pause : AppIcons.play),
               ),
               Expanded(
                 child: Text(
@@ -681,8 +689,8 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
               IconButton(
                 tooltip: fullscreen ? '退出全屏' : '全屏',
                 onPressed: changingFullscreen ? null : toggleFullscreen,
-                icon: Icon(
-                  fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                icon: AppIcon(
+                  fullscreen ? AppIcons.fullscreenExit : AppIcons.fullscreen,
                 ),
               ),
             ],
@@ -704,7 +712,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                         ),
                       })
                     : null,
-                icon: const Icon(Icons.replay_10),
+                icon: const AppIcon(AppIcons.back10),
               ),
               IconButton(
                 tooltip: '前进10秒',
@@ -716,7 +724,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                         ),
                       })
                     : null,
-                icon: const Icon(Icons.forward_10),
+                icon: const AppIcon(AppIcons.forward10),
               ),
               viewMenu(small: false),
               viewMenu(small: true),
@@ -725,7 +733,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                   onPressed: state.available.any((kind) => kind != state.main)
                       ? showSmall
                       : null,
-                  icon: const Icon(Icons.picture_in_picture_alt_outlined),
+                  icon: const AppIcon(AppIcons.pictureInPicture),
                   label: const Text('显示小窗'),
                 ),
               IconButton(
@@ -733,7 +741,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                 onPressed: state.small == null
                     ? null
                     : () => layout(state.small!, state.main),
-                icon: const Icon(Icons.swap_horiz),
+                icon: const AppIcon(AppIcons.swapHorizontal),
               ),
             ],
           ),
@@ -777,7 +785,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                 color: Colors.white,
                 style: IconButton.styleFrom(backgroundColor: Colors.black54),
                 onPressed: changingFullscreen ? null : toggleFullscreen,
-                icon: const Icon(Icons.arrow_back),
+                icon: const AppIcon(AppIcons.arrowBack),
               ),
             ),
             Positioned(
@@ -787,8 +795,8 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                 tooltip: '切换画面',
                 color: Colors.white,
                 onPressed: showViewDrawer,
-                icon: const Icon(
-                  Icons.video_settings_outlined,
+                icon: const AppIcon(
+                  AppIcons.videoSettings,
                   shadows: [Shadow(color: Colors.black87, blurRadius: 4)],
                 ),
               ),
@@ -847,7 +855,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
               actions: [
                 TextButton.icon(
                   onPressed: changingFullscreen ? null : toggleFullscreen,
-                  icon: const Icon(Icons.fullscreen),
+                  icon: const AppIcon(AppIcons.fullscreen),
                   label: const Text('横屏'),
                   style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
                 ),

@@ -1,3 +1,5 @@
+import 'app_icon_controls.dart';
+import 'app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import '../data/classroom_library.dart';
@@ -65,7 +67,7 @@ class ClassroomRecordingTimeline extends StatelessWidget {
                   '来源：${visible[i].course.teacher.isEmpty ? '学校未提供教师' : visible[i].course.teacher}${visible[i].course.group.isEmpty ? '' : ' · ${visible[i].course.group}'}\n${visible[i].record.place.isEmpty ? '学校未提供地点' : visible[i].record.place} · ${visible[i].record.published ? '已发布' : '未发布或暂不可观看'}',
                 ),
                 isThreeLine: true,
-                trailing: const Icon(Icons.play_circle_outline),
+                trailing: const AppIcon(AppIcons.playCircle),
                 onTap: busy || !visible[i].record.published
                     ? null
                     : () => onPlay(visible[i].record, visible[i].course.id),
@@ -113,7 +115,7 @@ class ClassroomRecordingTimeline extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ExpansionTile(
+        AppExpansionTile(
           title: Text('回放来源（${archive.courses.length}）'),
           children: [
             for (final source in archive.sources ?? [archive])

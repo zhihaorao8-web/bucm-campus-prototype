@@ -1,3 +1,4 @@
+import 'app_icons.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -87,10 +88,11 @@ class _ClassroomBrowserState extends State<ClassroomBrowser> {
         title: const Text('轻新课堂官方页面'),
         leading: IconButton(
           onPressed: back,
-          icon: const Icon(Icons.arrow_back),
+          icon: const AppIcon(AppIcons.arrowBack),
         ),
         actions: [
           PopupMenuButton<ClassroomAccess>(
+            icon: const AppIcon(AppIcons.moreVertical),
             tooltip: '学校访问方式',
             onSelected: selectAccess,
             itemBuilder: (_) => const [
@@ -111,7 +113,7 @@ class _ClassroomBrowserState extends State<ClassroomBrowser> {
           IconButton(
             tooltip: '返回课程',
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close),
+            icon: const AppIcon(AppIcons.close),
           ),
         ],
       ),

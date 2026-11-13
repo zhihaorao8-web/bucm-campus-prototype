@@ -1,3 +1,4 @@
+import 'app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../platform/test_diagnostics.dart';
@@ -44,7 +45,7 @@ class TestDiagnosticsPage extends StatelessWidget {
                       );
                     }
                   },
-                  icon: const Icon(Icons.copy),
+                  icon: const AppIcon(AppIcons.copy),
                   label: const Text('复制诊断记录'),
                 ),
                 TextButton(onPressed: log.clear, child: const Text('清空记录')),

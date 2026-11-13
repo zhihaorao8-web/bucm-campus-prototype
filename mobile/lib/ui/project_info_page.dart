@@ -1,6 +1,7 @@
+import 'app_icon_controls.dart';
+import 'app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../platform/app_platform.dart';
 import '../platform/test_diagnostics.dart';
@@ -47,11 +48,11 @@ class ProjectInfoPage extends ConsumerWidget {
       required String target,
       required String title,
       required String address,
-      required IconData icon,
+      required AppIconData icon,
     }) => settingsGroup([
-      MiuixArrowPreference(
+      AppArrowPreference(
         title: title,
-        startAction: Icon(icon),
+        startAction: AppIcon(icon),
         onClick: () => open(context, target),
       ),
       Padding(
@@ -73,7 +74,7 @@ class ProjectInfoPage extends ConsumerWidget {
           child: TextButton.icon(
             key: ValueKey('copy-$target'),
             onPressed: () => copy(context, address),
-            icon: const Icon(Icons.copy_outlined, size: 18),
+            icon: const AppIcon(AppIcons.copy, size: 18),
             label: const Text('复制地址'),
           ),
         ),
@@ -140,7 +141,7 @@ class ProjectInfoPage extends ConsumerWidget {
         if (TestDiagnostics.available) heading('测试工具'),
         if (TestDiagnostics.available)
           settingsGroup([
-            MiuixArrowPreference(
+            AppArrowPreference(
               title: '测试诊断',
               summary: '查看、复制或清空本次导入记录',
               onClick: () => Navigator.of(context).push(
@@ -152,7 +153,7 @@ class ProjectInfoPage extends ConsumerWidget {
           ]),
         heading('开发者信息'),
         settingsGroup([
-          MiuixArrowPreference(
+          AppArrowPreference(
             title: developerName,
             summary: '@$developerLogin',
             startAction: ClipOval(
@@ -173,7 +174,7 @@ class ProjectInfoPage extends ConsumerWidget {
           target: 'repository',
           title: 'bucm-campus-prototype',
           address: repositoryUrl,
-          icon: Icons.code,
+          icon: AppIcons.code,
         ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 16),

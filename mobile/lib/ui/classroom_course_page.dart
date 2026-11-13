@@ -1,3 +1,5 @@
+import 'app_icon_controls.dart';
+import 'app_icons.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -1606,10 +1608,11 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       title: const Text('学校官方页面'),
       leading: IconButton(
         onPressed: webBack,
-        icon: const Icon(Icons.arrow_back),
+        icon: const AppIcon(AppIcons.arrowBack),
       ),
       actions: [
         PopupMenuButton<ClassroomAccess>(
+          icon: const AppIcon(AppIcons.moreVertical),
           tooltip: '学校访问方式',
           onSelected: connect,
           itemBuilder: (_) => const [
@@ -1632,12 +1635,12 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           onPressed: busy || tabs[active].purpose == _Purpose.playback
               ? null
               : retryCurrent,
-          icon: const Icon(Icons.refresh),
+          icon: const AppIcon(AppIcons.refresh),
         ),
         IconButton(
           tooltip: '返回课程',
           onPressed: closeWeb,
-          icon: const Icon(Icons.close),
+          icon: const AppIcon(AppIcons.close),
         ),
       ],
     ),
@@ -1655,7 +1658,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           if (!busy && tabs[active].purpose != _Purpose.playback)
             TextButton.icon(
               onPressed: retryCurrent,
-              icon: const Icon(Icons.refresh),
+              icon: const AppIcon(AppIcons.refresh),
               label: const Text('继续导入'),
             ),
           Expanded(
@@ -1915,7 +1918,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                     Text(local.semester),
                     Material(
                       type: MaterialType.transparency,
-                      child: ExpansionTile(
+                      child: AppExpansionTile(
                         tilePadding: EdgeInsets.zero,
                         title: const Text('课程信息'),
                         children: [
@@ -2047,7 +2050,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                             '${record.place.isEmpty ? '学校未提供地点' : record.place}\n${record.published ? '已发布' : '未发布或暂不可观看'}',
                           ),
                           isThreeLine: true,
-                          trailing: const Icon(Icons.play_circle_outline),
+                          trailing: const AppIcon(AppIcons.playCircle),
                           onTap: busy || !record.published
                               ? null
                               : () => playNative(
@@ -2223,7 +2226,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                   ),
                   trailing:
                       importFinished && status == ImportTaskStatus.completed
-                      ? const Icon(Icons.chevron_right)
+                      ? const AppIcon(AppIcons.chevronRight)
                       : null,
                   onTap: !importFinished || status != ImportTaskStatus.completed
                       ? null

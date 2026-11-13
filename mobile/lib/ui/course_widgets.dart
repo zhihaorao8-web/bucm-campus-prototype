@@ -1,3 +1,4 @@
+import 'app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import '../domain/schedule.dart';
@@ -180,9 +181,9 @@ class CourseRow extends StatelessWidget {
             if (hasRecordings)
               const Tooltip(
                 message: '本地目录中有可播放录播',
-                child: Icon(Icons.video_library_outlined, size: 20),
+                child: AppIcon(AppIcons.mediaLibrary, size: 20),
               ),
-            const Icon(Icons.chevron_right, size: 20),
+            const AppIcon(AppIcons.chevronRight, size: 20),
           ],
         ),
       ),
@@ -203,8 +204,8 @@ class EmptySchedule extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          Icons.calendar_month_outlined,
+        AppIcon(
+          AppIcons.calendar,
           size: 48,
           color: Theme.of(context).colorScheme.primary,
         ),

@@ -1,3 +1,4 @@
+import 'app_icons.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -363,17 +364,17 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       IconButton(
         tooltip: '缩小网页',
         onPressed: () => resizeWeb(web(), factor: .8),
-        icon: const Icon(Icons.zoom_out),
+        icon: const AppIcon(AppIcons.zoomOut),
       ),
       TextButton.icon(
         onPressed: () => resizeWeb(web()),
-        icon: const Icon(Icons.fit_screen),
+        icon: const AppIcon(AppIcons.zoomFit),
         label: const Text('适应宽度'),
       ),
       IconButton(
         tooltip: '放大网页',
         onPressed: () => resizeWeb(web(), factor: 1.25),
-        icon: const Icon(Icons.zoom_in),
+        icon: const AppIcon(AppIcons.zoomIn),
       ),
     ],
   );
@@ -460,6 +461,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           ),
           actions: [
             PopupMenuButton<String>(
+              icon: const AppIcon(AppIcons.moreVertical),
               tooltip: '学校入口',
               enabled: !busy,
               onSelected: (url) async {
@@ -518,8 +520,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : Icon(
-                              running ? Icons.pause : Icons.download_outlined,
+                          : AppIcon(
+                              running ? AppIcons.pause : AppIcons.download,
                             ),
                       label: Text(
                         running

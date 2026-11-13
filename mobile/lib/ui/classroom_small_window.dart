@@ -1,3 +1,4 @@
+import 'app_icons.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
@@ -222,7 +223,7 @@ class _ClassroomSmallWindowState extends State<ClassroomSmallWindow> {
                       style: IconButton.styleFrom(
                         backgroundColor: Colors.black54,
                       ),
-                      icon: const Icon(Icons.close, size: 18),
+                      icon: const AppIcon(AppIcons.close, size: 18),
                     ),
                   ),
               ],

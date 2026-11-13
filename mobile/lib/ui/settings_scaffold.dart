@@ -1,3 +1,4 @@
+import 'app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,7 +38,7 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
               blurred: settings.blur && !MediaQuery.highContrastOf(context),
               navigationIcon: IconButton(
                 tooltip: '返回',
-                icon: const Icon(Icons.arrow_back),
+                icon: const AppIcon(AppIcons.arrowBack),
                 onPressed: () => Navigator.maybePop(context),
               ),
             ),
