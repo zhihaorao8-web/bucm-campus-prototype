@@ -19,6 +19,8 @@ import 'appearance_page.dart';
 import 'project_info_page.dart';
 import 'classroom_import_page.dart';
 import 'quiet_backdrop.dart';
+import 'today_focus.dart';
+import 'app_theme.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -203,7 +205,7 @@ class _AppShellState extends ConsumerState<AppShell>
           topBar: MiuixTopAppBar(
             key: ValueKey('topbar-$tab'),
             title: ['今日', '课表', '设置'][tab],
-          color: Theme.of(context).colorScheme.surface,
+            color: Theme.of(context).colorScheme.surface,
             scrollBehavior: scrollBehaviors[tab],
             blurred: appearance.blur && !MediaQuery.highContrastOf(context),
             blurRadius: 44,
@@ -432,6 +434,10 @@ class _AppShellState extends ConsumerState<AppShell>
     final today = occurrencesOn(courses, now);
     final next = nextOccurrences(courses, now).firstOrNull;
     final current = today.where((e) => e.activeAt(now)).length;
+    final teachingWeek = courses.first.weekAt(now);
+    final maxWeek = courses
+        .map((c) => c.maxWeek)
+        .reduce((a, b) => a > b ? a : b);
     final colors = Theme.of(context).colorScheme;
     return ListView(
       key: const PageStorageKey('today-page'),
@@ -439,66 +445,43 @@ class _AppShellState extends ConsumerState<AppShell>
       padding: pagePadding(insets),
       children: [
         if (demo) demoNotice(),
-        Text(
-          '${shortDate(now)}，星期${weekdays[now.weekday - 1]}',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyLarge!.copyWith(color: colors.onSurfaceVariant),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              '${shortDate(now)}，星期${weekdays[now.weekday - 1]}',
+              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                color: colors.onSurfaceVariant,
+                fontFeatures: tabularTime,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: colors.surfaceContainer,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colors.outlineVariant),
+              ),
+              child: Text(
+                teachingWeek >= 1 && teachingWeek <= maxWeek
+                    ? '第 $teachingWeek 教学周'
+                    : '非教学周',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: colors.onSurfaceVariant,
+                  fontFeatures: tabularTime,
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         termSelector(data, semester),
         const SizedBox(height: 16),
         if (next != null)
-          MiuixCard(
-            cornerRadius: 28,
-            insideMargin: const EdgeInsets.all(24),
-            onPressed: () =>
-                showCourseDetails(context, next.course, date: next.date),
-            child: DefaultTextStyle(
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge!.copyWith(color: colors.onSurface),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    next.activeAt(now)
-                        ? '正在上课${current > 1 ? '，有$current门课程重叠' : ''}'
-                        : '下一节课',
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    next.segment.start,
-                    style: TextStyle(
-                      fontSize: 44,
-                      fontWeight: FontWeight.w700,
-                      color: colors.primary,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    next.activeAt(now)
-                        ? '${next.segment.end} 下课'
-                        : next.start.difference(now).inMinutes < 60
-                        ? '${next.start.difference(now).inMinutes + 1}分钟内开始'
-                        : '${shortDate(next.date)}，周${weekdays[next.date.weekday - 1]}',
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    next.course.name,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: colors.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(courseLocation(next.course)),
-                ],
-              ),
-            ),
-          )
+          FocusCourseCard(event: next, now: now, overlaps: current)
         else
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
@@ -525,19 +508,11 @@ class _AppShellState extends ConsumerState<AppShell>
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Text('今天没有排课，留一点时间给自己。'),
           ),
-        for (final (index, event) in today.indexed)
-          CourseRow(
-            event: event,
-            hasRecordings: hasRecordings(event.course),
-            colorIndex: index % 5,
-            now: now,
-            conflict: today.any(
-              (other) =>
-                  other != event &&
-                  other.course.id != event.course.id &&
-                  event.overlaps(other),
-            ),
-          ),
+        TodayCourseTimeline(
+          events: today,
+          now: now,
+          hasRecordings: hasRecordings,
+        ),
         const SizedBox(height: 16),
         Text(
           data.isDemo
