@@ -39,6 +39,12 @@ void main() {
       await (FontLoader(
         'MaterialIcons',
       )..addFont(Future.value(ByteData.sublistView(icons)))).load();
+      final longCang = await File(
+        'assets/fonts/LongCang-Regular.ttf',
+      ).readAsBytes();
+      await (FontLoader(
+        'LongCang',
+      )..addFont(Future.value(ByteData.sublistView(longCang)))).load();
     });
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);

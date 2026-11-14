@@ -1,3 +1,9 @@
+# 2026-11-14今日与课表左上角艺术标题字体
+
+按用户需求在保持轻盈粉彩背景与既有顶栏折叠结构前提下，将“今日”和“课表”大标题改为灵动飘逸的开源中文行书展示字体：
+- 引入 Google Fonts 开源字体 **Long Cang（龙藏体）**（`design/fonts/LongCang/LongCang-Regular.ttf`，SIL Open Font License 1.1），通过 `scripts/prepare_flutter.py` 离线打包至 `assets/fonts/LongCang-Regular.ttf`，上游 `OFL.txt` 同步随包复制到原生 `assets/third-party/LongCang/OFL.txt`，并在 [THIRD_PARTY](docs/THIRD_PARTY.md) 登记；不引入在线字体请求。
+- 在 [app_shell.dart](mobile/lib/ui/app_shell.dart) 中仅对`index == 0`（“今日”）和`index == 1`（“课表”）覆写 `MiuixTheme.textStyles.title1`（`fontFamily: 'LongCang'`、`fontSize: 38`、`height: 1.12`、`letterSpacing: 2.0`、`w400`），保留滚动折叠后居中 `title3` 小标题与“设置”页默认系统字体的高可读性，并保持原有模糊、滚动阴影与高对比度规则。
+
 # 2026-11-14浅色动态光效轻盈灵动优化
 
 按用户后续反馈（上一轮`a7f8241`高饱和色调过于鲜艳）并结合`frontend-stack` / `frontend-design` / `impeccable`（`quieter` + `colorize`）与`review-animations`规范，重塑`QuietBackdrop`浅色弥散光效，在保持“轻盈”高明度空气感的同时提升“灵动”分层流动感，未改变课程、认证、导航结构或减少动画/高对比度规则：

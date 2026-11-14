@@ -296,7 +296,7 @@ class _AppShellState extends ConsumerState<AppShell>
       final scrim = scroll.hasClients
           ? (scroll.positions.last.pixels / 80).clamp(0.0, 1.0)
           : 0.0;
-      return MiuixTopAppBar(
+      final topBar = MiuixTopAppBar(
         key: ValueKey('topbar-$index'),
         title: ['今日', '课表', '设置'][index],
         color: Theme.of(context).colorScheme.surface,
@@ -337,6 +337,22 @@ class _AppShellState extends ConsumerState<AppShell>
             ),
           const SizedBox(width: 8),
         ],
+      );
+      if (index == 2) return topBar;
+      final miuixTheme = MiuixTheme.of(context);
+      return MiuixTheme(
+        data: miuixTheme.copyWith(
+          textStyles: miuixTheme.textStyles.copy(
+            title1: miuixTheme.textStyles.title1.copyWith(
+              fontFamily: 'LongCang',
+              fontSize: 38,
+              height: 1.12,
+              letterSpacing: 2.0,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+        child: topBar,
       );
     },
   );

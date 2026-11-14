@@ -1,3 +1,10 @@
+# 2026-11-14“今日”与“课表”艺术标题字体（合成检查通过，待模拟器验收）
+
+- 引入开源中文字体 **Long Cang（龙藏体）**（`design/fonts/LongCang/LongCang-Regular.ttf` 及 `OFL.txt`，SIL Open Font License 1.1），更新 `scripts/prepare_flutter.py`、`mobile/pubspec.yaml`、`assets/third-party/LongCang/OFL.txt` 与 `docs/THIRD_PARTY.md` 离线打包及许可记录，无在线字体请求。
+- 在 `mobile/lib/ui/app_shell.dart` 中对“今日”（`index == 0`）与“课表”（`index == 1`）`MiuixTopAppBar` 的展开大标题（`title1`）应用 `LongCang`（38sp、`height: 1.12`、`letterSpacing: 2.0`），保留“设置”（`index == 2`）及折叠小标题默认系统字体。
+- 新增 `mobile/test/artistic_title_test.dart`（校验字库资产加载与浅/深色 `1.0x/1.5x/2.0x` 字号无溢出、标题字体归属），并在 `mobile/test/preview_capture_test.dart` 加载 `LongCang` 进行合成渲染核对。
+- `flutter analyze` 无问题；完整默认回归 **267 项通过、9 项条件跳过**；`CAPTURE_PREVIEW=true` 已核对 `today.png`、`week.png`、`settings.png`。本分项尚未单独安装到模拟器复测（将与紧随其后的今日页语录功能一并构建模拟器验收），未修改版本 `0.27/code11`、未合入 `main` 或发布。
+
 # 2026-11-14浅色动态光效轻盈灵动优化（模拟器验收通过）
 
 - 依据`frontend-stack` / `frontend-design`、`impeccable`（`quieter`+`colorize`）及`review-animations`规范优化`mobile/lib/ui/quiet_backdrop.dart`（提交`3502552`）：浅色背景恢复高明度中性微光底（`#FAFBFD → #FCFDFF → #FDFBF7`），今日（`#6ECBFF`、`#7BE3C9`、`#A79FFF`、`#FFBED1`）、课表（`#78B0FF`、`#7AE0C7`、`#B5D6FF`、`#B7B3FF`）与设置（`#B398FF`、`#FFC59F`、`#E0CCFF`、`#82D1FF`）均收拢为透亮粉彩色板与克制透明度（`[.34, .32, .30, .28]`，渐变节点`[0, .24, .62, 1]`）。

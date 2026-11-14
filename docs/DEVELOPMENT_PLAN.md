@@ -14,6 +14,8 @@
 
 ## 当前停点
 
+- **2026-11-14“今日”与“课表”艺术标题字体（已完成合成检查，待随语录一并真机/模拟器验收）**：引入 Google Fonts 开源手写行书体 `LongCang`（SIL OFL 1.1，离线打包至 `assets/fonts/LongCang-Regular.ttf` 并随包附 `OFL.txt`），仅应用于“今日”与“课表”左上角大标题（38sp、`height: 1.12`、`letterSpacing: 2.0`），保留折叠居中标题与“设置”系统字体。`flutter analyze` 无问题、完整默认 **267 项通过 / 9 项条件跳过**（含新增 `artistic_title_test.dart`）、`CAPTURE_PREVIEW` 合成渲染 `today.png`、`week.png`、`settings.png` 已核对。即将提交并普通推送 `codex/quiet-ui-refresh`，接着实现今日页顶端随机语录功能。
+
 - **2026-11-14浅色动态光效轻盈灵动优化（用户已验收通过）**：结合`impeccable`（`quieter`+`colorize`）与`review-animations`规范调整`QuietBackdrop`浅色弥散光场（`3502552`）。`flutter analyze`无问题、完整默认266项回归通过/9项条件跳过、`CAPTURE_PREVIEW`合成预览及12相位帧采样已核对；随后基于干净`3502552`构建正常包名`cn.bucm.campus_schedule`的release APK并安装至`Pixel_8_API_36`（`emulator-5554`）冷启动验收，用户明确确认“验收通过”。物理手机帧率/功耗及学校侧未验边界保持独立；未修改版本`0.27/code11`、未合入`main`或发布，等待用户下一步安排。
 
 - **2026-11-14第五阶段审核通过**：用户已确认第五阶段审核通过，柔光亚克力UI五阶段在本轮模拟器验证与本地release交付记录范围内完成验收。物理手机FrameTiming/功耗、完整TalkBack手势与语音、Android预测返回预览/取消、物理键盘反向遍历，以及学校侧WebVPN/认证恢复/完整学期/完整课时/7天会话仍独立待验；未合入`main`、未改版本或创建GitHub Release，等待用户下一步指令。
