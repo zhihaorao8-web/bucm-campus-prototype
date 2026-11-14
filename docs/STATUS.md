@@ -1,3 +1,9 @@
+# 2026-11-14课程课堂页分段模糊控件与维护操作、录播列表重设计（合成检查通过，待模拟器验收）
+
+- 新增 `mobile/lib/ui/classroom_section_switch.dart`，用 `AcrylicSurface(radius: 20)` + `BackdropFilter(sigmaX: 10, sigmaY: 10)` 与 220ms 滑动玻璃指示器重构「录播 / 直播」切换控件（保留关闭模糊/玻璃与高对比度不透明降级）。
+- 重设计 `mobile/lib/ui/classroom_connection_card.dart`、`mobile/lib/ui/classroom_recording_timeline.dart` 与 `mobile/lib/ui/classroom_course_page.dart`：合并状态提示/摘要与“刷新录播”“重新匹配同名课程”实体操作按钮至同一 `QuietCard` 维护卡；将“回放来源（N）”、空状态提示、分页栏及“选择匹配的学校课程”候选清单纳入分层 `QuietCard` 与清晰状态胶囊，同时保留既有 `ListTile` / 48×48 圆形播放扩张原点及无障碍触控尺寸。
+- 新增 `mobile/test/classroom_ui_polish_test.dart`（校验分段模糊开关 4 种不透明降级、浅深色 `1.0x/1.5x/2.0x` 模糊渲染、状态去重及 `320dp + 2.0x` 下连接卡/来源折叠/录播卡/分页条零溢出）；最终改动后验证：`flutter analyze` 无问题；完整默认回归 **285 项通过、10 项条件跳过**；`flutter test test/classroom_ui_polish_test.dart --dart-define=CAPTURE_PREVIEW=true` 13 项通过，已目检 `dist/flutter-preview/classroom-polish-light.png` 与 `classroom-polish-dark.png`。本项 UI 改动尚待构建 APK 安装至 `Pixel_8_API_36` 模拟器或物理手机实机验收；未修改版本 `0.27/code11`、未合入 `main` 或创建 GitHub Release。
+
 # 2026-11-14仿 Macintosh Skeletal Filled 方案 B1 艺术标题、一笔描边入场动效与今日语录（模拟器验收通过）
 
 - 基于已推送提交 `e64f85d`（包含 `d2eaa1a` 今日顶部随机语录与“在线一言”开关，以及 **B1 优雅牵丝连笔矢量标题 + 1350ms 苹果开机风格逐笔描边入场动效**），执行 `flutter build apk --debug` 生成 `mobile/build/app/outputs/flutter-apk/app-debug.apk`（退出码 `0`）。

@@ -1,3 +1,10 @@
+# 2026-11-14课程课堂页分段模糊控件与录播/候选列表重设计
+
+按用户针对「课程课堂」二级页的视觉与操作反馈，结合 `QuietBackdrop` / `AcrylicSurface` / `QuietCard` 设计规范重设计“录播 / 直播”分段切换、连接维护按钮及下方来源/回放/同名候选列表（未改动认证边界、域名限制或播放业务逻辑）：
+- **分段模糊胶囊开关**：新增 [classroom_section_switch.dart](mobile/lib/ui/classroom_section_switch.dart)（`ClassroomSectionSwitch`），以 `AcrylicSurface(radius: 20, blurKey: ValueKey('classroom-section-blur'))` 提供与日视图日期栏一致的 10px 实时背景模糊、柔和半透明边界与 220ms 滑动玻璃指示胶囊（深浅色分别使用高透亮微光高亮；减少动画即时切换，关闭模糊/玻璃或高对比度时退回实色），替换此前“录播 / 直播”生硬实白配黑框的 `MiuixTabRow`。
+- **连接状态与直接维护操作卡**：重设计 [classroom_connection_card.dart](mobile/lib/ui/classroom_connection_card.dart) 与 [classroom_course_page.dart](mobile/lib/ui/classroom_course_page.dart)，将原分散悬浮的状态提示、合并摘要与裸文字链接收拢至单张 `QuietCard` 操作卡：含状态图标徽章、时间戳（等宽 `tabularTime`）、重复状态去重（`detail != label`）、淡底摘要条，以及 `>=48dp` 触控高度的实感按钮组（主色调 `FilledButton.tonalIcon` **刷新录播** + 轻边 `OutlinedButton.icon` **重新匹配同名课程**，窄屏及 `2.0x` 字号下通过 `Wrap` 自动换行）。
+- **来源、回放卡片与同名候选列表层级**：重设计 [classroom_recording_timeline.dart](mobile/lib/ui/classroom_recording_timeline.dart) 及候选课程匹配清单：将“回放来源（N）”收进可折叠 `QuietCard`（内置教师、班级与 `N 条录播` 胶囊）、“本次课回放”标题内联日期徽章、空状态改为带图标的静谧提示卡、`ClassroomRecordingTile` 区分“来源 / 地点 / `已发布`（或`未发布或暂不可观看`）徽标”（保留 `ListTile` 语义及 48×48 圆形播放扩张按钮原点），并新增响应式 `ClassroomPaginationBar` 磨砂分页条及结构化“选择匹配的学校课程”卡片列表。
+
 # 2026-11-14仿 Macintosh Skeletal Filled 艺术标题与一笔描边入场动效（B1 方案）
 
 按用户调研 `npwitk/Macintosh-Skeletal-Filled`、`jhao941/McIntosh-Writer` 与 `JaceThings/SF-Hello` 风格并审核确认 **方案 B1（优雅牵丝连笔）+ 苹果开机风格一笔描边入场动效**后，以自研轻量矢量方案替换此前临时引入的 `LongCang` 字体文件：
