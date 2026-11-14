@@ -23,6 +23,7 @@ import 'project_info_page.dart';
 import 'classroom_import_page.dart';
 import 'quiet_backdrop.dart';
 import 'today_focus.dart';
+import 'today_quote_banner.dart';
 import 'week_navigation.dart';
 import 'schedule_sync_card.dart';
 import 'app_theme.dart';
@@ -527,6 +528,8 @@ class _AppShellState extends ConsumerState<AppShell>
       padding: pagePadding(insets),
       children: [
         if (demo) demoNotice(),
+        const TodayQuoteBanner(),
+        const SizedBox(height: 14),
         Wrap(
           spacing: 12,
           runSpacing: 8,

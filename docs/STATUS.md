@@ -1,4 +1,12 @@
-# 2026-11-14“今日”与“课表”艺术标题字体（合成检查通过，待模拟器验收）
+# 2026-11-14今日页面顶端随机语录与“在线一言”开关（合成检查通过，待模拟器验收）
+
+- 参考 GitHub `Linkium-DevTeam/JadeDaily`（`quote_service.dart` 一言接口 + 本地兜底池）与 `Shangjin-Xiao/ThoughtEcho` 交互模型，新增 `mobile/lib/application/quote_service.dart`（24 条本地中文语录库 + `DailyQuote.tryFromHitokotoJson` 校验 + HTTPS `https://v1.hitokoto.cn/?encode=json` 4 秒超时与 16 KiB 上限获取器）。
+- 在 `mobile/lib/application/appearance_controller.dart` 与 `mobile/lib/ui/appearance_page.dart` 新增 `onlineQuotes` 持久化字段与“在线一言”开关（默认 `false`，兼容历史 JSON；关闭时不发起外部请求，开启失败自动回退本地库）。
+- 新增 `mobile/lib/ui/today_quote_banner.dart` 并接入 `mobile/lib/ui/app_shell.dart` 今日课程列表顶端（未加在空课表引导页上方以保持 `320×720` 下“先体验合成示例”首屏可达）；支持整卡及 ≥48×48 刷新按钮换句、220ms `AnimatedSwitcher` 淡入切换、系统减少动画与高对比度不透明降级。
+- 新增 `mobile/test/quote_service_test.dart`（覆盖 Hitokoto JSON 解析与非法输入拒绝、离线隔离、`onlineQuotes` 历史 JSON 兼容、390/320 宽度 1.0x/1.5x/2.0x 及高对比点击换句、空课表隐藏语录条保留首屏 CTA、以及开启“在线一言”后触发获取与外观开关交互）。
+- 最终修改后验证：`flutter analyze` 无问题；完整默认回归 **272 项通过、9 项条件跳过**（含 `quote_service_test.dart` 与 `ui_test.dart`，零布局警告）；`CAPTURE_PREVIEW=true` 已渲染并人工核对 `dist/flutter-preview/today.png`（可见 `LongCang`“今日”大标题、顶部半透明语录条与下方今日课程卡片间距自然）。本轮与 `d5bdd2d` 尚待打新 APK 安装至模拟器/物理手机实机验收；未修改版本 `0.27/code11`、未合入 `main` 或创建 GitHub Release。
+
+# 2026-11-14“今日”与“课表”艺术标题字体（已推送 `d5bdd2d`，合成检查通过，待模拟器验收）
 
 - 引入开源中文字体 **Long Cang（龙藏体）**（`design/fonts/LongCang/LongCang-Regular.ttf` 及 `OFL.txt`，SIL Open Font License 1.1），更新 `scripts/prepare_flutter.py`、`mobile/pubspec.yaml`、`assets/third-party/LongCang/OFL.txt` 与 `docs/THIRD_PARTY.md` 离线打包及许可记录，无在线字体请求。
 - 在 `mobile/lib/ui/app_shell.dart` 中对“今日”（`index == 0`）与“课表”（`index == 1`）`MiuixTopAppBar` 的展开大标题（`title1`）应用 `LongCang`（38sp、`height: 1.12`、`letterSpacing: 2.0`），保留“设置”（`index == 2`）及折叠小标题默认系统字体。

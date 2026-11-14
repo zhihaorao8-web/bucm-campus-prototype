@@ -1,3 +1,9 @@
+# 2026-11-14今日页面顶端随机语录与“在线一言”开关
+
+按用户要求参考 GitHub 相关开源实现（如 `Linkium-DevTeam/JadeDaily` `quote_service.dart` 与 `Shangjin-Xiao/ThoughtEcho` 一言数据模型与切换交互）在今日页面顶端加入随机语录展示，同时严格遵守本地隐私与零非必要外部请求原则：
+- **默认完全离线、可选开启在线**：[quote_service.dart](mobile/lib/application/quote_service.dart) 内置 24 条精选中文诗词与求学格言作为默认本地语录库；在 [appearance_controller.dart](mobile/lib/application/appearance_controller.dart) 与 [appearance_page.dart](mobile/lib/ui/appearance_page.dart) 新增“在线一言”开关（`onlineQuotes`，默认 `false`，兼容旧版设置 JSON）。关闭时不发起任何网络请求；仅在用户手动开启“在线一言”后，才通过 HTTPS 访问 `https://v1.hitokoto.cn/?encode=json`（4 秒超时、16 KiB 响应上限、长度与控制字符校验），网络异常或格式校验未通过时无缝回退本地语录库。
+- **轻盈编辑风顶部条**：[today_quote_banner.dart](mobile/lib/ui/today_quote_banner.dart) 置于 [app_shell.dart](mobile/lib/ui/app_shell.dart) 今日课程列表顶端（不放在空课表引导页上方，以免小屏 `320×720` 挤压“先体验合成示例”首屏可点击按钮），采用半透明磨砂细边框卡片 + 3px 左侧主色竖线 + 语录正文与出处（在线来源附“一言”小徽标）+ 右侧 ≥48×48 刷新按钮及整条轻触换句，`AnimatedSwitcher`（220ms，响应系统“减少动画”）平滑过渡，并兼容系统及应用高对比度不透明降级。
+
 # 2026-11-14今日与课表左上角艺术标题字体
 
 按用户需求在保持轻盈粉彩背景与既有顶栏折叠结构前提下，将“今日”和“课表”大标题改为灵动飘逸的开源中文行书展示字体：

@@ -254,6 +254,13 @@ class AppearancePage extends ConsumerWidget {
             p.showWeekend,
             (v, value) => v.copyWith(showWeekend: value),
           ),
+          toggle(
+            '在线一言',
+            '开启后在“今日”页随机请求公开一言接口（v1.hitokoto.cn），离线或失败时自动使用本地语录',
+            AppIcons.refresh,
+            p.onlineQuotes,
+            (v, value) => v.copyWith(onlineQuotes: value),
+          ),
         ]),
         settingsGroup([
           toggle(
