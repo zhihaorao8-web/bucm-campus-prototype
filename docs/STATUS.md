@@ -1,3 +1,9 @@
+# 2026-11-14 0.3 主线合入与发布准备（`0.3` / `code 12`，检查通过，待合入 `main` 触发精确提交 CI 与双包重编）
+
+- 根据用户 2026-11-14 指令（合入 `main`、准备在 GitHub 发布 `0.3`、同步更新 `CHANGELOG.md`），将唯一版本来源 `AndroidManifest.xml` 更新为 `android:versionName="0.3"` / `android:versionCode="12"`，经 `scripts/prepare_flutter.py` 同步 `mobile/pubspec.yaml` 至 `0.3.0+12`；同步更新 `CHANGELOG.md`、`README.md`、`docs/VERSIONING.md`、`docs/PROJECT_BRIEF.md`、`docs/DEVELOPMENT_PLAN.md` 并新建 `docs/releases/0.3.md`。
+- 本轮版本升级后已完成离线及真/模拟器隔离验证：`python scripts/dependencies.py`（7 项锁定依赖）、`python scripts/check.py`、`python scripts/prepare_flutter.py`、`flutter pub get --enforce-lockfile`、`flutter analyze --no-pub` 无问题、完整默认 `flutter test --no-pub` **285 项通过 / 10 项条件跳过**、`--dart-define=CAMPUS_DIRECT_CATALOG=true` 直取专项 **23 项通过**；并在 `Pixel_8_API_36`（`emulator-5554`）上通过前置 `--release` 刷新插件注册表后的隔离 R8 二进制 XLS 解析仪器测试（`connectedReleaseAndroidTest -PcampusReleaseParserTest=true`，1/1 通过）。
+- 接下来先干净提交并快进合入 `main`（不重写旧标签与历史附件），再从精确 `main` 提交追踪 `.github/workflows/flutter.yml` CI 并顺序重建本地可信开发签名 `0.3` `release` + `debug` 双包、核对签名与 SHA-256 摘要，完成隔离测试后的最终安装包重建与发布就绪状态汇总。
+
 # 2026-11-14课程课堂页分段模糊控件与维护操作、录播列表重设计（合成检查通过，待模拟器验收）
 
 - 新增 `mobile/lib/ui/classroom_section_switch.dart`，用 `AcrylicSurface(radius: 20)` + `BackdropFilter(sigmaX: 10, sigmaY: 10)` 与 220ms 滑动玻璃指示器重构「录播 / 直播」切换控件（保留关闭模糊/玻璃与高对比度不透明降级）。
