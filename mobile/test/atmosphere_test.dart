@@ -14,84 +14,177 @@ import 'schedule_test.dart' show MemoryRepository;
 import 'week_grid_test.dart' show weeklyPreviewData;
 
 void main() {
-  for (final tab in [1, 2]) {
-    testWidgets('dark reading light fields reach the page body tab=$tab', (
-      tester,
-    ) async {
+  for (final brightness in [Brightness.dark, Brightness.light]) {
+    for (final tab in [1, 2]) {
+      testWidgets(
+        '${brightness.name} reading light fields reach the page body tab=$tab',
+        (tester) async {
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          final boundary = GlobalKey();
+          Future<List<int>> pixels(Size size, bool lights) async {
+            tester.view.physicalSize = size;
+            await tester.pumpWidget(
+              ProviderScope(
+                key: ValueKey(lights),
+                overrides: [
+                  currentAppearanceProvider.overrideWithValue(
+                    AppearanceSettings(aurora: lights, paperTexture: false),
+                  ),
+                ],
+                child: MaterialApp(
+                  theme: appTheme(brightness),
+                  home: RepaintBoundary(
+                    key: boundary,
+                    child: QuietBackdrop(tab: tab, child: const SizedBox()),
+                  ),
+                ),
+              ),
+            );
+            await tester.pumpAndSettle();
+            expect(
+              tester.binding.transientCallbackCount,
+              0,
+              reason: 'Reading pages must remain static',
+            );
+            return (await tester.runAsync(() async {
+              final render =
+                  boundary.currentContext!.findRenderObject()!
+                      as RenderRepaintBoundary;
+              final image = await render.toImage();
+              final bytes = await image.toByteData(
+                format: ui.ImageByteFormat.rawRgba,
+              );
+              final colors = <int>[];
+              for (final point in [
+                const Offset(.12, .15),
+                const Offset(.88, .40),
+                const Offset(.14, .66),
+                const Offset(.80, .88),
+              ]) {
+                final offset =
+                    ((point.dy * image.height).floor() * image.width +
+                        (point.dx * image.width).floor()) *
+                    4;
+                colors.addAll(bytes!.buffer.asUint8List(offset, 3));
+              }
+              image.dispose();
+              return colors;
+            }))!;
+          }
+
+          for (final size in [const Size(390, 844), const Size(320, 720)]) {
+            final lit = await pixels(size, true);
+            final plain = await pixels(size, false);
+            for (var i = 0; i < 4; i++) {
+              final difference = List.generate(
+                3,
+                (c) => (lit[i * 3 + c] - plain[i * 3 + c]).abs(),
+              ).reduce((a, b) => a + b);
+              expect(
+                difference,
+                greaterThan(18),
+                reason:
+                    '${brightness.name} light field must remain visible at body sample $i, $size',
+              );
+            }
+          }
+          await tester.pumpWidget(const SizedBox());
+        },
+      );
+    }
+  }
+
+  testWidgets(
+    'light today diffusion shows vivid color and clear motion across phases',
+    (tester) async {
       tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final boundary = GlobalKey();
-      Future<List<int>> pixels(Size size, bool lights) async {
-        tester.view.physicalSize = size;
-        await tester.pumpWidget(
-          ProviderScope(
-            key: ValueKey(lights),
-            overrides: [
-              currentAppearanceProvider.overrideWithValue(
-                AppearanceSettings(aurora: lights, paperTexture: false),
-              ),
-            ],
-            child: MaterialApp(
-              theme: appTheme(Brightness.dark),
-              home: RepaintBoundary(
-                key: boundary,
-                child: QuietBackdrop(tab: tab, child: const SizedBox()),
-              ),
+      Future<List<int>> samplePixels() async => (await tester.runAsync(() async {
+        final render =
+            boundary.currentContext!.findRenderObject()!
+                as RenderRepaintBoundary;
+        final image = await render.toImage();
+        final bytes = await image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        );
+        final colors = <int>[];
+        for (final point in [
+          const Offset(.22, .18),
+          const Offset(.75, .36),
+          const Offset(.28, .62),
+          const Offset(.72, .80),
+        ]) {
+          final offset =
+              ((point.dy * image.height).floor() * image.width +
+                  (point.dx * image.width).floor()) *
+              4;
+          colors.addAll(bytes!.buffer.asUint8List(offset, 3));
+        }
+        image.dispose();
+        return colors;
+      }))!;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            currentAppearanceProvider.overrideWithValue(
+              const AppearanceSettings(aurora: true, paperTexture: false),
+            ),
+          ],
+          child: MaterialApp(
+            theme: appTheme(Brightness.light),
+            home: RepaintBoundary(
+              key: boundary,
+              child: const QuietBackdrop(tab: 0, child: SizedBox()),
             ),
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pump();
+      final t0 = await samplePixels();
+      var maxChroma = 0;
+      for (var i = 0; i < 4; i++) {
+        final r = t0[i * 3], g = t0[i * 3 + 1], b = t0[i * 3 + 2];
+        final chroma = [r, g, b].reduce((a, b) => a > b ? a : b) -
+            [r, g, b].reduce((a, b) => a < b ? a : b);
+        if (chroma > maxChroma) maxChroma = chroma;
         expect(
-          tester.binding.transientCallbackCount,
-          0,
-          reason: 'Reading pages must remain static',
+          chroma,
+          greaterThan(20),
+          reason: 'Light diffusion sample $i should stay tinted ($r,$g,$b)',
         );
-        return (await tester.runAsync(() async {
-          final render =
-              boundary.currentContext!.findRenderObject()!
-                  as RenderRepaintBoundary;
-          final image = await render.toImage();
-          final bytes = await image.toByteData(
-            format: ui.ImageByteFormat.rawRgba,
-          );
-          final colors = <int>[];
-          for (final point in [
-            const Offset(.12, .15),
-            const Offset(.88, .40),
-            const Offset(.14, .66),
-            const Offset(.80, .88),
-          ]) {
-            final offset =
-                ((point.dy * image.height).floor() * image.width +
-                    (point.dx * image.width).floor()) *
-                4;
-            colors.addAll(bytes!.buffer.asUint8List(offset, 3));
-          }
-          image.dispose();
-          return colors;
-        }))!;
+      }
+      expect(
+        maxChroma,
+        greaterThan(70),
+        reason: 'Light diffusion should include vivid focal color zones',
+      );
+      await tester.pump(const Duration(milliseconds: 2250));
+      final t3 = await samplePixels();
+      await tester.pump(const Duration(milliseconds: 2250));
+      final t6 = await samplePixels();
+      int maxDelta(List<int> a, List<int> b) {
+        var best = 0;
+        for (var i = 0; i < 4; i++) {
+          final d = List.generate(
+            3,
+            (c) => (a[i * 3 + c] - b[i * 3 + c]).abs(),
+          ).reduce((x, y) => x + y);
+          if (d > best) best = d;
+        }
+        return best;
       }
 
-      for (final size in [const Size(390, 844), const Size(320, 720)]) {
-        final lit = await pixels(size, true);
-        final plain = await pixels(size, false);
-        for (var i = 0; i < 4; i++) {
-          final difference = List.generate(
-            3,
-            (c) => (lit[i * 3 + c] - plain[i * 3 + c]).abs(),
-          ).reduce((a, b) => a + b);
-          expect(
-            difference,
-            greaterThan(18),
-            reason:
-                'Dark light field must remain visible at body sample $i, $size',
-          );
-        }
-      }
+      expect(maxDelta(t0, t3), greaterThan(70));
+      expect(maxDelta(t3, t6), greaterThan(70));
       await tester.pumpWidget(const SizedBox());
-    });
-  }
+    },
+  );
   testWidgets(
     'ambient motion stops in background, hidden routes and reduced motion',
     (tester) async {

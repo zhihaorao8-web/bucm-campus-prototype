@@ -1,3 +1,10 @@
+# 2026-11-14浅色动态光效增强（合成检查通过，待用户审核）
+
+- 按用户反馈修改`mobile/lib/ui/quiet_backdrop.dart`：今日动态光效周期由24秒调整为9秒，浅色使用顺色相序高亮色板（`#00B8FF`、`#00E8B5`、`#7B64FF`、`#FF72A8`）与浅色柔光底，配合更大振幅多谐波扫掠、椭圆倾斜旋转、尺寸呼吸及透明度脉动；课表（`tab=1`）与设置（`tab=2`）浅色背景统一启用静态全幅弥散光场（无ticker）。保留深色基调与减少动画/后台/不可见路由/高对比度停止或降级规则。
+- 扩充`mobile/test/atmosphere_test.dart`：同时验证浅/深色阅读页静态光场可达正文（`transientCallbackCount == 0`），并新增浅色今日页像素测试断言峰值色度>70、四采样点保持着色以及四分之一周期像素变化>70；`mobile/test/preview_capture_test.dart`动态采样步长同步调整为750ms×12帧覆盖完整9秒周期。
+- 静态分析无问题；完整默认Flutter回归**266项通过、9项条件跳过**；`CAPTURE_PREVIEW=true`合成预览通过，已人工核对`dist/flutter-preview/`中的`today.png`、`week.png`、`settings.png`及`atmosphere-motion-00/03/06/09.png`、`dark-atmosphere-motion-00/06.png`。
+- 本轮未构建APK、未在模拟器或物理手机上复测真实视觉与帧率、未访问学校会话、未修改版本`0.27/code11`、未合入`main`或发布。
+
 # 2026-11-14第五阶段审核通过
 
 - 用户于2026-11-14明确确认第五阶段审核通过（覆盖第五阶段模拟器四项修正、主顶栏/深色弥散背景修订、一级切换去跳动、日视图日期栏磨砂，以及干净`c5337a2`正常使用release APK本地交付记录）。

@@ -78,7 +78,7 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
     super.initState();
     phase = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 24),
+      duration: const Duration(seconds: 9),
     );
     foreground =
         WidgetsBinding.instance.lifecycleState == null ||
@@ -119,8 +119,8 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
       fit: StackFit.expand,
       children: [
         ColoredBox(
-          color: widget.tab == 0 && !dark && !contrast && settings.aurora
-              ? const Color(0xFFFCFDFF)
+          color: !dark && !contrast && settings.aurora
+              ? const Color(0xFFF9FCFF)
               : Theme.of(context).colorScheme.surface,
         ),
         if (!contrast && settings.aurora)
@@ -165,35 +165,7 @@ class _AuroraPainter extends CustomPainter {
   final bool dark;
   final Animation<double> phase;
   @override
-  void paint(Canvas canvas, Size size) {
-    if (tab == 0 || dark) {
-      _paintDiffusion(canvas, size);
-      return;
-    }
-    const palettes = [
-      [Color(0xFF72D0FF), Color(0xFF91EACF), Color(0xFFFFD8AE)],
-      [Color(0xFF6096FD), Color(0xFF6ED7B4), Color(0xFFCADFFF)],
-      [Color(0xFFA882F5), Color(0xFFF5C391), Color(0xFFE1CEFA)],
-    ];
-    for (var i = 0; i < 3; i++) {
-      final center = Offset(
-        size.width * [.05, .52, .2][i],
-        [40.0, 60.0, 160.0][i],
-      );
-      final radius = size.width.clamp(280.0, 480.0) * .55;
-      canvas.drawCircle(
-        center,
-        radius,
-        Paint()
-          ..shader = RadialGradient(
-            colors: [
-              palettes[tab][i].withValues(alpha: .20),
-              palettes[tab][i].withValues(alpha: 0),
-            ],
-          ).createShader(Rect.fromCircle(center: center, radius: radius)),
-      );
-    }
-  }
+  void paint(Canvas canvas, Size size) => _paintDiffusion(canvas, size);
 
   // Broad elliptical fields overlap beyond the viewport: no visible orb edges.
   // Analytic falloff avoids adding a full-screen blur pass on every frame.
@@ -207,56 +179,121 @@ class _AuroraPainter extends CustomPainter {
           end: Alignment.bottomRight,
           colors: dark
               ? const [Color(0xFF070D14), Color(0xFF091313), Color(0xFF0B0C14)]
-              : const [Color(0xFFFAFDFF), Color(0xFFFCFEFC), Color(0xFFFFFCF9)],
+              : const [Color(0xFFEAF6FF), Color(0xFFECFCF8), Color(0xFFF6EEFF)],
         ).createShader(bounds),
     );
-    const todayHues = [
+    const todayDarkHues = [
       Color(0xFF6CCFFF),
       Color(0xFF7FE8CD),
       Color(0xFFFFD1A6),
       Color(0xFFB8BBFF),
     ];
+    const todayLightHues = [
+      Color(0xFF00B8FF),
+      Color(0xFF00E8B5),
+      Color(0xFF7B64FF),
+      Color(0xFFFF72A8),
+    ];
     // Reading pages use the same broad diffusion, with their existing palettes
     // and a fixed phase. Only Today owns continuous ambient motion.
-    final hues = switch (tab) {
-      1 => const [
-        Color(0xFF6096FD),
-        Color(0xFF6ED7B4),
-        Color(0xFFCADFFF),
-        Color(0xFFB8BBFF),
-      ],
-      2 => const [
-        Color(0xFFA882F5),
-        Color(0xFFF5C391),
-        Color(0xFFE1CEFA),
-        Color(0xFF72D0FF),
-      ],
-      _ => todayHues,
-    };
+    final hues = dark
+        ? switch (tab) {
+            1 => const [
+              Color(0xFF6096FD),
+              Color(0xFF6ED7B4),
+              Color(0xFFCADFFF),
+              Color(0xFFB8BBFF),
+            ],
+            2 => const [
+              Color(0xFFA882F5),
+              Color(0xFFF5C391),
+              Color(0xFFE1CEFA),
+              Color(0xFF72D0FF),
+            ],
+            _ => todayDarkHues,
+          }
+        : switch (tab) {
+            1 => const [
+              Color(0xFF1F7BFF),
+              Color(0xFF00DDA0),
+              Color(0xFF4CC3FF),
+              Color(0xFF7A6BFF),
+            ],
+            2 => const [
+              Color(0xFF8B54FF),
+              Color(0xFFFF7A5C),
+              Color(0xFFD678FF),
+              Color(0xFF18BAFF),
+            ],
+            _ => todayLightHues,
+          };
     final angle = tab == 0 ? phase.value * math.pi * 2 : 0.0;
+    final moving = tab == 0;
     for (var i = 0; i < hues.length; i++) {
       final orbit = angle + i * math.pi / 2;
+      final baseX = dark
+          ? const [-.06, 1.00, .06, .96][i]
+          : (moving
+                ? const [.44, .56, .56, .44][i]
+                : const [.24, .78, .76, .26][i]);
+      final baseY = dark
+          ? const [.08, .32, .62, .92][i]
+          : (moving
+                ? const [.18, .38, .62, .82][i]
+                : const [.18, .32, .68, .82][i]);
+      final dx = moving
+          ? (dark
+                ? .26 * math.sin(orbit) + .07 * math.cos(2 * angle + i)
+                : .34 * math.sin(orbit) + .10 * math.cos(2 * angle + i * 1.1))
+          : 0.0;
+      final dy = moving
+          ? (dark
+                ? .10 * math.cos(orbit) + .035 * math.sin(2 * angle + i)
+                : .16 * math.cos(orbit + i * .4) +
+                      .05 * math.sin(2 * angle + i * .9))
+          : 0.0;
       final center = Offset(
-        size.width * ([-.10, 1.04, .04, .98][i] + .13 * math.sin(orbit)),
-        size.height * ([.08, .32, .62, .92][i] + .045 * math.cos(orbit)),
+        size.width * (baseX + dx),
+        size.height * (baseY + dy),
       );
-      final alpha = dark ? [.23, .20, .13, .15][i] : [.29, .25, .18, .15][i];
+      final baseAlpha = dark
+          ? const [.24, .21, .14, .16][i]
+          : const [.68, .64, .58, .60][i];
+      final alpha = moving && !dark
+          ? baseAlpha * (.82 + .18 * math.sin(2 * angle + i * 1.3))
+          : baseAlpha;
+      final tilt = moving
+          ? (i.isEven ? 1 : -1) *
+                (dark ? .18 * math.sin(orbit) : .28 + .32 * math.sin(orbit))
+          : 0.0;
+      final sx =
+          size.width *
+          (dark
+              ? .96 + (moving ? .12 * math.cos(orbit) : 0.0)
+              : (moving
+                    ? .70 + .18 * math.cos(orbit + i * .7)
+                    : .78));
+      final sy =
+          size.height *
+          (dark
+              ? .40 + (moving ? .06 * math.sin(2 * angle + i) : 0.0)
+              : (moving
+                    ? .30 + .10 * math.sin(2 * angle + i * .9)
+                    : .36));
       canvas.save();
       canvas.translate(center.dx, center.dy);
-      canvas.scale(
-        size.width * (1.08 + .05 * math.cos(orbit)),
-        size.height * (.43 + .025 * math.sin(orbit)),
-      );
+      if (tilt != 0) canvas.rotate(tilt);
+      canvas.scale(sx, sy);
       canvas.drawCircle(
         Offset.zero,
         1,
         Paint()
           ..shader = RadialGradient(
-            stops: const [0, .22, .58, 1],
+            stops: dark ? const [0, .22, .58, 1] : const [0, .20, .58, 1],
             colors: [
               hues[i].withValues(alpha: alpha),
-              hues[i].withValues(alpha: alpha * .84),
-              hues[i].withValues(alpha: alpha * .30),
+              hues[i].withValues(alpha: alpha * (dark ? .84 : .84)),
+              hues[i].withValues(alpha: alpha * (dark ? .30 : .32)),
               hues[i].withValues(alpha: 0),
             ],
           ).createShader(const Rect.fromLTWH(-1, -1, 2, 2)),
