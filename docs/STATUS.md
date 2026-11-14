@@ -1,4 +1,10 @@
-# 2026-11-14仿 Macintosh Skeletal Filled 方案 B1 艺术标题与一笔描边入场动效（合成检查通过，待模拟器验收）
+# 2026-11-14仿 Macintosh Skeletal Filled 方案 B1 艺术标题、一笔描边入场动效与今日语录（模拟器验收通过）
+
+- 基于已推送提交 `e64f85d`（包含 `d2eaa1a` 今日顶部随机语录与“在线一言”开关，以及 **B1 优雅牵丝连笔矢量标题 + 1350ms 苹果开机风格逐笔描边入场动效**），执行 `flutter build apk --debug` 生成 `mobile/build/app/outputs/flutter-apk/app-debug.apk`（退出码 `0`）。
+- 通过 `adb -s emulator-5554 install -r` 覆盖安装并冷启动 `cn.bucm.campus_schedule/.MainActivity` 至 Android 模拟器 `Pixel_8_API_36`（`emulator-5554`，`LaunchState: COLD`，`Status: ok`）；抓取并目检当前运行截图，确认 B1 「今日」艺术标题、顶部语录条与轻盈浅色动态光效显示正常，用户于模拟器演示后明确确认 **“可以，这部分验收通过”**。
+- 先前最终代码改动（`e64f85d`）后已完成的检查：`flutter analyze` 无问题、完整默认回归 **273 项通过、9 项条件跳过**（零异常或布局警告）、`CAPTURE_PREVIEW=true` 合成截图核对通过。本轮模拟器验收使用的是 debug 构建；物理手机真实帧率/功耗、本提交对应的正式 `--release` 包构建核验及真实学校会话与完整学期边界仍独立待验；未修改版本 `0.27/code11`、未合入 `main` 或创建 GitHub Release。
+
+# 2026-11-14仿 Macintosh Skeletal Filled 方案 B1 艺术标题与一笔描边入场动效（已推送 `e64f85d`）
 
 - 根据用户审核确认的 **B1（优雅牵丝连笔）+ 苹果开机风格一笔描边入场动效**，新增可复现矢量生成脚本 `scripts/generate_macintosh_hello_glyphs.py`、闭合轮廓与笔画数据 `mobile/lib/ui/macintosh_hello_glyphs.g.dart`，以及带逐笔遮罩动效的组件 `mobile/lib/ui/macintosh_hello_title.dart`。
 - 在 `mobile/lib/ui/app_shell.dart` 中仅对“今日”（`index == 0`）与“课表”（`index == 1`）应用 `MacintoshHelloHeaderOverlay`（与 `MiuixTopAppBar` 滚动折叠、渐变透明度和无障碍语义完全同步；折叠居中 `title3` 与“设置”保留默认系统字体），首次进入对应标签页播放一次 1350ms 逐笔入场动效，并在开启系统减少动画或禁用环境动效时即时落稳。
