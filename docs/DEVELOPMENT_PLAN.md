@@ -14,7 +14,7 @@
 
 ## 当前停点
 
-- **2026-11-14浅色动态光效轻盈灵动优化（待用户审核）**：结合`impeccable`（`quieter`+`colorize`）与`review-animations`规范调整`QuietBackdrop`浅色弥散光场，将`a7f8241`高饱和配色收拢为高明度中性柔光底+透亮粉彩色板（`[.34, .32, .30, .28]`），并以10秒周期双层轨迹（慢移宽场+2倍频利萨如轻盈光带）保持灵动与可读性；阅读页维持静态全幅弥散无ticker。`flutter analyze`无问题、完整默认266项回归通过/9项条件跳过、`CAPTURE_PREVIEW`合成预览及12相位帧采样已核对。本轮未构建APK、未启动模拟器或物理手机实测、未修改版本或发布；即将提交并普通推送`codex/quiet-ui-refresh`供用户审核。
+- **2026-11-14浅色动态光效轻盈灵动优化（用户已验收通过）**：结合`impeccable`（`quieter`+`colorize`）与`review-animations`规范调整`QuietBackdrop`浅色弥散光场（`3502552`）。`flutter analyze`无问题、完整默认266项回归通过/9项条件跳过、`CAPTURE_PREVIEW`合成预览及12相位帧采样已核对；随后基于干净`3502552`构建正常包名`cn.bucm.campus_schedule`的release APK并安装至`Pixel_8_API_36`（`emulator-5554`）冷启动验收，用户明确确认“验收通过”。物理手机帧率/功耗及学校侧未验边界保持独立；未修改版本`0.27/code11`、未合入`main`或发布，等待用户下一步安排。
 
 - **2026-11-14第五阶段审核通过**：用户已确认第五阶段审核通过，柔光亚克力UI五阶段在本轮模拟器验证与本地release交付记录范围内完成验收。物理手机FrameTiming/功耗、完整TalkBack手势与语音、Android预测返回预览/取消、物理键盘反向遍历，以及学校侧WebVPN/认证恢复/完整学期/完整课时/7天会话仍独立待验；未合入`main`、未改版本或创建GitHub Release，等待用户下一步指令。
 

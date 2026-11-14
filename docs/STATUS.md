@@ -1,10 +1,11 @@
-# 2026-11-14浅色动态光效轻盈灵动优化（合成检查通过，待用户审核）
+# 2026-11-14浅色动态光效轻盈灵动优化（模拟器验收通过）
 
-- 依据`frontend-stack` / `frontend-design`、`impeccable`（`quieter`+`colorize`）及`review-animations`规范优化`mobile/lib/ui/quiet_backdrop.dart`：浅色背景恢复高明度中性微光底（`#FAFBFD → #FCFDFF → #FDFBF7`），今日（`#6ECBFF`、`#7BE3C9`、`#A79FFF`、`#FFBED1`）、课表（`#78B0FF`、`#7AE0C7`、`#B5D6FF`、`#B7B3FF`）与设置（`#B398FF`、`#FFC59F`、`#E0CCFF`、`#82D1FF`）均收拢为透亮粉彩色板与克制透明度（`[.34, .32, .30, .28]`，渐变节点`[0, .24, .62, 1]`）。
+- 依据`frontend-stack` / `frontend-design`、`impeccable`（`quieter`+`colorize`）及`review-animations`规范优化`mobile/lib/ui/quiet_backdrop.dart`（提交`3502552`）：浅色背景恢复高明度中性微光底（`#FAFBFD → #FCFDFF → #FDFBF7`），今日（`#6ECBFF`、`#7BE3C9`、`#A79FFF`、`#FFBED1`）、课表（`#78B0FF`、`#7AE0C7`、`#B5D6FF`、`#B7B3FF`）与设置（`#B398FF`、`#FFC59F`、`#E0CCFF`、`#82D1FF`）均收拢为透亮粉彩色板与克制透明度（`[.34, .32, .30, .28]`，渐变节点`[0, .24, .62, 1]`）。
 - 今日浅色动态光效改为10秒周期双层速度（宽幅慢移底层场+2倍频利萨如轻盈光带`nimble = !dark && i.isOdd`+`0.86..1.0`透明度轻呼吸）；课表与设置页保持静态全幅弥散（无持续ticker），保留深色基调及减少动画/后台/不可见路由/高对比度规则。
 - 同步更新`mobile/test/atmosphere_test.dart`（校验浅色今日页`minChannel > 175`、`chroma > 6`、峰值色度`[22, 75]`、四分之一周期像素变化`> 28`，并继续覆盖浅/深色阅读页静态全幅与零持续ticker）及`mobile/test/preview_capture_test.dart`（`833ms×12`帧采样覆盖完整10秒周期）。
 - 静态分析`flutter analyze`无问题；完整默认Flutter回归**266项通过、9项条件跳过**；`CAPTURE_PREVIEW=true`合成预览通过，已人工核对`dist/flutter-preview/`中的`today.png`、`week.png`、`settings.png`及`atmosphere-motion-00/03/06/09.png`。
-- 本轮未构建APK、未在模拟器或物理手机上复测真实视觉与帧率、未访问学校会话、未修改版本`0.27/code11`、未合入`main`或发布。
+- 基于干净`3502552`执行`flutter build apk --release --dart-define=CAMPUS_DIRECT_CATALOG=true --dart-define=CAMPUS_TEST_DIAGNOSTICS=false`生成`app-release.apk`（61.4MB），已覆盖安装并冷启动至Android模拟器`Pixel_8_API_36`（`emulator-5554`，浅色模式`Night mode: no`），用户验收并明确确认通过。
+- 物理手机真实渲染帧率与功耗、学校会话与完整学期数据边界仍未在本轮复测；未修改版本`0.27/code11`、未合入`main`或创建GitHub Release。
 
 # 2026-11-14第五阶段审核通过
 
