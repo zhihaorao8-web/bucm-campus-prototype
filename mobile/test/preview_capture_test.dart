@@ -484,7 +484,7 @@ void main() {
       for (var frame = 0; frame < 12; frame++) {
         final prefix = dark ? 'dark-atmosphere' : 'atmosphere';
         await capture('$prefix-motion-${frame.toString().padLeft(2, '0')}');
-        await tester.pump(const Duration(milliseconds: 750));
+        await tester.pump(const Duration(milliseconds: 833));
       }
     }
     expect(tester.takeException(), isNull);

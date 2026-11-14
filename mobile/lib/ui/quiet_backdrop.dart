@@ -78,7 +78,7 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
     super.initState();
     phase = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 9),
+      duration: const Duration(seconds: 10),
     );
     foreground =
         WidgetsBinding.instance.lifecycleState == null ||
@@ -179,7 +179,7 @@ class _AuroraPainter extends CustomPainter {
           end: Alignment.bottomRight,
           colors: dark
               ? const [Color(0xFF070D14), Color(0xFF091313), Color(0xFF0B0C14)]
-              : const [Color(0xFFEAF6FF), Color(0xFFECFCF8), Color(0xFFF6EEFF)],
+              : const [Color(0xFFFAFBFD), Color(0xFFFCFDFF), Color(0xFFFDFBF7)],
         ).createShader(bounds),
     );
     const todayDarkHues = [
@@ -189,10 +189,10 @@ class _AuroraPainter extends CustomPainter {
       Color(0xFFB8BBFF),
     ];
     const todayLightHues = [
-      Color(0xFF00B8FF),
-      Color(0xFF00E8B5),
-      Color(0xFF7B64FF),
-      Color(0xFFFF72A8),
+      Color(0xFF6ECBFF),
+      Color(0xFF7BE3C9),
+      Color(0xFFA79FFF),
+      Color(0xFFFFBED1),
     ];
     // Reading pages use the same broad diffusion, with their existing palettes
     // and a fixed phase. Only Today owns continuous ambient motion.
@@ -214,16 +214,16 @@ class _AuroraPainter extends CustomPainter {
           }
         : switch (tab) {
             1 => const [
-              Color(0xFF1F7BFF),
-              Color(0xFF00DDA0),
-              Color(0xFF4CC3FF),
-              Color(0xFF7A6BFF),
+              Color(0xFF78B0FF),
+              Color(0xFF7AE0C7),
+              Color(0xFFB5D6FF),
+              Color(0xFFB7B3FF),
             ],
             2 => const [
-              Color(0xFF8B54FF),
-              Color(0xFFFF7A5C),
-              Color(0xFFD678FF),
-              Color(0xFF18BAFF),
+              Color(0xFFB398FF),
+              Color(0xFFFFC59F),
+              Color(0xFFE0CCFF),
+              Color(0xFF82D1FF),
             ],
             _ => todayLightHues,
           };
@@ -231,26 +231,31 @@ class _AuroraPainter extends CustomPainter {
     final moving = tab == 0;
     for (var i = 0; i < hues.length; i++) {
       final orbit = angle + i * math.pi / 2;
+      final nimble = !dark && i.isOdd;
       final baseX = dark
           ? const [-.06, 1.00, .06, .96][i]
           : (moving
-                ? const [.44, .56, .56, .44][i]
-                : const [.24, .78, .76, .26][i]);
+                ? const [.42, .56, .58, .44][i]
+                : const [.20, .82, .78, .22][i]);
       final baseY = dark
           ? const [.08, .32, .62, .92][i]
           : (moving
-                ? const [.18, .38, .62, .82][i]
-                : const [.18, .32, .68, .82][i]);
+                ? const [.18, .36, .64, .82][i]
+                : const [.16, .34, .74, .84][i]);
       final dx = moving
           ? (dark
                 ? .26 * math.sin(orbit) + .07 * math.cos(2 * angle + i)
-                : .34 * math.sin(orbit) + .10 * math.cos(2 * angle + i * 1.1))
+                : nimble
+                ? .34 * math.sin(orbit) + .14 * math.sin(2 * angle + i)
+                : .28 * math.sin(orbit) + .07 * math.cos(2 * angle + i))
           : 0.0;
       final dy = moving
           ? (dark
                 ? .10 * math.cos(orbit) + .035 * math.sin(2 * angle + i)
-                : .16 * math.cos(orbit + i * .4) +
-                      .05 * math.sin(2 * angle + i * .9))
+                : nimble
+                ? .16 * math.cos(2 * angle + i * .8) + .06 * math.sin(orbit)
+                : .13 * math.cos(orbit + i * .4) +
+                      .04 * math.sin(2 * angle + i))
           : 0.0;
       final center = Offset(
         size.width * (baseX + dx),
@@ -258,27 +263,31 @@ class _AuroraPainter extends CustomPainter {
       );
       final baseAlpha = dark
           ? const [.24, .21, .14, .16][i]
-          : const [.68, .64, .58, .60][i];
+          : const [.34, .32, .30, .28][i];
       final alpha = moving && !dark
-          ? baseAlpha * (.82 + .18 * math.sin(2 * angle + i * 1.3))
+          ? baseAlpha * (.86 + .14 * math.sin(2 * angle + i * 1.2))
           : baseAlpha;
       final tilt = moving
           ? (i.isEven ? 1 : -1) *
-                (dark ? .18 * math.sin(orbit) : .28 + .32 * math.sin(orbit))
+                (dark ? .18 * math.sin(orbit) : .22 + .34 * math.sin(orbit))
           : 0.0;
       final sx =
           size.width *
           (dark
               ? .96 + (moving ? .12 * math.cos(orbit) : 0.0)
               : (moving
-                    ? .70 + .18 * math.cos(orbit + i * .7)
-                    : .78));
+                    ? (nimble
+                          ? .58 + .16 * math.cos(2 * angle + i)
+                          : .78 + .12 * math.cos(orbit + i * .6))
+                    : .80));
       final sy =
           size.height *
           (dark
               ? .40 + (moving ? .06 * math.sin(2 * angle + i) : 0.0)
               : (moving
-                    ? .30 + .10 * math.sin(2 * angle + i * .9)
+                    ? (nimble
+                          ? .25 + .07 * math.sin(orbit)
+                          : .33 + .06 * math.sin(2 * angle + i * .8))
                     : .36));
       canvas.save();
       canvas.translate(center.dx, center.dy);
@@ -289,10 +298,10 @@ class _AuroraPainter extends CustomPainter {
         1,
         Paint()
           ..shader = RadialGradient(
-            stops: dark ? const [0, .22, .58, 1] : const [0, .20, .58, 1],
+            stops: dark ? const [0, .22, .58, 1] : const [0, .24, .62, 1],
             colors: [
               hues[i].withValues(alpha: alpha),
-              hues[i].withValues(alpha: alpha * (dark ? .84 : .84)),
+              hues[i].withValues(alpha: alpha * (dark ? .84 : .82)),
               hues[i].withValues(alpha: alpha * (dark ? .30 : .32)),
               hues[i].withValues(alpha: 0),
             ],

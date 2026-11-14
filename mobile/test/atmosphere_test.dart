@@ -97,7 +97,7 @@ void main() {
   }
 
   testWidgets(
-    'light today diffusion shows vivid color and clear motion across phases',
+    'light today diffusion stays airy, luminous and clearly animated across phases',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(390, 844);
@@ -150,24 +150,29 @@ void main() {
       var maxChroma = 0;
       for (var i = 0; i < 4; i++) {
         final r = t0[i * 3], g = t0[i * 3 + 1], b = t0[i * 3 + 2];
-        final chroma = [r, g, b].reduce((a, b) => a > b ? a : b) -
-            [r, g, b].reduce((a, b) => a < b ? a : b);
+        final minChannel = [r, g, b].reduce((a, b) => a < b ? a : b);
+        final chroma = [r, g, b].reduce((a, b) => a > b ? a : b) - minChannel;
         if (chroma > maxChroma) maxChroma = chroma;
         expect(
+          minChannel,
+          greaterThan(175),
+          reason: 'Airy light diffusion sample $i should stay high-key ($r,$g,$b)',
+        );
+        expect(
           chroma,
-          greaterThan(20),
-          reason: 'Light diffusion sample $i should stay tinted ($r,$g,$b)',
+          greaterThan(6),
+          reason: 'Airy light diffusion sample $i should stay gently tinted ($r,$g,$b)',
         );
       }
       expect(
         maxChroma,
-        greaterThan(70),
-        reason: 'Light diffusion should include vivid focal color zones',
+        inInclusiveRange(22, 75),
+        reason: 'Light diffusion should stay luminous without turning neon ($maxChroma)',
       );
-      await tester.pump(const Duration(milliseconds: 2250));
-      final t3 = await samplePixels();
-      await tester.pump(const Duration(milliseconds: 2250));
-      final t6 = await samplePixels();
+      await tester.pump(const Duration(milliseconds: 2500));
+      final t1 = await samplePixels();
+      await tester.pump(const Duration(milliseconds: 2500));
+      final t2 = await samplePixels();
       int maxDelta(List<int> a, List<int> b) {
         var best = 0;
         for (var i = 0; i < 4; i++) {
@@ -180,8 +185,8 @@ void main() {
         return best;
       }
 
-      expect(maxDelta(t0, t3), greaterThan(70));
-      expect(maxDelta(t3, t6), greaterThan(70));
+      expect(maxDelta(t0, t1), greaterThan(28));
+      expect(maxDelta(t1, t2), greaterThan(28));
       await tester.pumpWidget(const SizedBox());
     },
   );
