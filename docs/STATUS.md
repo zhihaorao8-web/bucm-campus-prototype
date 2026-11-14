@@ -1,3 +1,8 @@
+# 2026-11-14第五阶段审核通过
+
+- 用户于2026-11-14明确确认第五阶段审核通过（覆盖第五阶段模拟器四项修正、主顶栏/深色弥散背景修订、一级切换去跳动、日视图日期栏磨砂，以及干净`c5337a2`正常使用release APK本地交付记录）。
+- 验证边界继续保持：不将本轮用户验收和模拟器/本地release核验替代物理手机帧率与功耗、完整TalkBack朗读与手势、Android预测返回预览/取消、物理键盘反向遍历，或真实学校WebVPN/认证恢复/完整学期/完整课时/长期会话验收。未修改代码或版本，未合入`main`或创建GitHub Release。
+
 # 2026-11-14正常使用APK本地交付
 
 - 用户要求生成不带日志功能的正常APK；未修改应用源码或版本。从干净`c5337a283d1ee2cf1e3124a7efd477ef4e7952d2`构建正常包名`cn.bucm.campus_schedule`，0.27/code11，`--release --target-platform android-arm,android-arm64,android-x64`，显式`CAMPUS_DIRECT_CATALOG=true`、`CAMPUS_TEST_DIAGNOSTICS=false`。普通pub流程重新生成插件注册表，未使用`--no-pub`构建APK。
