@@ -1,3 +1,9 @@
+# 2026-11-14仿 Macintosh Skeletal Filled 艺术标题与一笔描边入场动效（B1 方案）
+
+按用户调研 `npwitk/Macintosh-Skeletal-Filled`、`jhao941/McIntosh-Writer` 与 `JaceThings/SF-Hello` 风格并审核确认 **方案 B1（优雅牵丝连笔）+ 苹果开机风格一笔描边入场动效**后，以自研轻量矢量方案替换此前临时引入的 `LongCang` 字体文件：
+- **原研圆管柔融合矢量字形**：[generate_macintosh_hello_glyphs.py](scripts/generate_macintosh_hello_glyphs.py) 基于 9° 前倾手写骨架圆管（`r=3.95`）与交点平滑融合（`smin`, `k=2.15`）生成 [macintosh_hello_glyphs.g.dart](mobile/lib/ui/macintosh_hello_glyphs.g.dart) 的闭合贝塞尔轮廓及顺序笔画路径（“今”点连横勾、“日”内部 Z 型连横、“课”`讠`挑入“果”与下撇回锋连捺、“表”连横与竖提扫捺）；移除约 5.16 MB 第三方 `LongCang-Regular.ttf` 资产，APK 更轻量且零外部字体版权依赖。
+- **逐笔描边入场与原生顶栏同步**：[macintosh_hello_title.dart](mobile/lib/ui/macintosh_hello_title.dart) 通过 `saveLayer` + `BlendMode.srcIn` 按笔画顺序带 18% 重叠在 ~1350ms 内流畅写出（静止后直出纯矢量轮廓）；在 [app_shell.dart](mobile/lib/ui/app_shell.dart) 中挂载于 `MiuixTopAppBar` 展开大标题位置（大字采用透明前景色保留原生高度测算与屏幕朗读无障碍树，折叠居中 `title3` 与“设置”保留系统字体），同步响应滚动折叠偏移与淡出、首次切入页面播放一次，并严格遵循系统“减少动画”和 `ambientMotionEnabledProvider` 即时落稳规则。
+
 # 2026-11-14今日页面顶端随机语录与“在线一言”开关
 
 按用户要求参考 GitHub 相关开源实现（如 `Linkium-DevTeam/JadeDaily` `quote_service.dart` 与 `Shangjin-Xiao/ThoughtEcho` 一言数据模型与切换交互）在今日页面顶端加入随机语录展示，同时严格遵守本地隐私与零非必要外部请求原则：

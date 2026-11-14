@@ -22,6 +22,7 @@ import 'appearance_page.dart';
 import 'project_info_page.dart';
 import 'classroom_import_page.dart';
 import 'quiet_backdrop.dart';
+import 'macintosh_hello_title.dart';
 import 'today_focus.dart';
 import 'today_quote_banner.dart';
 import 'week_navigation.dart';
@@ -300,6 +301,7 @@ class _AppShellState extends ConsumerState<AppShell>
       final topBar = MiuixTopAppBar(
         key: ValueKey('topbar-$index'),
         title: ['今日', '课表', '设置'][index],
+        largeTitleColor: index == 2 ? null : Colors.transparent,
         color: Theme.of(context).colorScheme.surface,
         scrollBehavior: scrollBehaviors[index],
         blurred: !opaque,
@@ -341,19 +343,29 @@ class _AppShellState extends ConsumerState<AppShell>
       );
       if (index == 2) return topBar;
       final miuixTheme = MiuixTheme.of(context);
-      return MiuixTheme(
-        data: miuixTheme.copyWith(
-          textStyles: miuixTheme.textStyles.copy(
-            title1: miuixTheme.textStyles.title1.copyWith(
-              fontFamily: 'LongCang',
-              fontSize: 38,
-              height: 1.12,
-              letterSpacing: 2.0,
-              fontWeight: FontWeight.w400,
+      return Stack(
+        fit: StackFit.passthrough,
+        children: [
+          MiuixTheme(
+            data: miuixTheme.copyWith(
+              textStyles: miuixTheme.textStyles.copy(
+                title1: miuixTheme.textStyles.title1.copyWith(
+                  fontSize: 40,
+                  height: 1.16,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+            child: topBar,
+          ),
+          Positioned.fill(
+            child: MacintoshHelloHeaderOverlay(
+              text: const ['今日', '课表', '设置'][index],
+              scrollBehavior: scrollBehaviors[index],
+              active: tab == index,
             ),
           ),
-        ),
-        child: topBar,
+        ],
       );
     },
   );

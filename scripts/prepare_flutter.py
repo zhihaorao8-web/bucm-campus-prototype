@@ -22,11 +22,9 @@ def main():
         (app / 'assets').mkdir(exist_ok=True)
         shutil.copyfile(ROOT / 'assets' / name, app / 'assets' / name)
     shutil.copyfile(ROOT / 'scripts/research/recording-api.cjs', app / 'assets/recording-api.cjs')
-    # Shared user-supplied artwork and licensed display font; generated Flutter assets remain ignored.
+    # Shared user-supplied artwork; generated Flutter assets remain ignored.
     shutil.copyfile(ROOT / 'design/branding/app-icon.png', app / 'assets/app-icon.png')
     shutil.copyfile(ROOT / 'design/branding/developer-avatar.png', app / 'assets/developer-avatar.png')
-    (app / 'assets/fonts').mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(ROOT / 'design/fonts/LongCang/LongCang-Regular.ttf', app / 'assets/fonts/LongCang-Regular.ttf')
     parser_folder = target / 'src/main/java/cn/bucm/campusprobe'
     parser_folder.mkdir(parents=True, exist_ok=True)
     for name in ('ScheduleParser', 'CourseTimes', 'CourseImportPlan', 'AcademicTerm', 'ExportWorkbook', 'SchoolExport', 'ClassroomMediaTransport'):

@@ -1,4 +1,11 @@
-# 2026-11-14今日页面顶端随机语录与“在线一言”开关（合成检查通过，待模拟器验收）
+# 2026-11-14仿 Macintosh Skeletal Filled 方案 B1 艺术标题与一笔描边入场动效（合成检查通过，待模拟器验收）
+
+- 根据用户审核确认的 **B1（优雅牵丝连笔）+ 苹果开机风格一笔描边入场动效**，新增可复现矢量生成脚本 `scripts/generate_macintosh_hello_glyphs.py`、闭合轮廓与笔画数据 `mobile/lib/ui/macintosh_hello_glyphs.g.dart`，以及带逐笔遮罩动效的组件 `mobile/lib/ui/macintosh_hello_title.dart`。
+- 在 `mobile/lib/ui/app_shell.dart` 中仅对“今日”（`index == 0`）与“课表”（`index == 1`）应用 `MacintoshHelloHeaderOverlay`（与 `MiuixTopAppBar` 滚动折叠、渐变透明度和无障碍语义完全同步；折叠居中 `title3` 与“设置”保留默认系统字体），首次进入对应标签页播放一次 1350ms 逐笔入场动效，并在开启系统减少动画或禁用环境动效时即时落稳。
+- 同步移除此前临时引入的 5.16 MB 第三方字体文件（`design/fonts/LongCang/`、`assets/third-party/LongCang/`、`mobile/pubspec.yaml` `fonts:` 与 `scripts/prepare_flutter.py` 字体复制及 `preview_capture_test.dart` 字体加载，已更新 `docs/THIRD_PARTY.md`）。
+- 更新 `mobile/test/artistic_title_test.dart`（校验浅/深色 `1.0x/1.5x/2.0x` 下标题渲染、设置页干净、180ms/630ms/1430ms 墨迹像素递增量以及 `disableAnimations: true` 即时落稳）；最终修改后验证：`flutter analyze` 无问题；完整默认回归 **273 项通过、9 项条件跳过**（零异常或布局警告）；`CAPTURE_PREVIEW=true` 已渲染并人工核对 `dist/flutter-preview/today.png`、`week.png`、`settings.png`。本轮改动尚待与 `d2eaa1a` 一并构建 APK 安装至 `Pixel_8_API_36` 模拟器或物理手机实地验收；未修改版本 `0.27/code11`、未合入 `main` 或创建 GitHub Release。
+
+# 2026-11-14今日页面顶端随机语录与“在线一言”开关（已推送 `d2eaa1a`，合成检查通过，待模拟器验收）
 
 - 参考 GitHub `Linkium-DevTeam/JadeDaily`（`quote_service.dart` 一言接口 + 本地兜底池）与 `Shangjin-Xiao/ThoughtEcho` 交互模型，新增 `mobile/lib/application/quote_service.dart`（24 条本地中文语录库 + `DailyQuote.tryFromHitokotoJson` 校验 + HTTPS `https://v1.hitokoto.cn/?encode=json` 4 秒超时与 16 KiB 上限获取器）。
 - 在 `mobile/lib/application/appearance_controller.dart` 与 `mobile/lib/ui/appearance_page.dart` 新增 `onlineQuotes` 持久化字段与“在线一言”开关（默认 `false`，兼容历史 JSON；关闭时不发起外部请求，开启失败自动回退本地库）。

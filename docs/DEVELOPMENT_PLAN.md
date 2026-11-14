@@ -14,9 +14,11 @@
 
 ## 当前停点
 
-- **2026-11-14今日页面顶端随机语录与“在线一言”开关（已完成合成检查，待与艺术字体一并构建真机/模拟器验收）**：参考 GitHub `Linkium-DevTeam/JadeDaily` 与 `Shangjin-Xiao/ThoughtEcho` 实现模式，默认使用 24 条精选本地中文语录库（零第三方网络请求），并在“外观设置”提供默认关闭的“在线一言”开关；手动开启后可通过 HTTPS 请求 `https://v1.hitokoto.cn/?encode=json`（4 秒超时、16 KiB 限制、失败无缝回退本地库）。“今日”页顶部采用轻透细边语录条（点击整条或右侧 48×48 刷新按钮切换，空课表引导页保持精简不挤压小屏首屏按钮）。`flutter analyze` 无问题、完整默认 **272 项通过 / 9 项条件跳过**（含新增 `quote_service_test.dart` 5 项单测与组件测试）、`CAPTURE_PREVIEW=true` 已核对最新 `today.png`。尚待将 `LongCang` 艺术字体 + 语录条一并打包装入模拟器或物理手机供用户验收；未修改版本 `0.27/code11`、未合入 `main` 或发布。
+- **2026-11-14仿 Macintosh Skeletal Filled 方案 B1 艺术标题与一笔描边入场动效（已合入工程并通过合成/动效检查，待打包装入模拟器/真机验收）**：按用户选定的方案 B1（优雅牵丝连笔）与“苹果开机风格一笔描边入场动效”，由自研脚本 [generate_macintosh_hello_glyphs.py](../../scripts/generate_macintosh_hello_glyphs.py) 生成 [macintosh_hello_glyphs.g.dart](../../mobile/lib/ui/macintosh_hello_glyphs.g.dart) 与 [macintosh_hello_title.dart](../../mobile/lib/ui/macintosh_hello_title.dart) 接入 [app_shell.dart](../../mobile/lib/ui/app_shell.dart)，并同步清理旧版 5.16 MB `LongCang-Regular.ttf`（保留“设置”及折叠居中标题系统字体）。`flutter analyze` 无问题、完整默认 **273 项通过 / 9 项条件跳过**（含更新后的 `artistic_title_test.dart` 逐帧像素递增量与减少动画瞬稳校验）、`CAPTURE_PREVIEW=true` 已核对最新 `today.png` / `week.png` / `settings.png`。尚待与今日语录功能一并构建 APK 安装至 `Pixel_8_API_36` 模拟器或真机实地验收动效手感；未修改版本 `0.27/code11`、未合入 `main` 或发布。
 
-- **2026-11-14“今日”与“课表”艺术标题字体（已提交推送 `d5bdd2d`，待随语录一并真机/模拟器验收）**：引入 Google Fonts 开源手写行书体 `LongCang`（SIL OFL 1.1，离线打包至 `assets/fonts/LongCang-Regular.ttf` 并随包附 `OFL.txt`），仅应用于“今日”与“课表”左上角大标题（38sp、`height: 1.12`、`letterSpacing: 2.0`），保留折叠居中标题与“设置”系统字体。`flutter analyze` 无问题、完整默认 **267 项通过 / 9 项条件跳过**（含新增 `artistic_title_test.dart`）、`CAPTURE_PREVIEW` 合成渲染 `today.png`、`week.png`、`settings.png` 已核对。
+- **2026-11-14今日页面顶端随机语录与“在线一言”开关（已提交推送 `d2eaa1a`，待与 B1 艺术标题一并模拟器验收）**：参考 GitHub `Linkium-DevTeam/JadeDaily` 与 `Shangjin-Xiao/ThoughtEcho` 实现模式，默认使用 24 条精选本地中文语录库（零第三方网络请求），并在“外观设置”提供默认关闭的“在线一言”开关；手动开启后可通过 HTTPS 请求 `https://v1.hitokoto.cn/?encode=json`（4 秒超时、16 KiB 限制、失败无缝回退本地库）。“今日”页顶部采用轻透细边语录条（点击整条或右侧 48×48 刷新按钮切换，空课表引导页保持精简不挤压小屏首屏按钮）。
+
+- **2026-11-14“今日”与“课表”初版艺术标题字体 `LongCang`（`d5bdd2d`，已由 B1 自研矢量与一笔描边方案替换）**：早期使用 Google Fonts `LongCang` 离线 TTF（5.16 MB）已在本轮替换为零第三方字库依赖的自研 B1 矢量方案。
 
 - **2026-11-14浅色动态光效轻盈灵动优化（用户已验收通过）**：结合`impeccable`（`quieter`+`colorize`）与`review-animations`规范调整`QuietBackdrop`浅色弥散光场（`3502552`）。`flutter analyze`无问题、完整默认266项回归通过/9项条件跳过、`CAPTURE_PREVIEW`合成预览及12相位帧采样已核对；随后基于干净`3502552`构建正常包名`cn.bucm.campus_schedule`的release APK并安装至`Pixel_8_API_36`（`emulator-5554`）冷启动验收，用户明确确认“验收通过”。物理手机帧率/功耗及学校侧未验边界保持独立；未修改版本`0.27/code11`、未合入`main`或发布，等待用户下一步安排。
 

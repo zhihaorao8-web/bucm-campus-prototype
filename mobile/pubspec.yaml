@@ -35,7 +35,3 @@ flutter:
     - assets/recording-api-bridge.js
     - assets/app-icon.png
     - assets/developer-avatar.png
-  fonts:
-    - family: LongCang
-      fonts:
-        - asset: assets/fonts/LongCang-Regular.ttf

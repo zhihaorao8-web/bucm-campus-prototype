@@ -1,5 +1,9 @@
+import 'package:campus_schedule/ui/macintosh_hello_glyphs.g.dart';
+import 'package:campus_schedule/ui/macintosh_hello_title.dart';
+import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'schedule_test.dart' show MemoryRepository;
 import 'ui_test.dart' show app;
@@ -7,17 +11,12 @@ import 'week_grid_test.dart' show weeklyPreviewData;
 
 void main() {
   testWidgets(
-    'Today and Schedule headers use bundled LongCang display font while Settings stays clean',
+    'Today and Schedule headers render B1 Macintosh Hello vector titles while Settings stays clean',
     (tester) async {
-      await tester.runAsync(() async {
-        final fontData = await rootBundle.load(
-          'assets/fonts/LongCang-Regular.ttf',
-        );
-        expect(fontData.lengthInBytes, greaterThan(1000000));
-        final loader = FontLoader('LongCang')
-          ..addFont(Future.value(fontData));
-        await loader.load();
-      });
+      expect(
+        macintoshHelloB1Glyphs.keys,
+        containsAll(['今', '日', '课', '表']),
+      );
 
       for (final (dark, scale) in [(false, 1.0), (true, 1.5), (false, 2.0)]) {
         tester.view.physicalSize = const Size(390, 844);
@@ -26,60 +25,147 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
 
         await tester.pumpWidget(
-          app(
-            MemoryRepository(weeklyPreviewData(DateTime.now())),
-            dark: dark,
-            scale: scale,
+          KeyedSubtree(
+            key: ValueKey('$dark-$scale'),
+            child: app(
+              MemoryRepository(weeklyPreviewData(DateTime.now())),
+              dark: dark,
+              scale: scale,
+            ),
           ),
         );
         await tester.pumpAndSettle();
 
-        final todayHeader = find.byKey(
-          const ValueKey('topbar-0'),
-          skipOffstage: false,
-        );
-        final allTodayTexts = tester
-            .widgetList<Text>(
-              find.descendant(
-                of: todayHeader,
-                matching: find.byType(Text, skipOffstage: false),
-                skipOffstage: false,
-              ),
-            )
-            .where((t) => t.data == '今日')
-            .toList();
-        expect(allTodayTexts, isNotEmpty);
         expect(
-          allTodayTexts.any((t) => t.style?.fontFamily == 'LongCang'),
-          isTrue,
+          find.byKey(const ValueKey('hello-title-今日')),
+          findsOneWidget,
         );
+        expect(find.text('今日'), findsWidgets);
 
         await tester.tap(find.byKey(const ValueKey('tab-1')));
         await tester.pumpAndSettle();
-        final weekHeader = find.byKey(const ValueKey('topbar-1'));
-        final weekTexts = tester
-            .widgetList<Text>(
-              find.descendant(of: weekHeader, matching: find.text('课表')),
-            )
-            .toList();
-        expect(weekTexts, isNotEmpty);
-        expect(weekTexts.any((t) => t.style?.fontFamily == 'LongCang'), isTrue);
+        expect(
+          find.byKey(const ValueKey('hello-title-课表')),
+          findsOneWidget,
+        );
+        expect(find.text('课表'), findsWidgets);
 
         await tester.tap(find.byKey(const ValueKey('tab-2')));
         await tester.pumpAndSettle();
-        final settingsHeader = find.byKey(const ValueKey('topbar-2'));
-        final settingsTexts = tester
-            .widgetList<Text>(
-              find.descendant(of: settingsHeader, matching: find.text('设置')),
-            )
-            .toList();
-        expect(settingsTexts, isNotEmpty);
+        expect(find.byKey(const ValueKey('hello-title-设置')), findsNothing);
         expect(
-          settingsTexts.every((t) => t.style?.fontFamily != 'LongCang'),
-          isTrue,
+          find.descendant(
+            of: find.byKey(const ValueKey('topbar-2')),
+            matching: find.text('设置'),
+          ),
+          findsWidgets,
         );
         expect(tester.takeException(), isNull);
       }
+    },
+  );
+
+  testWidgets(
+    'MacintoshHelloTitle animates strokes progressively on entrance and settles cleanly',
+    (tester) async {
+      final boundaryKey = GlobalKey();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [ambientMotionEnabledProvider.overrideWithValue(true)],
+          child: MaterialApp(
+            home: Scaffold(
+              backgroundColor: Colors.white,
+              body: RepaintBoundary(
+                key: boundaryKey,
+                child: const Center(
+                  child: MacintoshHelloTitle(
+                    text: '今日',
+                    color: Colors.black,
+                    glyphSize: 80,
+                    active: true,
+                    duration: Duration(milliseconds: 1200),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      Future<int> countInkPixels() async {
+        final boundary =
+            boundaryKey.currentContext!.findRenderObject()!
+                as RenderRepaintBoundary;
+        final image = await boundary.toImage(pixelRatio: 1);
+        final bytes = await image.toByteData();
+        image.dispose();
+        final data = bytes!.buffer.asUint8List();
+        var ink = 0;
+        for (var i = 0; i < data.length; i += 4) {
+          if (data[i + 3] > 20) ink++;
+        }
+        return ink;
+      }
+
+      // Advance progressively through the write-on timeline.
+      await tester.pump(const Duration(milliseconds: 180));
+      final earlyInk = await tester.runAsync(countInkPixels) ?? 0;
+
+      await tester.pump(const Duration(milliseconds: 450));
+      final midInk = await tester.runAsync(countInkPixels) ?? 0;
+
+      await tester.pump(const Duration(milliseconds: 800));
+      final doneInk = await tester.runAsync(countInkPixels) ?? 0;
+
+      expect(earlyInk, greaterThan(20));
+      expect(midInk, greaterThan(earlyInk));
+      expect(doneInk, greaterThan(midInk));
+
+      // Reduce-motion immediately snaps to completed ink without waiting.
+      final reducedKey = GlobalKey();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [ambientMotionEnabledProvider.overrideWithValue(true)],
+          child: MediaQuery(
+            data: const MediaQueryData(disableAnimations: true),
+            child: MaterialApp(
+              home: Scaffold(
+                backgroundColor: Colors.white,
+                body: RepaintBoundary(
+                  key: reducedKey,
+                  child: const Center(
+                    child: MacintoshHelloTitle(
+                      text: '课表',
+                      color: Colors.black,
+                      glyphSize: 80,
+                      active: true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      final reducedInk =
+          await tester.runAsync(() async {
+            final boundary =
+                reducedKey.currentContext!.findRenderObject()!
+                    as RenderRepaintBoundary;
+            final image = await boundary.toImage(pixelRatio: 1);
+            final bytes = await image.toByteData();
+            image.dispose();
+            final data = bytes!.buffer.asUint8List();
+            var ink = 0;
+            for (var i = 0; i < data.length; i += 4) {
+              if (data[i + 3] > 20) ink++;
+            }
+            return ink;
+          }) ??
+          0;
+      expect(reducedInk, greaterThan(400));
+      expect(tester.takeException(), isNull);
     },
   );
 }

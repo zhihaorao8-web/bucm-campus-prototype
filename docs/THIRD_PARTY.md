@@ -1,6 +1,6 @@
 # XLS读取依赖
 
-2026-11-14字体：新增 Google Fonts 开源中文字体 **Long Cang（龙藏体）**（`design/fonts/LongCang/LongCang-Regular.ttf`），用于“今日”与“课表”大标题展示。采用 **SIL Open Font License 1.1（OFL-1.1）**；上游许可原文保存于 `design/fonts/LongCang/OFL.txt` 与 `assets/third-party/LongCang/OFL.txt`，由准备脚本随包复制进 Android 原生资产，离线打包且无在线字体请求。
+2026-11-14标题艺术字说明：“今日”与“课表”顶部艺术标题由项目自研矢量路径脚本 `scripts/generate_macintosh_hello_glyphs.py` 生成（`mobile/lib/ui/macintosh_hello_glyphs.g.dart`），灵感源自 Apple `Macintosh Skeletal` 手写风与 `npwitk/Macintosh-Skeletal-Filled` 圆管柔融合构形原理，未引入或分发第三方专有字库文件。
 
 2026-11-13图标：新增IconMCP公开服务提供的43个本地SVG，MIT（Copyright (c) 2026 UI8），手形参考源的Phosphor/Tabler MIT及Lucide ISC通知一并保留于`design/icons/iconmcp/`并随包注册许可。新增`flutter_svg 2.4.0`及锁定渲染依赖，包自身许可由Flutter注册；具体来源、参数与实际接入状态见[图标系统](ICON_SYSTEM.md)。
 
