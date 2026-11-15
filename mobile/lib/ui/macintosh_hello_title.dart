@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'dart:math' as math;
 import 'dart:ui' show PathMetric;
 import 'package:flutter/material.dart';
@@ -15,7 +16,7 @@ class MacintoshHelloTitle extends ConsumerStatefulWidget {
     required this.color,
     required this.glyphSize,
     required this.active,
-    this.duration = const Duration(milliseconds: 1350),
+    this.duration = AppMotion.title,
   });
 
   final String text;
@@ -255,8 +256,7 @@ class _PreparedWord {
       final len = rawEntries[i].metric.length / scale;
       final dur = math.pow(len, 0.72).toDouble().clamp(16.0, 220.0);
       if (i > 0) {
-        final sameChar =
-            rawEntries[i].charIndex == rawEntries[i - 1].charIndex;
+        final sameChar = rawEntries[i].charIndex == rawEntries[i - 1].charIndex;
         if (sameChar) {
           cursor -= durations.last * 0.18;
         } else {

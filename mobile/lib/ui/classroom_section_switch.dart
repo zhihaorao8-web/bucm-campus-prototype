@@ -1,3 +1,5 @@
+import '../design/app_tokens.dart';
+import 'visual_policy.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,15 +28,14 @@ class ClassroomSectionSwitch extends ConsumerWidget {
     final settings = ref.watch(currentAppearanceProvider);
     final colors = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final opaque =
-        MediaQuery.highContrastOf(context) ||
-        settings.contrast > 0 ||
-        !settings.blur ||
-        !settings.glass;
+    final opaque = AppVisualPolicy.of(context, settings).opaque;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final selected = selectedIndex.clamp(0, tabs.length - 1);
-    final baseStyle = (Theme.of(context).textTheme.bodyLarge ?? const TextStyle())
-        .copyWith(fontSize: 15, fontWeight: FontWeight.w600);
+    final baseStyle =
+        (Theme.of(context).textTheme.bodyLarge ?? const TextStyle()).copyWith(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        );
 
     var maxTextHeight = 0.0;
     for (final label in tabs) {
@@ -49,10 +50,12 @@ class ClassroomSectionSwitch extends ConsumerWidget {
       painter.dispose();
     }
     final height = math.max(50.0, (maxTextHeight + 24).ceilToDouble());
-    final alignX = tabs.length <= 1 ? 0.0 : -1.0 + 2.0 * selected / (tabs.length - 1);
+    final alignX = tabs.length <= 1
+        ? 0.0
+        : -1.0 + 2.0 * selected / (tabs.length - 1);
 
     return AcrylicSurface(
-      radius: 20,
+      radius: AppRadius.section,
       blurKey: blurKey,
       child: SizedBox(
         height: height,
@@ -62,10 +65,8 @@ class ClassroomSectionSwitch extends ConsumerWidget {
             children: [
               AnimatedAlign(
                 alignment: Alignment(alignX, 0),
-                duration: reduceMotion
-                    ? Duration.zero
-                    : const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
+                duration: reduceMotion ? Duration.zero : AppMotion.segment,
+                curve: AppMotion.segmentCurve,
                 child: FractionallySizedBox(
                   widthFactor: 1 / tabs.length,
                   heightFactor: 1,
@@ -115,14 +116,18 @@ class ClassroomSectionSwitch extends ConsumerWidget {
                             onTap: () => onSelected(i),
                             child: Center(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
                                 child: Text(
                                   tabs[i],
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: baseStyle.copyWith(
                                     color: i == selected
-                                        ? (opaque ? colors.onSurface : colors.primary)
+                                        ? (opaque
+                                              ? colors.onSurface
+                                              : colors.primary)
                                         : colors.onSurfaceVariant,
                                     fontWeight: i == selected
                                         ? FontWeight.w600

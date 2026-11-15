@@ -1,3 +1,5 @@
+import '../design/app_tokens.dart';
+import 'visual_policy.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
@@ -24,8 +26,8 @@ Future<T?> showQuietSheet<T>(
           FocusManager.instance.highlightMode == FocusHighlightMode.traditional
       ? AnimationStyle.noAnimation
       : const AnimationStyle(
-          duration: Duration(milliseconds: 280),
-          reverseDuration: Duration(milliseconds: 220),
+          duration: AppMotion.routeEnter,
+          reverseDuration: AppMotion.routeExit,
           curve: navigationCurve,
           reverseCurve: FlippedCurve(navigationCurve),
         ),
@@ -40,23 +42,22 @@ class QuietSheet extends ConsumerWidget {
     final settings = ref.watch(currentAppearanceProvider);
     final colors = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final opaque =
-        !settings.blur ||
-        !settings.glass ||
-        settings.contrast > 0 ||
-        MediaQuery.highContrastOf(context);
-    const radius = BorderRadius.vertical(top: Radius.circular(28));
+    final opaque = AppVisualPolicy.of(context, settings).opaque;
+    const radius = BorderRadius.vertical(top: Radius.circular(AppRadius.sheet));
     return ClipRRect(
       borderRadius: radius,
       child: BackdropFilter(
         enabled: !opaque,
-        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        filter: ui.ImageFilter.blur(
+          sigmaX: AppSurface.sheetBlur,
+          sigmaY: AppSurface.sheetBlur,
+        ),
         child: Material(
           color: Colors.transparent,
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: colors.surface.withValues(
-                alpha: opaque ? 1 : (dark ? .92 : .90),
+                alpha: opaque ? 1 : AppSurface.sheetAlpha(dark),
               ),
               borderRadius: radius,
               border: Border.all(
@@ -78,7 +79,7 @@ class QuietCard extends StatelessWidget {
   const QuietCard({
     super.key,
     required this.child,
-    this.cornerRadius = 24,
+    this.cornerRadius = AppRadius.card,
     this.insideMargin = EdgeInsets.zero,
   });
   final Widget child;
@@ -107,7 +108,7 @@ class CourseSurface extends ConsumerWidget {
     super.key,
     required this.child,
     this.color,
-    this.radius = 24,
+    this.radius = AppRadius.card,
     this.dense = false,
     this.translucent = true,
   });
@@ -121,13 +122,9 @@ class CourseSurface extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final glass =
-        translucent &&
-        settings.blur &&
-        settings.glass &&
-        settings.contrast <= 0 &&
-        !MediaQuery.highContrastOf(context);
+        translucent && AppVisualPolicy.of(context, settings).translucent;
     final base = color ?? colors.surfaceContainer;
-    final alpha = dense ? (dark ? .84 : .90) : (dark ? .64 : .78);
+    final alpha = AppSurface.listAlpha(dark, dense: dense);
     final shape = BorderRadius.circular(radius);
     return ClipRRect(
       borderRadius: shape,
@@ -140,8 +137,8 @@ class CourseSurface extends ConsumerWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    base.withValues(alpha: alpha + .02),
-                    base.withValues(alpha: alpha - .02),
+                    base.withValues(alpha: alpha + AppSurface.edgeVariation),
+                    base.withValues(alpha: alpha - AppSurface.edgeVariation),
                   ],
                 )
               : null,

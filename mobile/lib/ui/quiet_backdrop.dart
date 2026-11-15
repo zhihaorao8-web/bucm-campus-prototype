@@ -1,3 +1,5 @@
+import '../design/app_tokens.dart';
+import 'visual_policy.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -21,11 +23,7 @@ class QuietSliverAppBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(currentAppearanceProvider);
-    final opaque =
-        !settings.blur ||
-        !settings.glass ||
-        settings.contrast > 0 ||
-        MediaQuery.highContrastOf(context);
+    final opaque = AppVisualPolicy.of(context, settings).opaque;
     return SliverAppBar(
       pinned: true,
       title: title,
@@ -39,17 +37,17 @@ class QuietSliverAppBar extends ConsumerWidget {
         builder: (context, _) => ClipRect(
           child: BackdropFilter(
             enabled: !opaque,
-            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            filter: ui.ImageFilter.blur(
+              sigmaX: AppHeader.blur,
+              sigmaY: AppHeader.blur,
+            ),
             child: ColoredBox(
               key: const ValueKey('quiet-appbar-scrim'),
               color: Theme.of(context).colorScheme.surface.withValues(
-                alpha: opaque
-                    ? 1
-                    : .04 +
-                          .76 *
-                              (scroll.hasClients
-                                  ? (scroll.offset / 80).clamp(0.0, 1.0)
-                                  : 0.0),
+                alpha: AppHeader.tint(
+                  scroll.hasClients ? scroll.offset : 0,
+                  opaque: opaque,
+                ),
               ),
             ),
           ),
@@ -76,10 +74,7 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
   @override
   void initState() {
     super.initState();
-    phase = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 10),
-    );
+    phase = AnimationController(vsync: this, duration: AppMotion.ambient);
     foreground =
         WidgetsBinding.instance.lifecycleState == null ||
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
@@ -102,14 +97,14 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(currentAppearanceProvider);
-    final contrast =
-        MediaQuery.highContrastOf(context) || settings.contrast > 0;
+    final policy = AppVisualPolicy.of(context, settings);
+    final contrast = policy.highContrast;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final animate =
         widget.tab == 0 &&
         settings.aurora &&
         !contrast &&
-        !MediaQuery.disableAnimationsOf(context) &&
+        !policy.reducedMotion &&
         foreground &&
         TickerMode.valuesOf(context).enabled &&
         ref.watch(ambientMotionEnabledProvider);
@@ -131,7 +126,7 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
                   child: AnimatedSwitcher(
                     duration: MediaQuery.disableAnimationsOf(context)
                         ? Duration.zero
-                        : const Duration(milliseconds: 900),
+                        : AppMotion.ambientChange,
                     child: CustomPaint(
                       key: ValueKey('aurora-${widget.tab}'),
                       painter: _AuroraPainter(widget.tab, dark, phase),

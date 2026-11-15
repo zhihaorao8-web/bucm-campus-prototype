@@ -1,3 +1,5 @@
+import '../design/app_tokens.dart';
+import 'visual_policy.dart';
 import 'navigation_motion.dart';
 import 'app_icon_controls.dart';
 import 'app_icons.dart';
@@ -289,15 +291,11 @@ class _AppShellState extends ConsumerState<AppShell>
   ) => ListenableBuilder(
     listenable: scrollFor(index),
     builder: (context, _) {
-      final opaque =
-          MediaQuery.highContrastOf(context) ||
-          appearance.contrast > 0 ||
-          !appearance.blur ||
-          !appearance.glass;
+      final opaque = AppVisualPolicy.of(context, appearance).opaque;
       final scroll = scrollFor(index);
-      final scrim = scroll.hasClients
-          ? (scroll.positions.last.pixels / 80).clamp(0.0, 1.0)
-          : 0.0;
+      final tint = AppHeader.tint(
+        scroll.hasClients ? scroll.positions.last.pixels : 0,
+      );
       final topBar = MiuixTopAppBar(
         key: ValueKey('topbar-$index'),
         title: ['今日', '课表', '设置'][index],
@@ -305,8 +303,8 @@ class _AppShellState extends ConsumerState<AppShell>
         color: Theme.of(context).colorScheme.surface,
         scrollBehavior: scrollBehaviors[index],
         blurred: !opaque,
-        blurRadius: 20,
-        blurTintAlpha: .04 + .76 * scrim,
+        blurRadius: AppHeader.blur,
+        blurTintAlpha: tint,
         actions: [
           if (demo)
             TextButton(

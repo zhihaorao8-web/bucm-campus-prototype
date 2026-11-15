@@ -1,7 +1,8 @@
+import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
 
-const navigationDuration = Duration(milliseconds: 260);
-const navigationCurve = Cubic(.23, 1, .32, 1);
+const navigationDuration = AppMotion.navigation;
+const navigationCurve = AppMotion.navigationCurve;
 
 /// Retain scroll/state while keeping non-visible tabs out of hit testing,
 /// semantics, and widget visibility checks. Only the viewport drives motion.
@@ -84,7 +85,7 @@ class _ScheduleModeTransitionState extends State<ScheduleModeTransition>
     } else if (progress.value != target) {
       progress.animateTo(
         target,
-        duration: const Duration(milliseconds: 220),
+        duration: AppMotion.segment,
         curve: navigationCurve,
       );
     }
@@ -177,10 +178,8 @@ class _ScheduleContentTransitionState extends State<ScheduleContentTransition> {
     final reduced = MediaQuery.disableAnimationsOf(context);
     return ClipRect(
       child: AnimatedSwitcher(
-        duration: reduced ? Duration.zero : const Duration(milliseconds: 180),
-        reverseDuration: reduced
-            ? Duration.zero
-            : const Duration(milliseconds: 120),
+        duration: reduced ? Duration.zero : AppMotion.contentEnter,
+        reverseDuration: reduced ? Duration.zero : AppMotion.contentExit,
         transitionBuilder: (child, animation) {
           final entering = child.key == ValueKey(widget.order);
           return FadeTransition(

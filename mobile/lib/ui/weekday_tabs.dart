@@ -1,3 +1,5 @@
+import '../design/app_tokens.dart';
+import 'visual_policy.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
@@ -19,11 +21,7 @@ class WeekdayTabs extends ConsumerWidget {
     final theme = MiuixTheme.of(context);
     final settings = ref.watch(currentAppearanceProvider);
     final colors = Theme.of(context).colorScheme;
-    final opaque =
-        !settings.blur ||
-        !settings.glass ||
-        settings.contrast > 0 ||
-        MediaQuery.highContrastOf(context);
+    final opaque = AppVisualPolicy.of(context, settings).opaque;
     final style = DefaultTextStyle.of(context).style
         .merge(theme.textStyles.main)
         .copyWith(
@@ -49,7 +47,7 @@ class WeekdayTabs extends ConsumerWidget {
       painter.dispose();
     }
     return AcrylicSurface(
-      radius: 20,
+      radius: AppRadius.section,
       blurKey: const ValueKey('weekday-acrylic-blur'),
       child: MiuixTabRow(
         key: const ValueKey('weekday-tabs'),

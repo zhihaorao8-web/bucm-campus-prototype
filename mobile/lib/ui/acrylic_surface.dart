@@ -1,3 +1,5 @@
+import '../design/app_tokens.dart';
+import 'visual_policy.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +10,7 @@ class AcrylicSurface extends ConsumerWidget {
   const AcrylicSurface({
     super.key,
     required this.child,
-    this.radius = 28,
+    this.radius = AppRadius.focus,
     this.blurKey = const ValueKey('focus-acrylic-blur'),
   });
   final Widget child;
@@ -20,11 +22,7 @@ class AcrylicSurface extends ConsumerWidget {
     final settings = ref.watch(currentAppearanceProvider);
     final colors = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final opaque =
-        MediaQuery.highContrastOf(context) ||
-        settings.contrast > 0 ||
-        !settings.blur ||
-        !settings.glass;
+    final opaque = AppVisualPolicy.of(context, settings).opaque;
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
@@ -32,7 +30,7 @@ class AcrylicSurface extends ConsumerWidget {
             ? null
             : [
                 BoxShadow(
-                  color: (dark ? Colors.black : const Color(0xFF75AFC2))
+                  color: (dark ? Colors.black : AppSurface.focusShadowLight)
                       .withValues(alpha: dark ? .04 : .045),
                   blurRadius: 20,
                   offset: const Offset(0, 6),
@@ -44,7 +42,10 @@ class AcrylicSurface extends ConsumerWidget {
         child: BackdropFilter(
           key: blurKey,
           enabled: !opaque,
-          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          filter: ui.ImageFilter.blur(
+            sigmaX: AppSurface.focusBlur,
+            sigmaY: AppSurface.focusBlur,
+          ),
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: opaque ? colors.surfaceContainer : null,
@@ -53,12 +54,7 @@ class AcrylicSurface extends ConsumerWidget {
                   : LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [
-                        (dark ? const Color(0xFF252F38) : Colors.white)
-                            .withValues(alpha: dark ? .30 : .46),
-                        (dark ? const Color(0xFF252F38) : Colors.white)
-                            .withValues(alpha: dark ? .16 : .26),
-                      ],
+                      colors: AppSurface.focusFill(dark),
                     ),
               borderRadius: BorderRadius.circular(radius),
               border: Border.all(

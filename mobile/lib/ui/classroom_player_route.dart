@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'app_icons.dart';
@@ -51,11 +52,11 @@ class ClassroomPlayerRoute extends MaterialPageRoute<void> {
 
   @override
   Duration get transitionDuration =>
-      reducedMotion ? Duration.zero : const Duration(milliseconds: 280);
+      reducedMotion ? Duration.zero : AppMotion.routeEnter;
 
   @override
   Duration get reverseTransitionDuration =>
-      reducedMotion ? Duration.zero : const Duration(milliseconds: 220);
+      reducedMotion ? Duration.zero : AppMotion.routeExit;
 
   @override
   Widget buildTransitions(

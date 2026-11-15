@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'app_icons.dart';
@@ -28,7 +29,7 @@ class ScheduleModeSwitch extends StatelessWidget {
             alignment: daily ? Alignment.centerRight : Alignment.centerLeft,
             duration: MediaQuery.disableAnimationsOf(context)
                 ? Duration.zero
-                : const Duration(milliseconds: 220),
+                : AppMotion.segment,
             curve: Curves.easeOutCubic,
             child: FractionallySizedBox(
               widthFactor: .5,
@@ -131,9 +132,7 @@ class _WeekNavigationState extends State<WeekNavigation> {
             child: Column(
               children: [
                 AnimatedSwitcher(
-                  duration: motion
-                      ? const Duration(milliseconds: 220)
-                      : Duration.zero,
+                  duration: motion ? AppMotion.segment : Duration.zero,
                   transitionBuilder: (child, animation) => FadeTransition(
                     opacity: animation,
                     child: SlideTransition(

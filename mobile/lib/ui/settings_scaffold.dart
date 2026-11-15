@@ -1,3 +1,5 @@
+import '../design/app_tokens.dart';
+import 'visual_policy.dart';
 import 'app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
@@ -45,18 +47,11 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
                   title: widget.title,
                   color: Theme.of(context).colorScheme.surface,
                   scrollBehavior: behavior,
-                  blurred:
-                      settings.blur &&
-                      settings.glass &&
-                      settings.contrast <= 0 &&
-                      !MediaQuery.highContrastOf(context),
-                  blurRadius: 20,
-                  blurTintAlpha:
-                      .04 +
-                      .76 *
-                          (scroll.hasClients
-                              ? (scroll.offset / 80).clamp(0.0, 1.0)
-                              : 0.0),
+                  blurred: AppVisualPolicy.of(context, settings).translucent,
+                  blurRadius: AppHeader.blur,
+                  blurTintAlpha: AppHeader.tint(
+                    scroll.hasClients ? scroll.offset : 0,
+                  ),
                   navigationIcon: IconButton(
                     tooltip: '返回',
                     icon: const AppIcon(AppIcons.arrowBack),
