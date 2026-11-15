@@ -1,3 +1,26 @@
+# 当前验证概览
+
+更新：2026-11-15。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
+
+| 对象 | 已有证据 | 未完成/限制 |
+|---|---|---|
+| 0.3/code12发布 | 729663f本地合成/静态检查、隔离R8 XLS 1/1、同源双包签名/摘要、最终release模拟器抽查及4份远端附件核对 | 精确提交的Actions因当时账户计费限制未运行；用户仅就该次发布授权例外，不作为未来跳过CI规则 |
+| 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
+| 学校链路 | 历史分项XLS导入、直连目录、短时播放和续播样本 | 全学期独立准确性、完整课时、水印组合、WebVPN恢复、真实认证失效及7天会话待验 |
+| 工程优化A | 当前规则/进度入口、模块索引与清理清单已整理；文档检查通过，详情见下节 | Git同步待完成、用户待审核；未新增运行时验证 |
+
+## 2026-11-15 工程优化A检查
+
+- 基于main@580eac9创建codex/maintenance-stage-a；只修改Markdown，应用代码、构建配置、Manifest与pubspec未修改，版本仍0.3/code12。
+- 核对仓库Markdown中的201个本地相对文件链接目标，零缺失；检查范围不含远程URL和页内锚点。旧进度页14处失效目标随当前入口重整消除。
+- 架构表列出的19个代表测试文件路径全部存在；通过源码/脚本静态核对7个共享Java维护源、prepare列表及原生媒体脚本6项预期用例。
+- git diff --check通过；旧浏览页引用与关联存储读写调用核对已形成候选清单，未据此删除代码。
+- 本次为文档整理，未运行应用全量回归、原生仪器测试、APK构建、模拟器或学校会话验证。上述历史发布/学校验证缺口不变。
+
+## 历史验证记录
+
+以下保留精确构建、摘要、样本边界与失败事实，供追溯。已被后续记录覆盖的当时待办不再作为开发指令，E阶段再提取唯一证据、精简重复内容。
+
 # 2026-11-14 0.3 主线合入与 GitHub Pre-release `v0.3` 已发布（`0.3` / `code 12`，远端 4 份附件 SHA-256 核对一致）
 
 - 已将 `codex/quiet-ui-refresh` 快进合入 `main` 并推送至 `origin/main` 与 `origin/codex/quiet-ui-refresh`（精确发布代码基线 `729663fcafd4980c876ec31fe0bfc86cb828874e`；未重写任何历史标签或历史 Release 附件）。唯一版本来源 `AndroidManifest.xml` 为 `android:versionName="0.3"` / `android:versionCode="12"`，`mobile/pubspec.yaml` 同步为 `0.3.0+12`，`CHANGELOG.md`、`README.md`、`docs/VERSIONING.md`、`docs/PROJECT_BRIEF.md`、`docs/DEVELOPMENT_PLAN.md` 与 `docs/releases/0.3.md` 已同步更新。

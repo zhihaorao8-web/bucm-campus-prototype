@@ -1,6 +1,6 @@
-# Flutter 第一版
+# Flutter Android开发与专项验证
 
-用户于2026-11-09确认：迁移到Flutter，优先Android；只做课表与今日速览；认证采用学校官方页面，不保存密码，失效后由本人重新登录。
+更新：2026-11-15。当前范围为课表、今日速览与后续获批录播；需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，日常入口见[DEVELOPMENT](DEVELOPMENT.md)。认证采用学校官方页面，不保存密码，失效后由本人重新登录。
 
 ## 工程与迁移边界
 
@@ -16,7 +16,7 @@ mobile/lib/
 mobile/android/      Android宿主与过渡XLS适配器
 ```
 
-界面、日历计算、模型与存储使用Dart。Riverpod负责状态；`flutter_inappwebview`承载可见的官方页面。无需开发者后端，不实现密码自动登录、后台隐式WebView、提醒或其他模块。附带需求文档中的持久化Cookie文件、密码保险箱、全局明文HTTP配置均不采用。
+界面、日历计算、模型与存储使用Dart。Riverpod负责状态；`flutter_inappwebview`承载可见的官方页面。无需开发者后端，不实现密码自动登录、隐式后台登录/保活、提醒或未获批模块。附带需求文档中的持久化Cookie文件、密码保险箱、全局明文HTTP配置均不采用。
 
 **当前不宣称纯Dart或95%跨平台完成。** 学校官方格式是二进制XLS，暂通过Android方法通道复用已测试的Java HSSF、排课和时间规则。只传导出地址、课表候选和结构化课程；Cookie由Android下载器在内存中使用，不返回Dart、不写日志或独立Cookie文件。iOS/Windows还需要对应XLS及会话下载适配器；这两个平台尚未生成宿主、构建或验收。Flutter插件内部的原生实现与过渡适配层已明确隔离。
 
@@ -48,11 +48,11 @@ $env:PUB_CACHE='C:\studentsAPP\build\pub-cache'
 $env:JAVA_HOME='D:\AndroidStudio\jbr'
 ```
 
-`prepare_flutter.py`只同步公开JS、6个解析Java源文件、SHA-256验证过的HSSF依赖和第三方许可；生成文件不入Git。解析器唯一维护源仍在根`src/`。修改它们后先运行`python scripts/check.py`，再重新prepare。Flutter应用依赖锁文件、宿主和Gradle wrapper应提交，SDK、缓存、JAR、密钥和APK不提交。
+`prepare_flutter.py`只同步公开JS、7个共享Java核心源文件、SHA-256验证过的HSSF依赖和第三方许可；生成文件不入Git。解析器唯一维护源仍在根`src/`。修改它们后先运行`python scripts/check.py`，再重新prepare。Flutter应用依赖锁文件、宿主和Gradle wrapper应提交，SDK、缓存、JAR、密钥和APK不提交。
 
-应用版本从根`AndroidManifest.xml`读取；prepare同步pubspec，Android构建也直接读取根版本。用户最新指定Android显示版本`0.27`、内部code递增为11；pubspec为满足SemVer规范写作`0.27.0+11`。新增`v0.27`预发布标签，已有`v0.1`、`v0.2`、`v0.25`、`v0.26`及Java历史标签不修改，实际发布状态见STATUS。
+应用版本从根`AndroidManifest.xml`读取；prepare同步pubspec，Android构建也直接读取根版本。当前Android显示版本为`0.3`、code为12，pubspec规范化为`0.3.0+12`。版本及历史标签规则见[VERSIONING](VERSIONING.md)，实际发布证据见[0.3](releases/0.3.md)。
 
-0.27正常APK使用`flutter build apk --release --dart-define=CAMPUS_DIRECT_CATALOG=true --dart-define=CAMPUS_TEST_DIAGNOSTICS=false`，debug改为`--debug`及诊断true；两包顺序构建且来源相同。release启用构建优化；构建时重新生成release模式插件注册表，避免此前测试注册表残留。为兼容已安装的同签名预览，仍使用本机既有开发签名。发布包标记为预发布，不将开发密钥提交到Git或Release附件。其他机器的开发密钥不同，不能保证覆盖安装；正式生产发布仍需单独配置签名。
+正常APK使用`flutter build apk --release --dart-define=CAMPUS_DIRECT_CATALOG=true --dart-define=CAMPUS_TEST_DIAGNOSTICS=false`，debug改为`--debug`及诊断true；两包顺序构建且来源相同。构建时重新生成对应插件注册表。当前沿用本机兼容开发签名、标记预发布；其他机器的密钥不能保证覆盖安装，正式生产签名尚未建立。详见[双包规范](BUILD_VARIANTS.md)。
 
 release压缩规则仅保留解析边界、HSSF反射记录和Log4j服务发现；对未使用的桌面绘图、OSGi与编译期注解设置精确的缺类规则，不关闭全部R8检查，也不关闭压缩。读取仅使用原始字符串/数值单元格，不调用桌面绘图和格式化。
 
@@ -94,7 +94,7 @@ cd mobile/android
 python scripts/check_native_media.py --ffmpeg 'C:\tools\ffmpeg.exe' --device emulator-5554
 ```
 
-沿用上方`JAVA_HOME`/`PUB_CACHE`配置及既有Android SDK。脚本只接受唯一在线的指定模拟器，生成素材/SHA清单到忽略的`mobile/build/app/generated/synthetic-media/`，仅执行`:app:connectedDebugAndroidTest -PcampusMediaTest=true`，要求三项新鲜JUnit检查齐全通过，并核对执行期间原生源码未改变。汇总为本地`build/native-media-summary.json`，不提交设备日志或生成的媒体。
+沿用上方`JAVA_HOME`/`PUB_CACHE`配置及既有Android SDK。脚本只接受唯一在线的指定模拟器，生成素材/SHA清单到忽略的`mobile/build/app/generated/synthetic-media/`，仅执行`:app:connectedDebugAndroidTest -PcampusMediaTest=true`，要求六项新鲜JUnit检查齐全通过，并核对执行期间原生源码未改变。汇总为本地`build/native-media-summary.json`，不提交设备日志或生成的媒体。
 
 测试运行器版本对齐仅作用于隔离目标；正常应用和release解析检查不增加这些debug运行依赖。素材只属于媒体仪器测试源集，不打包进普通应用。检查结束后重新执行普通`flutter build apk --debug`恢复正常包名产物，安装前验证包名与素材排除；发布另按release检查，不用隔离/debug结果替代。
 

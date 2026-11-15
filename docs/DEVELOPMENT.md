@@ -1,59 +1,47 @@
-# 本地开发与CI
+# 本地开发与检查入口
 
-## 环境
+更新：2026-11-15。当前主工程是mobile/，根目录保留共享Java核心与旧原型；日常开发使用Flutter/Gradle。先读[需求](PROJECT_BRIEF.md)、[进度](DEVELOPMENT_PLAN.md)、[证据](STATUS.md)；定位已有能力用[架构索引](ARCHITECTURE.md)，UI同时读[DESIGN](../DESIGN.md)。文档职责见[工程优化计划](MAINTENANCE_PLAN.md)。
 
-- Python 3.10+、JDK 17+；CI固定使用Python 3.12及JDK 17。
-- Node.js 22运行DOM合成测试。
-- 构建APK另需Android SDK Platform 35和Build Tools 35.0.0。
-- 支持Windows与Linux构建脚本；不依赖Gradle。Android Studio的AVD可用于安装APK和手动验证，但当前目录不是可直接Gradle同步的Android Studio工程。
-- XLS依赖先运行`python scripts/dependencies.py`准备，来源固定为公开Maven Central，版本及SHA-256见`dependencies.lock.json`。JAR只放在被忽略的`build/deps/`；之后的离线检查与构建均校验其摘要，缺失或摘要不符即失败，不自动改版本。
+## 工具与准备
 
-SDK安装示例：
+- Flutter固定3.47.9及SHA c197ca5199e9ee5661e865596c9c07294dfab51c；依赖以pubspec.lock和dependencies.lock.json为准。
+- Python 3.10+、Node.js 22；Java核心检查使用JDK 17+，当前Flutter CI配置Temurin 25/Python 3.12，不再按旧原型文档认作JDK17 runner。
+- Android宿主、SDK、同盘pub缓存、本机环境和隔离验证命令见[FLUTTER](FLUTTER.md)。本机路径是配置示例，不是其他机器必需路径。
+- 根src/和assets/是共享维护源；prepare复制到被忽略目录，不能编辑副本或将真实学校数据作为夹具。
 
-```text
-sdkmanager "platforms;android-35" "build-tools;35.0.0"
+首次或共享资源变更后，从根目录执行：
+
+```powershell
+python scripts/dependencies.py
+python scripts/prepare_flutter.py
+cd mobile
+flutter pub get --enforce-lockfile
 ```
 
-## 离线检查
+公开依赖均校验锁定摘要；不通过删除锁文件、SHA或关闭TLS解决下载失败。Windows依赖源码与工程同盘，CI使用官方源。版本只从根AndroidManifest.xml同步。
 
-```text
+## 当前可用检查
+
+```powershell
+# 根目录：Java/XLS/DOM/目录桥/媒体传输与图标资产合成检查
 python scripts/check.py
 ```
 
-检查Java周次与时间校验、DOM星期列/合并单元格/登录表格排除/框架处理，以及示例数据的合成标记。它不访问学校，不要求Android SDK，不证明学校实时接口仍有效。
-
-还检查合成二进制XLS的网格、合并单元格、无课表课程边界、行式明细、缺失地点、规模限制及公式拒绝，以及自动导航的官方标签、全部周次筛选、登录暂停和域名限制。真实导出文件不作为测试输入。
-
-`CourseTimeTest`覆盖用户作息的白天连排分段、非连续节次、全部晚间组合/第12节占位、跨午休或晚餐拒绝、学期识别、周一起点、整批校验和去重。它不将真实课表写入测试或CI。AVD本地自动导入属于用户授权会话中的验证，不能以合成测试通过代替学校全学期准确性核验。
-
-打包会把依赖的基础class送入D8，排除多版本JAR的`META-INF/versions/`与`module-info.class`，并将原始LICENSE/NOTICE放入APK的`assets/third-party/`。只读取HSSF二进制XLS，不执行公式或宏，不支持XLSX、加密工作簿或任意网页转表格。
-
-## 构建
-
-Windows：
-
 ```powershell
-python build.py --sdk C:\path\to\Android\Sdk --work .\build\local --output .\dist
+# mobile目录：静态检查及按文件选择现有测试
+flutter analyze --no-pub
+flutter test --no-pub test/schedule_test.dart
+flutter test --no-pub --dart-define=CAMPUS_DIRECT_CATALOG=true test/classroom_api_reader_test.dart test/classroom_direct_import_test.dart
+# 全量回归
+flutter test --no-pub
 ```
 
-Linux：
+当前check.py尚无module/changed参数，CI也仍在push/PR运行完整检查和双包构建；模块调度与分层规范在B阶段实施，不能提前声称已具备。修改业务选择相关现有测试；跨模块改动需覆盖依赖方。文档修改运行链接与差异检查，无需重新构建APK。
 
-```bash
-python build.py --sdk "$ANDROID_HOME" --work build/local --output dist
-```
+普通默认回归会条件跳过直取和预览场景；直取相关变更须显式开启define，可选合成预览见FLUTTER。Android方法通道、R8 XLS和原生媒体属于独立检查，不能由Dart组件测试替代。真实学校验证只在本人授权会话下执行，不进入CI。
 
-版本从`AndroidManifest.xml`读取，APK放在`dist/`。每次编译使用独立run目录，避免混入上次遗留的class或DEX。`build/`与`dist/`均不进入Git。
+## 构建与同步
 
-## 签名与覆盖安装
+开发安装、正常包名、隔离测试与签名边界见[FLUTTER](FLUTTER.md)。双包构建见[BUILD_VARIANTS](BUILD_VARIANTS.md)，版本/发布检查见[VERSIONING](VERSIONING.md)及[发布复盘](releases/0.1-retrospective.md)。顺序构建，保留真实退出码和详细日志。
 
-`--work`目录下的`prototype.keystore`是本地开发密钥，首次不存在时才生成。开发口令`android`不是生产密钥管理方案。不要上传密钥。
-
-此前手机验证使用的密钥保留在原本机工作目录；后续覆盖更新应继续给`--work`传同一目录。更换工作目录会生成新签名，不能直接覆盖同包名旧安装。
-
-CI每次生成临时开发签名，产物仅供独立安装检查，不保证能覆盖手机或前次CI产物。发布前需另行设计正式签名流程；当前不配置生产密钥或账号Secrets。
-
-## 自动化边界
-
-GitHub Actions在push、PR和手动触发时运行离线检查和APK构建，上传临时开发APK。CI不运行学校认证，不包含账号、会话、真机截图、真实课表或root调试脚本。
-
-本机检查通过、CI通过、AVD通过和学校真实数据核对是独立证据。维护时不要混为同一状态。
+每个独立功能/UI分项检查后更新证据、仅暂存相关文件、提交并普通推送工作分支。阶段完成停止审核；不把Git同步等同于main合入或发布。失败保留改动/提交并如实报告。旧build.py仅为原型构建器，目前check.py仍导入其JDK工具；解除依赖前保留，未来清理见工程优化计划。
