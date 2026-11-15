@@ -6,6 +6,7 @@
 
 ```text
 mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
+  design/         固定色板、基础/语义/组件视觉令牌
   ui/             页面、组件、手势、路由；部分课堂流程仍在页面内
   application/    Riverpod状态、导入收集与任务、本机续播生命周期
   domain/         课程、日历、匹配、分页模型与校验
@@ -46,6 +47,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
 | 页面缓存 | `platform/classroom_session_cache.dart`：独占转移WebView句柄，最多2门/5分钟，clear递增revision | `classroom_session_cache_test.dart` |
 | 本机续播 | `data/classroom_playback_progress.dart`校验身份/位置；`application/classroom_playback_progress_session.dart`协调选择、周期保存与清理 | `classroom_playback_progress_test.dart` |
 | 相邻错色/冲突布局 | `ui/course_colors.dart`分配色索引；`ui/week_grid.dart`按真实时间分片和层叠 | `course_colors_test.dart`、`week_stack_test.dart` |
+| 视觉策略/控件 | `design/app_palette.dart`、`design/app_tokens.dart`；`ui/visual_policy.dart`降级、`ui/app_controls.dart`维护按钮/分段指示器 | `quiet_design_test.dart`、`classroom_ui_polish_test.dart`、`appearance_test.dart` |
 | 主题/材质/交互 | `app_theme.dart`、`AcrylicSurface`、`CourseSurface/QuietCard/QuietSheet`、`CoursePressable/CourseCardLink`、`navigation_motion.dart` | `quiet_design_test.dart`、`course_interaction_test.dart`、`navigation_motion_test.dart` |
 
 不得重新按设备时区计算教学周、模糊匹配课程，或仅按录播ID丢弃来源。Java导入校验和Dart缓存校验属于不同信任边界，保持各自防护，以合成契约样本约束一致性。
@@ -71,5 +73,5 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
 
 - `ClassroomCoursePage`约2607行，仍拥有连接/认证恢复、任务、播放准备与UI；已抽出的模型不等于控制器拆分完成。
 - 多个文件仓库分别实现pending文件、flush/rename和清理；公共原子写工具待抽取，业务备份与revision策略不能一并抹平。
-- 顶栏雾化、材质降级、续播阈值及分页上限仍有重复定义，按工程优化C/D阶段收拢。
+- C阶段已收拢顶栏雾化、材质降级、通用控件与常用视觉参数；续播阈值、分页上限等业务参数仍按D阶段收拢。
 - 存储文件名、schema和旧键是兼容契约；移动常量不顺带更名或迁移真实用户数据。

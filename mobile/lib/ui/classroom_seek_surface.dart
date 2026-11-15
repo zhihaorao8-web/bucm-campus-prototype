@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
@@ -173,16 +174,19 @@ class ClassroomSeekPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.all(AppSpace.lg),
     child: FittedBox(
       fit: BoxFit.scaleDown,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: Colors.black87,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.inset),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.comfortable,
+            vertical: AppSpace.md,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -190,7 +194,7 @@ class ClassroomSeekPreview extends StatelessWidget {
                 '${formatTime(target)} / ${formatTime(duration)}',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
+                  fontSize: AppType.previewTime,
                   fontWeight: FontWeight.w600,
                 ),
               ),

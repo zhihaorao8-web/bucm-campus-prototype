@@ -1,3 +1,5 @@
+import '../design/app_palette.dart';
+import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/cupertino.dart';
@@ -7,23 +9,11 @@ import 'app_icons.dart';
 
 /// HyperOS / MIUIX surfaces and typography, shared with Flutter route overlays.
 abstract final class AppColors {
-  static const blue = Color(0xFF3482FF);
-  static const paper = Color(0xFFFAF9F6);
-  static const night = Color(0xFF000000);
-  static const courseLight = [
-    Color(0xFFF2F6FF),
-    Color(0xFFFAF5EE),
-    Color(0xFFEFF8F3),
-    Color(0xFFFDF1F1),
-    Color(0xFFF5F0FC),
-  ];
-  static const courseDark = [
-    Color(0xFF1E2B43),
-    Color(0xFF322D25),
-    Color(0xFF21342C),
-    Color(0xFF382828),
-    Color(0xFF2E283C),
-  ];
+  static const blue = AppPalette.blue;
+  static const paper = AppPalette.paper;
+  static const night = AppPalette.night;
+  static const courseLight = AppPalette.courseLight;
+  static const courseDark = AppPalette.courseDark;
   static Color courseAt(BuildContext context, int index) {
     final colors = Theme.of(context).brightness == Brightness.dark
         ? courseDark
@@ -42,13 +32,7 @@ abstract final class AppColors {
     if (MediaQuery.highContrastOf(context)) {
       return Theme.of(context).colorScheme.onSurface;
     }
-    const inks = [
-      Color(0xFF3B6EF6),
-      Color(0xFF9A6B2F),
-      Color(0xFF257A54),
-      Color(0xFFC23B3B),
-      Color(0xFF6E44B8),
-    ];
+    const inks = AppPalette.courseInk;
     final ink = index < inks.length ? inks[index] : courseAt(context, index);
     return Theme.of(context).brightness == Brightness.dark
         ? HSLColor.fromColor(ink).withLightness(.76).toColor()
@@ -76,7 +60,7 @@ ThemeData appTheme(
   );
   final customized =
       settings.monet ||
-      settings.accent != 0xff3482ff ||
+      settings.accent != AppPalette.accentValue ||
       settings.variant != DynamicSchemeVariant.tonalSpot ||
       settings.contrast != 0;
   final colors = customized
@@ -88,48 +72,48 @@ ThemeData appTheme(
           primary: miuix.primary,
           onPrimary: miuix.onPrimary,
           surface: dark ? miuix.surface : AppColors.paper,
-          onSurface: dark ? miuix.onSurface : const Color(0xFF1E2022),
+          onSurface: dark ? miuix.onSurface : AppPalette.textLight,
           surfaceContainer: dark ? miuix.surfaceContainer : Colors.white,
           surfaceContainerHighest: miuix.secondaryVariant,
           onSurfaceVariant: dark
-              ? const Color(0xFFABABAB)
-              : const Color(0xFF5C6168),
-          outlineVariant: dark ? miuix.dividerLine : const Color(0x151C1E21),
+              ? AppPalette.secondaryDark
+              : AppPalette.secondaryLight,
+          outlineVariant: dark ? miuix.dividerLine : AppPalette.outlineLight,
           primaryContainer: dark
-              ? const Color(0xFF182D4D)
-              : const Color(0xFFEAF2FF),
+              ? AppPalette.primaryContainerDark
+              : AppPalette.primaryContainerLight,
           onPrimaryContainer: miuix.primary,
         );
   final text = Typography.material2021().black
       .apply(bodyColor: colors.onSurface, displayColor: colors.onSurface)
       .copyWith(
         headlineLarge: TextStyle(
-          fontSize: 34,
+          fontSize: AppType.page,
           fontWeight: FontWeight.w700,
           color: colors.onSurface,
         ),
         headlineMedium: TextStyle(
-          fontSize: 30,
+          fontSize: AppType.compactPage,
           fontWeight: FontWeight.w700,
           color: colors.onSurface,
         ),
         titleLarge: TextStyle(
-          fontSize: 22,
+          fontSize: AppType.section,
           fontWeight: FontWeight.w600,
           color: colors.onSurface,
         ),
         titleMedium: TextStyle(
-          fontSize: 17,
+          fontSize: AppType.title,
           fontWeight: FontWeight.w600,
           color: colors.onSurface,
         ),
         bodyLarge: TextStyle(
-          fontSize: 16,
+          fontSize: AppType.body,
           height: 1.5,
           color: colors.onSurface,
         ),
         bodyMedium: TextStyle(
-          fontSize: 14,
+          fontSize: AppType.label,
           height: 1.5,
           color: colors.onSurface,
         ),
@@ -166,18 +150,24 @@ ThemeData appTheme(
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: const Size(48, 52),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        minimumSize: const Size(AppLayout.minTap, 52),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.button),
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size(48, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        minimumSize: const Size(AppLayout.minTap, AppLayout.minTap),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.button),
+        ),
       ),
     ),
     iconButtonTheme: IconButtonThemeData(
-      style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+      style: IconButton.styleFrom(
+        minimumSize: const Size(AppLayout.minTap, AppLayout.minTap),
+      ),
     ),
     dividerTheme: DividerThemeData(
       color: colors.outlineVariant,
@@ -186,7 +176,9 @@ ThemeData appTheme(
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: colors.surfaceContainer,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.sheet),
+      ),
     ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: colors.surfaceContainer,
@@ -200,7 +192,7 @@ ThemeData appTheme(
       filled: true,
       fillColor: colors.surfaceContainer,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.input),
         borderSide: BorderSide.none,
       ),
     ),

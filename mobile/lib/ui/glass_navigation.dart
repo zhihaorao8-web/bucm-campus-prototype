@@ -35,12 +35,12 @@ class GlassNavigation extends ConsumerWidget {
         70.0 + (MediaQuery.textScalerOf(context).scale(13) - 13).clamp(0, 24);
     return SafeArea(
       top: false,
-      minimum: EdgeInsets.only(bottom: floating ? 20 : 0),
+      minimum: EdgeInsets.only(bottom: floating ? AppSpace.comfortable : 0),
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-          floating ? 24 : 0,
-          floating ? 12 : 0,
-          floating ? 24 : 0,
+          floating ? AppSpace.xl : 0,
+          floating ? AppSpace.md : 0,
+          floating ? AppSpace.xl : 0,
           0,
         ),
         child: Center(
@@ -107,7 +107,7 @@ class GlassNavigation extends ConsumerWidget {
                     child: SizedBox(
                       height: height,
                       child: Padding(
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(AppSpace.compact),
                         child: Stack(
                           children: [
                             Positioned.fill(
@@ -176,7 +176,8 @@ class GlassNavigation extends ConsumerWidget {
                                                       .textTheme
                                                       .bodySmall!
                                                       .copyWith(
-                                                        fontSize: 12,
+                                                        fontSize:
+                                                            AppType.smallLabel,
                                                         height: 1.2,
                                                         fontWeight:
                                                             selected == index

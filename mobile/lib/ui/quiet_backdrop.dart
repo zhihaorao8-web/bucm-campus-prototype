@@ -1,3 +1,4 @@
+import '../design/app_palette.dart';
 import '../design/app_tokens.dart';
 import 'visual_policy.dart';
 import 'dart:math' as math;
@@ -115,7 +116,7 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
       children: [
         ColoredBox(
           color: !dark && !contrast && settings.aurora
-              ? const Color(0xFFF9FCFF)
+              ? AppPalette.ambientSurface
               : Theme.of(context).colorScheme.surface,
         ),
         if (!contrast && settings.aurora)
@@ -173,55 +174,11 @@ class _AuroraPainter extends CustomPainter {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: dark
-              ? const [Color(0xFF070D14), Color(0xFF091313), Color(0xFF0B0C14)]
-              : const [Color(0xFFFAFBFD), Color(0xFFFCFDFF), Color(0xFFFDFBF7)],
+              ? AppPalette.ambientBaseDark
+              : AppPalette.ambientBaseLight,
         ).createShader(bounds),
     );
-    const todayDarkHues = [
-      Color(0xFF6CCFFF),
-      Color(0xFF7FE8CD),
-      Color(0xFFFFD1A6),
-      Color(0xFFB8BBFF),
-    ];
-    const todayLightHues = [
-      Color(0xFF6ECBFF),
-      Color(0xFF7BE3C9),
-      Color(0xFFA79FFF),
-      Color(0xFFFFBED1),
-    ];
-    // Reading pages use the same broad diffusion, with their existing palettes
-    // and a fixed phase. Only Today owns continuous ambient motion.
-    final hues = dark
-        ? switch (tab) {
-            1 => const [
-              Color(0xFF6096FD),
-              Color(0xFF6ED7B4),
-              Color(0xFFCADFFF),
-              Color(0xFFB8BBFF),
-            ],
-            2 => const [
-              Color(0xFFA882F5),
-              Color(0xFFF5C391),
-              Color(0xFFE1CEFA),
-              Color(0xFF72D0FF),
-            ],
-            _ => todayDarkHues,
-          }
-        : switch (tab) {
-            1 => const [
-              Color(0xFF78B0FF),
-              Color(0xFF7AE0C7),
-              Color(0xFFB5D6FF),
-              Color(0xFFB7B3FF),
-            ],
-            2 => const [
-              Color(0xFFB398FF),
-              Color(0xFFFFC59F),
-              Color(0xFFE0CCFF),
-              Color(0xFF82D1FF),
-            ],
-            _ => todayLightHues,
-          };
+    final hues = AppPalette.ambientHues(dark, tab);
     final angle = tab == 0 ? phase.value * math.pi * 2 : 0.0;
     final moving = tab == 0;
     for (var i = 0; i < hues.length; i++) {

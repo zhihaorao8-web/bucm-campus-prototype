@@ -14,7 +14,13 @@
 
 - 用户继续指令确认B通过；从b65bd51创建codex/maintenance-stage-c。本阶段统一视觉参数、组件复用与交互规范，版本与学校业务边界不变。
 - C1共享策略：新增design/app_tokens.dart及AppVisualPolicy，焦点/列表/密集/抽屉材质统一降级判断；主/课程/设置顶栏共用滚动雾化；导航、详情/播放路由、周日/周次、标题时长集中。保留底栏关闭玻璃高光后仍可普通模糊的现有独立行为。
-- C1静态分析通过；11个相关UI/手势测试文件81项通过、2项条件跳过，含新增浅深色偏好/无障碍材质切换矩阵。日志build/checks/stage-c1-analyze.log及stage-c1-tests.log。此分项完成后提交推送，控件分项接续；阶段尚未完成，未新增APK或学校访问。
+- C1静态分析通过；11个相关UI/手势测试文件81项通过、2项条件跳过，含新增浅深色偏好/无障碍材质切换矩阵。日志build/checks/stage-c1-analyze.log及stage-c1-tests.log。分项eca3e55已提交推送。
+
+- C2固定配色集中到AppPalette（含默认/可选强调色、课程和环境光），页面使用主题字阶、间距与圆角令牌；AppActionButton复用4个维护/恢复动作并补齐48dp最小高度，AppSegmentIndicator复用周日和课堂切换几何/时长。busy下保留打开学校页的显式恢复动作；业务取数/权限策略未改动。
+- C2跨模块ui/schedule/player/classroom检查中，Java4组/Node5组及分析通过，45个Flutter文件中272项通过/9条件跳过，新增忙碌态测试因pumpAndSettle等待持续进度动画超时。只将夹具改为有界pump，组件/外观19项通过/1条件跳过；该轮未执行的直取专项另跑23项通过。失败报告report-25103503f6e749d4874cba3074f94146.json保留，不将原报告写成整体通过。
+- C2最终分析无问题；现有CAPTURE_PREVIEW检查15项通过（含完整合成页面/动效采样和课堂浅深色预览）。已目检今日/课堂浅深色、周表/日视图/冲突大字，以及减少动画/关闭玻璃/高对比度共12张代表图，未见本次迁移导致的溢出、遮挡或材质回退丢失。截图/拼图仅在忽略的dist/flutter-preview下，不提交，不作为设备性能证据。
+- 相关日志：build/checks/stage-c2-tests.log、stage-c2-final-analyze.log、stage-c2-target-tests.log、stage-c2-direct-tests.log、stage-c-preview.log。设计规范已改为入口/组件/状态/降级/验收表；AGENTS及架构索引同步引用。文档链接213项通过，页内锚点/远程链接不在该检查范围。
+- C2完成后提交推送；阶段最终状态汇总接续，本阶段未构建/安装APK或新增学校会话。
 
 ## 2026-11-15 工程优化B检查
 

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// Primitive scale. Use semantic/component aliases below where the role is known.
 abstract final class AppSpace {
   static const xs = 4.0, sm = 8.0, md = 12.0, lg = 16.0, xl = 24.0, xxl = 32.0;
-  static const control = 10.0, comfortable = 20.0;
+  static const control = 10.0, comfortable = 20.0, compact = 6.0;
 }
 
 abstract final class AppLayout {
@@ -12,17 +12,30 @@ abstract final class AppLayout {
   static const settingsInset = AppSpace.lg;
   static const pageTop = AppSpace.md;
   static const pageBottom = AppSpace.xxl;
+  static const compactCardInset = 18.0, focusInset = 22.0;
 }
 
 abstract final class AppRadius {
   static const input = 16.0, button = 18.0, section = 20.0;
   static const card = 24.0, focus = 28.0, sheet = 28.0;
+  static const small = 12.0, inset = 16.0;
 }
 
 abstract final class AppType {
   static const label = 14.0, body = 16.0, title = 17.0;
   static const section = 22.0, page = 34.0, compactPage = 30.0;
   static const focusTime = 38.0;
+  static const control = 15.0, smallLabel = 12.0, caption = 11.0;
+  static const secondary = 13.0, micro = 10.0, dense = 9.0;
+  static const previewTime = 20.0, artisticHeader = 40.0;
+}
+
+abstract final class AppControl {
+  static const radius = 14.0;
+  static const icon = 18.0;
+  static const inset = AppSpace.lg;
+  static const secondaryInset = 14.0;
+  static const verticalInset = AppSpace.control;
 }
 
 abstract final class AppMotion {

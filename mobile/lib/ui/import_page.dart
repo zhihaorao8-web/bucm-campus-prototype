@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'app_icons.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -493,13 +494,13 @@ class _ImportPageState extends ConsumerState<ImportPage> {
               Container(
                 width: double.infinity,
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpace.lg),
                 child: Text(status),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                  horizontal: AppSpace.md,
+                  vertical: AppSpace.sm,
                 ),
                 child: Wrap(
                   spacing: 8,

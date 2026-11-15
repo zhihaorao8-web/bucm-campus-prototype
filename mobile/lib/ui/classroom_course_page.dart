@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'course_interaction.dart';
 import 'course_surface.dart';
 import 'quiet_backdrop.dart';
@@ -1730,7 +1731,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         children: [
           if (loading || busy) const LinearProgressIndicator(),
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpace.md),
             child: Text(
               message ??
                   '请在官方页面完成认证并进入课程平台。WebVPN 中可打开“智慧教学平台”；也可从数字北中医应用中心进入。',
@@ -2002,14 +2003,14 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
             SliverSafeArea(
               top: false,
               sliver: SliverPadding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpace.lg),
                 sliver: SliverList.list(
                   children: [
                     CourseCardHero(
                       tag: widget.transitionTag,
                       child: QuietCard(
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(AppSpace.lg),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -2072,20 +2073,20 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                       QuietCard(
                         cornerRadius: 22,
                         child: Padding(
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.all(AppSpace.comfortable),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               AppIcon(
                                 AppIcons.mediaLibrary,
                                 size: 22,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                               const SizedBox(width: 12),
                               const Expanded(
-                                child: Text(
-                                  '学校直播暂未开放\n开放后将在这里提供有权限的课堂直播。',
-                                ),
+                                child: Text('学校直播暂未开放\n开放后将在这里提供有权限的课堂直播。'),
                               ),
                             ],
                           ),
@@ -2131,7 +2132,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                         ),
                       if (synthetic && message != null)
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSpace.md,
+                          ),
                           child: Text(message!),
                         ),
                       if (synthetic)
@@ -2139,7 +2142,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                           cornerRadius: 20,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
+                              horizontal: AppSpace.lg,
                               vertical: 14,
                             ),
                             child: Row(
@@ -2164,7 +2167,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                         QuietCard(
                           cornerRadius: 20,
                           child: Padding(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(AppSpace.lg),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -2218,7 +2221,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                             QuietCard(
                               cornerRadius: 20,
                               child: Padding(
-                                padding: const EdgeInsets.all(20),
+                                padding: const EdgeInsets.all(
+                                  AppSpace.comfortable,
+                                ),
                                 child: Text(
                                   '学校当前没有可显示的录播记录。',
                                   style: Theme.of(context).textTheme.bodyMedium
@@ -2287,7 +2292,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                         const SizedBox(height: 12),
                         for (final course in candidates)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpace.control,
+                            ),
                             child: QuietCard(
                               cornerRadius: 22,
                               child: Material(
@@ -2297,7 +2304,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                                   onTap: busy ? null : retryCurrent,
                                   child: Padding(
                                     padding: const EdgeInsets.fromLTRB(
-                                      16,
+                                      AppSpace.lg,
                                       14,
                                       14,
                                       14,
@@ -2438,7 +2445,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     appBar: AppBar(title: const Text('统一导入录播')),
     body: SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpace.comfortable),
         children: [
           Text(
             localCourse.semester,
@@ -2481,11 +2488,11 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
             Text('已取得 ${importPages.length} 页录播'),
           if (message != null)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
               child: Text(message!),
             ),
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
+            padding: EdgeInsets.symmetric(vertical: AppSpace.lg),
             child: Text('同学期同名课程的回放全部汇总，教师仅用于展示来源。未匹配项请检查课程名称或学校学期。'),
           ),
           for (final status in [
@@ -2500,7 +2507,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                 key: status == ImportTaskStatus.completed
                     ? completedTasksKey
                     : null,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
                 child: Text(
                   '${importTaskStatusLabel(status)}（${importProgress.count(status)}）',
                   style: Theme.of(context).textTheme.titleMedium,
@@ -2540,7 +2547,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           if (importFinished &&
               importProgress.count(ImportTaskStatus.completed) > 0)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
+              padding: EdgeInsets.symmetric(vertical: AppSpace.md),
               child: Text('点击上方已完成课程可查看已导入录播。'),
             ),
           if (importFinished)

@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
 import '../domain/schedule.dart';
 import 'app_icons.dart';
@@ -32,7 +33,12 @@ Future<(Course, bool)?> showConflictCourses(
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 12, 8, 0),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.xl,
+            AppSpace.md,
+            AppSpace.sm,
+            0,
+          ),
           child: Row(
             children: [
               Expanded(
@@ -50,27 +56,39 @@ Future<(Course, bool)?> showConflictCourses(
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.xl,
+            0,
+            AppSpace.xl,
+            AppSpace.lg,
+          ),
           child: Text(
             '此时段有${events.length}门课程。优先显示只调整本次周表外观，以下为各课程的实际授课信息。',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 13,
+              fontSize: AppType.secondary,
             ),
           ),
         ),
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.comfortable,
+              0,
+              AppSpace.comfortable,
+              AppSpace.xl,
+            ),
             child: Column(
               children: [
                 for (final event in events)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.only(bottom: AppSpace.md),
                     child: QuietCard(
                       key: ValueKey('conflict-details-${event.course.id}'),
                       cornerRadius: 20,
-                      insideMargin: const EdgeInsets.all(18),
+                      insideMargin: const EdgeInsets.all(
+                        AppLayout.compactCardInset,
+                      ),
                       child: SizedBox(
                         width: double.infinity,
                         child: Column(

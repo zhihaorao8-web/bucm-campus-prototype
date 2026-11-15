@@ -1,3 +1,4 @@
+import '../design/app_palette.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -9,7 +10,7 @@ class AppearanceSettings {
   const AppearanceSettings({
     this.mode = ThemeMode.system,
     this.monet = false,
-    this.accent = 0xff3482ff,
+    this.accent = AppPalette.accentValue,
     this.variant = DynamicSchemeVariant.tonalSpot,
     this.contrast = 0,
     this.blur = true,

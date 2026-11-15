@@ -13,6 +13,7 @@
 ## 需求与开发进度协调
 
 - 开始开发前先阅读`docs/PROJECT_BRIEF.md`（用户提示词与后续确认形成的生效需求）、`docs/DEVELOPMENT_PLAN.md`（阶段、当前进度与下一步）、`docs/STATUS.md`（实际验证证据）；修改UI时同时阅读`DESIGN.md`。
+- UI修改遵循DESIGN.md的组件/状态/验收表；固定配色及公共尺寸、动效从mobile/lib/design读取，材质降级复用AppVisualPolicy，不在页面复制主题或交互算法。新增变体先扩展公共组件并更新规范。
 - 原始Markdown提示词完整保存在`docs/requirements/ORIGINAL_PROMPT.md`，作为历史需求来源。与后续用户确认冲突的内容按`docs/PROJECT_BRIEF.md`中的决策表执行，不重新启用保存密码、静默重登、明文HTTP或第一版以外模块。
 - 项目长期目标是校园生活聚合应用；当前仅推进已确认的Flutter Android课表与录播。实际直播、图书馆、提醒、社区以及iOS/Windows交付均不得因原始提示词提及而自动进入开发范围。
 - 本轮工程优化按docs/MAINTENANCE_PLAN.md分阶段实施；每阶段完成检查、提交推送后停止供用户审核，通过后再推进下一阶段。

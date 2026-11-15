@@ -70,10 +70,10 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
                       PinnedHeaderSliver(child: SizedBox(height: insets.top)),
                       SliverPadding(
                         padding: EdgeInsets.fromLTRB(
-                          16 + insets.left,
-                          16,
-                          16 + insets.right,
-                          insets.bottom + 32,
+                          AppSpace.lg + insets.left,
+                          AppSpace.lg,
+                          AppSpace.lg + insets.right,
+                          insets.bottom + AppSpace.xxl,
                         ),
                         sliver: SliverList.list(children: widget.children),
                       ),
@@ -108,7 +108,7 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
 }
 
 Widget settingsGroup(List<Widget> children) => Padding(
-  padding: const EdgeInsets.only(bottom: 16),
+  padding: const EdgeInsets.only(bottom: AppSpace.lg),
   child: QuietCard(
     cornerRadius: 24,
     insideMargin: EdgeInsets.zero,

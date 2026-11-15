@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'app_icons.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -363,7 +364,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                     children: [
                       Expanded(
                         child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(AppSpace.xl),
                           child: ListenableBuilder(
                             listenable: player,
                             builder: (context, _) {
@@ -453,7 +454,12 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpace.xl,
+                          AppSpace.sm,
+                          AppSpace.xl,
+                          AppSpace.lg,
+                        ),
                         child: SizedBox(
                           width: double.infinity,
                           child: FilledButton(
@@ -503,7 +509,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                   text: state.watermark,
                   style: DefaultTextStyle.of(
                     context,
-                  ).style.merge(const TextStyle(fontSize: 12)),
+                  ).style.merge(const TextStyle(fontSize: AppType.smallLabel)),
                 ),
                 textDirection: Directionality.of(context),
                 textScaler: MediaQuery.textScalerOf(context),
@@ -585,7 +591,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Colors.white70,
-                      fontSize: 12,
+                      fontSize: AppType.smallLabel,
                       shadows: [Shadow(color: Colors.black, blurRadius: 3)],
                     ),
                   ),
@@ -626,7 +632,10 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
           PopupMenuItem(value: kind, child: Text(classroomViewName(kind))),
       ],
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.md,
+          vertical: 14,
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -661,17 +670,17 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
           !progress!.invalidated &&
           progress!.choicePosition == null)
         const Padding(
-          padding: EdgeInsets.all(12),
+          padding: EdgeInsets.all(AppSpace.md),
           child: Text('正在核对本机进度与视频时长…'),
         ),
       if (progress?.warning != null)
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Text(progress!.warning!),
         ),
       if (error != null)
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Text(error, semanticsLabel: error),
         ),
     ];
@@ -722,7 +731,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
           },
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
           child: Row(
             children: [
               IconButton(
@@ -754,7 +763,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                     PopupMenuItem(value: speed, child: Text('$speed×')),
                 ],
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpace.md),
                   child: Text('${state.speed}×'),
                 ),
               ),
@@ -954,7 +963,7 @@ class _ClassroomPlayerPageState extends State<ClassroomPlayerPage>
                     AspectRatio(aspectRatio: 16 / 9, child: viewport()),
                     controls(),
                     const Padding(
-                      padding: EdgeInsets.all(16),
+                      padding: EdgeInsets.all(AppSpace.lg),
                       child: Text(
                         '左右滑动主画面调整进度，松手跳转；单指拖动、双指缩放小窗，点按可交换主画面。学校观看记录尚未接入，本地播放不代表学校记录已更新。',
                       ),

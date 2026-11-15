@@ -1,3 +1,5 @@
+import '../design/app_tokens.dart';
+import '../design/app_palette.dart';
 import 'course_interaction.dart';
 import 'acrylic_surface.dart';
 import 'package:flutter/material.dart';
@@ -46,7 +48,7 @@ class FocusCourseCard extends StatelessWidget {
             contentColor: colors.onSurface,
           ),
           cornerRadius: 28,
-          insideMargin: const EdgeInsets.all(22),
+          insideMargin: const EdgeInsets.all(AppLayout.focusInset),
           child: DefaultTextStyle(
             style: Theme.of(
               context,
@@ -67,16 +69,14 @@ class FocusCourseCard extends StatelessWidget {
                           height: 8,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: active
-                                ? const Color(0xFF257A54)
-                                : colors.primary,
+                            color: active ? AppPalette.success : colors.primary,
                             boxShadow: MediaQuery.highContrastOf(context)
                                 ? null
                                 : [
                                     BoxShadow(
                                       color:
                                           (active
-                                                  ? const Color(0xFF257A54)
+                                                  ? AppPalette.success
                                                   : colors.primary)
                                               .withValues(alpha: .12),
                                       spreadRadius: 4,
@@ -93,12 +93,12 @@ class FocusCourseCard extends StatelessWidget {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
+                        horizontal: AppSpace.control,
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
                         color: colors.primaryContainer,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(AppRadius.section),
                       ),
                       child: Text(
                         active
@@ -107,7 +107,7 @@ class FocusCourseCard extends StatelessWidget {
                             ? '${remainingMinutes(event.start, now)} 分钟后开始'
                             : '${shortDate(event.date)} 周${weekdays[event.date.weekday - 1]}',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppType.smallLabel,
                           fontWeight: FontWeight.w600,
                           color: colors.onPrimaryContainer,
                           fontFeatures: tabularTime,
@@ -120,7 +120,7 @@ class FocusCourseCard extends StatelessWidget {
                 Text(
                   event.segment.start,
                   style: TextStyle(
-                    fontSize: 38,
+                    fontSize: AppType.focusTime,
                     height: 1.1,
                     fontWeight: FontWeight.w700,
                     color: colors.primary,
@@ -147,7 +147,7 @@ class FocusCourseCard extends StatelessWidget {
                 ),
                 if (active && overlaps > 1)
                   Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.only(top: AppSpace.sm),
                     child: Text(
                       '有$overlaps门课程重叠',
                       style: TextStyle(color: colors.error),
@@ -218,7 +218,7 @@ class TodayCourseTimeline extends StatelessWidget {
                 (index == 0 || events[index - 1].start != event.start),
           ))
             Padding(
-              padding: const EdgeInsets.fromLTRB(28, 2, 0, 16),
+              padding: const EdgeInsets.fromLTRB(28, 2, 0, AppSpace.lg),
               child: Row(
                 children: [
                   Expanded(child: Divider(color: colors.outlineVariant)),
@@ -232,7 +232,7 @@ class TodayCourseTimeline extends StatelessWidget {
                           ? '晚休'
                           : '课间休息'} · ${clock(gap.$1)}–${clock(gap.$2)}',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: AppType.caption,
                         color: colors.onSurfaceVariant,
                         fontFeatures: tabularTime,
                       ),
