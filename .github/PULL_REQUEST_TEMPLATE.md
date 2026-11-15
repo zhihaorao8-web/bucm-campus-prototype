@@ -4,8 +4,8 @@
 
 ## 验证
 
-- [ ] `python scripts/check.py`
-- [ ] 如涉及Android源码或资源，完整APK构建通过
+- [ ] 按[分层测试](../docs/TESTING.md)填写命令、选择范围与结果（可用check.py --changed --dry-run复核）
+- [ ] Android/解析依赖/媒体/压缩规则变更已说明所需设备或构建验证；未测项明确列出
 - [ ] 如涉及学校页面，说明是否真实验证；未验证时明确标注
 - [ ] 无账号、真实课表、Cookie、令牌、截图或签名密钥
 

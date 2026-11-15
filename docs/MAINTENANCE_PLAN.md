@@ -39,6 +39,6 @@
 | [ARCHITECTURE](ARCHITECTURE.md) | 模块职责、公共能力、数据所有权 |
 | [DEVELOPMENT](DEVELOPMENT.md) / [FLUTTER](FLUTTER.md) | 开发入口 / Android专项操作 |
 | [VERSIONING](VERSIONING.md) / [BUILD_VARIANTS](BUILD_VARIANTS.md) | 版本与同步 / 当前双包规则；F阶段收拢重复规则 |
-| TESTING.md（B阶段拟建） | 分层测试、改动映射、调试入口 |
+| [TESTING](TESTING.md) | 分层测试、改动映射、调试入口 |
 
 当前规则不再追加阶段流水账。历史证据保持日期、源码SHA、验证对象和缺口；旧“当前/下一步”不能重新授权开发。原始提示词、第三方许可、发布说明及关键复盘继续保留。E阶段进一步删重，不为了归档再复制整套失效文档。
