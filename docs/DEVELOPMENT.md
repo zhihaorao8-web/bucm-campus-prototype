@@ -40,6 +40,8 @@ flutter test --no-pub
 
 普通默认回归会条件跳过直取和预览场景；直取相关变更须显式开启define，可选合成预览见FLUTTER。Android方法通道、R8 XLS和原生媒体属于独立检查，不能由Dart组件测试替代。真实学校验证只在本人授权会话下执行，不进入CI。
 
+日常反复排查可直接运行`python scripts/check.py --flow auth-recovery`或`--flow playback-resume`；五条场景、准确范围及与--changed/--all的边界见TESTING，均不自动操作设备/学校。
+
 ## 构建与同步
 
 开发安装、正常包名、隔离测试与签名边界见[FLUTTER](FLUTTER.md)。双包构建见[BUILD_VARIANTS](BUILD_VARIANTS.md)，版本/发布检查见[VERSIONING](VERSIONING.md)及[发布复盘](releases/0.1-retrospective.md)。顺序构建，保留真实退出码和详细日志。

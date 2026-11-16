@@ -13,6 +13,9 @@ python scripts/check.py
 python scripts/check.py --module schedule
 python scripts/check.py --module player --module storage
 python scripts/check.py --module classroom --direct-catalog
+# 具名调试链路：不操作学校或设备
+python scripts/check.py --flow auth-recovery --dry-run
+python scripts/check.py --flow playback-resume
 # 基于与main的共同祖先，包含已提交+已暂存+未暂存+未跟踪改动
 python scripts/check.py --changed --base origin/main --dry-run
 python scripts/check.py --changed --base origin/main
@@ -22,7 +25,7 @@ python scripts/check.py --all
 python scripts/check.py --module docs --module tooling
 ```
 
-`--module`、`--changed`、`--all`三选一；无选择时是旧离线检查。`--flutter PATH`可指定Flutter可执行文件，否则先PATH，再找仓库build/toolchain/flutter/bin。dry-run只输出选择理由、测试集合、Flutter命令与设备补验提示，不调用SDK、不创建报告。
+`--module`、`--flow`、`--changed`、`--all`四选一；无选择时是旧离线检查。`--flutter PATH`可指定Flutter可执行文件，否则先PATH，再找仓库build/toolchain/flutter/bin。dry-run只输出选择理由、测试集合、Flutter命令与设备补验提示，不调用SDK、不创建报告。
 
 ## 模块与检查范围
 
@@ -40,6 +43,20 @@ python scripts/check.py --module docs --module tooling
 模块是当前测试文件的命名集合，不宣称已拆成独立Dart package，也不宣称每个文件内只有一个测试层级。准确集合以check_plan.py输出为准；新增/删除Flutter或Java/Node测试必须更新注册表，否则立即报错，不默默跳过。预览截图显式排除，见下文。
 
 模块命令默认跑其默认配置；目录直取相关模块用`--direct-catalog`加跑现有直取专项。`--all`总是包括该专项，`--changed`选中目录相关消费者时自动加入；不能把默认跳过的直取用例当作通过。
+
+## 可复用调试场景
+
+所有场景复用check_plan和同一个Runner；报告注明flow及实际步骤/退出码，不另建一套测试框架。
+
+| --flow名称 | 调试链路与范围 |
+|---|---|
+| schedule-import | Java XLS/DOM导航→课程/时间模型→差异/更新时间→存储恢复；不操作Android或真实导出 |
+| classroom-import | 元数据/完整名称→全部来源分页→任务/整组保存；含API及DOM桥，自动跑开启直取专项 |
+| auth-recovery | 访问探测→认证等待/门户/超时→取消/迟到回调→恢复导入；自动含直取时序，全部为合成页面 |
+| playback-resume | 原生准备/移交→路由→续播选择/保存/清理及控制；仅Java传输/JS准备与Dart模拟，不实际解码或访问学校 |
+| storage-recovery | 原子暂存/提交/失败→课表备份→目录旧文件清理→进度/外观；仅合成临时文件 |
+
+例如`python scripts/check.py --flow classroom-import`，先加`--dry-run`可看准确集合。场景是显式排查范围，不自动扩展全部消费者；公共接口改动仍先用--changed看影响，发布候选用--all。默认不开启预览、不安装、不创建学校会话、不读取真实数据；L3与手动样本不能由场景通过替代。
 
 ## 按变更选择
 

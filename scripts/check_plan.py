@@ -25,6 +25,27 @@ FLUTTER_TESTS = {
            'classroom_ui_polish', 'quote_service'),
 }
 DIRECT_TESTS = ('test/classroom_api_reader_test.dart', 'test/classroom_direct_import_test.dart')
+DEBUG_FLOWS = {
+    'schedule-import': {
+        'host': ('adapter',), 'tests': ('schedule', 'schedule_difference', 'schedule_freshness', 'schedule_recovery'),
+        'direct': False,
+    },
+    'classroom-import': {
+        'host': ('classroom',), 'tests': ('classroom_model', 'classroom_matching', 'classroom_name_merge',
+            'classroom_import_collection', 'classroom_import_progress', 'classroom_api_reader',
+            'classroom_direct_import', 'classroom_coordinator'), 'direct': True,
+    },
+    'auth-recovery': {
+        'host': ('classroom',), 'tests': ('classroom_access', 'classroom_read_progress',
+            'classroom_connection', 'classroom_recovery_page', 'classroom_coordinator', 'classroom_api_reader'),
+        'direct': True,
+    },
+    'playback-resume': {
+        'host': ('player',), 'tests': ('classroom_preparation', 'classroom_player_route',
+            'classroom_playback_progress', 'classroom_controls'), 'direct': False,
+    },
+    'storage-recovery': {'host': ('storage',), 'tests': FLUTTER_TESTS['storage'], 'direct': False},
+}
 JAVA_TESTS = {
     'schedule': ('ParserTest', 'CourseTimeTest', 'TeacherTest'),
     'adapter': ('ParserTest', 'ExportTest', 'CourseTimeTest', 'TeacherTest'),
@@ -187,4 +208,16 @@ def make_plan(root, modules=(), changed=None, legacy=False, direct=False, all_ch
     if not legacy and (direct or all_checks or (changed is not None and
             (set(DIRECT_TESTS) & flutter or 'classroom' in selected or 'adapter' in selected))):
         plan.direct = list(DIRECT_TESTS)
+    return plan
+
+
+def make_flow_plan(root, flow, direct=False):
+    """Named synthetic debugging chains; same runner, no device/login actions."""
+    spec = DEBUG_FLOWS[flow]
+    plan = make_plan(root, modules=spec['host'], direct=direct or spec['direct'])
+    plan.flutter = sorted({f'test/{name}_test.dart' for name in spec['tests']})
+    if not set(plan.flutter) <= set(flutter_files(MODULES)):
+        raise ValueError('Update debug flow: missing/unregistered test file.')
+    plan.analyze = bool(plan.flutter or plan.direct)
+    plan.reasons = [f'Synthetic debug flow: {flow}; explicit scope, not a replacement for changed/release checks.']
     return plan

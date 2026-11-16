@@ -15,7 +15,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from scripts.check_plan import JAVA_SOURCES, MODULES, make_plan
+from scripts.check_plan import DEBUG_FLOWS, JAVA_SOURCES, MODULES, make_flow_plan, make_plan
 
 
 def changed_files(root, base):
@@ -155,6 +155,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     select = parser.add_mutually_exclusive_group()
     select.add_argument('--module', choices=MODULES, action='append', help='Repeat to combine modules.')
+    select.add_argument('--flow', choices=DEBUG_FLOWS, help='A reusable synthetic debugging chain.')
     select.add_argument('--changed', action='store_true', help='Merge-base diff plus local/untracked files.')
     select.add_argument('--all', action='store_true', help='All host checks, Flutter analysis/default/direct tests.')
     parser.add_argument('--base', default='origin/main', help='Git base for --changed (default: origin/main).')
@@ -162,9 +163,9 @@ def main(argv=None):
     parser.add_argument('--direct-catalog', action='store_true', help='Also run the enabled direct-catalog suite.')
     parser.add_argument('--flutter', help='Flutter executable; defaults to PATH or the pinned local SDK.')
     args = parser.parse_args(argv)
-    legacy = not (args.module or args.changed or args.all)
+    legacy = not (args.module or args.flow or args.changed or args.all)
     if legacy and args.direct_catalog:
-        parser.error('--direct-catalog requires --module, --changed or --all')
+        parser.error('--direct-catalog requires --module, --flow, --changed or --all')
     if args.base != 'origin/main' and not args.changed:
         parser.error('--base requires --changed')
     runner = Runner()
@@ -172,10 +173,11 @@ def main(argv=None):
     report = {'schema': 1, 'scope': 'synthetic-host-checks', 'status': 'failed'}
     try:
         paths, ancestor = changed_files(ROOT, args.base) if args.changed else (None, None)
-        plan = make_plan(ROOT, modules=args.module or (), changed=paths, legacy=legacy,
-                         direct=args.direct_catalog, all_checks=args.all)
+        plan = (make_flow_plan(ROOT, args.flow, direct=args.direct_catalog) if args.flow else
+                make_plan(ROOT, modules=args.module or (), changed=paths, legacy=legacy,
+                          direct=args.direct_catalog, all_checks=args.all))
         flutter = args.flutter or shutil.which('flutter') or str(ROOT / 'build/toolchain/flutter/bin' / ('flutter.bat' if os.name == 'nt' else 'flutter'))
-        report.update({'legacy': legacy, 'mergeBase': ancestor, 'changed': paths, 'plan': asdict(plan)})
+        report.update({'legacy': legacy, 'flow': args.flow, 'mergeBase': ancestor, 'changed': paths, 'plan': asdict(plan)})
         print(json.dumps({'legacy': legacy, 'changed': paths, 'mergeBase': ancestor,
                           'plan': asdict(plan), 'flutterCommands': flutter_commands(plan, flutter)},
                          ensure_ascii=False, indent=2), flush=True)

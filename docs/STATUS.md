@@ -12,6 +12,7 @@
 | 工程优化C | 公共视觉令牌/策略、维护与分段控件、页面参数及可执行规范已完成；对应回归、直取与合成预览通过 | eca3e55、41c26d3已推送至codex/maintenance-stage-c，用户继续指令确认通过，进入D；真机/学校验证不由本轮补齐 |
 | 工程优化D | 业务配置、原子文件操作及课堂连接/导入/播放准备公共入口已完成；受影响模块检查通过，详情见D节 | 938f108、6de667e、f756644及状态8fe2a4f已推送；用户继续指令确认通过，进入E |
 | 工程优化E | 旧Flutter/Java原型与关联清理，运行时资产迁移，文档按职责归并；分项检查通过 | 697de30、fdbbe82、d025f08及状态6c37980已推送；用户继续确认通过，进入F，未新增构建/设备/学校验证 |
+| 工程优化F | 分层CI、精确双包构建/核验、五条复用调试场景已实现；本地及分项远端证据见F节 | F1/F2已推送，F3待提交；main保护模板未应用，未发布/安装或新增学校验证 |
 
 ## 2026-11-16 工程优化F分项
 
@@ -21,9 +22,12 @@
 - 公开GitHub API只读核对main=580eac9、protected=false、rulesets=[]；CLI无登录且连接器无保护接口，未读取凭据。已提供main保护JSON模板及职责规范，未应用远端设置，不声称主分支已受服务器规则保护。当前不创建标签/发布或合入main。
 
 - F2实现只读双包核验与顺序构建门禁：精确源码/版本/签名/模式、资源与许可、ZIP及已知测试载荷；以固定引擎可执行段区别profile，保留符号剥离兼容。预览/发布候选分开，后者还要求干净源码、可信证书及精确SHA的完整CI成功；不发布/安装或跳过检查。
-- F2初轮只读0.3双包核验发现Android已剥离引擎符号、Gradle SHA1目录省略前导0，按实际结构修正并补合成检查后，现存729663f双包身份/签名/资源/引擎核验通过（build/checks/stage-f2-historical-apks.json）。这是旧包对新工具的实证，不是新分支构建或新的release/学校验收。构建失败/无新APK两项PowerShell隔离检查及7项核验边界检查通过；初次夹具输出编码问题已显式UTF8处理，不计首次通过。新分支双包顺序构建待提交后执行。
+- F2初轮只读0.3双包核验发现Android已剥离引擎符号、Gradle SHA1目录省略前导0，按实际结构修正并补合成检查后，现存729663f双包身份/签名/资源/引擎核验通过（build/checks/stage-f2-historical-apks.json）。这是旧包对新工具的实证，不是新分支构建或新的release/学校验收。构建失败/无新APK两项PowerShell隔离检查及7项核验边界检查通过；初次夹具输出编码问题已显式UTF8处理，不计首次通过。新分支双包实测见下项。
 - F2成果0c35317已推送；31项工具/文档/图标检查通过（report-2533354b237b4cf0bb154729919ccda7.json）。随后从干净0c353174e465e8428f976bbd99811efc744439c8顺序构建debug/release并完整核验通过，两包嵌入同一干净SHA、0.3/code12及既有可信证书；未安装/发布。debug为221496120字节、SHA256 361a936ddb731e023a8b345681878da0d0ee08ab8ea3b5eee545acc7114244ff；release为64808486字节、SHA256 144a05d51b75a155967226d4f01641f81b7ae51af5ba4fcc0999d933fbb66c93。
 - 本轮预览在build/flutter-previews/0c353174-6e7d78a3c0c2423a97ea44f37dd137be/，同目录有元数据/校验文件；详细日志在build/flutter-preview-logs/0c353174-*-{debug,release}.log及build/checks/stage-f2-preview.log。kind=preview，CI字段null，不冒充发布候选验证；未重跑设备R8/原生媒体/学校链路，不替换旧0.3附件。
+
+- F3在原check.py加入--flow，复用同一个计划/Runner/报告，不新增设备或登录入口。五条实际场景全部通过：schedule-import默认17项；classroom-import默认41项/6跳过＋直取23项；auth-recovery默认52项＋直取23项；playback-resume默认39项/1跳过；storage-recovery默认47项。各自静态分析及选定Java/Node通过；不是跨场景去重后的独立总数，不冒充全量或真实认证/解码。
+- F3工具35项、文档/图标/合成示例检查通过（report-93ee144824ed4c539ad41b89ded9ba5f.json）；五条日志为build/checks/stage-f3-<flow>.log，报告分别81f1a81cc334499ebd4e31a29554af2f、55663ddacc7e452bab283c426f45cd93、8826cd08e4e54a94b313b96c26a6b41b、acbc0322c9804aa2be8278a3442fad2e、8b6795b9d916464694b9e54770dffb8d。发布/公共接口仍用--all或--changed复核影响，调试场景不替代必要验收。
 
 ## 2026-11-16 工程优化E分项
 

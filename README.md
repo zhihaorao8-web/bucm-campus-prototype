@@ -63,7 +63,7 @@ python scripts/check.py --changed --base origin/main --dry-run
 python scripts/check.py --module classroom --direct-catalog
 ```
 
-发布候选运行`--all`并补专项验证；构建在mobile目录使用`flutter build apk --release --dart-define=CAMPUS_DIRECT_CATALOG=true --dart-define=CAMPUS_TEST_DIAGNOSTICS=false`，测试包改用`--debug`及诊断true。本地依赖源应与锁文件/缓存匹配，Windows pub 缓存与工程放同盘；CI 使用官方源并保留锁定版本和摘要。两个模式顺序构建，避免插件注册表冲突。GitHub Actions 检查并生成两种临时签名预览包，最终升级附件另以可信本机签名构建并验签，见 [Flutter 开发说明](docs/FLUTTER.md) 与 [双包规范](docs/BUILD_VARIANTS.md)。
+发布候选运行`--all`并补专项验证；构建在mobile目录使用`flutter build apk --release --dart-define=CAMPUS_DIRECT_CATALOG=true --dart-define=CAMPUS_TEST_DIAGNOSTICS=false`，测试包改用`--debug`及诊断true。本地依赖源应与锁文件/缓存匹配，Windows pub 缓存与工程放同盘；CI 使用官方源并保留锁定版本和摘要。两个模式顺序构建，避免插件注册表冲突。GitHub Actions 按分支分层检查，仅在 main/发布候选或显式请求时生成两种临时签名预览包，最终升级附件另以可信本机签名构建并验签，见 [Flutter 开发说明](docs/FLUTTER.md) 与 [双包规范](docs/BUILD_VARIANTS.md)。
 
 ## 分支与文档
 

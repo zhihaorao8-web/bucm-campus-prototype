@@ -41,9 +41,11 @@ quality固定为唯一质量任务名；先保存source/base精确SHA及测试�
 1. 完成对应合成检查及必要的release压缩后解析/媒体验证，核对待提交内容并同步。
 2. 对精确候选SHA等待CI结果；旧提交通过不能替代候选提交。新修复须重新核对身份。
 3. 从同一干净源码顺序构建debug与release，不并发刷新插件注册表；隔离测试后重建正常包名最终附件。
-4. 核对根Manifest版本、包名、构建模式、签名、ZIP完整性、许可、测试夹具排除、SHA-256及构建元数据。
+4. 使用BUILD_VARIANTS的顺序构建/verify_apks.py核对根Manifest版本、包名、实际模式、可信签名、ZIP完整性、许可、测试夹具排除、SHA-256及构建元数据；发布候选还要求精确SHA的quality/dual-preview成功。静态包核验不替代设备或运行时诊断检查。
 5. 更新CHANGELOG、验证状态和发布说明；经对应发布授权才新增标签/Pre-release，上传后核对远端大小与摘要。后续文档提交不移动标签。
 
 构建无新输出先查详细日志末行与时间戳；API不能下载运行中日志则看网页实时日志。保留真实退出码与失败日志，区分已确认原因、推测与未测，不能凭耗时盲目重启。
 
 0.3的729663f远端Actions因当时账户计费限制未执行，用户明确授权以本地核验发布，详见STATUS和发布说明。这只是该次例外，不构成未来跳过CI的默认规则。
+
+GitHub触发/输出条件参考[工作流语法](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)及[事件语义](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)；实现状态仍以本仓库及精确运行证据为准。

@@ -39,8 +39,15 @@
 | [ARCHITECTURE](ARCHITECTURE.md) | 模块职责、公共能力、数据所有权 |
 | [CLASSROOM](CLASSROOM.md) / [PLAYER](PLAYER.md) | 连接/目录协议与错误边界 / 播放所有权、媒体边界、交互与来源 |
 | [DEVELOPMENT](DEVELOPMENT.md) / [FLUTTER](FLUTTER.md) | 开发入口 / Android专项操作 |
-| [VERSIONING](VERSIONING.md) / [BUILD_VARIANTS](BUILD_VARIANTS.md) | 版本与同步 / 当前双包规则；F阶段收拢重复规则 |
+| [VERSIONING](VERSIONING.md) / [BUILD_VARIANTS](BUILD_VARIANTS.md) | 版本与同步 / 双包差异、构建与核验操作；发布顺序归VERSIONING |
 | [TESTING](TESTING.md) | 分层测试、改动映射、调试入口 |
 | [播放器验收](research/PLAYER_ACCEPTANCE.md) / [会话测试](research/SESSION_LONGEVITY_TEST.md) | 合成/手动听音与完整课时方法 / 已中断的旧基线及后续自然时间采样方法 |
 
 当前规则不追加阶段流水账。历史证据保持日期、构建身份、验证对象和缺口；旧“当前/下一步”不能重新授权开发。原始提示词、第三方许可、发布说明及关键复盘继续保留；失效过程可查Git历史，不另复制整套归档。
+
+## F阶段工具入口
+
+- [.github/workflows/flutter.yml](../.github/workflows/flutter.yml)与[ci_plan.py](../scripts/ci_plan.py)：工作分支/PR按变更，main/候选全量，双包预览受门禁；固定源码与比较基线SHA。
+- [build_flutter_previews.ps1](../scripts/build_flutter_previews.ps1)与[verify_apks.py](../scripts/verify_apks.py)：顺序双包、失败日志/退出码、静态身份/签名/模式/资源核验，发布候选额外CI门禁；不自动安装/发布。
+- [check.py](../scripts/check.py)的--flow：五条合成调试场景，具体范围见TESTING；共用Runner，不能替代变更/全量及设备检查。
+- [main保护模板](../.github/main-protection.json)只是待管理权限操作者审核应用的配置；公开API实查当前未保护。阶段完成不把该外部设置写成已生效。
