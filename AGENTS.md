@@ -12,11 +12,12 @@
 
 ## 需求与开发进度协调
 
-- 开始开发前先阅读`docs/PROJECT_BRIEF.md`（用户提示词与后续确认形成的生效需求）、`docs/DEVELOPMENT_PLAN.md`（阶段、当前进度与下一步）、`docs/STATUS.md`（实际验证证据）；修改UI时同时阅读`DESIGN.md`。
+- 所有后续开发必须遵守`docs/PROJECT_MANAGEMENT.md`的长期流程，不限于本轮工程优化。开工先读该规范及`docs/PROJECT_BRIEF.md`（生效需求）、`docs/DEVELOPMENT_PLAN.md`（当前进度）、`docs/STATUS.md`（实际证据）；修改UI同时读`DESIGN.md`，实现前检索`docs/ARCHITECTURE.md`及已有代码。
 - UI修改遵循DESIGN.md的组件/状态/验收表；固定配色及公共尺寸、动效从mobile/lib/design读取，材质降级复用AppVisualPolicy，不在页面复制主题或交互算法。新增变体先扩展公共组件并更新规范。
 - 原始Markdown提示词完整保存在`docs/requirements/ORIGINAL_PROMPT.md`，作为历史需求来源。与后续用户确认冲突的内容按`docs/PROJECT_BRIEF.md`中的决策表执行，不重新启用保存密码、静默重登、明文HTTP或第一版以外模块。
 - 项目长期目标是校园生活聚合应用；当前仅推进已确认的Flutter Android课表与录播。实际直播、图书馆、提醒、社区以及iOS/Windows交付均不得因原始提示词提及而自动进入开发范围。
-- 本轮工程优化按docs/MAINTENANCE_PLAN.md分阶段实施；每阶段完成检查、提交推送后停止供用户审核，通过后再推进下一阶段。
+- 后续任务按docs/PROJECT_MANAGEMENT.md拆成可验证阶段；每阶段完成检查、文档更新、提交推送后必须停止供用户审核，通过后再推进。已确认阶段内常规工作继续执行，不重复索取确认；docs/MAINTENANCE_PLAN.md仅作本轮A–F台账，不限制长期流程适用范围。
+- 日常测试必须按docs/TESTING.md分层，优先受影响模块/具名调试场景，跨模块先看--changed --dry-run；只在相应集成/发布或影响不确定时扩大，不能每次小改默认全量。新增公共能力登记复用入口，配置与视觉参数归公共层；清理前核对源码/构建/资产/测试/文档引用，修正过时文档，不堆叠重复说明。
 - 有影响范围、认证策略或验收标准的歧义时，一次只问一个问题；已确认范围内的常规实现、修复和验证继续执行，不重复索取确认。新阶段或新增模块先给出范围和可复核结果，再等待用户确认。
 - 每项修改开始前核对已有实现及工作区，避免重做已完成内容；完成后更新进度清单中相应状态与验证证据，再按下述规则同步Git。明确区分已实现、检查通过、模拟器通过、真实学校验证通过和已推送。
 

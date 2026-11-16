@@ -4,6 +4,8 @@
 
 ## 工具与准备
 
+所有后续工作必须执行[长期项目管理流程](PROJECT_MANAGEMENT.md)：先核对范围/现状和复用点，按阶段实施；每个独立分项检查、更新证据后立即提交推送，每阶段结束停止审核。本文只提供操作入口，流程要求不随本轮工程优化结束而失效。
+
 - Flutter固定3.47.9及SHA c197ca5199e9ee5661e865596c9c07294dfab51c；依赖以pubspec.lock和dependencies.lock.json为准。
 - Python 3.10+、Node.js 22；Java核心检查使用JDK 17+，当前Flutter CI配置Temurin 25/Python 3.12，不再按旧原型文档认作JDK17 runner。
 - Android宿主、SDK、同盘pub缓存、本机环境和隔离验证命令见[FLUTTER](FLUTTER.md)。本机路径是配置示例，不是其他机器必需路径。

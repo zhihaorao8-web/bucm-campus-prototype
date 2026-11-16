@@ -71,6 +71,6 @@ python scripts/check.py --module classroom --direct-catalog
 - [`codex/legacy-java-prototype`](https://github.com/zhihaorao8-web/bucm-campus-prototype/tree/codex/legacy-java-prototype)：早期 Java 测试原型，固定保留原主线 `611ec8e`；旧版本标签与附件继续保留。
 - 日常开发继续使用独立分支；阶段进展与验证边界见 [当前开发进度](docs/DEVELOPMENT_PLAN.md) 与 [STATUS](docs/STATUS.md)。
 
-[开发入口](docs/DEVELOPMENT.md) · [分层测试](docs/TESTING.md) · [架构与复用索引](docs/ARCHITECTURE.md) · [课堂协议与恢复](docs/CLASSROOM.md) · [播放器与来源](docs/PLAYER.md) · [工程优化计划](docs/MAINTENANCE_PLAN.md) · [生效需求](docs/PROJECT_BRIEF.md) · [开发计划](docs/DEVELOPMENT_PLAN.md) · [验证证据](docs/STATUS.md) · [界面设计](DESIGN.md) · [版本规范](docs/VERSIONING.md) · [第三方许可](docs/THIRD_PARTY.md) · [图标来源](docs/ICON_SYSTEM.md)
+[长期项目管理规范](docs/PROJECT_MANAGEMENT.md) · [开发入口](docs/DEVELOPMENT.md) · [分层测试](docs/TESTING.md) · [架构与复用索引](docs/ARCHITECTURE.md) · [课堂协议与恢复](docs/CLASSROOM.md) · [播放器与来源](docs/PLAYER.md) · [工程优化计划](docs/MAINTENANCE_PLAN.md) · [生效需求](docs/PROJECT_BRIEF.md) · [开发计划](docs/DEVELOPMENT_PLAN.md) · [验证证据](docs/STATUS.md) · [界面设计](DESIGN.md) · [版本规范](docs/VERSIONING.md) · [第三方许可](docs/THIRD_PARTY.md) · [图标来源](docs/ICON_SYSTEM.md)
 
 本项目为非官方研究与个人使用预发布，不代表学校开放了第三方 API 或正式单点登录接入。仓库与 CI 只允许合成样本，真实课程、截图、HAR、学校会话、设备标识及签名密钥不提交。

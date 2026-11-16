@@ -2,6 +2,8 @@
 
 2026-11-15用户确认按审查方案实施；每阶段完成对应检查、提交推送后停止，用户审核通过再进入下一阶段。当前状态只在[开发进度](DEVELOPMENT_PLAN.md)维护，实际检查只在[STATUS](STATUS.md)记录。本轮不增加业务模块，版本仍由根Manifest管理。
 
+本页是A–F本轮台账；2026-11-16起，后续所有任务严格执行[长期项目管理流程](PROJECT_MANAGEMENT.md)，不因本轮结束而失效。具体测试、组件和发布标准仍由各自唯一入口维护。
+
 ## 阶段与交付
 
 | 阶段 | 工作与交付 | 必要检查/完成标准 |
@@ -32,6 +34,7 @@
 | 入口 | 唯一职责 |
 |---|---|
 | [AGENTS](../AGENTS.md) | 协作、安全、阶段审核、Git同步规则 |
+| [PROJECT_MANAGEMENT](PROJECT_MANAGEMENT.md) | 长期工作顺序、阶段审核、复用/测试/证据/文档与交付门槛 |
 | [README](../README.md) | 产品、安装、开发导航 |
 | [PROJECT_BRIEF](PROJECT_BRIEF.md) | 生效需求与冲突决策 |
 | [DEVELOPMENT_PLAN](DEVELOPMENT_PLAN.md) / [STATUS](STATUS.md) | 当前待办 / 实际验证证据 |
