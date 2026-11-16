@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -66,14 +67,14 @@ class _TodayQuoteBannerState extends ConsumerState<TodayQuoteBanner> {
   @override
   Widget build(BuildContext context) {
     final appearance = ref.watch(currentAppearanceProvider);
-    ref.listen<bool>(
-      currentAppearanceProvider.select((s) => s.onlineQuotes),
-      (previous, next) {
-        if (previous != next) {
-          _refresh(allowOnline: next);
-        }
-      },
-    );
+    ref.listen<bool>(currentAppearanceProvider.select((s) => s.onlineQuotes), (
+      previous,
+      next,
+    ) {
+      if (previous != next) {
+        _refresh(allowOnline: next);
+      }
+    });
     final colors = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final opaque =
@@ -100,7 +101,7 @@ class _TodayQuoteBannerState extends ConsumerState<TodayQuoteBanner> {
         key: const ValueKey('today-quote-strip'),
         color: background,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppRadius.section),
           side: BorderSide(color: border),
         ),
         clipBehavior: Clip.antiAlias,
@@ -109,9 +110,14 @@ class _TodayQuoteBannerState extends ConsumerState<TodayQuoteBanner> {
             allowOnline: appearance.onlineQuotes,
             userTriggered: true,
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppRadius.section),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 6, 12),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.lg,
+              AppSpace.md,
+              6,
+              AppSpace.md,
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -131,10 +137,8 @@ class _TodayQuoteBannerState extends ConsumerState<TodayQuoteBanner> {
                         : const Duration(milliseconds: 220),
                     switchInCurve: Curves.easeOutCubic,
                     switchOutCurve: Curves.easeOutCubic,
-                    transitionBuilder: (child, animation) => FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    ),
+                    transitionBuilder: (child, animation) =>
+                        FadeTransition(opacity: animation, child: child),
                     child: Column(
                       key: ValueKey('${quote.text}|${quote.source}'),
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,7 +147,7 @@ class _TodayQuoteBannerState extends ConsumerState<TodayQuoteBanner> {
                         Text(
                           quote.text,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: AppType.label,
                             height: 1.48,
                             fontWeight: FontWeight.w500,
                             color: colors.onSurface,
@@ -158,7 +162,7 @@ class _TodayQuoteBannerState extends ConsumerState<TodayQuoteBanner> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: AppType.smallLabel,
                                   color: colors.onSurfaceVariant,
                                 ),
                               ),
@@ -177,7 +181,7 @@ class _TodayQuoteBannerState extends ConsumerState<TodayQuoteBanner> {
                                 child: Text(
                                   '一言',
                                   style: TextStyle(
-                                    fontSize: 10,
+                                    fontSize: AppType.micro,
                                     fontWeight: FontWeight.w600,
                                     color: colors.onPrimaryContainer,
                                   ),
@@ -194,8 +198,8 @@ class _TodayQuoteBannerState extends ConsumerState<TodayQuoteBanner> {
                   message: '换一句语录',
                   child: MiuixIconButton(
                     key: const ValueKey('today-quote-refresh'),
-                    minWidth: 48,
-                    minHeight: 48,
+                    minWidth: AppLayout.minTap,
+                    minHeight: AppLayout.minTap,
                     onPressed: () => _refresh(
                       allowOnline: appearance.onlineQuotes,
                       userTriggered: true,

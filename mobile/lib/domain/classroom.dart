@@ -1,3 +1,4 @@
+import '../config/classroom_limits.dart';
 import 'schedule.dart';
 
 /// Keep the original v1 spelling for persisted local-course keys.
@@ -32,7 +33,7 @@ List<ClassroomCourse> matchingClassroomCourses(
 }
 
 String classroomText(dynamic value) {
-  if (value is! String || value.length > 500) {
+  if (value is! String || value.length > ClassroomLimits.fieldLength) {
     throw const FormatException('学校字段格式不支持');
   }
   return value;
@@ -125,7 +126,7 @@ class RecordingPage {
           .toList() {
     if (page < 1 ||
         pageSize < 1 ||
-        pageSize > 100 ||
+        pageSize > ClassroomLimits.maxModelPageSize ||
         total < 0 ||
         records.length > pageSize ||
         records.map((v) => v.id).toSet().length != records.length) {

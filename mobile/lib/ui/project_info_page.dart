@@ -1,3 +1,5 @@
+import '../config/runtime_config.dart';
+import '../design/app_tokens.dart';
 import 'app_icon_controls.dart';
 import 'app_icons.dart';
 import 'package:flutter/material.dart';
@@ -10,8 +12,8 @@ import 'settings_scaffold.dart';
 
 const developerName = 'Muzhi';
 const developerLogin = 'zhihaorao8-web';
-const developerUrl = 'https://github.com/zhihaorao8-web';
-const repositoryUrl = 'https://github.com/zhihaorao8-web/bucm-campus-prototype';
+const developerUrl = AppLinks.developer;
+const repositoryUrl = AppLinks.repository;
 
 class ProjectInfoPage extends ConsumerWidget {
   const ProjectInfoPage({super.key});
@@ -41,7 +43,12 @@ class ProjectInfoPage extends ConsumerWidget {
     final info = ref.watch(appInfoProvider);
     final colors = Theme.of(context).colorScheme;
     Widget heading(String text) => Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.sm,
+        AppSpace.sm,
+        AppSpace.sm,
+        AppSpace.control,
+      ),
       child: Text(text, style: TextStyle(color: colors.onSurfaceVariant)),
     );
     Widget linkGroup({
@@ -56,7 +63,12 @@ class ProjectInfoPage extends ConsumerWidget {
         onClick: () => open(context, target),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpace.comfortable,
+          0,
+          AppSpace.comfortable,
+          6,
+        ),
         child: Align(
           alignment: Alignment.centerLeft,
           child: SelectableText(
@@ -70,7 +82,10 @@ class ProjectInfoPage extends ConsumerWidget {
       Align(
         alignment: Alignment.centerRight,
         child: Padding(
-          padding: const EdgeInsets.only(right: 8, bottom: 8),
+          padding: const EdgeInsets.only(
+            right: AppSpace.sm,
+            bottom: AppSpace.sm,
+          ),
           child: TextButton.icon(
             key: ValueKey('copy-$target'),
             onPressed: () => copy(context, address),
@@ -90,7 +105,7 @@ class ProjectInfoPage extends ConsumerWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(28),
                 child: Image.asset(
-                  'assets/app-icon.png',
+                  AppAssets.appIcon,
                   key: const ValueKey('project-app-icon'),
                   width: 112,
                   height: 112,
@@ -108,8 +123,8 @@ class ProjectInfoPage extends ConsumerWidget {
               if (info.asData case final data?)
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 4,
+                    horizontal: AppSpace.xl,
+                    vertical: AppSpace.xs,
                   ),
                   child: Text(
                     '${data.value.buildType}\n${data.value.sourceLabel}',
@@ -158,7 +173,7 @@ class ProjectInfoPage extends ConsumerWidget {
             summary: '@$developerLogin',
             startAction: ClipOval(
               child: Image.asset(
-                'assets/developer-avatar.png',
+                AppAssets.developerAvatar,
                 key: const ValueKey('developer-avatar'),
                 width: 48,
                 height: 48,
@@ -177,7 +192,10 @@ class ProjectInfoPage extends ConsumerWidget {
           icon: AppIcons.code,
         ),
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpace.sm,
+            vertical: AppSpace.lg,
+          ),
           child: Text('非官方校园课表应用', textAlign: TextAlign.center),
         ),
       ],

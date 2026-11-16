@@ -1,3 +1,6 @@
+import '../design/app_palette.dart';
+import '../design/app_tokens.dart';
+import 'visual_policy.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -21,11 +24,7 @@ class QuietSliverAppBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(currentAppearanceProvider);
-    final opaque =
-        !settings.blur ||
-        !settings.glass ||
-        settings.contrast > 0 ||
-        MediaQuery.highContrastOf(context);
+    final opaque = AppVisualPolicy.of(context, settings).opaque;
     return SliverAppBar(
       pinned: true,
       title: title,
@@ -39,17 +38,17 @@ class QuietSliverAppBar extends ConsumerWidget {
         builder: (context, _) => ClipRect(
           child: BackdropFilter(
             enabled: !opaque,
-            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            filter: ui.ImageFilter.blur(
+              sigmaX: AppHeader.blur,
+              sigmaY: AppHeader.blur,
+            ),
             child: ColoredBox(
               key: const ValueKey('quiet-appbar-scrim'),
               color: Theme.of(context).colorScheme.surface.withValues(
-                alpha: opaque
-                    ? 1
-                    : .04 +
-                          .76 *
-                              (scroll.hasClients
-                                  ? (scroll.offset / 80).clamp(0.0, 1.0)
-                                  : 0.0),
+                alpha: AppHeader.tint(
+                  scroll.hasClients ? scroll.offset : 0,
+                  opaque: opaque,
+                ),
               ),
             ),
           ),
@@ -76,10 +75,7 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
   @override
   void initState() {
     super.initState();
-    phase = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 10),
-    );
+    phase = AnimationController(vsync: this, duration: AppMotion.ambient);
     foreground =
         WidgetsBinding.instance.lifecycleState == null ||
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
@@ -102,14 +98,14 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(currentAppearanceProvider);
-    final contrast =
-        MediaQuery.highContrastOf(context) || settings.contrast > 0;
+    final policy = AppVisualPolicy.of(context, settings);
+    final contrast = policy.highContrast;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final animate =
         widget.tab == 0 &&
         settings.aurora &&
         !contrast &&
-        !MediaQuery.disableAnimationsOf(context) &&
+        !policy.reducedMotion &&
         foreground &&
         TickerMode.valuesOf(context).enabled &&
         ref.watch(ambientMotionEnabledProvider);
@@ -120,7 +116,7 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
       children: [
         ColoredBox(
           color: !dark && !contrast && settings.aurora
-              ? const Color(0xFFF9FCFF)
+              ? AppPalette.ambientSurface
               : Theme.of(context).colorScheme.surface,
         ),
         if (!contrast && settings.aurora)
@@ -131,7 +127,7 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
                   child: AnimatedSwitcher(
                     duration: MediaQuery.disableAnimationsOf(context)
                         ? Duration.zero
-                        : const Duration(milliseconds: 900),
+                        : AppMotion.ambientChange,
                     child: CustomPaint(
                       key: ValueKey('aurora-${widget.tab}'),
                       painter: _AuroraPainter(widget.tab, dark, phase),
@@ -178,55 +174,11 @@ class _AuroraPainter extends CustomPainter {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: dark
-              ? const [Color(0xFF070D14), Color(0xFF091313), Color(0xFF0B0C14)]
-              : const [Color(0xFFFAFBFD), Color(0xFFFCFDFF), Color(0xFFFDFBF7)],
+              ? AppPalette.ambientBaseDark
+              : AppPalette.ambientBaseLight,
         ).createShader(bounds),
     );
-    const todayDarkHues = [
-      Color(0xFF6CCFFF),
-      Color(0xFF7FE8CD),
-      Color(0xFFFFD1A6),
-      Color(0xFFB8BBFF),
-    ];
-    const todayLightHues = [
-      Color(0xFF6ECBFF),
-      Color(0xFF7BE3C9),
-      Color(0xFFA79FFF),
-      Color(0xFFFFBED1),
-    ];
-    // Reading pages use the same broad diffusion, with their existing palettes
-    // and a fixed phase. Only Today owns continuous ambient motion.
-    final hues = dark
-        ? switch (tab) {
-            1 => const [
-              Color(0xFF6096FD),
-              Color(0xFF6ED7B4),
-              Color(0xFFCADFFF),
-              Color(0xFFB8BBFF),
-            ],
-            2 => const [
-              Color(0xFFA882F5),
-              Color(0xFFF5C391),
-              Color(0xFFE1CEFA),
-              Color(0xFF72D0FF),
-            ],
-            _ => todayDarkHues,
-          }
-        : switch (tab) {
-            1 => const [
-              Color(0xFF78B0FF),
-              Color(0xFF7AE0C7),
-              Color(0xFFB5D6FF),
-              Color(0xFFB7B3FF),
-            ],
-            2 => const [
-              Color(0xFFB398FF),
-              Color(0xFFFFC59F),
-              Color(0xFFE0CCFF),
-              Color(0xFF82D1FF),
-            ],
-            _ => todayLightHues,
-          };
+    final hues = AppPalette.ambientHues(dark, tab);
     final angle = tab == 0 ? phase.value * math.pi * 2 : 0.0;
     final moving = tab == 0;
     for (var i = 0; i < hues.length; i++) {

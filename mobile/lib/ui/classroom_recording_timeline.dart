@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
 import '../data/classroom_library.dart';
 import '../data/classroom_timeline.dart';
@@ -47,7 +48,7 @@ class _ClassroomRecordingTileState extends State<ClassroomRecordingTile> {
     final isPublished = widget.published ?? playable;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpace.control),
       child: QuietCard(
         cornerRadius: 22,
         child: DecoratedBox(
@@ -66,7 +67,12 @@ class _ClassroomRecordingTileState extends State<ClassroomRecordingTile> {
           child: Material(
             type: MaterialType.transparency,
             child: ListTile(
-              contentPadding: const EdgeInsets.fromLTRB(16, 8, 14, 8),
+              contentPadding: const EdgeInsets.fromLTRB(
+                AppSpace.lg,
+                AppSpace.sm,
+                14,
+                AppSpace.sm,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(22),
               ),
@@ -114,7 +120,7 @@ class _ClassroomRecordingTileState extends State<ClassroomRecordingTile> {
                                 ),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                                  horizontal: AppSpace.sm,
                                   vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
@@ -207,15 +213,23 @@ class ClassroomPaginationBar extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final buttonStyle = TextButton.styleFrom(
       minimumSize: const Size(48, 44),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.control,
+        vertical: AppSpace.sm,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.small),
+      ),
     );
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: QuietCard(
         cornerRadius: 18,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.control,
+            vertical: 6,
+          ),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
@@ -299,7 +313,10 @@ class ClassroomRecordingTimeline extends StatelessWidget {
     return QuietCard(
       cornerRadius: 20,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.lg,
+          vertical: AppSpace.lg,
+        ),
         child: Row(
           children: [
             AppIcon(
@@ -332,14 +349,13 @@ class ClassroomRecordingTimeline extends StatelessWidget {
         child: Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: AppExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+            tilePadding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.lg,
+              vertical: 2,
+            ),
             title: Row(
               children: [
-                AppIcon(
-                  AppIcons.mediaLibrary,
-                  size: 18,
-                  color: colors.primary,
-                ),
+                AppIcon(AppIcons.mediaLibrary, size: 18, color: colors.primary),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -362,8 +378,8 @@ class ClassroomRecordingTimeline extends StatelessWidget {
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                    horizontal: AppSpace.lg,
+                    vertical: AppSpace.md,
                   ),
                   child: Row(
                     children: [
@@ -392,11 +408,13 @@ class ClassroomRecordingTimeline extends StatelessWidget {
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                          horizontal: AppSpace.control,
+                          vertical: AppSpace.xs,
                         ),
                         decoration: BoxDecoration(
-                          color: colors.secondaryContainer.withValues(alpha: .65),
+                          color: colors.secondaryContainer.withValues(
+                            alpha: .65,
+                          ),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
@@ -446,7 +464,12 @@ class ClassroomRecordingTimeline extends StatelessWidget {
                   isoDate(visible[i - 1].record.date) !=
                       isoDate(visible[i].record.date)))
             Padding(
-              padding: EdgeInsets.fromLTRB(4, i == 0 ? 4 : 14, 4, 8),
+              padding: EdgeInsets.fromLTRB(
+                AppSpace.xs,
+                i == 0 ? AppSpace.xs : 14,
+                AppSpace.xs,
+                AppSpace.sm,
+              ),
               child: Text(
                 isoDate(visible[i].record.date),
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -513,8 +536,8 @@ class ClassroomRecordingTimeline extends StatelessWidget {
               Text('本次课回放', style: Theme.of(context).textTheme.titleLarge),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
+                  horizontal: AppSpace.control,
+                  vertical: AppSpace.xs,
                 ),
                 decoration: BoxDecoration(
                   color: colors.primaryContainer.withValues(alpha: .72),

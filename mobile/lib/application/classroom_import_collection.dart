@@ -1,7 +1,9 @@
+import '../config/classroom_limits.dart';
 import '../data/classroom_library.dart';
 import '../domain/classroom.dart';
 
-/// In-memory collection only. The page still owns navigation and guarded save.
+/// In-memory collection only. The coordinator owns guarded save; the page owns
+/// navigation and visible authentication.
 class ClassroomImportCollection {
   List<ClassroomCourse>? _matches;
   final _pages = <RecordingPage>[];
@@ -41,7 +43,8 @@ class ClassroomImportCollection {
   /// Return a page to navigate to, or null when this source is complete.
   int? addPage(RecordingPage page, DateTime now) {
     if (page.page != _pages.length + 1) return _pages.length + 1;
-    if (page.total > 10000 || _pages.length >= 1000) {
+    if (page.total > ClassroomLimits.records ||
+        _pages.length >= ClassroomLimits.pages) {
       throw const FormatException();
     }
     _pages.add(page);

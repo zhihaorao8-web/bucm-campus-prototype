@@ -1,31 +1,102 @@
-# 当前架构
+# 架构与公共能力索引
+
+更新：2026-11-16，按0.3主线源码核对。需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，交互见[DESIGN](../DESIGN.md)，验证见[STATUS](STATUS.md)。本页描述已有实现；拟拆分与删除见[工程优化计划](MAINTENANCE_PLAN.md)。
+
+课堂连接/目录协议与排查见[CLASSROOM](CLASSROOM.md)，播放所有权/媒体边界与公开来源见[PLAYER](PLAYER.md)；不要从已删除的旧专项计划重新实现功能。
+
+## 分层与入口
 
 ```text
-MainActivity
-  ├─ WebView：官方认证、WebVPN、教务页面及会话
-  ├─ assets/extract.js：读取表格、星期列和同源框架
-  ├─ assets/export-nav.js：学校官方页面导航、全部周次筛选、导出触发
-  ├─ SchoolExport：学校HTTPS下载、逐跳域名检查、内存文件大小限制
-  ├─ ExportWorkbook：Apache POI HSSF读取二进制XLS，生成待核对排课
-  ├─ AcademicTerm：学校学期标识解析、用户学期起点
-  ├─ CourseTimes：用户作息映射、白天分段与晚间统一时段
-  ├─ CourseImportPlan：整批预检、完全重复去重、免逐门确认保存计划
-  ├─ ScheduleParser：将候选文本转为待核对字段
-  └─ 早期本地课表 / 提醒试验（当前暂停）
+mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
+  config/         业务参数、存储路径、公开资源与桥接标识
+  design/         固定色板、基础/语义/组件视觉令牌
+  ui/             页面、组件、手势、路由；部分课堂流程仍在页面内
+  application/    Riverpod状态、课堂连接/导入/播放准备协调、本机续播生命周期
+  domain/         课程、日历、匹配、分页模型与校验
+  data/           本机文件、目录归档、展示时间线、合成示例
+  platform/       官方页面访问、受限桥接、播放通道、短时会话、诊断
+  mobile/android/ Android宿主、HSSF导入桥、Media3播放组与受限数据源
+  src/.../        7个共享Java核心唯一维护源；旧原型仅在历史分支保留
 ```
 
-`MainActivity.java`目前同时承担页面导航和验证界面。网站地址以HTTPS域名白名单校验；跳转新窗口转到主WebView；不忽略TLS证书错误，不开放JavaScript原生桥或WebView调试。
+页面调用应用状态、模型和平台接口；纯计算不依赖页面。现有目录不是严格依赖隔离：例如外观文件仓库仍与application控制器同文件，课堂页面仍管理WebView导航、认证展示和任务队列切换，不能据目录名宣称所有流程均已拆分。
 
-`extract.js`仅在用户点击读取时执行，返回课表候选文本与星期、行标题。它不读取输入框、Cookie或认证令牌。跨域框架不可直接读取，错误以计数返回。为控制资源使用，表格、行、候选、文本长度和递归深度均有限制，不能把截断结果视为完整导出。
+## 业务链路与数据所有权
 
-官方导出路径由用户主动触发；导航脚本按已验证标签操作学校页面，不读取认证输入值。仅在这次流程期间允许脚本新窗口，新窗口仍执行学校/指定认证域名校验，停止后恢复默认限制。下载在手机端使用现有WebView会话，Cookie仅在内存中用于请求，不写入下载管理器、日志或自建服务；HTTPS证书正常校验，每次重定向重新检查学校域名。
+| 链路 | 入口与处理 | 提交/失败边界 |
+|---|---|---|
+| 课表导入 | `ui/import_page.dart` → 官方页面导航/导出 → `SchoolAdapter` → Android `MainActivity` → Java XLS/作息核心 | `ScheduleController`先保存再发布状态；整批有效才替换同学期，失败保留旧数据 |
+| 录播导入 | `classroom_import_page.dart` / `ClassroomCoursePage` → 官方上下文 → `ClassroomImportCoordinator`协调API或DOM收集结果 | `ClassroomArchive`校验所有来源完整分页，协调器按捕获的revision调用`ClassroomLibrary`整组保存；目录可读不代表认证有效 |
+| 播放 | 时间线保留来源课程ID、录播ID及原分页 → `ClassroomPlaybackPreparation` → 原生`ClassroomPlayback` / `ClassroomPlayerGroup` | 准备器负责移交前的原生会话释放；页面负责当次来源/权限导航与播放器路由；原生拥有媒体描述、Cookie和解码器，Dart只接收纹理、显示配置和受限状态 |
+| 退出会话 | `SchoolAdapter.clearSession`清除诊断、页面缓存、目录、续播及原生WebView会话 | 缓存/存储revision和任务generation阻止旧回调写回；离线课表保留 |
+| 外观与语录 | `AppearanceController`、`QuoteService` → 主题及今日展示 | 外观独立存储；在线语录默认关闭，失败回退本地 |
 
-导出最多4MiB，在内存中交给HSSF读取，不落地真实文件。工作表、行列与单元格文本均有限制，超限或遇到公式等不支持内容即失败，不静默截断。先识别星期网格或明确列名的行式明细；遇到“无课表课程”边界停止网格解析并提示另有未解析区域，避免给无排课内容臆造星期。
+认证由用户在可见官方页面完成，App不额外保存凭据。下载Cookie仅在原生内存中按验证后的目标使用，不返回Dart。学校导出、主文档、认证和媒体分别校验用途/域名/端口/路径，不能合并为宽泛白名单。真实数据不进入测试或Git。
 
-`ScheduleParser.java`按分隔线或空行拆分排课块，支持学校括号周次、节次列表与部分无标签地点格式，并提供周次、单双周和时间校验。`CourseTimes`应用用户提供并补充的作息，保留白天课间分段，所有晚间组合统一18:00–20:25，不把占位第12节扩为额外时长。
+## 开发前先复用的能力
 
-`CourseImportPlan`在写入前验证整批字段、周次、节次和时间冲突，仅合并同星期、原文及解析字段完全相同的排课并保留来源次数。按学校学期标识使用用户提供的起点，其他学期首次设置一次；未识别学期或未知规则需要处理，正常导入无需逐门确认。整批有效后一次写入本机；同学期原自动导入数据整体更新，手工和其他学期记录保留，每条记录独立绑定起点。各字段的实际验证范围见[验证状态](STATUS.md)。
+下表代码路径相对于`mobile/lib/`，测试相对于`mobile/test/`。新增计算先检索此表及源码；页面不重复实现已登记的规则。
 
-`ReminderReceiver.java`和`RestoreReceiver.java`为早期试验保留；其存在不代表后台提醒已通过验证。
+| 能力 | 当前业务入口/职责 | 代表测试 |
+|---|---|---|
+| 北京时间/日历天 | `domain/schedule.dart`：`schoolNow`、`dateOnly`、`calendarAdd`、`calendarDays`、`isoDate`、`schoolTimestamp` | `schedule_test.dart`、`schedule_freshness_test.dart` |
+| 周次/课程展开 | 同文件：`parseWeeks`、`Course.weekAt/occursOn`、`occurrencesOn`、`nextOccurrences` | `schedule_test.dart` |
+| 导入差异/替换 | 同文件：`scheduleDifference`、`ScheduleData.mergeImport`；`application/schedule_controller.dart`保存后更新状态 | `schedule_difference_test.dart`、`schedule_recovery_test.dart` |
+| 完整名称匹配 | `domain/classroom.dart`：`classroomName`、`matchingClassroomCourses`；`classroomStoredName`保留旧持久化键语义 | `classroom_matching_test.dart`、`classroom_name_merge_test.dart` |
+| 完整分页/来源组 | `application/classroom_import_collection.dart`收集；`data/classroom_library.dart`的`ClassroomArchive`校验完整性 | `classroom_import_collection_test.dart`、`classroom_library_test.dart` |
+| 批量任务进度 | `application/classroom_import_progress.dart`按学期/名称分组、状态及失败重试集合 | `classroom_import_progress_test.dart` |
+| 目录收集与提交 | `application/classroom_import_coordinator.dart`复用API读取器/来源集合，捕获revision、完整组提交及固定诊断 | `classroom_coordinator_test.dart`、`classroom_direct_import_test.dart`、`classroom_name_merge_test.dart` |
+| 录播展示排序 | `data/classroom_timeline.dart`：`classroomTimeline`、`recordingsOnDate`；展示排序不改原始播放身份 | `classroom_timeline_test.dart` |
+| 路径探测/连接预算 | `platform/classroom_access.dart`、`classroom_read_progress.dart`；连接展示用`application/classroom_connection_status.dart` | `classroom_access_test.dart`、`classroom_read_progress_test.dart` |
+| 连接代次/读轮询 | `application/classroom_connection_coordinator.dart`拒绝迟到路由结果、取消或替换读轮询；页面仍检查生命周期/标签并显示认证 | `classroom_coordinator_test.dart`、`classroom_connection_test.dart`、`classroom_recovery_page_test.dart` |
+| 页面脚本桥接 | `platform/classroom_page_scripts.dart`统一资产加载、命令编码、响应容量与直取超时；不读取凭据、请求头或WebView存储 | `classroom_direct_import_test.dart`、`classroom_name_merge_test.dart`、`classroom_recovery_page_test.dart` |
+| 原生播放准备 | `application/classroom_playback_preparation.dart`封装begin/play/prepare与错误文案；未handoff由准备器dispose，移交后由播放器拥有会话 | `classroom_preparation_test.dart`、`classroom_player_test.dart` |
+| 页面缓存 | `platform/classroom_session_cache.dart`：独占转移WebView句柄，最多2门/5分钟，clear递增revision | `classroom_session_cache_test.dart` |
+| 本机续播 | `data/classroom_playback_progress.dart`校验身份/位置；`application/classroom_playback_progress_session.dart`协调选择、周期保存与清理 | `classroom_playback_progress_test.dart` |
+| 相邻错色/冲突布局 | `ui/course_colors.dart`分配色索引；`ui/week_grid.dart`按真实时间分片和层叠 | `course_colors_test.dart`、`week_stack_test.dart` |
+| 视觉策略/控件 | `design/app_palette.dart`、`design/app_tokens.dart`；`ui/visual_policy.dart`降级、`ui/app_controls.dart`维护按钮/分段指示器 | `quiet_design_test.dart`、`classroom_ui_polish_test.dart`、`appearance_test.dart` |
+| 主题/材质/交互 | `app_theme.dart`、`AcrylicSurface`、`CourseSurface/QuietCard/QuietSheet`、`CoursePressable/CourseCardLink`、`navigation_motion.dart` | `quiet_design_test.dart`、`course_interaction_test.dart`、`navigation_motion_test.dart` |
 
-会话存放在Android应用自己的WebView存储中。应用私有存储可能包含个人课程；它们不应进入Git、日志、CI或测试固定样本。
+不得重新按设备时区计算教学周、模糊匹配课程，或仅按录播ID丢弃来源。Java导入校验和Dart缓存校验属于不同信任边界，保持各自防护，以合成契约样本约束一致性。
+
+## 文件、资产与生成边界
+
+| 内容 | 维护源/生命周期 |
+|---|---|
+| 课表 | `schedule-v1.json`，读取schema 1/2、写schema 2；有效备份、损坏副本及清空规则在`FileScheduleRepository` |
+| 外观 | `appearance-v1.json`，schema 1；独立于课表和学校会话 |
+| 录播目录 | `classroom-library-v1.json`，读取schema 1/2、写schema 2；账号会话退出清除 |
+| 本机进度 | `classroom-progress-v1.json`，schema 1；仅身份、位置、时长、更新时间；退出会话清除 |
+| 旧单课程关联 | 已停用读写；`ClassroomLibrary.clear`在清除学校会话/目录时删除固定旧文件及pending，不读取或迁移旧关联 |
+| 短时页面/诊断 | `ClassroomSessionCache`和`TestDiagnostics`只在内存；诊断200条，debug硬门控 |
+| 公共网页脚本 | 根`assets/`为维护源，包括recording-api.cjs；prepare复制到Flutter/原生资产 |
+| Java共享核心 | `src/cn/bucm/campusprobe/`的`ScheduleParser`、`CourseTimes`、`CourseImportPlan`、`AcademicTerm`、`ExportWorkbook`、`SchoolExport`、`ClassroomMediaTransport`共7个文件 |
+| 生成资源 | `scripts/prepare_flutter.py`复制到被忽略的Flutter资产、原生共享源码、libs/许可目录；修改维护源后重新prepare，不编辑副本 |
+| 图标/字形 | 图标源与许可在`design/icons/iconmcp/`；`app_icons.g.dart`、`macintosh_hello_glyphs.g.dart`由各自生成工具维护 |
+
+旧Java页面、提醒接收器、根构建器和专用res已移除，历史保留在codex/legacy-java-prototype；当前宿主在mobile/android。根Manifest仅为版本元数据；检查工具的JDK定位函数在scripts/java_tools.py，不依赖旧构建器。
+
+## 公共文件操作
+
+[data/local_files.dart](../mobile/lib/data/local_files.dart)只负责应用私有文件定位、同目录pending暂存/flush/rename及finally清理。writeAtomicText返回false表示提交前canCommit拒绝替换，不得当作已保存；同一目标由调用仓库串行化。保存成功后仓库才发布状态/通知，失败原数据保留；课表备份/损坏副本、目录完整性和账号revision继续在各仓库校验。对应检查为atomic_file_test及各仓库存储测试。
+
+## 业务配置维护入口
+
+以下文件在mobile/lib/config/，只含公开常量/纯策略，无账号、Cookie或媒体地址。
+
+| 入口 | 管理范围/兼容要求 |
+|---|---|
+| storage_policy.dart | 四类有效JSON文件名/容量、进度条目上限及旧关联清理名；schema及持久化键仍由各模型负责，修改有效文件名须独立迁移设计 |
+| classroom_limits.dart | 字段长度、模型/官方API分页边界、来源/记录上限、短时缓存、页面/桥接超时与阶段预算 |
+| playback_policy.dart | 毫秒续播阈值/时长容差、保存/轮询/准备间隔；模型与活动会话复用resumablePosition |
+| network_policy.dart | 固定官方入口及WebVPN已知路径、无凭据探测、课表导入等待、可选语录请求；入口不替代用途白名单 |
+| runtime_config.dart | AppAssets、AppChannels、AppFeatures、AppLinks；资源源文件仍由prepare复制，原生通道保持相同协议 |
+
+配置按职责维护，不能将媒体/认证/课表导出合成宽泛允许列表。Java/JS与Dart处于不同信任边界，协议页大小等仍有独立校验；涉及这些契约变化时需对应多语言合成测试及必要L3验证，不因集中常量跳过防护。业务配置不得导入UI或视觉令牌。
+
+## 尚未完成的结构整理
+
+- `ClassroomCoursePage`仍约2500行，D3已抽出路由选择/代次/读轮询、目录提交、脚本桥接及原生播放准备。页面继续拥有WebView标签、导航回调、可见认证、来源恢复、批量队列切换和UI；不宣称整个页面状态机已迁出。
+- D2已由data/local_files.dart共享文件定位和原子替换；各仓库仍拥有队列、业务备份与revision策略，不能在页面另写一套存储。
+- C阶段已收拢顶栏雾化、材质降级、通用控件与常用视觉参数；D1已集中续播阈值、分页上限、常用超时和公开路径；原生/JS边界保持独立验证。
+- 存储文件名、schema和旧键是兼容契约；移动常量不顺带更名或迁移真实用户数据。

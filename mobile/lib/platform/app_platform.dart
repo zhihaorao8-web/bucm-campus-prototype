@@ -1,3 +1,4 @@
+import '../config/runtime_config.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,7 +27,7 @@ class AppPlatformInfo {
   }
 }
 
-const appChannel = MethodChannel('cn.bucm.campus/app');
+const appChannel = MethodChannel(AppChannels.app);
 final appInfoProvider = FutureProvider<AppPlatformInfo>((ref) async {
   final map = await appChannel.invokeMapMethod<String, dynamic>('info');
   if (map == null) throw PlatformException(code: 'NO_APP_INFO');

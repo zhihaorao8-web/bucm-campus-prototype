@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'course_interaction.dart';
 import 'course_surface.dart';
 import 'app_icons.dart';
@@ -40,7 +41,12 @@ void showCourseInformation(BuildContext context, Course course) {
     builder: (context) => SafeArea(
       top: false,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpace.xl,
+          AppSpace.xl,
+          AppSpace.xl,
+          AppSpace.xxl,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -71,7 +77,7 @@ void showCourseInformation(BuildContext context, Course course) {
               ('学期', '${course.semester}\n第1周周一 ${isoDate(course.termStart)}'),
             ])
               Padding(
-                padding: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.only(bottom: AppSpace.comfortable),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -144,7 +150,7 @@ class CourseRow extends ConsumerWidget {
     final ink = AppColors.courseInk(context, colorIndex);
     final active = now != null && event.activeAt(now!);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.md),
       child: CourseCardLink(
         onOpen: (tag) => showCourseDetails(
           context,
@@ -157,7 +163,7 @@ class CourseRow extends ConsumerWidget {
           translucent: translucent,
           child: MiuixCard(
             cornerRadius: 24,
-            insideMargin: const EdgeInsets.all(20),
+            insideMargin: const EdgeInsets.all(AppSpace.comfortable),
             colors: MiuixCardColors(
               color: Colors.transparent,
               contentColor: colors.onSurface,
@@ -210,7 +216,7 @@ class CourseRow extends ConsumerWidget {
                       Text(courseLocation(event.course)),
                       if (active || conflict)
                         Padding(
-                          padding: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.only(top: AppSpace.sm),
                           child: Text(
                             [
                               if (active) '正在上课',
@@ -249,7 +255,7 @@ class EmptySchedule extends StatelessWidget {
   final VoidCallback onImport, onDemo;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 32),
+    padding: const EdgeInsets.symmetric(vertical: AppSpace.xxl),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -263,7 +269,7 @@ class EmptySchedule extends StatelessWidget {
         const SizedBox(height: 12),
         const Text(
           '在学校官方页面登录，导入后就能离线查看。应用不保存你的密码。',
-          style: TextStyle(fontSize: 16, height: 1.6),
+          style: TextStyle(fontSize: AppType.body, height: 1.6),
         ),
         const SizedBox(height: 28),
         MiuixButton(

@@ -1,3 +1,5 @@
+import '../design/app_tokens.dart';
+import 'visual_policy.dart';
 import 'navigation_motion.dart';
 import 'app_icon_controls.dart';
 import 'app_icons.dart';
@@ -289,15 +291,11 @@ class _AppShellState extends ConsumerState<AppShell>
   ) => ListenableBuilder(
     listenable: scrollFor(index),
     builder: (context, _) {
-      final opaque =
-          MediaQuery.highContrastOf(context) ||
-          appearance.contrast > 0 ||
-          !appearance.blur ||
-          !appearance.glass;
+      final opaque = AppVisualPolicy.of(context, appearance).opaque;
       final scroll = scrollFor(index);
-      final scrim = scroll.hasClients
-          ? (scroll.positions.last.pixels / 80).clamp(0.0, 1.0)
-          : 0.0;
+      final tint = AppHeader.tint(
+        scroll.hasClients ? scroll.positions.last.pixels : 0,
+      );
       final topBar = MiuixTopAppBar(
         key: ValueKey('topbar-$index'),
         title: ['今日', '课表', '设置'][index],
@@ -305,8 +303,8 @@ class _AppShellState extends ConsumerState<AppShell>
         color: Theme.of(context).colorScheme.surface,
         scrollBehavior: scrollBehaviors[index],
         blurred: !opaque,
-        blurRadius: 20,
-        blurTintAlpha: .04 + .76 * scrim,
+        blurRadius: AppHeader.blur,
+        blurTintAlpha: tint,
         actions: [
           if (demo)
             TextButton(
@@ -321,8 +319,8 @@ class _AppShellState extends ConsumerState<AppShell>
             Tooltip(
               message: '导入或刷新课表',
               child: MiuixIconButton(
-                minWidth: 48,
-                minHeight: 48,
+                minWidth: AppLayout.minTap,
+                minHeight: AppLayout.minTap,
                 onPressed: openImport,
                 child: const AppIcon(AppIcons.sync),
               ),
@@ -332,8 +330,8 @@ class _AppShellState extends ConsumerState<AppShell>
               message: '统一导入录播',
               child: MiuixIconButton(
                 key: const ValueKey('classroom-import-button'),
-                minWidth: 48,
-                minHeight: 48,
+                minWidth: AppLayout.minTap,
+                minHeight: AppLayout.minTap,
                 onPressed: importClassroom,
                 child: const AppIcon(AppIcons.mediaLibrary),
               ),
@@ -350,7 +348,7 @@ class _AppShellState extends ConsumerState<AppShell>
             data: miuixTheme.copyWith(
               textStyles: miuixTheme.textStyles.copy(
                 title1: miuixTheme.textStyles.title1.copyWith(
-                  fontSize: 40,
+                  fontSize: AppType.artisticHeader,
                   height: 1.16,
                   fontWeight: FontWeight.w400,
                 ),
@@ -370,16 +368,18 @@ class _AppShellState extends ConsumerState<AppShell>
     },
   );
 
-  EdgeInsets pagePadding(EdgeInsets insets, {double horizontal = 24}) =>
-      EdgeInsets.fromLTRB(
-        horizontal + insets.left,
-        insets.top + 12,
-        horizontal + insets.right,
-        insets.bottom + 32,
-      );
+  EdgeInsets pagePadding(
+    EdgeInsets insets, {
+    double horizontal = AppLayout.pageInset,
+  }) => EdgeInsets.fromLTRB(
+    horizontal + insets.left,
+    insets.top + AppSpace.md,
+    horizontal + insets.right,
+    insets.bottom + AppSpace.xxl,
+  );
 
   Widget demoNotice() => Padding(
-    padding: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.only(bottom: AppSpace.lg),
     child: Text(
       '合成示例，仅用于体验界面，不是本人课表',
       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
@@ -428,7 +428,7 @@ class _AppShellState extends ConsumerState<AppShell>
           error: (error, stack) => index == 2
               ? settings(const ScheduleData(), insets)
               : Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(AppSpace.xl),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -472,7 +472,7 @@ class _AppShellState extends ConsumerState<AppShell>
                           PopupMenuItem(value: 'retry', child: Text('重新读取')),
                         ],
                         child: const Padding(
-                          padding: EdgeInsets.all(16),
+                          padding: EdgeInsets.all(AppSpace.lg),
                           child: Text('更多操作'),
                         ),
                       ),
@@ -555,10 +555,13 @@ class _AppShellState extends ConsumerState<AppShell>
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpace.control,
+                vertical: AppSpace.xs,
+              ),
               decoration: BoxDecoration(
                 color: colors.surfaceContainer,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppRadius.inset),
                 border: Border.all(color: colors.outlineVariant),
               ),
               child: Text(
@@ -566,7 +569,7 @@ class _AppShellState extends ConsumerState<AppShell>
                     ? '第 $teachingWeek 教学周'
                     : '非教学周',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppType.caption,
                   color: colors.onSurfaceVariant,
                   fontFeatures: tabularTime,
                 ),
@@ -581,7 +584,7 @@ class _AppShellState extends ConsumerState<AppShell>
           FocusCourseCard(event: next, now: now, overlaps: current)
         else
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xl),
             child: Text(
               '这个学期没有后续课程了',
               style: Theme.of(context).textTheme.titleLarge,
@@ -602,7 +605,7 @@ class _AppShellState extends ConsumerState<AppShell>
         const SizedBox(height: 16),
         if (today.isEmpty)
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
+            padding: EdgeInsets.symmetric(vertical: AppSpace.xl),
             child: Text('今天没有排课，留一点时间给自己。'),
           ),
         TodayCourseTimeline(
@@ -667,7 +670,7 @@ class _AppShellState extends ConsumerState<AppShell>
       ),
       if (currentWeek < 1 || currentWeek > maximum)
         const Padding(
-          padding: EdgeInsets.only(top: 8),
+          padding: EdgeInsets.only(top: AppSpace.sm),
           child: Text('当前日期不在已导入的教学周范围内'),
         ),
     ];
@@ -718,10 +721,10 @@ class _AppShellState extends ConsumerState<AppShell>
       slivers: [
         SliverPadding(
           padding: EdgeInsets.fromLTRB(
-            padding.left + 8,
+            padding.left + AppSpace.sm,
             padding.top,
-            padding.right + 8,
-            4,
+            padding.right + AppSpace.sm,
+            AppSpace.xs,
           ),
           sliver: SliverList.list(children: header),
         ),
@@ -836,10 +839,10 @@ class _AppShellState extends ConsumerState<AppShell>
                   child: Column(
                     children: [
                       const Padding(
-                        padding: EdgeInsets.all(20),
+                        padding: EdgeInsets.all(AppSpace.comfortable),
                         child: Text(
                           '密码只在学校官方页面输入。应用不保存密码，不上传课表。学校会话失效后，需要你重新登录。',
-                          style: TextStyle(fontSize: 16, height: 1.5),
+                          style: TextStyle(fontSize: AppType.body, height: 1.5),
                         ),
                       ),
                       AppArrowPreference(
@@ -909,7 +912,7 @@ class _AppShellState extends ConsumerState<AppShell>
   }
 
   Widget sectionLabel(String text) => Padding(
-    padding: const EdgeInsets.only(left: 8, bottom: 12),
+    padding: const EdgeInsets.only(left: AppSpace.sm, bottom: AppSpace.md),
     child: Text(
       text,
       style: Theme.of(context).textTheme.bodyMedium!.copyWith(

@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'course_interaction.dart';
 import 'course_surface.dart';
 import 'dart:math' as math;
@@ -207,7 +208,7 @@ class _WeekGridState extends ConsumerState<WeekGrid> {
                         '${widget.monday.month}月',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: AppType.caption,
                           color: colors.onSurfaceVariant,
                           fontFeatures: tabularTime,
                         ),
@@ -238,7 +239,7 @@ class _WeekGridState extends ConsumerState<WeekGrid> {
                                         Text(
                                           '周${weekdays[day]}',
                                           style: TextStyle(
-                                            fontSize: 11,
+                                            fontSize: AppType.caption,
                                             fontWeight: FontWeight.w600,
                                             color: current
                                                 ? colors.primary
@@ -264,7 +265,7 @@ class _WeekGridState extends ConsumerState<WeekGrid> {
                                           child: Text(
                                             '${date.day}',
                                             style: TextStyle(
-                                              fontSize: 10,
+                                              fontSize: AppType.micro,
                                               fontWeight: current
                                                   ? FontWeight.w600
                                                   : FontWeight.w400,
@@ -314,7 +315,7 @@ class _WeekGridState extends ConsumerState<WeekGrid> {
                                     Text(
                                       '${i + 1}',
                                       style: const TextStyle(
-                                        fontSize: 15,
+                                        fontSize: AppType.control,
                                         fontWeight: FontWeight.w700,
                                         fontFeatures: tabularTime,
                                       ),
@@ -324,7 +325,7 @@ class _WeekGridState extends ConsumerState<WeekGrid> {
                                       '${clock(WeekGrid.blocks[i].$1)}\n${clock(WeekGrid.blocks[i].$2)}',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        fontSize: 9,
+                                        fontSize: AppType.dense,
                                         height: 1.3,
                                         color: colors.onSurfaceVariant,
                                         fontFeatures: tabularTime,
@@ -365,12 +366,12 @@ class _WeekGridState extends ConsumerState<WeekGrid> {
                                 ),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
+                                    horizontal: AppSpace.control,
                                   ),
                                   child: Text(
                                     label,
                                     style: TextStyle(
-                                      fontSize: 9,
+                                      fontSize: AppType.dense,
                                       color: colors.onSurfaceVariant,
                                     ),
                                   ),
@@ -525,7 +526,12 @@ class _WeekCourseCard extends StatelessWidget {
                 ),
               Positioned.fill(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(soft ? 4 : 7, 4, 3, 4),
+                  padding: EdgeInsets.fromLTRB(
+                    soft ? AppSpace.xs : 7,
+                    AppSpace.xs,
+                    3,
+                    AppSpace.xs,
+                  ),
                   child: LayoutBuilder(
                     builder: (context, box) {
                       final line =
@@ -557,7 +563,7 @@ class _WeekCourseCard extends StatelessWidget {
                                     child: Text(
                                       '+$additional 冲突',
                                       style: TextStyle(
-                                        fontSize: 9,
+                                        fontSize: AppType.dense,
                                         fontWeight: FontWeight.w700,
                                         color: colors.error,
                                       ),
@@ -571,7 +577,7 @@ class _WeekCourseCard extends StatelessWidget {
                                 maxLines: lines,
                                 overflow: TextOverflow.clip,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: AppType.smallLabel,
                                   height: 1.25,
                                   fontWeight: FontWeight.w600,
                                   color: soft ? ink : colors.onSurface,
@@ -587,7 +593,7 @@ class _WeekCourseCard extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: AppType.micro,
                                   height: 1.25,
                                   color: soft ? ink : colors.onSurfaceVariant,
                                   fontFeatures: tabularTime,
@@ -605,7 +611,7 @@ class _WeekCourseCard extends StatelessWidget {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        fontSize: 10,
+                                        fontSize: AppType.micro,
                                         height: 1.25,
                                         color: soft
                                             ? ink

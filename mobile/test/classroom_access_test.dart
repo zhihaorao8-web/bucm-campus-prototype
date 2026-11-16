@@ -1,8 +1,5 @@
-import 'dart:async';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:campus_schedule/platform/classroom_access.dart';
-import 'package:campus_schedule/ui/classroom_browser.dart';
 
 void main() {
   test('白屏恢复只接受已验证的cc入口，不转移查询参数或接受其他隧道', () {
@@ -131,47 +128,4 @@ void main() {
       ProbeState.unexpected,
     );
   });
-  testWidgets(
-    'unavailable paths keep retry and manual choices on small large-text screen',
-    (tester) async {
-      tester.view.physicalSize = const Size(320, 740);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(
-        MaterialApp(
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: const TextScaler.linear(1.5)),
-            child: child!,
-          ),
-          home: ClassroomBrowser(
-            probe: (_) async => const AccessProbe(ProbeState.unavailable),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('重新检测访问路径'), findsOneWidget);
-      await tester.tap(find.byTooltip('学校访问方式'));
-      await tester.pumpAndSettle();
-      expect(find.text('自动选择（重新检测）'), findsOneWidget);
-      expect(find.text('数字北中医（直接访问）'), findsOneWidget);
-      expect(find.text('校外访问（学校 WebVPN）'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
-  testWidgets(
-    'finishing a probe after leaving does not update a disposed route',
-    (tester) async {
-      final pending = Completer<AccessProbe>();
-      await tester.pumpWidget(
-        MaterialApp(home: ClassroomBrowser(probe: (_) => pending.future)),
-      );
-      await tester.pumpWidget(const SizedBox());
-      pending.complete(const AccessProbe(ProbeState.unavailable));
-      await tester.pump();
-      expect(tester.takeException(), isNull);
-    },
-  );
 }

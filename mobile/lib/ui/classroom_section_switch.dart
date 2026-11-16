@@ -1,3 +1,6 @@
+import 'app_controls.dart';
+import '../design/app_tokens.dart';
+import 'visual_policy.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,15 +29,13 @@ class ClassroomSectionSwitch extends ConsumerWidget {
     final settings = ref.watch(currentAppearanceProvider);
     final colors = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final opaque =
-        MediaQuery.highContrastOf(context) ||
-        settings.contrast > 0 ||
-        !settings.blur ||
-        !settings.glass;
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final opaque = AppVisualPolicy.of(context, settings).opaque;
     final selected = selectedIndex.clamp(0, tabs.length - 1);
-    final baseStyle = (Theme.of(context).textTheme.bodyLarge ?? const TextStyle())
-        .copyWith(fontSize: 15, fontWeight: FontWeight.w600);
+    final baseStyle =
+        (Theme.of(context).textTheme.bodyLarge ?? const TextStyle()).copyWith(
+          fontSize: AppType.control,
+          fontWeight: FontWeight.w600,
+        );
 
     var maxTextHeight = 0.0;
     for (final label in tabs) {
@@ -49,54 +50,44 @@ class ClassroomSectionSwitch extends ConsumerWidget {
       painter.dispose();
     }
     final height = math.max(50.0, (maxTextHeight + 24).ceilToDouble());
-    final alignX = tabs.length <= 1 ? 0.0 : -1.0 + 2.0 * selected / (tabs.length - 1);
 
     return AcrylicSurface(
-      radius: 20,
+      radius: AppRadius.section,
       blurKey: blurKey,
       child: SizedBox(
         height: height,
         child: Padding(
-          padding: const EdgeInsets.all(4),
+          padding: const EdgeInsets.all(AppSpace.xs),
           child: Stack(
             children: [
-              AnimatedAlign(
-                alignment: Alignment(alignX, 0),
-                duration: reduceMotion
-                    ? Duration.zero
-                    : const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                child: FractionallySizedBox(
-                  widthFactor: 1 / tabs.length,
-                  heightFactor: 1,
-                  child: DecoratedBox(
-                    key: const ValueKey('classroom-section-indicator'),
-                    decoration: BoxDecoration(
-                      color: opaque
-                          ? colors.surfaceContainerHighest
-                          : (dark
-                                ? Colors.white.withValues(alpha: .13)
-                                : Colors.white.withValues(alpha: .84)),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        width: .6,
-                        color: opaque
-                            ? colors.outlineVariant
-                            : Colors.white.withValues(alpha: dark ? .20 : .94),
-                      ),
-                      boxShadow: opaque
-                          ? null
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: dark ? .18 : .06,
-                                ),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                    ),
+              AppSegmentIndicator(
+                selected: selected,
+                count: tabs.length,
+                indicatorKey: const ValueKey('classroom-section-indicator'),
+                decoration: BoxDecoration(
+                  color: opaque
+                      ? colors.surfaceContainerHighest
+                      : (dark
+                            ? Colors.white.withValues(alpha: .13)
+                            : Colors.white.withValues(alpha: .84)),
+                  borderRadius: BorderRadius.circular(AppRadius.inset),
+                  border: Border.all(
+                    width: .6,
+                    color: opaque
+                        ? colors.outlineVariant
+                        : Colors.white.withValues(alpha: dark ? .20 : .94),
                   ),
+                  boxShadow: opaque
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: dark ? .18 : .06,
+                            ),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                 ),
               ),
               Row(
@@ -111,18 +102,24 @@ class ClassroomSectionSwitch extends ConsumerWidget {
                         child: Material(
                           type: MaterialType.transparency,
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(
+                              AppRadius.inset,
+                            ),
                             onTap: () => onSelected(i),
                             child: Center(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpace.control,
+                                ),
                                 child: Text(
                                   tabs[i],
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: baseStyle.copyWith(
                                     color: i == selected
-                                        ? (opaque ? colors.onSurface : colors.primary)
+                                        ? (opaque
+                                              ? colors.onSurface
+                                              : colors.primary)
                                         : colors.onSurfaceVariant,
                                     fontWeight: i == selected
                                         ? FontWeight.w600

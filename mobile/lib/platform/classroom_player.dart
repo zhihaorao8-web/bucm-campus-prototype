@@ -1,8 +1,10 @@
+import '../config/runtime_config.dart';
+import '../config/playback_policy.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-const classroomPlaybackChannel = MethodChannel('cn.bucm.campus/playback');
+const classroomPlaybackChannel = MethodChannel(AppChannels.playback);
 
 String classroomViewName(String kind) => switch (kind) {
   'ppt' => 'PPT',
@@ -90,10 +92,7 @@ class ClassroomPlayerController extends ChangeNotifier {
   int _commands = 0;
 
   void start() {
-    _timer ??= Timer.periodic(
-      const Duration(milliseconds: 400),
-      (_) => refresh(),
-    );
+    _timer ??= Timer.periodic(PlaybackPolicy.statePoll, (_) => refresh());
   }
 
   Future<void> refresh() async {

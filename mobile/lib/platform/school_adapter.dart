@@ -1,3 +1,4 @@
+import '../config/runtime_config.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import '../domain/schedule.dart';
@@ -41,7 +42,7 @@ class ParsedBatch {
 /// Transitional Android HSSF adapter. No credentials cross the Dart channel.
 /// UI, persistence and calendar logic are Dart; iOS/Windows XLS adapters are pending.
 class SchoolAdapter {
-  static const channel = MethodChannel('cn.bucm.campus/school');
+  static const channel = MethodChannel(AppChannels.school);
   Future<ParsedBatch> download(
     String url,
     String userAgent,

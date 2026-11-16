@@ -1,46 +1,49 @@
-# GitHub发布的两类Android安装包
+# 两类Android安装包
 
-2026-11-12用户确认：今后GitHub发布分别构建debug测试包与正常使用包。本规则适用于后续新发布，不修改或替换已发布标签、附件，不代表本轮已经授权新建Release或调整版本。
-
-## 构建与能力
+更新：2026-11-16。2026-11-12用户确认双包发布，0.27/0.3已执行；本页说明当前模式差异，发布前顺序/审批与版本规则统一见[VERSIONING](VERSIONING.md)，实际证据见[STATUS](STATUS.md)。不因此授权新发布。
 
 | 项目 | debug测试包 | 正常使用包 |
 |---|---|---|
-| Flutter模式 | `--debug` | `--release`，保持压缩及既有R8规则 |
-| 诊断 | 默认启用应用内测试诊断，可查看/复制/清理 | 不采集测试诊断、不显示测试入口；即使误传诊断define也必须关闭 |
-| 录播直取等实验 | 与诊断开关独立；默认关闭，确需测试时在附件说明明确列出启用的实验 | 只启用已确认且完成相应验收的功能，不随debug实验自动开启 |
-| 定位 | 测试、排查与反馈；性能/体积不用于正常包承诺 | 日常使用；预发布性质仍按项目实际状态标明 |
+| Flutter模式 | --debug | --release，保留R8压缩 |
+| 诊断 | kDebugMode且CAMPUS_TEST_DIAGNOSTICS=true时可采集/复制/清空；默认true | 不采集/不显示测试入口，即使误传true也硬关闭 |
+| 目录直取 | 源码默认false；0.3构建显式true | 0.3获确认后同样显式true，不随debug实验自动启用其他功能 |
+| 身份 | 与同次release相同精确源码、版本/code、正常包名及可信签名 | 日常使用；仍为预发布 |
 
-诊断仅记录白名单业务阶段、路径类别、计数、耗时和错误类别，不抓取通用logcat、Cookie/Token、账号、真实课程、请求地址/参数、原始错误或WebView存储。已实现[200条内存诊断](TEST_DIAGNOSTICS.md)，可手动复制，清空、退出会话或结束进程后移除，不自动上传；具体构建/真机验证以STATUS为准。将来若扩展日志范围或保存方式，另记需求和验证证据。
+包名为cn.bucm.campus_schedule；同次双包便于覆盖切换并保留数据，但必须实际核对证书和升级路径，不能只凭版本相同保证可升级。当前兼容开发签名不是正式生产签名，CI临时签名预览不能替代可升级发布附件。源码开关与运行时实际访问路径类别不同。
 
-## 版本、源码与签名
+## 当前构建入口
 
-- 同一次发布的两个包取同一精确源码SHA、相同根Manifest版本名和versionCode。版本按“每次发布”递增，不为同一发布的debug/release重复消耗code。
-- 默认沿用正常包名`cn.bucm.campus_schedule`，两包使用同一可信签名，便于覆盖切换并保留本机数据；不自动改成并存包名或复制会话。发布前分别核对包名、证书和覆盖升级路径，不能仅凭版本相同保证可升级。
-- CI临时签名不能替代最终附件签名。生产签名尚未完成时沿用已确认的兼容签名并清楚说明，不提交密钥或自动换证书。
-- 包内项目信息显示实际调试/发布模式和源码标识；发布记录明确各包的实验开关及验证范围。不能把debug通过等同于release压缩包通过。
+[scripts/build_flutter_previews.ps1](../scripts/build_flutter_previews.ps1)在同一源码顺序构建debug/release，分别传入直取true及诊断true/false；保留成功/失败详细日志和退出码。不可并发刷新插件注册表。CI已分quality检查与受门禁控制的dual-preview任务；普通工作分支/PR不默认构建APK，main/发布候选或显式preview才顺序构建双包。构建后使用verify_apks.py核验，远端运行结果另记STATUS。
 
-## 附件与发布检查
+预览输出每次使用新的build/flutter-previews/<源码前8位>-<随机ID>/，日志在build/flutter-preview-logs/；避免旧包/旧成功元数据冒充本次产物。文件名沿用已发布规则：
 
-建议固定附件名称：`campus-schedule-<版本>-debug.apk`和`campus-schedule-<版本>-release.apk`，同时提供`SHA256SUMS.txt`及构建说明（源码SHA、模式、开关、签名性质、CI与已测/未测范围）。普通用户下载指向release；debug明确标记测试用途。
+- campus-schedule-<版本>-android-debug.apk
+- campus-schedule-<版本>-android-release.apk
+- SHA256SUMS.txt和build-metadata.json
 
-下次发布执行时：
+CI锁文件源地址归一化可能使包内源码带modified，必须如实保留；这种预览不冒充干净发布附件。最终附件从同一干净提交、可信本机签名重建并按VERSIONING核验版本、模式、资产/许可、测试数据排除、签名和摘要；隔离测试后重建正常包名。
 
-1. 阅读[发布复盘](releases/0.1-retrospective.md)和[版本规范](VERSIONING.md)，核对锁文件、依赖源、同盘缓存及精确SHA。
-2. 从同一干净源码顺序构建两种模式；不并发刷新Flutter插件注册表。运行各自检查，日志保留退出码和完整性校验。
-3. debug核对诊断入口、复制/清空、条数上限及不含敏感字段；release核对实际非debug、无诊断入口/采集，并完成必要的压缩后解析和播放器验证。
-4. 分别核对包名、版本、签名、ZIP、公开资产、APK摘要和测试数据排除；隔离测试后重建最终正常包名附件。
-5. 更新后续CI/打包流程使精确发布提交覆盖两种构建。当前仅制定规范，不声称现有CI已自动生成双包。
-6. 两包均通过所需检查后，按发布授权创建新标签/Pre-release，上传两个APK及校验说明，再核对远端资产摘要。缺任一包或检查未通过时如实报告，不以另一个包代替、不重写旧附件。
+普通用户下载指向release，debug明确测试用途。诊断只记[白名单事件](TEST_DIAGNOSTICS.md)，不抓通用logcat/凭据/真实课程或自动上传。精确提交CI、双包检查、标签和上传后的远端摘要均须各自有证据，0.3的CI例外不延续为后续规则。
 
-本轮双包要求先落文档；后续发布时实施流水线和附件流程，不因此立即发布。
+## 可复用的双包与只读核验
 
-## 0.27实施（2026-11-13）
+本地先按FLUTTER准备环境，从已提交源码执行（PowerShell）：
 
-用户已明确授权本次双包发布，且正常版也采用已测试的录播目录直取。两种模式均显式传入CAMPUS_DIRECT_CATALOG=true；debug诊断为true，release为false并仍受kDebugMode硬门控。源码未传define时继续默认关闭实验，不混同构建配置与运行时网络直连类别。
+```powershell
+$source = git rev-parse HEAD
+./scripts/build_flutter_previews.ps1 -Flutter ./build/toolchain/flutter/bin/flutter.bat -ExpectedSourceSha $source
+```
 
-Flutter工作流现调用scripts/build_flutter_previews.ps1顺序构建并保存两包、摘要、元数据及成功/失败详细日志；直取21项相关合成检查单列运行。CI使用临时签名，仅为构建预览；最终发布附件由同一干净提交以可信本机签名顺序构建，单独验签。CI归一化锁文件下载地址后可能显示源码modified，最终附件必须核对干净的精确源码标识，不能把CI预览冒充升级附件。
+脚本检查固定HEAD，顺序debug/release，每次构建前删除限定输出目录中的旧目标APK；失败保留本轮日志与原退出码，缺少新APK直接失败。两包均核验后才生成本轮build-metadata.json和SHA256SUMS.txt，不签发新密钥、不安装、不打标签或上传Release。
 
-当前实际检查与发布状态见STATUS；以上实现取代上文“仅制定规范”的历史阶段描述，不代表测试/上传自动成功。
+独立只读核验已有APK（路径替换为本机文件）：
 
-0.27实际双包、签名/摘要与模式诊断检查已完成，精确发布源码CI成功，四个附件核对远端后公开；见[0.27发布](releases/0.27.md)及STATUS。后续发布继续按此流程，不自动覆盖本次标签或附件。
+```powershell
+python scripts/verify_apks.py --debug <debug.apk> --release <release.apk> --source <完整40位SHA> --build-tools <Android-build-tools目录> --flutter-sdk <固定Flutter-SDK目录> --gradle-cache <Gradle缓存目录> --output build/checks/<新的结果名>.json
+```
+
+检查源提交Manifest版本/code、包名、debug标志/kernel/AOT、嵌入源码标识、apksigner实际验证和双包证书、ZIP完整性/重复条目、已知测试/私有缓存载荷排除，以及公开脚本/品牌/图标/许可与源提交逐字一致。对照固定Flutter SDK对应Gradle引擎JAR的可执行段，允许Android剥离符号/重写ELF节表，防止profile混作release；校验缓存JAR摘要。默认读取GRADLE_USER_HOME或用户.gradle，历史两包缓存不同可重复--gradle-cache，不会下载或修改缓存。
+
+发布候选改用`-Kind release -SignerSha256 <已确认的证书SHA256> -CiRunId <运行ID>`。构建前后必须干净且HEAD不变；提前查询固定仓库公开Actions API，要求精确SHA成功且quality/dual-preview都成功，构建后再次核对。单独verify_apks.py也支持`--kind release --signer-sha256 ... --ci-run-id ...`。预览允许如实标记source-modified；发布候选拒绝modified或未知标识，两包必须同源同证书。网络/CI不可读或失败即拒绝，不提供跳过开关。
+
+静态核验不能证明诊断页面运行效果、Dart编译开关实际体验、压缩XLS解析、音画或学校链路已通过；这些仍按VERSIONING、FLUTTER及人工验收单独完成。JSON的kind=release也不自动发布或授予上传权限。

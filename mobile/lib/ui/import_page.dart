@@ -1,3 +1,6 @@
+import '../config/runtime_config.dart';
+import '../config/network_policy.dart';
+import '../design/app_tokens.dart';
 import 'app_icons.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -93,14 +96,14 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       if (!schoolUrl(url)) {
         update('请在学校官方认证页面完成登录，返回学校后继续。');
       } else {
-        final result = await script('assets/export-nav.js');
+        final result = await script(AppAssets.exportNavigation);
         if (!mounted || session != generation || !running) return;
         switch (result['state']) {
           case 'exportClicked':
             semester = result['semester'] as String? ?? '';
             waitingFile = true;
             update('已触发学校官方导出，正在等待文件。');
-            timer = Timer(const Duration(seconds: 20), () async {
+            timer = Timer(ImportPolicy.exportWait, () async {
               if (mounted && session == generation && waitingFile && !busy) {
                 await stop();
                 update('尚未收到导出文件。请检查页面，或手动点击学校的导出按钮。');
@@ -119,7 +122,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
             update('正在打开学期理论课表并选择全部周次。');
         }
       }
-      timer = Timer(const Duration(milliseconds: 1500), () => step(session));
+      timer = Timer(ImportPolicy.navigationPoll, () => step(session));
     } catch (_) {
       await stop();
       update('自动导航未完成。请进入学期理论课表后重试，或使用页面读取。');
@@ -165,12 +168,12 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       if (!schoolUrl((await controller!.getUrl())?.toString() ?? '')) {
         throw const FormatException();
       }
-      final coverage = await script('assets/coverage-check.js');
+      final coverage = await script(AppAssets.coverage);
       if (coverage['full'] != true) {
         update('页面读取暂未确认“学期理论课表 / 全部周次”。请先选择全部周次，避免用一周课表覆盖整学期。');
         return;
       }
-      final result = await script('assets/extract.js');
+      final result = await script(AppAssets.extract);
       final tables = (result['tables'] as List).cast<Map>();
       if (tables.isEmpty) throw const FormatException();
       int? selected = 0;
@@ -331,10 +334,10 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     try {
       if (factor == null) {
         // Only layout dimensions, never form fields or authentication state.
-        final source = await rootBundle.loadString('assets/school-viewport.js');
+        final source = await rootBundle.loadString(AppAssets.viewport);
         final result = await web
             .callAsyncJavaScript(functionBody: source)
-            .timeout(const Duration(seconds: 3));
+            .timeout(ImportPolicy.viewportTimeout);
         final raw = result?.value;
         if (raw is! String || raw.length > 256) return;
         final sizes = jsonDecode(raw) as Map;
@@ -472,15 +475,15 @@ class _ImportPageState extends ConsumerState<ImportPage> {
               },
               itemBuilder: (_) => const [
                 PopupMenuItem(
-                  value: 'https://webvpn.bucm.edu.cn/',
+                  value: SchoolEndpoints.vpn,
                   child: Text('学校 WebVPN'),
                 ),
                 PopupMenuItem(
-                  value: 'https://i.bucm.edu.cn/',
+                  value: SchoolEndpoints.portal,
                   child: Text('数字北中医'),
                 ),
                 PopupMenuItem(
-                  value: 'https://jw.bucm.edu.cn/',
+                  value: SchoolEndpoints.teaching,
                   child: Text('教务系统（校内）'),
                 ),
               ],
@@ -493,13 +496,13 @@ class _ImportPageState extends ConsumerState<ImportPage> {
               Container(
                 width: double.infinity,
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpace.lg),
                 child: Text(status),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                  horizontal: AppSpace.md,
+                  vertical: AppSpace.sm,
                 ),
                 child: Wrap(
                   spacing: 8,
@@ -541,7 +544,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
               Expanded(
                 child: InAppWebView(
                   initialUrlRequest: URLRequest(
-                    url: WebUri('https://webvpn.bucm.edu.cn/'),
+                    url: WebUri(SchoolEndpoints.vpn),
                   ),
                   initialSettings: settings(),
                   onWebViewCreated: (value) => controller = value,

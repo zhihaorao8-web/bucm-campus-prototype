@@ -1,3 +1,4 @@
+import '../config/playback_policy.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../data/classroom_playback_progress.dart';
@@ -33,7 +34,7 @@ class ClassroomPlaybackProgressSession extends ChangeNotifier {
     store.addListener(_cleared);
     player.addListener(_changed);
     _timer = Timer.periodic(
-      const Duration(seconds: 5),
+      PlaybackPolicy.saveInterval,
       (_) => unawaited(save()),
     );
     unawaited(_load());
@@ -49,13 +50,12 @@ class ClassroomPlaybackProgressSession extends ChangeNotifier {
     if (_disposed || revision != store.revision) return;
     _loaded = true;
     if (saved == null ||
-        saved!.position < 10000 ||
-        saved!.duration - saved!.position < 30000) {
+        !PlaybackPolicy.resumablePosition(saved!.position, saved!.duration)) {
       ready = true;
     }
     _changed();
     if (!ready && choicePosition == null) {
-      _durationTimer = Timer(const Duration(seconds: 10), () {
+      _durationTimer = Timer(PlaybackPolicy.durationWait, () {
         if (_disposed || invalidated || ready || choicePosition != null) return;
         ready = true;
         warning = '暂未取得有效视频时长，本次可从头播放。';

@@ -1,3 +1,4 @@
+import '../config/runtime_config.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
@@ -40,9 +41,7 @@ enum TestEvent {
 class TestDiagnostics extends ChangeNotifier {
   TestDiagnostics({required this.enabled, this.capacity = 200})
     : assert(capacity > 0 && capacity <= 1000);
-  static const available =
-      kDebugMode &&
-      bool.fromEnvironment('CAMPUS_TEST_DIAGNOSTICS', defaultValue: true);
+  static const available = kDebugMode && AppFeatures.diagnostics;
   static final shared = TestDiagnostics(enabled: available);
   final bool enabled;
   final int capacity;
@@ -96,7 +95,7 @@ class TestDiagnostics extends ChangeNotifier {
     'schema': 1,
     'scope': 'test-recording-directory',
     'enabled': enabled,
-    'directCatalogEnabled': const bool.fromEnvironment('CAMPUS_DIRECT_CATALOG'),
+    'directCatalogEnabled': AppFeatures.directCatalog,
     'dropped': _dropped,
     'events': events,
   });

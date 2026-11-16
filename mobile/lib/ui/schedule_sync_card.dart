@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
 import 'course_surface.dart';
 import '../domain/schedule.dart';
@@ -22,7 +23,7 @@ class ScheduleSyncCard extends StatelessWidget {
     return QuietCard(
       key: const ValueKey('schedule-sync-card'),
       cornerRadius: 24,
-      insideMargin: const EdgeInsets.all(20),
+      insideMargin: const EdgeInsets.all(AppSpace.comfortable),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -72,7 +73,7 @@ class ScheduleSyncCard extends StatelessWidget {
                 : '本学期更新于 ${schoolTimestamp(updated!)}',
             style: TextStyle(
               color: colors.onSurfaceVariant,
-              fontSize: 13,
+              fontSize: AppType.secondary,
               fontFeatures: tabularTime,
             ),
           ),

@@ -1,3 +1,5 @@
+import '../design/app_tokens.dart';
+import 'visual_policy.dart';
 import 'app_icons.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -22,24 +24,23 @@ class GlassNavigation extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(currentAppearanceProvider);
     final floating = settings.floating;
-    final highContrast =
-        MediaQuery.highContrastOf(context) || settings.contrast > 0;
-    final glass = floating && settings.glass && settings.blur && !highContrast;
+    final policy = AppVisualPolicy.of(context, settings);
+    final glass = floating && policy.translucent;
     final radius = floating ? 40.0 : 0.0;
     final theme = Theme.of(context), colors = Theme.of(context).colorScheme;
     final dark = theme.brightness == Brightness.dark;
-    final opaque = highContrast || !settings.blur || !floating;
+    final opaque = !policy.dockBlur;
     final motion = !MediaQuery.disableAnimationsOf(context);
     final height =
         70.0 + (MediaQuery.textScalerOf(context).scale(13) - 13).clamp(0, 24);
     return SafeArea(
       top: false,
-      minimum: EdgeInsets.only(bottom: floating ? 20 : 0),
+      minimum: EdgeInsets.only(bottom: floating ? AppSpace.comfortable : 0),
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-          floating ? 24 : 0,
-          floating ? 12 : 0,
-          floating ? 24 : 0,
+          floating ? AppSpace.xl : 0,
+          floating ? AppSpace.md : 0,
+          floating ? AppSpace.xl : 0,
           0,
         ),
         child: Center(
@@ -68,10 +69,13 @@ class GlassNavigation extends ConsumerWidget {
                 child: BackdropFilter(
                   key: const ValueKey('dock-blur'),
                   enabled: !opaque,
-                  filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  filter: ui.ImageFilter.blur(
+                    sigmaX: AppSurface.dockBlur,
+                    sigmaY: AppSurface.dockBlur,
+                  ),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: (dark ? const Color(0xFF282828) : Colors.white)
+                      color: (dark ? AppSurface.dockDark : Colors.white)
                           .withValues(
                             alpha: opaque
                                 ? 1
@@ -103,13 +107,13 @@ class GlassNavigation extends ConsumerWidget {
                     child: SizedBox(
                       height: height,
                       child: Padding(
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(AppSpace.compact),
                         child: Stack(
                           children: [
                             Positioned.fill(
                               child: AnimatedAlign(
                                 duration: motion && position == null
-                                    ? const Duration(milliseconds: 260)
+                                    ? AppMotion.navigation
                                     : Duration.zero,
                                 curve: Curves.easeOutCubic,
                                 alignment: Alignment(
@@ -172,7 +176,8 @@ class GlassNavigation extends ConsumerWidget {
                                                       .textTheme
                                                       .bodySmall!
                                                       .copyWith(
-                                                        fontSize: 12,
+                                                        fontSize:
+                                                            AppType.smallLabel,
                                                         height: 1.2,
                                                         fontWeight:
                                                             selected == index

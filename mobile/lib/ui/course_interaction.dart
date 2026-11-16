@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_miuix/miuix.dart';
@@ -9,7 +10,7 @@ class CoursePressable extends StatefulWidget {
     super.key,
     required this.onPressed,
     required this.child,
-    this.radius = 24,
+    this.radius = AppRadius.card,
     this.dense = false,
   });
   final VoidCallback onPressed;
@@ -72,7 +73,7 @@ class CourseCardLink extends StatefulWidget {
     super.key,
     required this.onOpen,
     required this.child,
-    this.radius = 24,
+    this.radius = AppRadius.card,
   });
   final Future<void> Function(Object? tag) onOpen;
   final Widget child;
@@ -136,8 +137,8 @@ class CourseDetailsRoute extends MaterialPageRoute<void> {
   final bool reducedMotion;
   @override
   Duration get transitionDuration =>
-      reducedMotion ? Duration.zero : const Duration(milliseconds: 280);
+      reducedMotion ? Duration.zero : AppMotion.routeEnter;
   @override
   Duration get reverseTransitionDuration =>
-      reducedMotion ? Duration.zero : const Duration(milliseconds: 220);
+      reducedMotion ? Duration.zero : AppMotion.routeExit;
 }

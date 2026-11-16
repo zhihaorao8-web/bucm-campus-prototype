@@ -1,3 +1,5 @@
+import 'package:campus_schedule/ui/acrylic_surface.dart';
+import 'package:campus_schedule/ui/course_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,81 @@ import 'schedule_test.dart' show MemoryRepository;
 import 'week_grid_test.dart' show weeklyPreviewData;
 
 void main() {
+  for (final dark in [false, true]) {
+    testWidgets(
+      'shared surfaces honor live accessibility/preferences dark=$dark',
+      (tester) async {
+        for (final mode in [
+          'normal',
+          'blur-off',
+          'glass-off',
+          'app-contrast',
+          'system-contrast',
+          'reduced',
+        ]) {
+          final settings = AppearanceSettings(
+            blur: mode != 'blur-off',
+            glass: mode != 'glass-off',
+            contrast: mode == 'app-contrast' ? .5 : 0,
+          );
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                currentAppearanceProvider.overrideWithValue(settings),
+              ],
+              child: MaterialApp(
+                theme: appTheme(dark ? Brightness.dark : Brightness.light),
+                home: MediaQuery(
+                  data: MediaQueryData(
+                    highContrast: mode == 'system-contrast',
+                    disableAnimations: mode == 'reduced',
+                  ),
+                  child: const Scaffold(
+                    body: Column(
+                      children: [
+                        AcrylicSurface(child: SizedBox(width: 100, height: 40)),
+                        QuietSheet(child: SizedBox(width: 100, height: 40)),
+                        CourseSurface(child: SizedBox(width: 100, height: 40)),
+                        CourseSurface(
+                          dense: true,
+                          child: SizedBox(width: 100, height: 40),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final translucent = mode == 'normal' || mode == 'reduced';
+          for (final filter in tester.widgetList<BackdropFilter>(
+            find.byType(BackdropFilter),
+          )) {
+            expect(filter.enabled, translucent, reason: mode);
+          }
+          for (final surface in find.byType(CourseSurface).evaluate()) {
+            final decorated =
+                tester
+                        .widgetList<DecoratedBox>(
+                          find.descendant(
+                            of: find.byWidget(surface.widget),
+                            matching: find.byType(DecoratedBox),
+                          ),
+                        )
+                        .first
+                        .decoration
+                    as BoxDecoration;
+            expect(decorated.gradient != null, translucent, reason: mode);
+            if (!translucent) expect(decorated.color!.a, 1, reason: mode);
+          }
+          expect(tester.takeException(), isNull, reason: mode);
+        }
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
   testWidgets(
     'decorations honor switches; card style changes real course rows',
     (tester) async {

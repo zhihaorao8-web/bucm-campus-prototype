@@ -1,3 +1,5 @@
+import '../config/classroom_limits.dart';
+
 enum ClassroomReadStage { authentication, portal, platform, data }
 
 /// A separate budget for each automatic stage. Human authentication has no
@@ -12,7 +14,7 @@ class ClassroomReadProgress {
       attempts = 0;
     }
     if (next == ClassroomReadStage.authentication) return true;
-    return ++attempts <= 20;
+    return ++attempts <= ClassroomLimits.stageAttempts;
   }
 
   void reset() {

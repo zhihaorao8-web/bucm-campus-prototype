@@ -1,3 +1,5 @@
+import '../design/app_palette.dart';
+import '../design/app_tokens.dart';
 import 'app_icon_controls.dart';
 import 'app_icons.dart';
 import 'package:flutter/material.dart';
@@ -8,12 +10,12 @@ import '../platform/app_platform.dart';
 import 'settings_scaffold.dart';
 
 const accentChoices = <int, String>{
-  0xff3482ff: 'MIUIX 蓝',
-  0xff3f51b5: '靛青',
-  0xff7e57c2: '紫罗兰',
-  0xff00897b: '青绿',
-  0xffc05072: '玫瑰',
-  0xffb57500: '琥珀',
+  AppPalette.accentValue: 'MIUIX 蓝',
+  AppPalette.indigoValue: '靛青',
+  AppPalette.violetValue: '紫罗兰',
+  AppPalette.tealValue: '青绿',
+  AppPalette.roseValue: '玫瑰',
+  AppPalette.amberValue: '琥珀',
 };
 const variantChoices = <DynamicSchemeVariant, String>{
   DynamicSchemeVariant.tonalSpot: '柔和色调 · Tonal Spot',
@@ -337,7 +339,7 @@ class _ScaleSettingState extends ConsumerState<_ScaleSetting> {
           trailing: Text('${(value * 100).round()}%'),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
           child: Slider(
             key: const ValueKey('interface-scale-slider'),
             value: value,
@@ -380,18 +382,21 @@ class ThemePhonePreview extends StatelessWidget {
       child: Container(
         width: 136,
         height: 246,
-        padding: const EdgeInsets.all(8),
-        margin: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.all(AppSpace.sm),
+        margin: const EdgeInsets.symmetric(vertical: AppSpace.comfortable),
         decoration: BoxDecoration(
           color: c.surface,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: c.outline, width: 1.2),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 16),
-            Text('校园课表', style: TextStyle(fontSize: 10, color: c.onSurface)),
+            Text(
+              '校园课表',
+              style: TextStyle(fontSize: AppType.micro, color: c.onSurface),
+            ),
             const SizedBox(height: 8),
             Container(
               height: 42,
@@ -414,7 +419,7 @@ class ThemePhonePreview extends StatelessWidget {
               height: 24,
               decoration: BoxDecoration(
                 color: c.surfaceContainer,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(AppRadius.section),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,

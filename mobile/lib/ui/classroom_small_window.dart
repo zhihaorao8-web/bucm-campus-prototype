@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'app_icons.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -170,7 +171,7 @@ class _ClassroomSmallWindowState extends State<ClassroomSmallWindow> {
         },
         onScaleEnd: (_) => startRect = null,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.small),
           child: DecoratedBox(
             decoration: BoxDecoration(
               border: Border.all(color: Colors.white54, width: 2),
@@ -206,7 +207,7 @@ class _ClassroomSmallWindowState extends State<ClassroomSmallWindow> {
                         widget.label,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: AppType.smallLabel,
                           backgroundColor: Colors.black54,
                         ),
                       ),

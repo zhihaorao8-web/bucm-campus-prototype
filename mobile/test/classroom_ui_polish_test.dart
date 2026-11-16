@@ -18,6 +18,74 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/memory_appearance.dart';
 
 void main() {
+  testWidgets(
+    'shared actions keep 48dp targets and recovery access while busy',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var busy = true;
+      var opened = 0, retried = 0, refreshed = 0, rematched = 0;
+      late StateSetter update;
+      await tester.pumpWidget(
+        appearanceScope(
+          MaterialApp(
+            theme: appTheme(Brightness.dark),
+            home: MediaQuery(
+              data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+              child: Scaffold(
+                body: SingleChildScrollView(
+                  child: StatefulBuilder(
+                    builder: (context, setState) {
+                      update = setState;
+                      return ClassroomConnectionCard(
+                        status: const ClassroomConnectionStatus(
+                          ClassroomConnectionPhase.failed,
+                        ),
+                        directoryLabel: '合成离线目录',
+                        busy: busy,
+                        onOpenSchool: () => opened++,
+                        onRetry: () => retried++,
+                        onRefresh: () => refreshed++,
+                        onRematch: () => rematched++,
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      Finder button(String label) => find
+          .ancestor(
+            of: find.text(label),
+            matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+          )
+          .first;
+      for (final label in ['重试连接', '刷新录播', '重新匹配同名课程']) {
+        expect(
+          tester.widget<ButtonStyleButton>(button(label)).onPressed,
+          isNull,
+        );
+      }
+      await tester.ensureVisible(find.text('打开学校页面'));
+      await tester.tap(find.text('打开学校页面'));
+      expect(opened, 1);
+      update(() => busy = false);
+      await tester.pumpAndSettle();
+      for (final label in ['重试连接', '刷新录播', '重新匹配同名课程']) {
+        await tester.ensureVisible(find.text(label));
+        expect(tester.getSize(button(label)).height, greaterThanOrEqualTo(48));
+        await tester.tap(find.text(label));
+      }
+      expect([retried, refreshed, rematched], [1, 1, 1]);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final mode in [
     'blur-off',
     'glass-off',
@@ -257,153 +325,151 @@ void main() {
     );
   }
 
-  testWidgets(
-    'optional preview render of polished classroom playback view',
-    (tester) async {
-      await tester.runAsync(() async {
-        final bytes = await File('C:/Windows/Fonts/msyh.ttc').readAsBytes();
-        await (FontLoader(
-          'PreviewChinese',
-        )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
-      });
-      tester.view.devicePixelRatio = 2;
-      tester.view.physicalSize = const Size(780, 2080);
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final archive = ClassroomArchive([
-        RecordingPage.fromJson({
-          'course': {
-            'id': 'c-1',
-            'name': '推拿手法学',
-            'teacher': '薛卫国',
-            'code': '101',
-            'group': '针灸推拿学202402班',
-            'semester': '2026-2027-1',
+  testWidgets('optional preview render of polished classroom playback view', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      final bytes = await File('C:/Windows/Fonts/msyh.ttc').readAsBytes();
+      await (FontLoader(
+        'PreviewChinese',
+      )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+    });
+    tester.view.devicePixelRatio = 2;
+    tester.view.physicalSize = const Size(780, 2080);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final archive = ClassroomArchive([
+      RecordingPage.fromJson({
+        'course': {
+          'id': 'c-1',
+          'name': '推拿手法学',
+          'teacher': '薛卫国',
+          'code': '101',
+          'group': '针灸推拿学202402班',
+          'semester': '2026-2027-1',
+        },
+        'page': 1,
+        'pageSize': 2,
+        'total': 2,
+        'records': [
+          {
+            'id': 'r-1',
+            'label': '2026-11-09 08:30-11:15',
+            'date': '2026-11-09',
+            'place': '针推实践教学实训502室',
+            'published': true,
           },
-          'page': 1,
-          'pageSize': 2,
-          'total': 2,
-          'records': [
-            {
-              'id': 'r-1',
-              'label': '2026-11-09 08:30-11:15',
-              'date': '2026-11-09',
-              'place': '针推实践教学实训502室',
-              'published': true,
-            },
-            {
-              'id': 'r-2',
-              'label': '2026-11-02 08:30-11:15',
-              'date': '2026-11-02',
-              'place': '针推实践教学实训502室',
-              'published': true,
-            },
-          ],
-        }),
-      ], DateTime.utc(2026, 11, 12, 4, 4));
-      for (final dark in [false, true]) {
-        final boundary = GlobalKey();
-        await tester.pumpWidget(
-          appearanceScope(
-            RepaintBoundary(
-              key: boundary,
-              child: MaterialApp(
-                debugShowCheckedModeBanner: false,
-                theme: appTheme(dark ? Brightness.dark : Brightness.light)
-                    .copyWith(
-                      textTheme: appTheme(
-                        dark ? Brightness.dark : Brightness.light,
-                      ).textTheme.apply(fontFamily: 'PreviewChinese'),
-                    ),
-                home: QuietBackdrop(
-                  tab: 1,
-                  child: Scaffold(
+          {
+            'id': 'r-2',
+            'label': '2026-11-02 08:30-11:15',
+            'date': '2026-11-02',
+            'place': '针推实践教学实训502室',
+            'published': true,
+          },
+        ],
+      }),
+    ], DateTime.utc(2026, 11, 12, 4, 4));
+    for (final dark in [false, true]) {
+      final boundary = GlobalKey();
+      await tester.pumpWidget(
+        appearanceScope(
+          RepaintBoundary(
+            key: boundary,
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: appTheme(dark ? Brightness.dark : Brightness.light)
+                  .copyWith(
+                    textTheme: appTheme(
+                      dark ? Brightness.dark : Brightness.light,
+                    ).textTheme.apply(fontFamily: 'PreviewChinese'),
+                  ),
+              home: QuietBackdrop(
+                tab: 1,
+                child: Scaffold(
+                  backgroundColor: Colors.transparent,
+                  appBar: AppBar(
                     backgroundColor: Colors.transparent,
-                    appBar: AppBar(
-                      backgroundColor: Colors.transparent,
-                      title: const Text('课程课堂'),
-                    ),
-                    body: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          QuietCard(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    '推拿手法学',
-                                    style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                    title: const Text('课程课堂'),
+                  ),
+                  body: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        QuietCard(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '推拿手法学',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  const SizedBox(height: 6),
-                                  const Text('薛卫国\n2026-2027-1'),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(height: 6),
+                                const Text('薛卫国\n2026-2027-1'),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          ClassroomSectionSwitch(
-                            tabs: const ['录播', '直播'],
-                            selectedIndex: 0,
-                            onSelected: (_) {},
+                        ),
+                        const SizedBox(height: 16),
+                        ClassroomSectionSwitch(
+                          tabs: const ['录播', '直播'],
+                          selectedIndex: 0,
+                          onSelected: (_) {},
+                        ),
+                        const SizedBox(height: 16),
+                        ClassroomConnectionCard(
+                          status: const ClassroomConnectionStatus(
+                            ClassroomConnectionPhase.idle,
+                            '尚未检查本次连接',
                           ),
-                          const SizedBox(height: 16),
-                          ClassroomConnectionCard(
-                            status: const ClassroomConnectionStatus(
-                              ClassroomConnectionPhase.idle,
-                              '尚未检查本次连接',
-                            ),
-                            directoryLabel:
-                                '已导入的录播列表 · 更新于 2026-11-12 12:04 · 可刷新',
-                            summaryLabel: '已按名称合并 1 门学校课程（按日期汇总）',
-                            busy: false,
-                            onRefresh: () {},
-                            onRematch: () {},
-                          ),
-                          const SizedBox(height: 12),
-                          ClassroomRecordingTimeline(
-                            archive: archive,
-                            date: DateTime(2026, 11, 16),
-                            page: 1,
-                            lessonPage: 1,
-                            onPage: (_) {},
-                            onLessonPage: (_) {},
-                            onPlay: (_, _, _) {},
-                            busy: false,
-                          ),
-                        ],
-                      ),
+                          directoryLabel:
+                              '已导入的录播列表 · 更新于 2026-11-12 12:04 · 可刷新',
+                          summaryLabel: '已按名称合并 1 门学校课程（按日期汇总）',
+                          busy: false,
+                          onRefresh: () {},
+                          onRematch: () {},
+                        ),
+                        const SizedBox(height: 12),
+                        ClassroomRecordingTimeline(
+                          archive: archive,
+                          date: DateTime(2026, 11, 16),
+                          page: 1,
+                          lessonPage: 1,
+                          onPage: (_) {},
+                          onLessonPage: (_) {},
+                          onPlay: (_, _, _) {},
+                          busy: false,
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
             ),
           ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        final image =
+            await (boundary.currentContext!.findRenderObject()
+                    as RenderRepaintBoundary)
+                .toImage(pixelRatio: 2);
+        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+        final file = File(
+          '../dist/flutter-preview/classroom-polish-${dark ? 'dark' : 'light'}.png',
         );
-        await tester.pumpAndSettle();
-        await tester.runAsync(() async {
-          final image =
-              await (boundary.currentContext!.findRenderObject()
-                      as RenderRepaintBoundary)
-                  .toImage(pixelRatio: 2);
-          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-          final file = File(
-            '../dist/flutter-preview/classroom-polish-${dark ? 'dark' : 'light'}.png',
-          );
-          await file.parent.create(recursive: true);
-          await file.writeAsBytes(bytes!.buffer.asUint8List());
-          image.dispose();
-        });
-        expect(tester.takeException(), isNull);
-        await tester.pumpWidget(const SizedBox());
-      }
-    },
-    skip: !const bool.fromEnvironment('CAPTURE_PREVIEW'),
-  );
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(bytes!.buffer.asUint8List());
+        image.dispose();
+      });
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    }
+  }, skip: !const bool.fromEnvironment('CAPTURE_PREVIEW'));
 }

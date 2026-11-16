@@ -1,15 +1,17 @@
+import '../data/local_files.dart';
+import '../config/storage_policy.dart';
+import '../design/app_palette.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 
 @immutable
 class AppearanceSettings {
   const AppearanceSettings({
     this.mode = ThemeMode.system,
     this.monet = false,
-    this.accent = 0xff3482ff,
+    this.accent = AppPalette.accentValue,
     this.variant = DynamicSchemeVariant.tonalSpot,
     this.contrast = 0,
     this.blur = true,
@@ -166,17 +168,16 @@ abstract interface class AppearanceRepository {
 class FileAppearanceRepository implements AppearanceRepository {
   FileAppearanceRepository({this.directory});
   final Directory? directory;
-  Future<File> _file() async {
-    final folder = directory ?? await getApplicationSupportDirectory();
-    await folder.create(recursive: true);
-    return File('${folder.path}/appearance-v1.json');
-  }
+  Future<File> _file() =>
+      applicationFile(StoragePolicy.appearanceFile, directory: directory);
 
   @override
   Future<AppearanceSettings> load() async {
     final file = await _file();
     if (!await file.exists()) return const AppearanceSettings();
-    if (await file.length() > 65536) throw const FormatException('外观设置文件过大');
+    if (await file.length() > StoragePolicy.appearanceBytes) {
+      throw const FormatException('外观设置文件过大');
+    }
     return AppearanceSettings.fromJson(
       jsonDecode(await file.readAsString()) as Map<String, dynamic>,
     );
@@ -185,13 +186,7 @@ class FileAppearanceRepository implements AppearanceRepository {
   @override
   Future<void> save(AppearanceSettings value) async {
     final file = await _file();
-    final temporary = File('${file.path}.pending');
-    try {
-      await temporary.writeAsString(jsonEncode(value.toJson()), flush: true);
-      await temporary.rename(file.path);
-    } finally {
-      if (await temporary.exists()) await temporary.delete();
-    }
+    await writeAtomicText(file, jsonEncode(value.toJson()));
   }
 }
 

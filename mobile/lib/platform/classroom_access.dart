@@ -1,3 +1,4 @@
+import '../config/network_policy.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -19,9 +20,9 @@ class AccessProbe {
       state == ProbeState.available || state == ProbeState.authentication;
 }
 
-const directEntry = 'https://i.bucm.edu.cn/';
-const vpnEntry = 'https://webvpn.bucm.edu.cn/';
-const classroomProbe = 'https://qhz.bucm.edu.cn/cc/';
+const directEntry = SchoolEndpoints.portal;
+const vpnEntry = SchoolEndpoints.vpn;
+const classroomProbe = SchoolEndpoints.classroom;
 
 /// Only the observed classroom cc entry may recover to the dedicated school
 /// course application. No parameters or credentials are copied between routes.
@@ -33,15 +34,14 @@ String? dedicatedClassroomEntry(String address) {
       uri.userInfo.isNotEmpty) {
     return null;
   }
-  const prefix =
-      '/https/77726476706e69737468656265737421e1ff5bd225256b5d300d8db9d6562d/';
+  const prefix = SchoolEndpoints.classroomVpnPrefix;
   if (uri.host == 'qhz.bucm.edu.cn' &&
       const ['/cc', '/cc/'].contains(uri.path)) {
-    return 'https://qhz.bucm.edu.cn/coursePlatform/#/courseCenter/index?firstMenuId=11';
+    return 'https://qhz.bucm.edu.cn/${SchoolEndpoints.courseRoute}';
   }
   if (uri.host == 'webvpn.bucm.edu.cn' &&
       ['${prefix}cc', '${prefix}cc/'].contains(uri.path)) {
-    return 'https://webvpn.bucm.edu.cn${prefix}coursePlatform/#/courseCenter/index?firstMenuId=11';
+    return 'https://webvpn.bucm.edu.cn$prefix${SchoolEndpoints.courseRoute}';
   }
   return null;
 }
@@ -127,11 +127,11 @@ Future<AccessProbe> probeClassroomEndpoint(String address) async {
   if (address != classroomProbe && address != vpnEntry) {
     return const AccessProbe(ProbeState.unexpected);
   }
-  final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+  final client = HttpClient()..connectionTimeout = ProbePolicy.connectTimeout;
   try {
     return await (() async {
       var uri = Uri.parse(address);
-      for (var hop = 0; hop < 3; hop++) {
+      for (var hop = 0; hop < ProbePolicy.redirectHops; hop++) {
         final request = await client.getUrl(uri);
         request.followRedirects = false;
         final response = await request.close();
@@ -157,8 +157,8 @@ Future<AccessProbe> probeClassroomEndpoint(String address) async {
         }
         final bytes = <int>[];
         await for (final chunk in response) {
-          bytes.addAll(chunk.take(65536 - bytes.length));
-          if (bytes.length == 65536) break;
+          bytes.addAll(chunk.take(ProbePolicy.maxBytes - bytes.length));
+          if (bytes.length == ProbePolicy.maxBytes) break;
         }
         return classifyProbe(
           address,
@@ -168,7 +168,7 @@ Future<AccessProbe> probeClassroomEndpoint(String address) async {
         );
       }
       return const AccessProbe(ProbeState.unexpected);
-    })().timeout(const Duration(seconds: 4));
+    })().timeout(ProbePolicy.totalTimeout);
   } on HandshakeException {
     return const AccessProbe(ProbeState.certificateError);
   } catch (_) {

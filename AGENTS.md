@@ -1,6 +1,6 @@
 # 维护说明
 
-用户于2026-11-09确认将范围扩展为Flutter Android第一版课表应用：官方页面登录、自动导入、离线周/日课表、课程详情与今日速览。详见docs/FLUTTER.md；不扩展提醒、社区、直播、图书馆等其他功能。
+当前范围为Flutter Android课表与用户后续明确授权的轻新课堂录播：官方页面认证、自动导入、离线周/日课表、课程详情、今日速览和多画面录播。生效需求见docs/PROJECT_BRIEF.md，构建见docs/FLUTTER.md；实际直播、提醒、社区、图书馆等未开放功能不得自动进入开发范围。
 
 - 认证由用户在学校官方页面完成；不记录密码、验证码、Cookie或令牌。
 - 不忽略TLS校验，不移除域名检查，不引入开发者服务器代理学校凭据。
@@ -8,13 +8,16 @@
 - 网页可读、DOM已提取、样本结构化与完整学期准确导出是不同验证状态，文档需分别说明。
 - 修复DOM或解析逻辑时运行相应合成测试；真实学校页面仅在用户授权会话下手动验证，不放入CI。
 - 版本从AndroidManifest.xml读取。修改版本时同步CHANGELOG与验证状态，不重写已经发布的标签。
-- 根目录仍是轻量Java原型，不是Gradle工程；mobile/是新增Flutter/Gradle工程。构建与检查步骤以README及docs中的文档为准。
+- 根src/保留7个共享Java核心，不是Gradle工程；旧原型仅在历史分支保留，mobile/是当前Flutter/Gradle主工程。共享源码由scripts/prepare_flutter.py复制，不能整目录删除。根Manifest仅为版本来源，实际应用权限在mobile/android/声明；构建与检查步骤以README及docs为准。
 
 ## 需求与开发进度协调
 
-- 开始开发前先阅读`docs/PROJECT_BRIEF.md`（用户提示词与后续确认形成的生效需求）、`docs/DEVELOPMENT_PLAN.md`（阶段、当前进度与下一步）、`docs/STATUS.md`（实际验证证据）；修改UI时同时阅读`DESIGN.md`。
+- 所有后续开发必须遵守`docs/PROJECT_MANAGEMENT.md`的长期流程，不限于本轮工程优化。开工先读该规范及`docs/PROJECT_BRIEF.md`（生效需求）、`docs/DEVELOPMENT_PLAN.md`（当前进度）、`docs/STATUS.md`（实际证据）；修改UI同时读`DESIGN.md`，实现前检索`docs/ARCHITECTURE.md`及已有代码。
+- UI修改遵循DESIGN.md的组件/状态/验收表；固定配色及公共尺寸、动效从mobile/lib/design读取，材质降级复用AppVisualPolicy，不在页面复制主题或交互算法。新增变体先扩展公共组件并更新规范。
 - 原始Markdown提示词完整保存在`docs/requirements/ORIGINAL_PROMPT.md`，作为历史需求来源。与后续用户确认冲突的内容按`docs/PROJECT_BRIEF.md`中的决策表执行，不重新启用保存密码、静默重登、明文HTTP或第一版以外模块。
-- 项目长期目标是校园生活聚合应用；当前仅推进已确认的Flutter Android课表第一版。直播回放、图书馆、提醒、社区以及iOS/Windows交付均不得因原始提示词提及而自动进入开发范围。
+- 项目长期目标是校园生活聚合应用；当前仅推进已确认的Flutter Android课表与录播。实际直播、图书馆、提醒、社区以及iOS/Windows交付均不得因原始提示词提及而自动进入开发范围。
+- 后续任务按docs/PROJECT_MANAGEMENT.md拆成可验证阶段；每阶段完成检查、文档更新、提交推送后必须停止供用户审核，通过后再推进。已确认阶段内常规工作继续执行，不重复索取确认；docs/MAINTENANCE_PLAN.md仅作本轮A–F台账，不限制长期流程适用范围。
+- 日常测试必须按docs/TESTING.md分层，优先受影响模块/具名调试场景，跨模块先看--changed --dry-run；只在相应集成/发布或影响不确定时扩大，不能每次小改默认全量。新增公共能力登记复用入口，配置与视觉参数归公共层；清理前核对源码/构建/资产/测试/文档引用，修正过时文档，不堆叠重复说明。
 - 有影响范围、认证策略或验收标准的歧义时，一次只问一个问题；已确认范围内的常规实现、修复和验证继续执行，不重复索取确认。新阶段或新增模块先给出范围和可复核结果，再等待用户确认。
 - 每项修改开始前核对已有实现及工作区，避免重做已完成内容；完成后更新进度清单中相应状态与验证证据，再按下述规则同步Git。明确区分已实现、检查通过、模拟器通过、真实学校验证通过和已推送。
 

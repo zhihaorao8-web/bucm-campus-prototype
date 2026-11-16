@@ -1,3 +1,4 @@
+import '../config/classroom_limits.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -25,8 +26,8 @@ class ClassroomSession {
 
 class ClassroomSessionCache {
   ClassroomSessionCache({
-    this.ttl = const Duration(minutes: 5),
-    this.capacity = 2,
+    this.ttl = ClassroomLimits.sessionTtl,
+    this.capacity = ClassroomLimits.sessionCapacity,
     DateTime Function()? clock,
     Future<void> Function(InAppWebViewKeepAlive)? release,
   }) : assert(capacity > 0),

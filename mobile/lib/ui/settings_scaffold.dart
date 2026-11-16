@@ -1,3 +1,5 @@
+import '../design/app_tokens.dart';
+import 'visual_policy.dart';
 import 'app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
@@ -45,18 +47,11 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
                   title: widget.title,
                   color: Theme.of(context).colorScheme.surface,
                   scrollBehavior: behavior,
-                  blurred:
-                      settings.blur &&
-                      settings.glass &&
-                      settings.contrast <= 0 &&
-                      !MediaQuery.highContrastOf(context),
-                  blurRadius: 20,
-                  blurTintAlpha:
-                      .04 +
-                      .76 *
-                          (scroll.hasClients
-                              ? (scroll.offset / 80).clamp(0.0, 1.0)
-                              : 0.0),
+                  blurred: AppVisualPolicy.of(context, settings).translucent,
+                  blurRadius: AppHeader.blur,
+                  blurTintAlpha: AppHeader.tint(
+                    scroll.hasClients ? scroll.offset : 0,
+                  ),
                   navigationIcon: IconButton(
                     tooltip: '返回',
                     icon: const AppIcon(AppIcons.arrowBack),
@@ -75,10 +70,10 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
                       PinnedHeaderSliver(child: SizedBox(height: insets.top)),
                       SliverPadding(
                         padding: EdgeInsets.fromLTRB(
-                          16 + insets.left,
-                          16,
-                          16 + insets.right,
-                          insets.bottom + 32,
+                          AppSpace.lg + insets.left,
+                          AppSpace.lg,
+                          AppSpace.lg + insets.right,
+                          insets.bottom + AppSpace.xxl,
                         ),
                         sliver: SliverList.list(children: widget.children),
                       ),
@@ -113,7 +108,7 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
 }
 
 Widget settingsGroup(List<Widget> children) => Padding(
-  padding: const EdgeInsets.only(bottom: 16),
+  padding: const EdgeInsets.only(bottom: AppSpace.lg),
   child: QuietCard(
     cornerRadius: 24,
     insideMargin: EdgeInsets.zero,

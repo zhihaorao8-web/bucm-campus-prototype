@@ -1,3 +1,5 @@
+import 'app_controls.dart';
+import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'app_icons.dart';
@@ -17,35 +19,26 @@ class ScheduleModeSwitch extends StatelessWidget {
     return Container(
       width: 112,
       height: 56,
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(AppSpace.xs),
       decoration: BoxDecoration(
         color: colors.onSurface.withValues(alpha: .055),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.inset),
       ),
       child: Stack(
         children: [
-          AnimatedAlign(
-            alignment: daily ? Alignment.centerRight : Alignment.centerLeft,
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            child: FractionallySizedBox(
-              widthFactor: .5,
-              heightFactor: 1,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: colors.surfaceContainer,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: .04),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+          AppSegmentIndicator(
+            selected: daily ? 1 : 0,
+            count: 2,
+            decoration: BoxDecoration(
+              color: colors.surfaceContainer,
+              borderRadius: BorderRadius.circular(AppRadius.small),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: .04),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
                 ),
-              ),
+              ],
             ),
           ),
           Row(
@@ -58,7 +51,7 @@ class ScheduleModeSwitch extends StatelessWidget {
                     label: '$label视图',
                     child: MiuixPressable(
                       onPressed: () => onChanged(value),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.small),
                       child: Center(
                         child: Text(
                           label,
@@ -131,9 +124,7 @@ class _WeekNavigationState extends State<WeekNavigation> {
             child: Column(
               children: [
                 AnimatedSwitcher(
-                  duration: motion
-                      ? const Duration(milliseconds: 220)
-                      : Duration.zero,
+                  duration: motion ? AppMotion.segment : Duration.zero,
                   transitionBuilder: (child, animation) => FadeTransition(
                     opacity: animation,
                     child: SlideTransition(
@@ -155,7 +146,7 @@ class _WeekNavigationState extends State<WeekNavigation> {
                 Text(
                   widget.range,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: AppType.caption,
                     color: colors.onSurfaceVariant,
                     fontFeatures: tabularTime,
                   ),
@@ -167,7 +158,7 @@ class _WeekNavigationState extends State<WeekNavigation> {
             TextButton(
               style: TextButton.styleFrom(
                 backgroundColor: colors.primaryContainer,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
               ),
               onPressed: widget.onCurrent,
               child: const Text('本周'),

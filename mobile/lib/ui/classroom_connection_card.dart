@@ -1,3 +1,5 @@
+import '../design/app_tokens.dart';
+import 'app_controls.dart';
 import 'package:flutter/material.dart';
 import '../application/classroom_connection_status.dart';
 import 'app_icons.dart';
@@ -34,7 +36,8 @@ class ClassroomConnectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final hasActions = onRefresh != null || onRematch != null;
-    final recovery = status.needsRecovery && (onRetry != null || onOpenSchool != null);
+    final recovery =
+        status.needsRecovery && (onRetry != null || onOpenSchool != null);
     final badgeBg = status.needsRecovery
         ? colors.errorContainer.withValues(alpha: .72)
         : colors.primaryContainer.withValues(alpha: .78);
@@ -42,7 +45,7 @@ class ClassroomConnectionCard extends StatelessWidget {
 
     return QuietCard(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(AppLayout.compactCardInset),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -106,25 +109,28 @@ class ClassroomConnectionCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpace.md,
+                    vertical: AppSpace.control,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (summaryLabel != null)
                         Text(
                           summaryLabel!,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colors.onSurfaceVariant),
                         ),
                       if (dateHintLabel != null) ...[
                         if (summaryLabel != null) const SizedBox(height: 4),
                         Text(
                           dateHintLabel!,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.primary,
-                            fontFeatures: tabularTime,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: colors.primary,
+                                fontFeatures: tabularTime,
+                              ),
                         ),
                       ],
                     ],
@@ -146,39 +152,21 @@ class ClassroomConnectionCard extends StatelessWidget {
                 runSpacing: 10,
                 children: [
                   if (onRetry != null)
-                    FilledButton.tonalIcon(
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(48, 46),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
+                    AppActionButton(
+                      label: '重试连接',
+                      icon: AppIcons.refresh,
                       onPressed: busy ? null : onRetry,
-                      icon: const AppIcon(AppIcons.refresh, size: 17),
-                      label: const Text('重试连接'),
+                      outlined: false,
+                      horizontalInset: AppControl.secondaryInset,
+                      iconSize: 17,
                     ),
                   if (onOpenSchool != null)
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(48, 46),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        side: BorderSide(
-                          color: colors.outlineVariant.withValues(alpha: .8),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
+                    AppActionButton(
+                      label: '打开学校页面',
+                      icon: AppIcons.chevronRight,
                       onPressed: onOpenSchool,
-                      icon: const AppIcon(AppIcons.chevronRight, size: 17),
-                      label: const Text('打开学校页面'),
+                      outlined: true,
+                      iconSize: 17,
                     ),
                 ],
               ),
@@ -190,39 +178,18 @@ class ClassroomConnectionCard extends StatelessWidget {
                 runSpacing: 10,
                 children: [
                   if (onRefresh != null)
-                    FilledButton.tonalIcon(
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(48, 46),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
+                    AppActionButton(
+                      label: '刷新录播',
+                      icon: AppIcons.refresh,
                       onPressed: busy ? null : onRefresh,
-                      icon: const AppIcon(AppIcons.refresh, size: 18),
-                      label: const Text('刷新录播'),
+                      outlined: false,
                     ),
                   if (onRematch != null)
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(48, 46),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        side: BorderSide(
-                          color: colors.outlineVariant.withValues(alpha: .8),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
+                    AppActionButton(
+                      label: '重新匹配同名课程',
+                      icon: AppIcons.swapHorizontal,
                       onPressed: busy ? null : onRematch,
-                      icon: const AppIcon(AppIcons.swapHorizontal, size: 18),
-                      label: const Text('重新匹配同名课程'),
+                      outlined: true,
                     ),
                 ],
               ),

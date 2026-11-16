@@ -1,3 +1,4 @@
+import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'app_icons.dart';
@@ -67,7 +68,7 @@ class _AppExpansionTileState extends State<AppExpansionTile> {
       turns: expanded ? .5 : 0,
       duration: MediaQuery.disableAnimationsOf(context)
           ? Duration.zero
-          : const Duration(milliseconds: 180),
+          : AppMotion.contentEnter,
       child: const AppIcon(AppIcons.chevronDown),
     ),
     children: widget.children,
