@@ -87,11 +87,13 @@ jobs:
       - uses: ./.github/actions/flutter-environment
       - name: Build debug and release previews sequentially
         shell: pwsh
-        run: ./scripts/build_flutter_previews.ps1
+        env:
+          EXPECTED_SOURCE_SHA: ${{ needs.quality.outputs.sha }}
+        run: ./scripts/build_flutter_previews.ps1 -ExpectedSourceSha $env:EXPECTED_SOURCE_SHA
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: campus-flutter-apks-${{ needs.quality.outputs.sha }}
-          path: build/flutter-previews/*
+          path: build/flutter-previews/**/*
           if-no-files-found: error
           retention-days: 14
           compression-level: 0

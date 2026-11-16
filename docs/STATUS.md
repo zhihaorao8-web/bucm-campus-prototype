@@ -17,7 +17,11 @@
 
 - 用户继续确认E通过，从6c37980创建codex/maintenance-stage-f。F1实现工作分支/PR变更检查、main/发布候选全量及独立双包预览；显式dispatch分changed/full/preview。固定source/base SHA、所需工具和计划，执行复用check.Runner，失败报告保留退出码，CI归一化锁源不改变已选范围。
 - F1最终22项Python工具回归、文档目标/图标/合成示例检查通过；YAML本地解析及外部Action精确SHA核对通过，日志build/checks/stage-f1-verified-tests.log。初次新增夹具将临时目录字符串当Path导致工具测试报错，已修正并完整重跑；未把初次失败计为通过。未运行新的应用构建/设备/学校验证，远端Actions状态在推送后另核对。
+- F1成果e2b39fd已推送；精确SHA的[Actions 43785658318](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/43785658318)成功，quality通过、dual-preview按工作分支规则跳过，未构建APK。不能沿用该结果为后续F2/F3提交通过。
 - 公开GitHub API只读核对main=580eac9、protected=false、rulesets=[]；CLI无登录且连接器无保护接口，未读取凭据。已提供main保护JSON模板及职责规范，未应用远端设置，不声称主分支已受服务器规则保护。当前不创建标签/发布或合入main。
+
+- F2实现只读双包核验与顺序构建门禁：精确源码/版本/签名/模式、资源与许可、ZIP及已知测试载荷；以固定引擎可执行段区别profile，保留符号剥离兼容。预览/发布候选分开，后者还要求干净源码、可信证书及精确SHA的完整CI成功；不发布/安装或跳过检查。
+- F2初轮只读0.3双包核验发现Android已剥离引擎符号、Gradle SHA1目录省略前导0，按实际结构修正并补合成检查后，现存729663f双包身份/签名/资源/引擎核验通过（build/checks/stage-f2-historical-apks.json）。这是旧包对新工具的实证，不是新分支构建或新的release/学校验收。构建失败/无新APK两项PowerShell隔离检查及7项核验边界检查通过；初次夹具输出编码问题已显式UTF8处理，不计首次通过。新分支双包顺序构建待提交后执行。
 
 ## 2026-11-16 工程优化E分项
 
