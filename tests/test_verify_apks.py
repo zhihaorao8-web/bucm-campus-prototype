@@ -51,13 +51,42 @@ class ApkVerificationTest(unittest.TestCase):
     def test_tool_output_requires_identity_and_exactly_one_signer(self):
         package = "package: name='cn.bucm.campus_schedule' versionCode='12' versionName='0.3'\napplication-debuggable"
         resources = f'resource string/build_source_identity\n  () "{SOURCE}"'
-        certificate = 'Signer #1 certificate SHA-256 digest: ' + SIGNER
+        certificate = 'Number of signers: 1\nSigner #1 certificate SHA-256 digest: ' + SIGNER
         self.assertTrue(verify.parse_tools(package, resources, certificate)['debuggable'])
         for output in ['', certificate + '\n' + certificate]:
             with self.assertRaises(ValueError):
                 verify.parse_tools(package, resources, output)
         with self.assertRaises(ValueError):
             verify.parse_tools(package, '', certificate)
+
+    def test_sdk37_v2_signer_and_ambiguous_output(self):
+        package = "package: name='cn.bucm.campus_schedule' versionCode='12' versionName='0.3'"
+        resources = f'resource string/build_source_identity\n  () "{SOURCE}"'
+        certificate = 'Number of signers: 1\r\n\r\nV2 Signer: certificate SHA-256 digest: ' + SIGNER.upper() + '\r\n'
+        self.assertEqual(verify.parse_tools(package, resources, certificate)['signerSha256'], SIGNER)
+        for output in [certificate.replace('signers: 1', 'signers: 2'),
+                       certificate.replace('Number of signers: 1', ''),
+                       certificate + 'V2 Signer: certificate SHA-256 digest: ' + SIGNER,
+                       certificate + 'V3.1 Signer: certificate SHA-256 digest: ' + SIGNER,
+                       certificate + 'Source Stamp Signer certificate SHA-256 digest: ' + SIGNER,
+                       certificate.replace('V2 Signer:', 'Source Stamp Signer'),
+                       certificate.replace('certificate SHA-256', 'public key SHA-256'),
+                       certificate.replace('V2 Signer:', 'V3.1 Signer:'),
+                       certificate.replace('V2 Signer:', 'Signer #2'),
+                       certificate.replace(SIGNER.upper(), SIGNER + '0')]:
+            with self.subTest(output=output):
+                with self.assertRaises(ValueError):
+                    verify.parse_tools(package, resources, output)
+
+    def test_signature_command_failure_never_reaches_identity_parsing(self):
+        from subprocess import CalledProcessError
+        from unittest.mock import patch
+        outputs = ["package: name='cn.bucm.campus_schedule' versionCode='12' versionName='0.3'",
+                   f'resource string/build_source_identity\n  () "{SOURCE}"',
+                   CalledProcessError(1, ['apksigner', 'verify'])]
+        with patch.object(verify, 'command', side_effect=outputs):
+            with self.assertRaises(CalledProcessError):
+                verify.inspect(Path('synthetic.apk'), Path('synthetic-tools'))
 
     def test_ci_requires_exact_sha_success_and_full_preview_jobs(self):
         run = {'id': 123, 'head_sha': SOURCE, 'status': 'completed', 'conclusion': 'success',

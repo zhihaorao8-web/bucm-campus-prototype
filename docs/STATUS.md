@@ -17,8 +17,15 @@
 ## 2026-11-16 主线集成
 
 - 用户明确授权“把当前进度合入main”。集成范围为已审核A–F、长期管理规范及审核记录；从main 580eac985d7dfab9da1ed00d720792e1bcfc33f5到候选e3712d1886e02a6001310a6ad193cbfb5352de82为23个提交，main为其祖先，核对时工作区干净。
-- 候选精确[Actions 43791865438](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/43791865438)成功：quality通过，dual-preview按工作分支规则跳过。集成通过[PR #1](https://github.com/zhihaorao8-web/bucm-campus-prototype/pull/1)保留阶段提交历史；合入SHA及main后续全量检查/双包预览状态以该PR及对应SHA的Actions记录为准，候选成功不替代主线集成验证。
+- 候选精确[Actions 43791865438](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/43791865438)成功：quality通过，dual-preview按工作分支规则跳过。最终候选7278b5a的PR检查43792842193成功，经[PR #1](https://github.com/zhihaorao8-web/bucm-campus-prototype/pull/1)合入6380b25a34a0ab53e229e62d8f31cab96fcd729f，保留阶段提交历史。本地main已快进同步，核对合入树与候选一致、工作区干净。
+- 合入提交的[Actions 43793288471](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/43793288471)全量quality通过：工具35项、静态分析、Flutter305项/9跳过及显式直取23项。debug、release均编译成功，但dual-preview在签名输出解析时报错，未上传双包；不能将编译通过写成完整核验成功。
 - 本次同步集成文档仅运行文档及差异检查；不改版本、标签/发布附件或远端保护，不访问学校或安装设备。应用仍0.3/code12，既有设备/学校验证缺口保留。
+
+## 2026-11-16 集成签名核验修复
+
+- 用户继续确认排查。在6380b25基础上建立codex/fix-ci-apk-identity；按runner镜像清单定位37.0.0，并从Android官方下载、校验SDK压缩包，在忽略的工作区复现：相同0c35317双包用35/36读取成功，37的证书前缀由Signer #1变为V2 Signer:，旧正则因此失败。包名和源码资源读取正常，未据笼统报错推断证书损坏或更换签名。
+- 核验器兼容这两种单证书格式，要求Number of signers=1及唯一证书摘要；重复/额外/未知证书、轮换格式、公钥或Source Stamp替代均拒绝，实际apksigner非零退出仍直接失败。补充真实格式的合成拒绝边界与命令失败回归，同步双包文档。
+- docs/tooling检查通过（37项Python、图标/合成样本，最终180个本地文档目标）。37工具对既有0c35317双包完整核验通过，报告build/checks/sdk37-full-apk-recheck.json；35/36对两包身份/签名读取通过。这不是修复分支新构建，也不是新的设备/学校/发布验收。首次复核误指只含部分引擎的缓存而失败，改用实际完整缓存后通过，未放宽引擎校验；远端修复提交CI待验。
 
 ## 2026-11-16 长期项目管理规范
 
