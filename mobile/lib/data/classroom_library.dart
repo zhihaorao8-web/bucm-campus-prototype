@@ -1,9 +1,9 @@
+import 'local_files.dart';
 import '../config/classroom_limits.dart';
 import '../config/storage_policy.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 import '../domain/classroom.dart';
 import '../domain/schedule.dart';
 
@@ -147,11 +147,8 @@ class ClassroomLibrary {
     course.id,
     classroomStoredName(course.name),
   ]);
-  Future<File> _file() async {
-    final folder = directory ?? await getApplicationSupportDirectory();
-    await folder.create(recursive: true);
-    return File('${folder.path}/${StoragePolicy.libraryFile}');
-  }
+  Future<File> _file() =>
+      applicationFile(StoragePolicy.libraryFile, directory: directory);
 
   Future<Map<String, dynamic>> _read() async {
     final file = await _file();
@@ -271,15 +268,12 @@ class ClassroomLibrary {
         throw const FormatException('录播目录文件过大');
       }
       final file = await _file();
-      final temp = File('${file.path}.pending');
-      try {
-        await temp.writeAsString(content, flush: true);
-        if (revision == _revision) {
-          await temp.rename(file.path);
-          _changed();
-        }
-      } finally {
-        if (await temp.exists()) await temp.delete();
+      if (await writeAtomicText(
+        file,
+        content,
+        canCommit: () => revision == _revision,
+      )) {
+        _changed();
       }
     });
     _tail = operation.catchError((Object _) {});
@@ -291,17 +285,8 @@ class ClassroomLibrary {
       final values = await _read();
       if (values.remove(key(course)) == null) return;
       final file = await _file();
-      final temp = File('${file.path}.pending');
-      try {
-        await temp.writeAsString(
-          jsonEncode({'schema': 2, 'courses': values}),
-          flush: true,
-        );
-        await temp.rename(file.path);
-        _changed();
-      } finally {
-        if (await temp.exists()) await temp.delete();
-      }
+      await writeAtomicText(file, jsonEncode({'schema': 2, 'courses': values}));
+      _changed();
     });
     _tail = operation.catchError((Object _) {});
     return operation;

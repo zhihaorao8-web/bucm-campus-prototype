@@ -15,7 +15,10 @@
 
 - 用户继续指令确认C通过，从3e7ab69创建codex/maintenance-stage-d。保持0.3/code12、存储格式/键、官方认证与按用途域名校验；不新增业务模块。
 - D1：按职责集中StoragePolicy、ClassroomLimits、PlaybackPolicy、网络入口/探测/导入/语录策略及资源/通道/编译开关；模型与会话共用续播有效位置判断。现有数值、文件名、原始资源与通道字符串保持兼容；Java/JS独立安全校验不合并，跨语言协议仍各自校验。
-- D1静态分析无问题；15个相关文件106项回归、直取专项23项通过。日志build/checks/stage-d1-analyze.log、stage-d1-tests.log及stage-d1-direct.log。D1完成后提交推送；D2/D3接续，阶段未完成。
+- D1静态分析无问题；15个相关文件106项回归、直取专项23项通过。日志build/checks/stage-d1-analyze.log、stage-d1-tests.log及stage-d1-direct.log。D1成果938f108已提交推送。
+
+- D2：applicationFile统一应用私有文件定位；writeAtomicText统一pending/flush/rename/finally清理，提交前同步canCommit检查阻止旧账号写回。五类存储保留各自队列、schema、备份/损坏恢复和revision，未引入全局写队列或路径迁移。
+- D2 storage模块静态分析及47项回归通过（含新增5项原子文件成功、失败、取消与清理检查），工具调度15项回归通过；报告build/checks/report-9e11e98c97ce44bb90055b95adb6fc79.json，日志stage-d2-tests.log。D2完成后独立提交推送，D3接续。
 
 ## 2026-11-15 工程优化C分项
 

@@ -1,7 +1,7 @@
+import 'local_files.dart';
 import '../config/storage_policy.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import '../domain/schedule.dart';
 
 abstract interface class ScheduleRepository {
@@ -19,11 +19,8 @@ abstract interface class RecoverableScheduleRepository
 class FileScheduleRepository implements RecoverableScheduleRepository {
   FileScheduleRepository({this.directory});
   final Directory? directory;
-  Future<File> _file() async {
-    final folder = directory ?? await getApplicationSupportDirectory();
-    await folder.create(recursive: true);
-    return File('${folder.path}/${StoragePolicy.scheduleFile}');
-  }
+  Future<File> _file() =>
+      applicationFile(StoragePolicy.scheduleFile, directory: directory);
 
   @override
   Future<ScheduleData> load() async {
@@ -39,16 +36,6 @@ class FileScheduleRepository implements RecoverableScheduleRepository {
     return ScheduleData.fromJson(
       jsonDecode(await file.readAsString()) as Map<String, dynamic>,
     );
-  }
-
-  Future<void> _write(File file, String text) async {
-    final temporary = File('${file.path}.pending');
-    try {
-      await temporary.writeAsString(text, flush: true);
-      await temporary.rename(file.path);
-    } finally {
-      if (await temporary.exists()) await temporary.delete();
-    }
   }
 
   @override
@@ -78,7 +65,7 @@ class FileScheduleRepository implements RecoverableScheduleRepository {
         await entry.delete();
       }
     }
-    await _write(file, jsonEncode(const ScheduleData().toJson()));
+    await writeAtomicText(file, jsonEncode(const ScheduleData().toJson()));
   }
 
   @override
@@ -88,7 +75,10 @@ class FileScheduleRepository implements RecoverableScheduleRepository {
     if (await file.exists()) {
       try {
         await _read(file);
-        await _write(File('${file.path}.backup'), await file.readAsString());
+        await writeAtomicText(
+          File('${file.path}.backup'),
+          await file.readAsString(),
+        );
       } on FormatException {
         await file.copy(
           '${file.path}.damaged-${DateTime.now().microsecondsSinceEpoch}',
@@ -99,6 +89,6 @@ class FileScheduleRepository implements RecoverableScheduleRepository {
         );
       }
     }
-    await _write(file, jsonEncode(data.toJson()));
+    await writeAtomicText(file, jsonEncode(data.toJson()));
   }
 }

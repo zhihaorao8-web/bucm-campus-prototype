@@ -1,10 +1,10 @@
+import 'local_files.dart';
 import '../config/classroom_limits.dart';
 import '../config/playback_policy.dart';
 import '../config/storage_policy.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 
 class ClassroomPlaybackIdentity {
   ClassroomPlaybackIdentity({
@@ -80,11 +80,8 @@ class ClassroomPlaybackProgressStore extends ChangeNotifier {
   int _revision = 0;
   int get revision => _revision;
 
-  Future<File> _file() async {
-    final folder = directory ?? await getApplicationSupportDirectory();
-    await folder.create(recursive: true);
-    return File('${folder.path}/${StoragePolicy.progressFile}');
-  }
+  Future<File> _file() =>
+      applicationFile(StoragePolicy.progressFile, directory: directory);
 
   Future<Map<String, ClassroomPlaybackProgress>> _read() async {
     final file = await _file();
@@ -142,13 +139,11 @@ class ClassroomPlaybackProgressStore extends ChangeNotifier {
         throw const FormatException('本机进度文件过大');
       }
       final file = await _file();
-      final pending = File('${file.path}.pending');
-      try {
-        await pending.writeAsString(content, flush: true);
-        if (revision == _revision) await pending.rename(file.path);
-      } finally {
-        if (await pending.exists()) await pending.delete();
-      }
+      await writeAtomicText(
+        file,
+        content,
+        canCommit: () => revision == _revision,
+      );
     });
     _tail = operation.catchError((Object _) {});
     return operation;
@@ -160,7 +155,7 @@ class ClassroomPlaybackProgressStore extends ChangeNotifier {
     final operation = _tail.then((_) async {
       final file = await _file();
       if (await file.exists()) await file.delete();
-      final pending = File('${file.path}.pending');
+      final pending = pendingFile(file);
       if (await pending.exists()) await pending.delete();
     });
     _tail = operation.catchError((Object _) {});

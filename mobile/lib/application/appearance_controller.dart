@@ -1,10 +1,10 @@
+import '../data/local_files.dart';
 import '../config/storage_policy.dart';
 import '../design/app_palette.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 
 @immutable
 class AppearanceSettings {
@@ -168,11 +168,8 @@ abstract interface class AppearanceRepository {
 class FileAppearanceRepository implements AppearanceRepository {
   FileAppearanceRepository({this.directory});
   final Directory? directory;
-  Future<File> _file() async {
-    final folder = directory ?? await getApplicationSupportDirectory();
-    await folder.create(recursive: true);
-    return File('${folder.path}/${StoragePolicy.appearanceFile}');
-  }
+  Future<File> _file() =>
+      applicationFile(StoragePolicy.appearanceFile, directory: directory);
 
   @override
   Future<AppearanceSettings> load() async {
@@ -189,13 +186,7 @@ class FileAppearanceRepository implements AppearanceRepository {
   @override
   Future<void> save(AppearanceSettings value) async {
     final file = await _file();
-    final temporary = File('${file.path}.pending');
-    try {
-      await temporary.writeAsString(jsonEncode(value.toJson()), flush: true);
-      await temporary.rename(file.path);
-    } finally {
-      if (await temporary.exists()) await temporary.delete();
-    }
+    await writeAtomicText(file, jsonEncode(value.toJson()));
   }
 }
 

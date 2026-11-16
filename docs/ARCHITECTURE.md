@@ -70,6 +70,10 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
 
 旧原型`src/.../MainActivity.java`不同于当前`mobile/android/.../MainActivity.java`。根构建器不是Flutter构建入口，且`check.py`仍导入其JDK工具函数；清理前必须先解除引用。
 
+## 公共文件操作
+
+[data/local_files.dart](../mobile/lib/data/local_files.dart)只负责应用私有文件定位、同目录pending暂存/flush/rename及finally清理。writeAtomicText返回false表示提交前canCommit拒绝替换，不得当作已保存；同一目标由调用仓库串行化。保存成功后仓库才发布状态/通知，失败原数据保留；课表备份/损坏副本、目录完整性和账号revision继续在各仓库校验。对应检查为atomic_file_test及各仓库存储测试。
+
 ## 业务配置维护入口
 
 以下文件在mobile/lib/config/，只含公开常量/纯策略，无账号、Cookie或媒体地址。
@@ -87,6 +91,6 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
 ## 尚未完成的结构整理
 
 - `ClassroomCoursePage`约2607行，仍拥有连接/认证恢复、任务、播放准备与UI；已抽出的模型不等于控制器拆分完成。
-- 多个文件仓库分别实现pending文件、flush/rename和清理；公共原子写工具待抽取，业务备份与revision策略不能一并抹平。
+- D2已由data/local_files.dart共享文件定位和原子替换；各仓库仍拥有队列、业务备份与revision策略，不能在页面另写一套存储。
 - C阶段已收拢顶栏雾化、材质降级、通用控件与常用视觉参数；D1已集中续播阈值、分页上限、常用超时和公开路径；原生/JS边界保持独立验证。
 - 存储文件名、schema和旧键是兼容契约；移动常量不顺带更名或迁移真实用户数据。

@@ -1,8 +1,8 @@
+import 'local_files.dart';
 import '../config/classroom_limits.dart';
 import '../config/storage_policy.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import '../domain/schedule.dart';
 
 /// Only explicit local-course -> platform-course IDs are persisted. Every use
@@ -13,11 +13,8 @@ class ClassroomLinks {
   Future<void> _tail = Future.value();
   static final shared = ClassroomLinks();
   static String key(Course course) => jsonEncode([course.semester, course.id]);
-  Future<File> _file() async {
-    final folder = directory ?? await getApplicationSupportDirectory();
-    await folder.create(recursive: true);
-    return File('${folder.path}/${StoragePolicy.linksFile}');
-  }
+  Future<File> _file() =>
+      applicationFile(StoragePolicy.linksFile, directory: directory);
 
   Future<Map<String, String>> _read() async {
     final file = await _file();
@@ -45,16 +42,7 @@ class ClassroomLinks {
       final values = await _read();
       values[key(course)] = id;
       final file = await _file();
-      final temp = File('${file.path}.pending');
-      try {
-        await temp.writeAsString(
-          jsonEncode({'schema': 1, 'links': values}),
-          flush: true,
-        );
-        await temp.rename(file.path);
-      } finally {
-        if (await temp.exists()) await temp.delete();
-      }
+      await writeAtomicText(file, jsonEncode({'schema': 1, 'links': values}));
     });
     _tail = operation.catchError((Object _) {});
     return operation;

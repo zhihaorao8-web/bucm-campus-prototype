@@ -9,7 +9,7 @@ FLUTTER_TESTS = {
     'adapter': ('schedule', 'classroom_policy'),
     'schedule': ('schedule', 'schedule_difference', 'schedule_freshness',
                  'today_focus', 'week_grid', 'week_stack', 'weekday_tabs', 'course_colors'),
-    'storage': ('schedule_recovery', 'classroom_library', 'classroom_links',
+    'storage': ('atomic_file', 'schedule_recovery', 'classroom_library', 'classroom_links',
                 'classroom_playback_progress', 'appearance'),
     'classroom': ('classroom_model', 'classroom_matching', 'classroom_name_merge',
                   'classroom_import_collection', 'classroom_import_progress',
