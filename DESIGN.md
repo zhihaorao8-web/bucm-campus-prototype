@@ -1,6 +1,6 @@
 # 界面与交互开发规范
 
-更新：2026-11-15。适用当前Flutter Android课表与录播，保留0.3已验收的MIUIX结构、柔光亚克力和B1标题。本文是当前组件规范；需求见[PROJECT_BRIEF](docs/PROJECT_BRIEF.md)，公共计算见[ARCHITECTURE](docs/ARCHITECTURE.md)，验证证据见[STATUS](docs/STATUS.md)。旧UI计划是历史实施记录，不覆盖本文。
+更新：2026-11-16。适用当前Flutter Android课表与录播，保留0.3已验收的MIUIX结构、柔光亚克力和B1标题。本文是当前组件规范；需求见[PROJECT_BRIEF](docs/PROJECT_BRIEF.md)，公共计算见[ARCHITECTURE](docs/ARCHITECTURE.md)，验证证据见[STATUS](docs/STATUS.md)，独有模拟器采样见[UI验证](docs/research/UI_VALIDATION.md)。旧UI计划已精简，不覆盖本文。
 
 ## 开发顺序与参数来源
 

@@ -1,6 +1,6 @@
 # 分层测试与排查入口
 
-更新：2026-11-15。统一入口为根目录`scripts/check.py`，纯选择规则在`scripts/check_plan.py`。已有业务计算与职责见[架构](ARCHITECTURE.md)，Android专项操作见[FLUTTER](FLUTTER.md)。本页描述已实现的本地检查调度，CI分流在工程优化F阶段实施。
+更新：2026-11-16。统一入口为根目录`scripts/check.py`，纯选择规则在`scripts/check_plan.py`。已有业务计算与职责见[架构](ARCHITECTURE.md)，Android专项操作见[FLUTTER](FLUTTER.md)。本页描述已实现的本地检查调度，CI分流在工程优化F阶段实施。
 
 ## 日常命令
 
@@ -30,7 +30,7 @@ python scripts/check.py --module docs --module tooling
 |---|---|---|
 | docs | 仓库已跟踪/未忽略新增Markdown的本地链接目标 | 无；不检查外链与页内锚点 |
 | schedule | 周次/教师/作息Java、合成示例标记 | 课程模型、差异/新鲜度、今日焦点、周网格/层叠/星期及相邻错色 |
-| storage | 无Java/Node | 课表恢复、目录、旧关联、续播存储、外观；覆盖相应仓库读写与失败保护 |
+| storage | 无Java/Node | 原子文件、课表恢复、目录（含旧关联清理）、续播存储、外观；覆盖相应仓库读写与失败保护 |
 | classroom | 目录DOM、入口导航、目录API和桥接Node | 课程匹配、分页/来源组、进度、连接/恢复、短时缓存、时间线、提示与诊断 |
 | player | 独立媒体传输Java、播放准备Node | 播放控制器、路由、横屏、控件显隐、手势/进度条预览、小窗与续播 |
 | ui | 图标资产摘要与许可检查 | 主题、导航、设置、外观、材质/按压、课堂列表、艺术标题及语录 |

@@ -1,6 +1,6 @@
 # Flutter Android开发与专项验证
 
-更新：2026-11-15。当前范围为课表、今日速览与后续获批录播；需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，日常入口见[DEVELOPMENT](DEVELOPMENT.md)。认证采用学校官方页面，不保存密码，失效后由本人重新登录。
+更新：2026-11-16。当前范围为课表、今日速览与后续获批录播；需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，日常入口见[DEVELOPMENT](DEVELOPMENT.md)。认证采用学校官方页面，不保存密码，失效后由本人重新登录。
 
 ## 工程与迁移边界
 
@@ -33,8 +33,9 @@ python scripts/dependencies.py
 python scripts/prepare_flutter.py
 cd mobile
 flutter pub get
-flutter analyze
-flutter test
+cd ..
+python scripts/check.py --module schedule
+cd mobile
 flutter build apk --debug
 flutter run -d emulator-5554
 ```

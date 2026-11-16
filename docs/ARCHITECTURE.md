@@ -2,6 +2,8 @@
 
 更新：2026-11-16，按0.3主线源码核对。需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，交互见[DESIGN](../DESIGN.md)，验证见[STATUS](STATUS.md)。本页描述已有实现；拟拆分与删除见[工程优化计划](MAINTENANCE_PLAN.md)。
 
+课堂连接/目录协议与排查见[CLASSROOM](CLASSROOM.md)，播放所有权/媒体边界与公开来源见[PLAYER](PLAYER.md)；不要从已删除的旧专项计划重新实现功能。
+
 ## 分层与入口
 
 ```text

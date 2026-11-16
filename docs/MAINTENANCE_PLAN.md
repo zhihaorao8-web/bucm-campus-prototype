@@ -15,15 +15,15 @@
 
 每项独立功能/UI改动完成对应检查后立即提交并普通推送，再开始下一项。阶段内未做的检查保持未测；文档通过不能替代构建、模拟器、学校验证。阶段结束不自动合入main、改版本、打标签或发布。
 
-## 旧实现清理清单（候选，尚未删除）
+## E阶段清理台账
 
-| 对象 | 当前引用事实 | 删除前条件与最小验证 |
+| 对象 | 清理结果 | 验证与保留边界 |
 |---|---|---|
 | 旧Flutter浏览页 | E1已删除无应用入口的classroom_browser.dart | 小屏手动访问与离页后探测断言迁到当前恢复页测试；保留纯路径探测测试 |
 | 旧单课程关联 | E1已删除classroom_links.dart及仅服务该实现的测试 | 当前页停止bind/注入/无用错误提示；旧文件不读取或迁移，清除学校会话/目录时按固定路径清理，合成测试覆盖其他数据保留 |
 | 旧Java页面/提醒 | E2已删除根MainActivity、ReminderReceiver及RestoreReceiver；共享核心保留 | 根Manifest仅保留原版本元数据，实际Flutter宿主权限未改变；Java合成及prepare检查 |
 | 原型构建及资源 | E2已删除build.py及专用res，JDK定位迁至scripts/java_tools.py | 检查入口已解除依赖，历史原型分支/标签继续保留 |
-| 旧接续/已完成专项文档 | RESUME、QINGXIN_HANDOFF、旧UI/数据访问计划等含失效“下一步” | 逐文档提取唯一决策、协议与待验事项到对应入口，修复引用，再删重复正文/文件；保留发布与学校证据 |
+| 旧接续/已完成专项文档 | E3删除20份旧接续/专项/重复历史文档，STATUS按链路归并 | 有效规则保留在需求/设计/架构，协议与来源归CLASSROOM/PLAYER，独有UI采样归UI_VALIDATION；学校样本、失败及未验范围留STATUS，不另复制失效档案 |
 
 保留7个Java共享核心、classroom-player.js、目录API适配器、根Manifest版本来源、图标/字形生成工具与许可。目录API适配器已从scripts/research迁至assets/recording-api.cjs，更新prepare、Node测试和变更选择；仅移动，协议内容不变。删除判断须同时查源码、构建复制、测试和文档。
 
@@ -37,8 +37,10 @@
 | [DEVELOPMENT_PLAN](DEVELOPMENT_PLAN.md) / [STATUS](STATUS.md) | 当前待办 / 实际验证证据 |
 | [DESIGN](../DESIGN.md) | 交互、组件与视觉；C阶段形成可执行规范 |
 | [ARCHITECTURE](ARCHITECTURE.md) | 模块职责、公共能力、数据所有权 |
+| [CLASSROOM](CLASSROOM.md) / [PLAYER](PLAYER.md) | 连接/目录协议与错误边界 / 播放所有权、媒体边界、交互与来源 |
 | [DEVELOPMENT](DEVELOPMENT.md) / [FLUTTER](FLUTTER.md) | 开发入口 / Android专项操作 |
 | [VERSIONING](VERSIONING.md) / [BUILD_VARIANTS](BUILD_VARIANTS.md) | 版本与同步 / 当前双包规则；F阶段收拢重复规则 |
 | [TESTING](TESTING.md) | 分层测试、改动映射、调试入口 |
+| [播放器验收](research/PLAYER_ACCEPTANCE.md) / [会话测试](research/SESSION_LONGEVITY_TEST.md) | 合成/手动听音与完整课时方法 / 已中断的旧基线及后续自然时间采样方法 |
 
-当前规则不再追加阶段流水账。历史证据保持日期、源码SHA、验证对象和缺口；旧“当前/下一步”不能重新授权开发。原始提示词、第三方许可、发布说明及关键复盘继续保留。E阶段进一步删重，不为了归档再复制整套失效文档。
+当前规则不追加阶段流水账。历史证据保持日期、构建身份、验证对象和缺口；旧“当前/下一步”不能重新授权开发。原始提示词、第三方许可、发布说明及关键复盘继续保留；失效过程可查Git历史，不另复制整套归档。
