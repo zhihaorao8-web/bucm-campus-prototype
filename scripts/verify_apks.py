@@ -75,9 +75,19 @@ def source_assets(source):
 def parse_tools(badging, resources, certificates):
     package = re.search(r"package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'", badging)
     identity = re.search(r'string/build_source_identity\s+\(\) "([^"\r\n]+)"', resources)
-    signers = re.findall(r'Signer #\d+ certificate SHA-256 digest: ([a-fA-F0-9]{64})', certificates)
-    if not package or not identity or len(signers) != 1:
-        raise ValueError('Missing package/source identity or ambiguous signing certificate.')
+    # Build Tools 37 prints our single v2 signer as "V2 Signer:"; older
+    # versions use "Signer #1". Do not accept key digests, source stamps,
+    # multiple certificates or unreviewed rotation/scheme output as a signer.
+    count = re.findall(r'^Number of signers: (\d+)\s*$', certificates, re.M)
+    certificate_lines = re.findall(r'^.* certificate SHA-256 digest:.*$', certificates, re.M)
+    signers = re.findall(r'^(?:Signer #1|V2 Signer:) certificate SHA-256 digest: ([a-fA-F0-9]{64})\s*$',
+                         certificates, re.M)
+    if not package:
+        raise ValueError('Missing APK package/version identity in aapt2 output.')
+    if not identity:
+        raise ValueError('Missing embedded source identity in aapt2 output.')
+    if count != ['1'] or len(certificate_lines) != 1 or len(signers) != 1:
+        raise ValueError('Expected exactly one signing certificate in supported apksigner output.')
     return {'package': package[1], 'code': int(package[2]), 'version': package[3],
             'debuggable': bool(re.search(r'^application-debuggable\b', badging, re.M)),
             'sourceIdentity': identity[1], 'signerSha256': signers[0].lower()}

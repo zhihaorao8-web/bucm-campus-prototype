@@ -44,6 +44,8 @@ python scripts/verify_apks.py --debug <debug.apk> --release <release.apk> --sour
 
 检查源提交Manifest版本/code、包名、debug标志/kernel/AOT、嵌入源码标识、apksigner实际验证和双包证书、ZIP完整性/重复条目、已知测试/私有缓存载荷排除，以及公开脚本/品牌/图标/许可与源提交逐字一致。对照固定Flutter SDK对应Gradle引擎JAR的可执行段，允许Android剥离符号/重写ELF节表，防止profile混作release；校验缓存JAR摘要。默认读取GRADLE_USER_HOME或用户.gradle，历史两包缓存不同可重复--gradle-cache，不会下载或修改缓存。
 
+签名读取兼容已验证的旧版Signer #1与Build Tools 37的单一V2 Signer输出，并核对Number of signers=1；apksigner本身必须成功验签。重复/多个证书、缺失数量或摘要、未审查的签名轮换/格式均拒绝，不用公钥摘要或Source Stamp代替应用签名，不通过降级或跳过校验掩盖失败。
+
 发布候选改用`-Kind release -SignerSha256 <已确认的证书SHA256> -CiRunId <运行ID>`。构建前后必须干净且HEAD不变；提前查询固定仓库公开Actions API，要求精确SHA成功且quality/dual-preview都成功，构建后再次核对。单独verify_apks.py也支持`--kind release --signer-sha256 ... --ci-run-id ...`。预览允许如实标记source-modified；发布候选拒绝modified或未知标识，两包必须同源同证书。网络/CI不可读或失败即拒绝，不提供跳过开关。
 
 静态核验不能证明诊断页面运行效果、Dart编译开关实际体验、压缩XLS解析、音画或学校链路已通过；这些仍按VERSIONING、FLUTTER及人工验收单独完成。JSON的kind=release也不自动发布或授予上传权限。
