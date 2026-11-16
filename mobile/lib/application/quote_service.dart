@@ -1,3 +1,4 @@
+import '../config/network_policy.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -66,14 +67,16 @@ class DailyQuote {
 
 typedef HitokotoFetcher = Future<DailyQuote?> Function();
 
-final quoteServiceProvider = Provider<QuoteService>((_) => const QuoteService());
+final quoteServiceProvider = Provider<QuoteService>(
+  (_) => const QuoteService(),
+);
 
 /// Provides offline-first random quotes and optional HTTPS Hitokoto fetches.
 class QuoteService {
   const QuoteService({this.fetcher});
 
-  static final Uri hitokotoUri = Uri.parse('https://v1.hitokoto.cn/?encode=json');
-  static const int _maxResponseBytes = 16 * 1024;
+  static final Uri hitokotoUri = Uri.parse(QuotePolicy.endpoint);
+  static const int _maxResponseBytes = QuotePolicy.responseBytes;
 
   final HitokotoFetcher? fetcher;
 
@@ -137,17 +140,16 @@ class QuoteService {
   }
 
   static Future<DailyQuote?> fetchHitokoto() async {
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 4);
+    final client = HttpClient()..connectionTimeout = QuotePolicy.timeout;
     try {
       final request = await client
           .getUrl(hitokotoUri)
-          .timeout(const Duration(seconds: 4));
+          .timeout(QuotePolicy.timeout);
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      final response = await request.close().timeout(const Duration(seconds: 4));
+      final response = await request.close().timeout(QuotePolicy.timeout);
       if (response.statusCode != HttpStatus.ok) return null;
       final builder = BytesBuilder(copy: false);
-      await for (final chunk in response.timeout(const Duration(seconds: 4))) {
+      await for (final chunk in response.timeout(QuotePolicy.timeout)) {
         if (builder.length + chunk.length > _maxResponseBytes) return null;
         builder.add(chunk);
       }

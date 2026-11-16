@@ -1,3 +1,6 @@
+import '../config/runtime_config.dart';
+import '../config/classroom_limits.dart';
+import '../config/playback_policy.dart';
 import '../design/app_tokens.dart';
 import 'course_interaction.dart';
 import 'course_surface.dart';
@@ -390,8 +393,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       return;
     }
     collection.prepare(matches);
-    if (!collection.complete &&
-        const bool.fromEnvironment('CAMPUS_DIRECT_CATALOG')) {
+    if (!collection.complete && AppFeatures.directCatalog) {
       final ticket = generation;
       bool activeRead() =>
           mounted &&
@@ -402,23 +404,22 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           libraryRevision == library.revision;
       try {
         final api = ClassroomApiReader((command) async {
-          final adapter = await rootBundle.loadString(
-            'assets/recording-api.cjs',
-          );
-          final bridge = await rootBundle.loadString(
-            'assets/recording-api-bridge.js',
-          );
+          final adapter = await rootBundle.loadString(AppAssets.recordingApi);
+          final bridge = await rootBundle.loadString(AppAssets.recordingBridge);
           final value = await tab.controller!
               .callAsyncJavaScript(
                 functionBody:
                     '$adapter\n${bridge.replaceFirst('__RECORDING_API_COMMAND__', jsonEncode(command))}',
               )
               .timeout(
-                Duration(seconds: command['action'] == 'cancel' ? 2 : 15),
+                command['action'] == 'cancel'
+                    ? ClassroomLimits.cancelTimeout
+                    : ClassroomLimits.requestTimeout,
               );
           if (value?.error != null ||
               value?.value is! String ||
-              (value!.value as String).length > 1024 * 1024) {
+              (value!.value as String).length >
+                  ClassroomLimits.bridgeResponseLength) {
             TestDiagnostics.shared.record(TestEvent.bridgeFailed);
             throw const ClassroomApiFailure('error');
           }
@@ -774,17 +775,20 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     if (!automaticEntry || tab.navigationStopped || tab.advancing) {
       return {'state': 'waiting'};
     }
-    if (tab.entryHops >= 4) {
+    if (tab.entryHops >= ClassroomLimits.entryHops) {
       tab.navigationStopped = true;
       return {'state': 'blocked'};
     }
-    entrySource ??= await rootBundle.loadString('assets/classroom-entry.js');
+    entrySource ??= await rootBundle.loadString(AppAssets.classroomEntry);
     tab.advancing = true;
     try {
       final value = await tab.controller!.evaluateJavascript(
         source: entrySource!,
       );
-      if (value is! String || value.length > 512) throw const FormatException();
+      if (value is! String ||
+          value.length > ClassroomLimits.entryResponseLength) {
+        throw const FormatException();
+      }
       final data = jsonDecode(value) as Map;
       final state = data['state'] as String;
       if (state == 'opening') {
@@ -804,14 +808,15 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     _SchoolTab tab,
     Map<String, dynamic> command,
   ) async {
-    source ??= await rootBundle.loadString('assets/classroom.js');
+    source ??= await rootBundle.loadString(AppAssets.classroom);
     final value = await tab.controller!.evaluateJavascript(
       source: source!.replaceFirst(
         '__CLASSROOM_COMMAND__',
         jsonEncode(command),
       ),
     );
-    if (value is! String || value.length > 1024 * 1024) {
+    if (value is! String ||
+        value.length > ClassroomLimits.bridgeResponseLength) {
       throw const FormatException('学校页面读取结果不支持');
     }
     return Map<String, dynamic>.from(jsonDecode(value) as Map);
@@ -830,11 +835,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       return;
     }
     poll = Timer(
-      Duration(
-        milliseconds: readProgress.stage == ClassroomReadStage.authentication
-            ? 2000
-            : 900,
-      ),
+      readProgress.stage == ClassroomReadStage.authentication
+          ? ClassroomLimits.authenticationPoll
+          : ClassroomLimits.dataPoll,
       () => inspect(tab),
     );
   }
@@ -958,7 +961,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   }
 
   void armPageLoadTimeout(_SchoolTab tab) {
-    tab.loadTimer ??= Timer(const Duration(seconds: 30), () {
+    tab.loadTimer ??= Timer(ClassroomLimits.documentTimeout, () {
       tab.loadTimer = null;
       unawaited(checkPageLoadTimeout(tab));
     });
@@ -987,7 +990,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       // the official SPA is already usable. Check its bounded state once.
       final data = await script(tab, {
         'action': 'snapshot',
-      }).timeout(const Duration(seconds: 3));
+      }).timeout(ClassroomLimits.readyTimeout);
       if (!pageLoadPending(tab) || ticket != generation) return;
       if (const {
         'catalog',
@@ -1531,7 +1534,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       if (response['state'] != 'opening') throw const FormatException();
       final data = await classroomPlaybackChannel
           .invokeMapMethod<Object?, Object?>('prepare')
-          .timeout(const Duration(seconds: 25));
+          .timeout(PlaybackPolicy.prepareTimeout);
       prepared = ClassroomPlayerState(data!);
       TestDiagnostics.shared.record(TestEvent.mediaReady);
       if (!mounted || operation != playbackGeneration) return;

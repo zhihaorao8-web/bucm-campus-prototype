@@ -1,3 +1,4 @@
+import '../config/classroom_limits.dart';
 import 'dart:async';
 import '../domain/classroom.dart';
 import 'test_diagnostics.dart';
@@ -91,7 +92,7 @@ class ClassroomApiReader {
         if (skipCourseIds.contains(course.id)) continue;
         int? total;
         final seen = <String>{};
-        for (var page = 1; page <= 1000; page++) {
+        for (var page = 1; page <= ClassroomLimits.pages; page++) {
           check();
           diagnostics.record(TestEvent.pageRequest);
           final pageClock = Stopwatch()..start();
@@ -107,13 +108,14 @@ class ClassroomApiReader {
           if (value.course.id != course.id ||
               value.course.semester != semester ||
               value.page != page ||
-              value.pageSize != 10 ||
-              value.total > 10000 ||
+              value.pageSize != ClassroomLimits.pageSize ||
+              value.total > ClassroomLimits.records ||
               total != null && value.total != total) {
             throw const ClassroomApiFailure('invalid-data');
           }
           total = value.total;
-          final expected = (total - (page - 1) * 10).clamp(0, 10);
+          final expected = (total - (page - 1) * ClassroomLimits.pageSize)
+              .clamp(0, ClassroomLimits.pageSize);
           if (value.records.length != expected ||
               value.records.any((r) => !seen.add(r.id))) {
             throw const ClassroomApiFailure('invalid-data');
@@ -125,7 +127,9 @@ class ClassroomApiReader {
             count: value.records.length,
           );
           if (!value.hasNext) break;
-          if (page == 1000) throw const ClassroomApiFailure('invalid-data');
+          if (page == ClassroomLimits.pages) {
+            throw const ClassroomApiFailure('invalid-data');
+          }
         }
         if (seen.length != total) {
           throw const ClassroomApiFailure('invalid-data');

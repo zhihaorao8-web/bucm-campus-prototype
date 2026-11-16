@@ -1,3 +1,4 @@
+import '../config/storage_policy.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -21,7 +22,7 @@ class FileScheduleRepository implements RecoverableScheduleRepository {
   Future<File> _file() async {
     final folder = directory ?? await getApplicationSupportDirectory();
     await folder.create(recursive: true);
-    return File('${folder.path}/schedule-v1.json');
+    return File('${folder.path}/${StoragePolicy.scheduleFile}');
   }
 
   @override
@@ -32,7 +33,7 @@ class FileScheduleRepository implements RecoverableScheduleRepository {
   }
 
   Future<ScheduleData> _read(File file) async {
-    if (await file.length() > 8 * 1024 * 1024) {
+    if (await file.length() > StoragePolicy.scheduleBytes) {
       throw const FormatException('课表缓存超出限制');
     }
     return ScheduleData.fromJson(

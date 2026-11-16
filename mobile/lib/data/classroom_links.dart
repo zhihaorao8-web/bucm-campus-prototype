@@ -1,3 +1,5 @@
+import '../config/classroom_limits.dart';
+import '../config/storage_policy.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -14,13 +16,13 @@ class ClassroomLinks {
   Future<File> _file() async {
     final folder = directory ?? await getApplicationSupportDirectory();
     await folder.create(recursive: true);
-    return File('${folder.path}/classroom-links-v1.json');
+    return File('${folder.path}/${StoragePolicy.linksFile}');
   }
 
   Future<Map<String, String>> _read() async {
     final file = await _file();
     if (!await file.exists()) return {};
-    if (await file.length() > 1024 * 1024) {
+    if (await file.length() > StoragePolicy.linksBytes) {
       throw const FormatException('课程关联文件过大');
     }
     final json = jsonDecode(await file.readAsString()) as Map;
@@ -37,7 +39,7 @@ class ClassroomLinks {
 
   Future<void> bind(Course course, String id) {
     final operation = _tail.then((_) async {
-      if (id.isEmpty || id.length > 500) {
+      if (id.isEmpty || id.length > ClassroomLimits.fieldLength) {
         throw const FormatException('学校课程标识无效');
       }
       final values = await _read();

@@ -1,3 +1,5 @@
+import '../config/classroom_limits.dart';
+import '../config/storage_policy.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -15,13 +17,16 @@ class ClassroomArchive {
   ClassroomArchive(List<RecordingPage> values, this.importedAt)
     : sources = null,
       pages = List.unmodifiable(values) {
-    if (pages.isEmpty || pages.length > 1000) {
+    if (pages.isEmpty || pages.length > ClassroomLimits.pages) {
       throw const FormatException('录播分页数量不支持');
     }
     final first = pages.first;
-    final expected = (first.total / first.pageSize).ceil().clamp(1, 1000);
+    final expected = (first.total / first.pageSize).ceil().clamp(
+      1,
+      ClassroomLimits.pages,
+    );
     final ids = <String>{};
-    if (first.total > 10000 || pages.length != expected) {
+    if (first.total > ClassroomLimits.records || pages.length != expected) {
       throw const FormatException('录播尚未完整导入');
     }
     for (var i = 0; i < pages.length; i++) {
@@ -50,7 +55,7 @@ class ClassroomArchive {
     DateTime importedAt,
   ) {
     if (values.isEmpty ||
-        values.length > 1000 ||
+        values.length > ClassroomLimits.sources ||
         values.any((v) => v.sources != null)) {
       throw const FormatException('同名课程目录不完整');
     }
@@ -61,8 +66,9 @@ class ClassroomArchive {
               v.course.semester != first.semester ||
               classroomName(v.course.name) != classroomName(first.name),
         ) ||
-        values.fold<int>(0, (n, v) => n + v.total) > 10000 ||
-        values.fold<int>(0, (n, v) => n + v.pages.length) > 1000) {
+        values.fold<int>(0, (n, v) => n + v.total) > ClassroomLimits.records ||
+        values.fold<int>(0, (n, v) => n + v.pages.length) >
+            ClassroomLimits.pages) {
       throw const FormatException('同名课程目录不一致');
     }
     final sorted = [...values]
@@ -98,7 +104,7 @@ class ClassroomArchive {
   factory ClassroomArchive.fromJson(Map<String, dynamic> json) {
     if (json['sources'] != null) {
       final sources = json['sources'] as List;
-      if (sources.length > 1000 ||
+      if (sources.length > ClassroomLimits.sources ||
           sources.any((v) => v is! Map || v.containsKey('sources'))) {
         throw const FormatException();
       }
@@ -114,7 +120,7 @@ class ClassroomArchive {
       );
     }
     final values = json['pages'] as List;
-    if (values.length > 1000) throw const FormatException();
+    if (values.length > ClassroomLimits.sources) throw const FormatException();
     return ClassroomArchive(
       List.unmodifiable(
         values.map(
@@ -144,19 +150,19 @@ class ClassroomLibrary {
   Future<File> _file() async {
     final folder = directory ?? await getApplicationSupportDirectory();
     await folder.create(recursive: true);
-    return File('${folder.path}/classroom-library-v1.json');
+    return File('${folder.path}/${StoragePolicy.libraryFile}');
   }
 
   Future<Map<String, dynamic>> _read() async {
     final file = await _file();
     if (!await file.exists()) return {};
-    if (await file.length() > 8 * 1024 * 1024) {
+    if (await file.length() > StoragePolicy.libraryBytes) {
       throw const FormatException('录播目录文件过大');
     }
     final data = jsonDecode(await file.readAsString()) as Map;
     if (!const {1, 2}.contains(data['schema']) ||
         data['courses'] is! Map ||
-        (data['courses'] as Map).length > 1000) {
+        (data['courses'] as Map).length > ClassroomLimits.localCourses) {
       throw const FormatException('录播目录格式不支持');
     }
     return Map<String, dynamic>.from(data['courses'] as Map);
@@ -261,7 +267,7 @@ class ClassroomLibrary {
       }
       values[key(course)] = safe.toJson();
       final content = jsonEncode({'schema': 2, 'courses': values});
-      if (utf8.encode(content).length > 8 * 1024 * 1024) {
+      if (utf8.encode(content).length > StoragePolicy.libraryBytes) {
         throw const FormatException('录播目录文件过大');
       }
       final file = await _file();

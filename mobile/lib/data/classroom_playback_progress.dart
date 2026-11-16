@@ -1,3 +1,6 @@
+import '../config/classroom_limits.dart';
+import '../config/playback_policy.dart';
+import '../config/storage_policy.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -12,7 +15,7 @@ class ClassroomPlaybackIdentity {
     if ([semester, courseId, recordId].any(
       (v) =>
           v.trim().isEmpty ||
-          v.length > 500 ||
+          v.length > ClassroomLimits.fieldLength ||
           RegExp(r'[\x00-\x1f]').hasMatch(v),
     )) {
       throw const FormatException('无效录播标识');
@@ -40,7 +43,7 @@ class ClassroomPlaybackProgress {
     if (position < 0 ||
         duration <= 0 ||
         position > duration ||
-        duration > 7 * 24 * 3600000) {
+        duration > PlaybackPolicy.maximumDurationMs) {
       throw const FormatException('无效本机进度');
     }
   }
@@ -48,10 +51,10 @@ class ClassroomPlaybackProgress {
   final DateTime updatedAt;
   int? resumePosition(int currentDuration) =>
       currentDuration > 0 &&
-          (duration - currentDuration).abs() <= 2000 &&
-          position >= 10000 &&
-          duration - position >= 30000 &&
-          currentDuration - position >= 30000
+          (duration - currentDuration).abs() <=
+              PlaybackPolicy.durationToleranceMs &&
+          PlaybackPolicy.resumablePosition(position, duration) &&
+          currentDuration - position >= PlaybackPolicy.resumeTailMs
       ? position
       : null;
   Map<String, Object> toJson() => {
@@ -80,19 +83,19 @@ class ClassroomPlaybackProgressStore extends ChangeNotifier {
   Future<File> _file() async {
     final folder = directory ?? await getApplicationSupportDirectory();
     await folder.create(recursive: true);
-    return File('${folder.path}/classroom-progress-v1.json');
+    return File('${folder.path}/${StoragePolicy.progressFile}');
   }
 
   Future<Map<String, ClassroomPlaybackProgress>> _read() async {
     final file = await _file();
     if (!await file.exists()) return {};
-    if (await file.length() > 2 * 1024 * 1024) {
+    if (await file.length() > StoragePolicy.progressBytes) {
       throw const FormatException('本机进度文件过大');
     }
     final data = jsonDecode(await file.readAsString()) as Map;
     if (data['schema'] != 1 ||
         data['records'] is! Map ||
-        (data['records'] as Map).length > 2000) {
+        (data['records'] as Map).length > StoragePolicy.progressEntries) {
       throw const FormatException('本机进度格式不支持');
     }
     final values = <String, ClassroomPlaybackProgress>{};
@@ -131,11 +134,11 @@ class ClassroomPlaybackProgressStore extends ChangeNotifier {
       final content = jsonEncode({
         'schema': 1,
         'records': {
-          for (final entry in sorted.take(2000))
+          for (final entry in sorted.take(StoragePolicy.progressEntries))
             entry.key: entry.value.toJson(),
         },
       });
-      if (utf8.encode(content).length > 2 * 1024 * 1024) {
+      if (utf8.encode(content).length > StoragePolicy.progressBytes) {
         throw const FormatException('本机进度文件过大');
       }
       final file = await _file();

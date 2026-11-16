@@ -1,11 +1,12 @@
 # 架构与公共能力索引
 
-更新：2026-11-15，按0.3主线源码核对。需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，交互见[DESIGN](../DESIGN.md)，验证见[STATUS](STATUS.md)。本页描述已有实现；拟拆分与删除见[工程优化计划](MAINTENANCE_PLAN.md)。
+更新：2026-11-16，按0.3主线源码核对。需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，交互见[DESIGN](../DESIGN.md)，验证见[STATUS](STATUS.md)。本页描述已有实现；拟拆分与删除见[工程优化计划](MAINTENANCE_PLAN.md)。
 
 ## 分层与入口
 
 ```text
 mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
+  config/         业务参数、存储路径、公开资源与桥接标识
   design/         固定色板、基础/语义/组件视觉令牌
   ui/             页面、组件、手势、路由；部分课堂流程仍在页面内
   application/    Riverpod状态、导入收集与任务、本机续播生命周期
@@ -69,9 +70,23 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
 
 旧原型`src/.../MainActivity.java`不同于当前`mobile/android/.../MainActivity.java`。根构建器不是Flutter构建入口，且`check.py`仍导入其JDK工具函数；清理前必须先解除引用。
 
+## 业务配置维护入口
+
+以下文件在mobile/lib/config/，只含公开常量/纯策略，无账号、Cookie或媒体地址。
+
+| 入口 | 管理范围/兼容要求 |
+|---|---|
+| storage_policy.dart | 五类现有JSON文件名、文件容量和进度条目上限；schema及持久化键仍由各模型负责，修改文件名须独立迁移设计 |
+| classroom_limits.dart | 字段长度、模型/官方API分页边界、来源/记录上限、短时缓存、页面/桥接超时与阶段预算 |
+| playback_policy.dart | 毫秒续播阈值/时长容差、保存/轮询/准备间隔；模型与活动会话复用resumablePosition |
+| network_policy.dart | 固定官方入口及WebVPN已知路径、无凭据探测、课表导入等待、可选语录请求；入口不替代用途白名单 |
+| runtime_config.dart | AppAssets、AppChannels、AppFeatures、AppLinks；资源源文件仍由prepare复制，原生通道保持相同协议 |
+
+配置按职责维护，不能将媒体/认证/课表导出合成宽泛允许列表。Java/JS与Dart处于不同信任边界，协议页大小等仍有独立校验；涉及这些契约变化时需对应多语言合成测试及必要L3验证，不因集中常量跳过防护。业务配置不得导入UI或视觉令牌。
+
 ## 尚未完成的结构整理
 
 - `ClassroomCoursePage`约2607行，仍拥有连接/认证恢复、任务、播放准备与UI；已抽出的模型不等于控制器拆分完成。
 - 多个文件仓库分别实现pending文件、flush/rename和清理；公共原子写工具待抽取，业务备份与revision策略不能一并抹平。
-- C阶段已收拢顶栏雾化、材质降级、通用控件与常用视觉参数；续播阈值、分页上限等业务参数仍按D阶段收拢。
+- C阶段已收拢顶栏雾化、材质降级、通用控件与常用视觉参数；D1已集中续播阈值、分页上限、常用超时和公开路径；原生/JS边界保持独立验证。
 - 存储文件名、schema和旧键是兼容契约；移动常量不顺带更名或迁移真实用户数据。

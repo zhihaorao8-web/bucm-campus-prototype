@@ -1,3 +1,4 @@
+import '../config/runtime_config.dart';
 import '../design/app_tokens.dart';
 import 'app_icon_controls.dart';
 import 'app_icons.dart';
@@ -11,8 +12,8 @@ import 'settings_scaffold.dart';
 
 const developerName = 'Muzhi';
 const developerLogin = 'zhihaorao8-web';
-const developerUrl = 'https://github.com/zhihaorao8-web';
-const repositoryUrl = 'https://github.com/zhihaorao8-web/bucm-campus-prototype';
+const developerUrl = AppLinks.developer;
+const repositoryUrl = AppLinks.repository;
 
 class ProjectInfoPage extends ConsumerWidget {
   const ProjectInfoPage({super.key});
@@ -104,7 +105,7 @@ class ProjectInfoPage extends ConsumerWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(28),
                 child: Image.asset(
-                  'assets/app-icon.png',
+                  AppAssets.appIcon,
                   key: const ValueKey('project-app-icon'),
                   width: 112,
                   height: 112,
@@ -172,7 +173,7 @@ class ProjectInfoPage extends ConsumerWidget {
             summary: '@$developerLogin',
             startAction: ClipOval(
               child: Image.asset(
-                'assets/developer-avatar.png',
+                AppAssets.developerAvatar,
                 key: const ValueKey('developer-avatar'),
                 width: 48,
                 height: 48,

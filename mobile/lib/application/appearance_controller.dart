@@ -1,3 +1,4 @@
+import '../config/storage_policy.dart';
 import '../design/app_palette.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -170,14 +171,16 @@ class FileAppearanceRepository implements AppearanceRepository {
   Future<File> _file() async {
     final folder = directory ?? await getApplicationSupportDirectory();
     await folder.create(recursive: true);
-    return File('${folder.path}/appearance-v1.json');
+    return File('${folder.path}/${StoragePolicy.appearanceFile}');
   }
 
   @override
   Future<AppearanceSettings> load() async {
     final file = await _file();
     if (!await file.exists()) return const AppearanceSettings();
-    if (await file.length() > 65536) throw const FormatException('外观设置文件过大');
+    if (await file.length() > StoragePolicy.appearanceBytes) {
+      throw const FormatException('外观设置文件过大');
+    }
     return AppearanceSettings.fromJson(
       jsonDecode(await file.readAsString()) as Map<String, dynamic>,
     );
