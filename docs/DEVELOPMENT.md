@@ -1,6 +1,6 @@
 # 本地开发与检查入口
 
-更新：2026-11-15。当前主工程是mobile/，根目录保留共享Java核心与旧原型；日常开发使用Flutter/Gradle。先读[需求](PROJECT_BRIEF.md)、[进度](DEVELOPMENT_PLAN.md)、[证据](STATUS.md)；定位已有能力用[架构索引](ARCHITECTURE.md)，UI同时读[DESIGN](../DESIGN.md)。文档职责见[工程优化计划](MAINTENANCE_PLAN.md)。
+更新：2026-11-16。当前主工程是mobile/，根src/只保留7个共享Java核心，日常开发使用Flutter/Gradle。先读[需求](PROJECT_BRIEF.md)、[进度](DEVELOPMENT_PLAN.md)、[证据](STATUS.md)；定位已有能力用[架构索引](ARCHITECTURE.md)，UI同时读[DESIGN](../DESIGN.md)。文档职责见[工程优化计划](MAINTENANCE_PLAN.md)。
 
 ## 工具与准备
 
@@ -44,4 +44,4 @@ flutter test --no-pub
 
 开发安装、正常包名、隔离测试与签名边界见[FLUTTER](FLUTTER.md)。双包构建见[BUILD_VARIANTS](BUILD_VARIANTS.md)，版本/发布检查见[VERSIONING](VERSIONING.md)及[发布复盘](releases/0.1-retrospective.md)。顺序构建，保留真实退出码和详细日志。
 
-每个独立功能/UI分项检查后更新证据、仅暂存相关文件、提交并普通推送工作分支。阶段完成停止审核；不把Git同步等同于main合入或发布。失败保留改动/提交并如实报告。旧build.py仅为原型构建器，目前check.py仍导入其JDK工具；解除依赖前保留，未来清理见工程优化计划。
+每个独立功能/UI分项检查后更新证据、仅暂存相关文件、提交并普通推送工作分支。阶段完成停止审核；不把Git同步等同于main合入或发布。失败保留改动/提交并如实报告。check.py使用scripts/java_tools.py定位JDK；旧原型构建入口已移除。

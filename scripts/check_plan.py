@@ -144,17 +144,15 @@ def make_plan(root, modules=(), changed=None, legacy=False, direct=False, all_ch
                 module = 'player' if path.endswith('/ClassroomMediaTransport.java') else 'adapter'
                 selected.add(module)
                 manual.add(DEVICE_NOTES[module])
-            elif path.startswith('assets/') and path.endswith('.js'):
+            elif path.startswith('assets/') and path.endswith(('.js', '.cjs')):
                 module = ('player' if path.endswith('/classroom-player.js') else
-                          'classroom' if Path(path).name in ('classroom.js', 'classroom-entry.js', 'recording-api-bridge.js')
+                          'classroom' if Path(path).name in ('classroom.js', 'classroom-entry.js', 'recording-api-bridge.js', 'recording-api.cjs')
                           else 'adapter' if Path(path).name in ('extract.js', 'school-viewport.js', 'export-nav.js', 'coverage-check.js') else None)
                 if module:
                     selected.add(module)
                 else:
                     selected.update(MODULES)
                     reasons.append(f'Unknown JavaScript asset: {path}; select all host checks')
-            elif path == 'scripts/research/recording-api.cjs':
-                selected.add('classroom')
             else:
                 selected.update(MODULES)
                 reasons.append(f'Unknown/shared configuration: {path}; select all host checks')

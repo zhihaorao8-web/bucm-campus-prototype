@@ -21,11 +21,11 @@
 |---|---|---|
 | 旧Flutter浏览页 | E1已删除无应用入口的classroom_browser.dart | 小屏手动访问与离页后探测断言迁到当前恢复页测试；保留纯路径探测测试 |
 | 旧单课程关联 | E1已删除classroom_links.dart及仅服务该实现的测试 | 当前页停止bind/注入/无用错误提示；旧文件不读取或迁移，清除学校会话/目录时按固定路径清理，合成测试覆盖其他数据保留 |
-| 根`src/.../MainActivity.java`、`ReminderReceiver.java`、`RestoreReceiver.java` | 旧页面/提醒互相引用，根Manifest和build.py仍引用 | 整组解除构建、Manifest及资源依赖；保留Manifest版本唯一来源；共享Java合成检查及prepare验证 |
-| 根`build.py`及旧`res/` | 原型构建入口，check.py仍从build导入EXE/java_tools | 公共JDK工具先迁出；检查入口不再依赖原型构建器，再删旧APK构建和资源 |
+| 旧Java页面/提醒 | E2已删除根MainActivity、ReminderReceiver及RestoreReceiver；共享核心保留 | 根Manifest仅保留原版本元数据，实际Flutter宿主权限未改变；Java合成及prepare检查 |
+| 原型构建及资源 | E2已删除build.py及专用res，JDK定位迁至scripts/java_tools.py | 检查入口已解除依赖，历史原型分支/标签继续保留 |
 | 旧接续/已完成专项文档 | RESUME、QINGXIN_HANDOFF、旧UI/数据访问计划等含失效“下一步” | 逐文档提取唯一决策、协议与待验事项到对应入口，修复引用，再删重复正文/文件；保留发布与学校证据 |
 
-保留7个Java共享核心、classroom-player.js、目录API适配器、根Manifest版本来源、图标/字形生成工具与许可。scripts/research/recording-api.cjs应考虑迁到运行时资产目录，不能按research名称删除。删除判断须同时查源码、构建复制、测试和文档；本表不等于已证明所有候选可直接删除。
+保留7个Java共享核心、classroom-player.js、目录API适配器、根Manifest版本来源、图标/字形生成工具与许可。目录API适配器已从scripts/research迁至assets/recording-api.cjs，更新prepare、Node测试和变更选择；仅移动，协议内容不变。删除判断须同时查源码、构建复制、测试和文档。
 
 ## 文档定位与后续整理规则
 

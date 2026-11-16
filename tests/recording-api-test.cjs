@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const create = require('../scripts/research/recording-api.cjs');
+const create = require('../assets/recording-api.cjs');
 const loc = {protocol:'https:',hostname:'qhz.bucm.edu.cn',pathname:'/coursePlatform/',port:''};
 const row = {id:'synthetic',name:'合成课程',teacherName:'合成教师',className:'合成班',course_num:'S1',fz_id:'G1',xq_code:'2030203101',token:'DO_NOT_EXPORT'};
 const record = {rpId:'v1',rpName:'合成录播',date_time:'2030-09-02',roomName:'合成教室',shareType:1,token:'DO_NOT_EXPORT'};

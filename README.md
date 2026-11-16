@@ -42,7 +42,7 @@
 
 ```text
 mobile/                      Flutter Android 主应用与合成测试
-src/cn/bucm/campusprobe/      共享 Java XLS/作息/媒体解析及早期原型源码
+src/cn/bucm/campusprobe/      7 个共享 Java XLS/作息/媒体核心
 assets/                      受控公开网页脚本与许可
 scripts/                     准备、检查与构建工具
 design/                      品牌与离线 SVG 素材
@@ -50,7 +50,7 @@ AndroidManifest.xml          唯一版本来源
 docs/                       生效需求、进度、验证与发布记录
 ```
 
-Flutter SDK 固定为 `3.47.9` / `c197ca5199e9ee5661e865596c9c07294dfab51c`。根目录是轻量 Java 原型，**不是 Gradle 工程**；Android 主工程在 `mobile/android/`。Flutter 仍复用根目录的共享解析器，不应删除这些源码。
+Flutter SDK 固定为 `3.47.9` / `c197ca5199e9ee5661e865596c9c07294dfab51c`。根目录**不是 Gradle 工程**；Android 主工程在 `mobile/android/`。旧 Java 页面和原型构建器已移除，Flutter 仍复用根目录的共享核心，不应删除这些源码；根 Manifest 仅保存版本。
 
 ```powershell
 python scripts/dependencies.py

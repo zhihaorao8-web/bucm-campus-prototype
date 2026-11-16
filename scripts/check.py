@@ -114,7 +114,7 @@ def execute(plan, runner, flutter):
     if plan.examples:
         runner.step('examples', check_examples)
     if plan.java:
-        from build import EXE, java_tools
+        from scripts.java_tools import EXE, java_tools
         java = java_tools()
         sources = sorted({name for test in plan.java for name in JAVA_SOURCES[test]})
         deps = ''

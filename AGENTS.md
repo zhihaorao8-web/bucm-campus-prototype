@@ -8,7 +8,7 @@
 - 网页可读、DOM已提取、样本结构化与完整学期准确导出是不同验证状态，文档需分别说明。
 - 修复DOM或解析逻辑时运行相应合成测试；真实学校页面仅在用户授权会话下手动验证，不放入CI。
 - 版本从AndroidManifest.xml读取。修改版本时同步CHANGELOG与验证状态，不重写已经发布的标签。
-- 根目录保留共享Java核心与旧原型，不是Gradle工程；mobile/是当前Flutter/Gradle主工程。共享源码由scripts/prepare_flutter.py复制，不能整目录删除。构建与检查步骤以README及docs中的文档为准。
+- 根src/保留7个共享Java核心，不是Gradle工程；旧原型仅在历史分支保留，mobile/是当前Flutter/Gradle主工程。共享源码由scripts/prepare_flutter.py复制，不能整目录删除。根Manifest仅为版本来源，实际应用权限在mobile/android/声明；构建与检查步骤以README及docs为准。
 
 ## 需求与开发进度协调
 

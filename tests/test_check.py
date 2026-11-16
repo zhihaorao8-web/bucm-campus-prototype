@@ -76,10 +76,14 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual(affected_tests(graph, ['mobile/lib/model.dart']), {'test/model_test.dart'})
 
     def test_changed_source_selects_consumer_and_enabled_direct_tests(self):
-        plan = make_plan(ROOT, changed=['mobile/lib/platform/classroom_api_reader.dart'])
-        self.assertIn('test/classroom_api_reader_test.dart', plan.flutter)
-        self.assertIn('test/classroom_direct_import_test.dart', plan.flutter)
-        self.assertEqual(plan.direct, list(DIRECT_TESTS))
+        for path in ['mobile/lib/platform/classroom_api_reader.dart',
+                     'assets/recording-api.cjs']:
+            with self.subTest(path=path):
+                plan = make_plan(ROOT, changed=[path])
+                self.assertEqual(plan.modules, ['classroom'] if path.startswith('assets/') else [])
+                self.assertIn('test/classroom_api_reader_test.dart', plan.flutter)
+                self.assertIn('test/classroom_direct_import_test.dart', plan.flutter)
+                self.assertEqual(plan.direct, list(DIRECT_TESTS))
 
     def test_native_and_deleted_sources_have_safe_fallback(self):
         for name in ['new/unmapped.xyz', 'mobile/lib/deleted.dart',

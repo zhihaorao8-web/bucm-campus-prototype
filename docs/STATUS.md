@@ -17,6 +17,8 @@
 - 用户继续确认D通过，从8fe2a4f创建codex/maintenance-stage-e；只清理已核对引用的旧实现及重复文档，保留7个Java共享核心与有效协作/安全/组件规则。
 - E1删除无主应用入口的ClassroomBrowser，将小屏大字手动访问/离页后迟到探测断言迁到当前课堂恢复页；保留纯探测测试。删除无读取调用的ClassroomLinks及专用测试，当前页停止无用写入/注入/保存错误提示。旧关联不读取或迁移，在显式清除学校会话/目录时连同pending删除；合成测试确认课表/外观保留。
 - E1最终`--module classroom --module storage --direct`通过：静态分析、138项Flutter/7项条件跳过、直取23项、4组Node；工具调度15项通过。报告build/checks/report-1e76d7aa6f9149b29a1a3f91816b5e0e.json，日志stage-e1-passed-tests.log。初次分析发现遗漏的旧注入参数已移除；迁移测试最初沿用旧按钮/未滚动到可点击区域失败，修正夹具后单项及组合通过，失败日志/报告保留，不算首次通过。未访问学校或设备。
+- E1成果697de30已提交推送。E2将JDK定位迁到scripts/java_tools.py，删除根旧Java页面/提醒接收器、build.py及专用res；根Manifest只留原版本元数据，实际Flutter宿主Manifest/包名/权限未改。保留7个共享核心；recording-api.cjs原样迁至assets，prepare、Node引用及变更选择同步更新。
+- E2无参数旧离线检查（5组Java、9组Node、图标/示例）通过；docs/tooling含15项工具回归通过，报告report-80dea98dd19f4ca1aac7e761c3b4cf50.json、report-9dd351e9f0514e11bf613fe0a4ba410e.json；日志stage-e2-host.log、stage-e2-tooling.log。prepare执行通过，7个Java/8个Flutter脚本副本逐字节一致，目录API迁移前后内容一致，根版本仍0.3/code12、pubspec 0.3.0+12。未构建APK，不以复制核对替代R8/设备/学校验证。
 
 ## 2026-11-16 工程优化D分项
 

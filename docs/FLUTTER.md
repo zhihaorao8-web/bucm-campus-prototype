@@ -4,7 +4,7 @@
 
 ## 工程与迁移边界
 
-`mobile/`是独立Flutter工程，旧根目录仍保留轻量Java原型及其构建脚本。新包名为`cn.bucm.campus_schedule`，与旧原型并存；不会覆盖旧课表或读取旧应用会话，新应用需要本人重新登录、导入。第一版未提供手工新增课程入口。
+`mobile/`是当前Flutter工程，根src/保留7个共享Java核心，旧Java页面、提醒和原型构建器已移除。当前包名为`cn.bucm.campus_schedule`，不会覆盖早期原型或读取其课表/会话；旧应用数据不自动迁移。当前没有手工新增课程入口。根Manifest仅为版本来源，实际应用权限由mobile/android/app/src/main/AndroidManifest.xml声明。
 
 ```text
 mobile/lib/

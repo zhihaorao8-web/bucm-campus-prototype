@@ -57,7 +57,7 @@
 
 - 2026-11-12用户确认未来GitHub发布同时构建debug测试包与正常使用包；debug内置诊断等测试能力，release关闭诊断与测试入口，实验功能开关独立。按[双包发布规范](BUILD_VARIANTS.md)执行，不自动发布或修改历史附件。
 
-- Flutter＋Riverpod分层，根目录共享Java核心仍参与构建，旧原型页面仅作历史基线；Android经隔离适配层复用HSSF/作息解析，不宣称其他平台或纯Dart接入已完成。构建见[FLUTTER](FLUTTER.md)，依赖及许可见[THIRD_PARTY](THIRD_PARTY.md)。
+- Flutter＋Riverpod分层，根目录7个共享Java核心仍参与构建，旧原型页面仅在历史分支保留；Android经隔离适配层复用HSSF/作息解析，不宣称其他平台或纯Dart接入已完成。构建见[FLUTTER](FLUTTER.md)，依赖及许可见[THIRD_PARTY](THIRD_PARTY.md)。
 - MIUIX、三项一级导航、悬浮玻璃栏、外观偏好、深色/大字/小屏/无障碍遵守[设计](../DESIGN.md)。合成示例显式标记且不保存为本人数据。
 - 2026-11-13用户确认：开发应用前端页面时，可直接调用IconMCP图标仓库的现有内容；通过已配置的`iconmcp` MCP服务检索并取得图标，具体取用、Flutter适配及本地打包约定见[图标资源](../DESIGN.md#图标资源与开发使用)。
 - 随后用户明确要求用该服务全面替换现有应用内功能图标，当前按[图标系统](ICON_SYSTEM.md)统一离线素材与适配；不因此改应用品牌启动图标、学校网页或业务/认证逻辑。

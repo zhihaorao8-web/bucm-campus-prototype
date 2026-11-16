@@ -1,6 +1,6 @@
 const fs=require('node:fs'),assert=require('node:assert/strict');
 const source=fs.readFileSync('assets/recording-api-bridge.js','utf8');
-const factory=require('../scripts/research/recording-api.cjs');
+const factory=require('../assets/recording-api.cjs');
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
 const loc={protocol:'https:',port:'',hostname:'qhz.bucm.edu.cn',pathname:'/coursePlatform/'};
 const row={id:'a',name:'合成课程',course_num:'S1',fz_id:'G1',xq_code:'2030203101'};

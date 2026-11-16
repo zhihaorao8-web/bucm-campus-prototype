@@ -14,7 +14,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
   data/           本机文件、目录归档、展示时间线、合成示例
   platform/       官方页面访问、受限桥接、播放通道、短时会话、诊断
   mobile/android/ Android宿主、HSSF导入桥、Media3播放组与受限数据源
-  src/.../        共享Java核心唯一维护源，以及尚未清理的旧原型
+  src/.../        7个共享Java核心唯一维护源；旧原型仅在历史分支保留
 ```
 
 页面调用应用状态、模型和平台接口；纯计算不依赖页面。现有目录不是严格依赖隔离：例如外观文件仓库仍与application控制器同文件，课堂页面仍管理WebView导航、认证展示和任务队列切换，不能据目录名宣称所有流程均已拆分。
@@ -67,12 +67,12 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
 | 本机进度 | `classroom-progress-v1.json`，schema 1；仅身份、位置、时长、更新时间；退出会话清除 |
 | 旧单课程关联 | 已停用读写；`ClassroomLibrary.clear`在清除学校会话/目录时删除固定旧文件及pending，不读取或迁移旧关联 |
 | 短时页面/诊断 | `ClassroomSessionCache`和`TestDiagnostics`只在内存；诊断200条，debug硬门控 |
-| 公共网页脚本 | 根`assets/`及`scripts/research/recording-api.cjs`为维护源，prepare复制；后者虽在research目录，已是运行时资产 |
+| 公共网页脚本 | 根`assets/`为维护源，包括recording-api.cjs；prepare复制到Flutter/原生资产 |
 | Java共享核心 | `src/cn/bucm/campusprobe/`的`ScheduleParser`、`CourseTimes`、`CourseImportPlan`、`AcademicTerm`、`ExportWorkbook`、`SchoolExport`、`ClassroomMediaTransport`共7个文件 |
 | 生成资源 | `scripts/prepare_flutter.py`复制到被忽略的Flutter资产、原生共享源码、libs/许可目录；修改维护源后重新prepare，不编辑副本 |
 | 图标/字形 | 图标源与许可在`design/icons/iconmcp/`；`app_icons.g.dart`、`macintosh_hello_glyphs.g.dart`由各自生成工具维护 |
 
-旧原型`src/.../MainActivity.java`不同于当前`mobile/android/.../MainActivity.java`。根构建器不是Flutter构建入口，且`check.py`仍导入其JDK工具函数；清理前必须先解除引用。
+旧Java页面、提醒接收器、根构建器和专用res已移除，历史保留在codex/legacy-java-prototype；当前宿主在mobile/android。根Manifest仅为版本元数据；检查工具的JDK定位函数在scripts/java_tools.py，不依赖旧构建器。
 
 ## 公共文件操作
 
