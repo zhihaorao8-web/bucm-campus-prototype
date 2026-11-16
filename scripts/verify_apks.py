@@ -29,6 +29,15 @@ def command(*args):
     return subprocess.check_output([str(a) for a in args], stderr=subprocess.STDOUT).decode('utf-8', errors='replace')
 
 
+def file_digest(path, algorithm='sha256'):
+    # hashlib.file_digest starts at Python 3.11; keep the project's 3.10 floor.
+    digest = hashlib.new(algorithm)
+    with path.open('rb') as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def source_assets(source):
     exact(source, 40)
     manifest = ET.fromstring(command('git', '-C', ROOT, 'show', source + ':AndroidManifest.xml'))
@@ -47,9 +56,12 @@ def source_assets(source):
                'classroom.js', 'classroom-entry.js', 'recording-api-bridge.js', 'recording-api.cjs']
     for name in scripts:
         key = 'assets/' + name
-        expected['assets/flutter_assets/assets/' + name] = values.get(key, values.get(old_adapter))
-        if expected['assets/flutter_assets/assets/' + name] is None:
+        value = values.get(key)
+        if value is None and name == 'recording-api.cjs':
+            value = values.get(old_adapter)
+        if value is None:
             raise ValueError('Source lacks a required public adapter.')
+        expected['assets/flutter_assets/assets/' + name] = value
     for name, content in values.items():
         if name.startswith('design/icons/iconmcp/'):
             expected['assets/flutter_assets/assets/icons/iconmcp/' + name.split('design/icons/iconmcp/')[1]] = content
@@ -77,9 +89,7 @@ def inspect(path, tools):
     info = parse_tools(command(tools / 'aapt2.exe', 'dump', 'badging', path),
                        command(tools / 'aapt2.exe', 'dump', 'resources', path),
                        command(tools / 'apksigner.bat', 'verify', '--verbose', '--print-certs', path))
-    with path.open('rb') as stream:
-        digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-    info.update(file=path.name, bytes=path.stat().st_size, sha256=digest)
+    info.update(file=path.name, bytes=path.stat().st_size, sha256=file_digest(path))
     return info
 
 
@@ -89,14 +99,12 @@ def engine_jar(flutter_sdk, caches, abi, mode):
     artifact = abi.replace('-', '_') + '_' + mode
     for cache in caches:
         folder = cache / 'caches/modules-2/files-2.1/io.flutter' / artifact / ('1.0.0-' + revision)
-        jars = list(folder.glob('*/' + artifact + '-*.jar'))
+        jars = list(folder.glob('*/' + artifact + '-1.0.0-' + revision + '.jar'))
         if jars:
             for jar in jars:
-                with jar.open('rb') as stream:
-                    # Gradle renders the SHA-1 directory as an integer, omitting
-                    # leading zeroes (observed for the pinned x64 release JAR).
-                    if (hashlib.file_digest(stream, 'sha1').hexdigest().lstrip('0') or '0') != jar.parent.name:
-                        raise ValueError('Cached Flutter engine JAR integrity mismatch.')
+                # Gradle renders SHA-1 as an integer, omitting leading zeroes.
+                if (file_digest(jar, 'sha1').lstrip('0') or '0') != jar.parent.name:
+                    raise ValueError('Cached Flutter engine JAR integrity mismatch.')
             return jars[0]
     raise ValueError('Pinned Flutter engine JAR absent; provide its Gradle cache.')
 
