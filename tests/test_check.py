@@ -39,7 +39,8 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual(plan.java, ['ClassroomMediaTest'])
         self.assertEqual(plan.node, ['classroom-player-test.cjs'])
         self.assertNotIn('test/classroom_api_reader_test.dart', plan.flutter)
-        self.assertEqual(len(plan.flutter), 8)
+        self.assertEqual(plan.flutter, flutter_files(['player']))
+        self.assertIn('test/classroom_preparation_test.dart', plan.flutter)
 
     def test_combined_modules_deduplicate_shared_tests(self):
         plan = make_plan(ROOT, ['player', 'storage'])

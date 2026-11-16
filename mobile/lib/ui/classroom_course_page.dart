@@ -1,6 +1,5 @@
 import '../config/runtime_config.dart';
 import '../config/classroom_limits.dart';
-import '../config/playback_policy.dart';
 import '../design/app_tokens.dart';
 import 'course_interaction.dart';
 import 'course_surface.dart';
@@ -8,13 +7,14 @@ import 'quiet_backdrop.dart';
 import 'app_icon_controls.dart';
 import 'app_icons.dart';
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../application/classroom_import_progress.dart';
-import '../application/classroom_import_collection.dart';
+import '../application/classroom_connection_coordinator.dart';
+import '../application/classroom_import_coordinator.dart';
+import '../application/classroom_playback_preparation.dart';
 import '../application/classroom_connection_status.dart';
 import '../data/classroom_links.dart';
 import '../data/classroom_library.dart';
@@ -23,6 +23,7 @@ import '../domain/classroom.dart';
 import '../domain/schedule.dart';
 import '../platform/classroom_access.dart';
 import '../platform/classroom_api_reader.dart';
+import '../platform/classroom_page_scripts.dart';
 import '../platform/test_diagnostics.dart';
 import '../platform/classroom_read_progress.dart';
 import '../platform/classroom_policy.dart';
@@ -94,38 +95,35 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   List<ClassroomCourse>? catalog;
   ClassroomCourse? selected;
   RecordingPage? recordings;
-  int active = 0,
-      recordTab = 0,
-      catalogTab = 0,
-      section = 0,
-      generation = 0,
-      attempts = 0;
+  int active = 0, recordTab = 0, catalogTab = 0, section = 0, attempts = 0;
+  late final connection = ClassroomConnectionCoordinator(probe: widget.probe);
+  int get generation => connection.generation;
+  final scripts = ClassroomPageScripts();
   int playbackGeneration = 0;
   bool showWeb = false,
       busy = false,
       loading = false,
       rememberedAttempted = false;
-  String? entry, message, source;
+  String? entry, message;
   ClassroomConnectionPhase connectionPhase = ClassroomConnectionPhase.idle;
   ClassroomConnectionStatus get connectionStatus =>
       ClassroomConnectionStatus(connectionPhase, message);
-  String? entrySource;
   bool automaticEntry = true, automaticPath = false;
-  Timer? poll;
   int timelinePage = 1, lessonPage = 1;
-  final readProgress = ClassroomReadProgress();
+  late final readProgress = connection.readProgress;
   bool foreground = true;
   final cache = ClassroomSessionCache.shared;
   late int cacheRevision;
   late final library = widget.library ?? ClassroomLibrary.shared;
-  late final int libraryRevision;
+  late final ClassroomImportCoordinator importCoordinator;
+  int get libraryRevision => importCoordinator.revision;
   ClassroomArchive? archive;
   ClassroomRecording? queuedPlayback;
   GlobalKey? playbackButton;
   bool playbackReducedMotion = false;
   String? queuedCourseId;
   bool autoCollecting = false;
-  final collection = ClassroomImportCollection();
+  late final collection = importCoordinator.collection;
   List<ClassroomCourse>? get importMatches => collection.matches;
   int get sourceIndex => collection.sourceIndex;
   bool get collecting => bulk || autoCollecting;
@@ -189,7 +187,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     scroll.addListener(() {
       if (scroll.hasClients) lastOffset = scroll.offset;
     });
-    libraryRevision = library.revision;
+    importCoordinator = ClassroomImportCoordinator(library: library);
     if (bulk) {
       importProgress.update(0, ImportTaskStatus.running);
       final workspace = cache.takeWorkspace();
@@ -304,7 +302,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         message = null;
         connectionPhase = ClassroomConnectionPhase.updated;
       });
-      poll?.cancel();
+      connection.cancelPoll();
       return;
     }
     setState(() {
@@ -359,16 +357,11 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   }
 
   Future<void> finishNameImport(_SchoolTab tab) async {
-    final saved = collection.merge(DateTime.now());
-    try {
-      await library.save(localCourse, saved, revision: libraryRevision);
-    } catch (_) {
-      TestDiagnostics.shared.record(TestEvent.importSaveFailed);
-      rethrow;
-    }
-    if (!mounted) return;
-    if (libraryRevision != library.revision) throw const FormatException();
-    TestDiagnostics.shared.record(TestEvent.importSaved);
+    final saved = await importCoordinator.commit(
+      localCourse,
+      active: () => mounted,
+    );
+    if (!mounted || saved == null) return;
     if (!bulk) archive = saved;
     imported++;
     if (bulk) importProgress.update(importIndex, ImportTaskStatus.completed);
@@ -403,47 +396,20 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           tabs.contains(tab) &&
           libraryRevision == library.revision;
       try {
-        final api = ClassroomApiReader((command) async {
-          final adapter = await rootBundle.loadString(AppAssets.recordingApi);
-          final bridge = await rootBundle.loadString(AppAssets.recordingBridge);
-          final value = await tab.controller!
-              .callAsyncJavaScript(
-                functionBody:
-                    '$adapter\n${bridge.replaceFirst('__RECORDING_API_COMMAND__', jsonEncode(command))}',
-              )
-              .timeout(
-                command['action'] == 'cancel'
-                    ? ClassroomLimits.cancelTimeout
-                    : ClassroomLimits.requestTimeout,
-              );
-          if (value?.error != null ||
-              value?.value is! String ||
-              (value!.value as String).length >
-                  ClassroomLimits.bridgeResponseLength) {
-            TestDiagnostics.shared.record(TestEvent.bridgeFailed);
-            throw const ClassroomApiFailure('error');
-          }
-          return Map<String, dynamic>.from(
-            jsonDecode(value.value as String) as Map,
-          );
-        });
-        final pages = await api.read(
+        final outcome = await importCoordinator.readDirect(
           semester: localCourse.semester,
           courses: matches,
-          skipCourseIds: collection.completed.keys.toSet(),
+          call: (command) => scripts.directory(tab.controller!, command),
           active: activeRead,
         );
         if (!activeRead()) return;
-        if (pages != null) {
+        if (outcome == DirectoryCollectionResult.ready) {
           assert(() {
             debugPrint('CampusDirectoryTransport=direct');
             return true;
           }());
           // Commit only after the entire name group was verified. The official
           // page stays at the catalog; playback must restore its own source.
-          for (final page in pages) {
-            collection.addPage(page, DateTime.now());
-          }
           livePage = null;
           liveCourse = null;
           await finishNameImport(tab);
@@ -583,14 +549,14 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     for (final tab in tabs) {
       tab.loadTimer?.cancel();
     }
-    generation++;
+    connection.dispose();
     playbackGeneration++;
     unawaited(
       classroomPlaybackChannel
           .invokeMethod<void>('cancel')
           .catchError((Object _) {}),
     );
-    poll?.cancel();
+    connection.cancelPoll();
     final index = recordTab;
     _SchoolTab? retained;
     if (!bulk &&
@@ -655,11 +621,6 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   Future<void> connect([
     ClassroomAccess mode = ClassroomAccess.automatic,
   ]) async {
-    TestDiagnostics.shared.record(switch (mode) {
-      ClassroomAccess.automatic => TestEvent.accessAutomatic,
-      ClassroomAccess.direct => TestEvent.accessDirect,
-      ClassroomAccess.vpn => TestEvent.accessWebVpn,
-    });
     fetchedAt = null;
     readProgress.reset();
     livePage = null;
@@ -675,8 +636,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           .invokeMethod<void>('cancel')
           .catchError((Object _) {}),
     );
-    final ticket = ++generation;
-    poll?.cancel();
+    final ticket = connection.advance();
+    connection.cancelPoll();
     setState(() {
       // A new selection must not display or keep callbacks from the old login.
       showWeb = loading = false;
@@ -686,20 +647,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       connectionPhase = ClassroomConnectionPhase.connecting;
       message = '正在检查学校服务访问路径…';
     });
-    final decision = mode == ClassroomAccess.automatic
-        ? await chooseClassroomAccess(widget.probe ?? probeClassroomEndpoint)
-        : AccessDecision(
-            mode,
-            mode == ClassroomAccess.vpn ? '已选择学校 WebVPN。' : '已选择直接访问。',
-          );
-    if (!mounted || ticket != generation) return;
-    if (decision.url != null) {
-      TestDiagnostics.shared.record(
-        decision.mode == ClassroomAccess.vpn
-            ? TestEvent.selectedWebVpn
-            : TestEvent.selectedDirect,
-      );
-    }
+    final decision = await connection.select(mode, ticket: ticket);
+    if (!mounted || decision == null || ticket != generation) return;
     setState(() {
       clearTabs();
       catalog = null;
@@ -745,7 +694,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   void requireAuthentication(_SchoolTab tab) {
     if (connectionPhase != ClassroomConnectionPhase.authentication) {
       // Login completing quickly must not reactivate a pre-login read.
-      generation++;
+      connection.advance();
     }
     TestDiagnostics.shared.record(TestEvent.authenticationNeeded);
     authVisible = true;
@@ -779,17 +728,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       tab.navigationStopped = true;
       return {'state': 'blocked'};
     }
-    entrySource ??= await rootBundle.loadString(AppAssets.classroomEntry);
     tab.advancing = true;
     try {
-      final value = await tab.controller!.evaluateJavascript(
-        source: entrySource!,
-      );
-      if (value is! String ||
-          value.length > ClassroomLimits.entryResponseLength) {
-        throw const FormatException();
-      }
-      final data = jsonDecode(value) as Map;
+      final data = await scripts.entry(tab.controller!);
       final state = data['state'] as String;
       if (state == 'opening') {
         tab.entryHops++;
@@ -807,23 +748,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   Future<Map<String, dynamic>> script(
     _SchoolTab tab,
     Map<String, dynamic> command,
-  ) async {
-    source ??= await rootBundle.loadString(AppAssets.classroom);
-    final value = await tab.controller!.evaluateJavascript(
-      source: source!.replaceFirst(
-        '__CLASSROOM_COMMAND__',
-        jsonEncode(command),
-      ),
-    );
-    if (value is! String ||
-        value.length > ClassroomLimits.bridgeResponseLength) {
-      throw const FormatException('学校页面读取结果不支持');
-    }
-    return Map<String, dynamic>.from(jsonDecode(value) as Map);
-  }
+  ) => scripts.command(tab.controller!, command);
 
   void scheduleRead(_SchoolTab tab, {bool restart = false}) {
-    poll?.cancel();
+    connection.cancelPoll();
     if (restart) {
       attempts = 0;
       readProgress.reset();
@@ -834,20 +762,15 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         tab.purpose == _Purpose.playback) {
       return;
     }
-    poll = Timer(
-      readProgress.stage == ClassroomReadStage.authentication
-          ? ClassroomLimits.authenticationPoll
-          : ClassroomLimits.dataPoll,
-      () => inspect(tab),
-    );
+    connection.schedulePoll(readProgress.stage, () => inspect(tab));
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     foreground = state == AppLifecycleState.resumed;
     if (!foreground) {
-      generation++;
-      poll?.cancel();
+      connection.advance();
+      connection.cancelPoll();
       for (final tab in tabs) {
         tab.loadTimer?.cancel();
         tab.loadTimer = null;
@@ -913,8 +836,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     automaticEntry = true;
     tab.navigationStopped = tab.advancing = false;
     tab.entryHops = 0;
-    final ticket = ++generation;
-    poll?.cancel();
+    final ticket = connection.advance();
+    connection.cancelPoll();
     readProgress.reset();
     setState(() {
       authVisible = showWeb = true;
@@ -1015,10 +938,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     }
     tab.loadTimer?.cancel();
     tab.loadTimer = null;
-    poll?.cancel();
+    connection.cancelPoll();
     final target = tab.dedicatedTarget;
     if (target != null && !tab.dedicatedRecovered) {
-      generation++;
+      connection.advance();
       automaticEntry = true;
       automaticPath = automaticPath && !target.startsWith(vpnEntry);
       readProgress.reset();
@@ -1054,7 +977,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
 
   void reportServiceUnavailable(_SchoolTab tab) {
     TestDiagnostics.shared.record(TestEvent.upstreamConnectionFailed);
-    poll?.cancel();
+    connection.cancelPoll();
     tab.loadTimer?.cancel();
     tab.loadTimer = null;
     // Explicit retry reloads the failed proxy document. Keep archived data and
@@ -1358,7 +1281,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     Map<String, dynamic> command,
     _Purpose purpose,
   ) async {
-    poll?.cancel();
+    connection.cancelPoll();
     setState(() {
       showWeb = true;
       busy = true;
@@ -1514,9 +1437,11 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     if (view is! int && view is! String) return;
     selected = sourcePage?.course ?? recordings?.course ?? selected;
     final operation = ++playbackGeneration;
-    poll?.cancel();
-    ClassroomPlayerState? prepared;
-    TestDiagnostics.shared.record(TestEvent.mediaPrepare);
+    connection.cancelPoll();
+    final preparation = ClassroomPlaybackPreparation(
+      command: (command) => script(tab, command),
+      active: () => mounted && operation == playbackGeneration,
+    );
     var handedToPlayer = false;
     tab.purpose = _Purpose.playback;
     setState(() {
@@ -1525,19 +1450,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       message = '正在准备课堂视频…';
     });
     try {
-      await classroomPlaybackChannel.invokeMethod<void>('begin', {
-        'view': view,
-        'record': record.id,
-      });
-      if (!mounted || operation != playbackGeneration) return;
-      final response = await script(tab, {'action': 'play', 'id': record.id});
-      if (response['state'] != 'opening') throw const FormatException();
-      final data = await classroomPlaybackChannel
-          .invokeMapMethod<Object?, Object?>('prepare')
-          .timeout(PlaybackPolicy.prepareTimeout);
-      prepared = ClassroomPlayerState(data!);
-      TestDiagnostics.shared.record(TestEvent.mediaReady);
-      if (!mounted || operation != playbackGeneration) return;
+      final prepared = await preparation.prepare(view, record.id);
+      if (prepared == null || !mounted || operation != playbackGeneration) {
+        return;
+      }
       await script(tab, {'action': 'returnRecords'});
       livePage = null;
       tab.purpose = _Purpose.records;
@@ -1554,6 +1470,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       final origin = playbackButtonRect(playbackButton, navigator);
       playbackButton = null;
       handedToPlayer = true;
+      preparation.handoff();
       final controller = ClassroomPlayerController(prepared);
       await navigator.push(
         ClassroomPlayerRoute(
@@ -1584,21 +1501,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       fetchedAt = null;
       freshReadPending = false;
       if (mounted && operation == playbackGeneration) {
-        final detail = error is TimeoutException
-            ? '学校视频加载超时，请稍后重试。'
-            : switch (error is PlatformException ? error.code : '') {
-                'NO_VIEW' => '未能读取当前学校页面，请重新打开课程页面。',
-                'UNTRUSTED_PAGE' => '请先在官方页面进入学校课程平台。',
-                'PREPARE' => '学校播放页面尚未就绪，请刷新录播列表后重试。',
-                'POLICY' => '学校媒体或水印配置未能完整读取，请检查官方登录状态。',
-                'WATERMARK' => '学校水印配置未能完整读取，请稍后重试。',
-                'MEDIA_BOUNDARY' => '学校媒体的访问路径尚未匹配，请返回后重试。',
-                'MEDIA_NETWORK' => '学校媒体请求失败，请检查网络后重试。',
-                'OFFICIAL_STOP' => '学校页面未能停止播放，请关闭后重新连接。',
-                'SCRIPT' => '当前学校页面暂不支持读取播放信息，请刷新后重试。',
-                'MEDIA' => '学校媒体暂时无法初始化，请返回后重试。',
-                _ => '未能准备课堂视频，请检查官方登录状态后重试。',
-              };
+        final detail = ClassroomPlaybackPreparation.failureMessage(error);
         setState(() {
           busy = false;
           connectionPhase = ClassroomConnectionPhase.failed;
@@ -1606,14 +1509,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         });
       }
     } finally {
-      if (!handedToPlayer && prepared != null) {
-        await classroomPlaybackChannel
-            .invokeMethod<void>('dispose', {'session': prepared.session})
-            .catchError((Object _) {});
-      }
-      await classroomPlaybackChannel
-          .invokeMethod<void>('cancel')
-          .catchError((Object _) {});
+      await preparation.release();
       if (mounted && operation == playbackGeneration && tabs.contains(tab)) {
         if (tab.purpose == _Purpose.playback) {
           try {
@@ -1634,10 +1530,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   }
 
   Future<void> closeWeb() async {
-    generation++;
+    connection.advance();
     automaticEntry = false;
     automaticPath = false;
-    poll?.cancel();
+    connection.cancelPoll();
     if (tabs.isNotEmpty && tabs[active].purpose == _Purpose.playback) {
       final tab = tabs[active];
       try {
@@ -1855,8 +1751,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                           if (mounted &&
                               tabs.isNotEmpty &&
                               tabs[active] == tab) {
-                            generation++;
-                            poll?.cancel();
+                            connection.advance();
+                            connection.cancelPoll();
                             setState(() => loading = true);
                             watchPageLoad(tab, url?.toString() ?? '');
                           }
@@ -2439,8 +2335,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
 
   Future<void> skipFailedImport() async {
     if (tabs.isEmpty) return;
-    generation++;
-    poll?.cancel();
+    connection.advance();
+    connection.cancelPoll();
     await nextImport(tabs[active]);
   }
 

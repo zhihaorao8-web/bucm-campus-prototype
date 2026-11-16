@@ -10,6 +10,7 @@
 | 工程优化A | 当前规则/进度入口、模块索引与清理清单已整理；文档检查通过，详情见A节 | 成果222ae74及状态1664bdb已推送；用户继续指令确认通过，进入B；未新增运行时验证 |
 | 工程优化B | 模块/变更测试调度与分层规范已实现；本地检查通过，详情见B节 | 成果a215cb7已普通推送到origin/codex/maintenance-stage-b，用户继续指令确认通过，进入C；L3设备、构建/学校验证未运行 |
 | 工程优化C | 公共视觉令牌/策略、维护与分段控件、页面参数及可执行规范已完成；对应回归、直取与合成预览通过 | eca3e55、41c26d3已推送至codex/maintenance-stage-c，用户继续指令确认通过，进入D；真机/学校验证不由本轮补齐 |
+| 工程优化D | 业务配置、原子文件操作及课堂连接/导入/播放准备公共入口已完成；受影响模块检查通过，详情见D节 | D1 938f108、D2 6de667e已推送，D3待提交；未新增构建/设备/学校验证 |
 
 ## 2026-11-16 工程优化D分项
 
@@ -18,7 +19,13 @@
 - D1静态分析无问题；15个相关文件106项回归、直取专项23项通过。日志build/checks/stage-d1-analyze.log、stage-d1-tests.log及stage-d1-direct.log。D1成果938f108已提交推送。
 
 - D2：applicationFile统一应用私有文件定位；writeAtomicText统一pending/flush/rename/finally清理，提交前同步canCommit检查阻止旧账号写回。五类存储保留各自队列、schema、备份/损坏恢复和revision，未引入全局写队列或路径迁移。
-- D2 storage模块静态分析及47项回归通过（含新增5项原子文件成功、失败、取消与清理检查），工具调度15项回归通过；报告build/checks/report-9e11e98c97ce44bb90055b95adb6fc79.json，日志stage-d2-tests.log。D2完成后独立提交推送，D3接续。
+- D2 storage模块静态分析及47项回归通过（含新增5项原子文件成功、失败、取消与清理检查），工具调度15项回归通过；报告build/checks/report-9e11e98c97ce44bb90055b95adb6fc79.json，日志stage-d2-tests.log。D2成果6de667e已独立提交推送。
+
+- D3：ClassroomConnectionCoordinator拥有连接代次、路由选择与读轮询；ClassroomImportCoordinator复用完整来源集合与API读取，统一revision约束的整组提交；ClassroomPageScripts统一脚本资产、命令及容量/超时校验；ClassroomPlaybackPreparation负责begin/play/prepare、固定错误文案及移交前原生会话释放。课堂页保留WebView、导航/认证展示、来源恢复、队列切换和播放器路由，不宣称整个页面状态机已迁出。
+- D3新增12项合成边界测试，覆盖迟到路由、官方认证可达、取消轮询、部分来源/保存失败保留旧目录、账号revision、直取取消及播放会话移交/释放。已登记到独立classroom/player模块；工具测试不再硬编码player测试文件数。
+- `python scripts/check.py --module classroom --module player --direct`通过：静态分析无问题；27个Flutter测试文件161项通过、8项条件跳过，显式直取23项通过；1组Java及5组Node通过。报告build/checks/report-d51b5eca27284eb3b135871a224e1916.json，日志stage-d3-tests.log；测试调度自身15项另行通过。最初分析误从仓库根目录启动，已结束该次进程并在mobile重跑通过；该次未完成的分析不作为通过证据。
+- 最终补齐提交回调返回页面时的mounted检查后，静态分析及名称合并/协调器14项回归通过（stage-d3-final-analyze.log、stage-d3-final-import.log）。文档214个本地文件目标及差异检查通过；页内锚点/远程链接未校验。
+- D阶段未改版本、认证策略、原生/JS安全校验、CI或发布附件；未构建/安装APK或访问真实学校会话。完成文档/差异检查与D3提交推送后，停止供阶段审核。
 
 ## 2026-11-15 工程优化C分项
 

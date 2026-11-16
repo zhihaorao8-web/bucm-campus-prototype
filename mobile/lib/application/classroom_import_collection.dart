@@ -2,7 +2,8 @@ import '../config/classroom_limits.dart';
 import '../data/classroom_library.dart';
 import '../domain/classroom.dart';
 
-/// In-memory collection only. The page still owns navigation and guarded save.
+/// In-memory collection only. The coordinator owns guarded save; the page owns
+/// navigation and visible authentication.
 class ClassroomImportCollection {
   List<ClassroomCourse>? _matches;
   final _pages = <RecordingPage>[];
