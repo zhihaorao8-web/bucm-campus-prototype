@@ -22,6 +22,8 @@
 
 - F2实现只读双包核验与顺序构建门禁：精确源码/版本/签名/模式、资源与许可、ZIP及已知测试载荷；以固定引擎可执行段区别profile，保留符号剥离兼容。预览/发布候选分开，后者还要求干净源码、可信证书及精确SHA的完整CI成功；不发布/安装或跳过检查。
 - F2初轮只读0.3双包核验发现Android已剥离引擎符号、Gradle SHA1目录省略前导0，按实际结构修正并补合成检查后，现存729663f双包身份/签名/资源/引擎核验通过（build/checks/stage-f2-historical-apks.json）。这是旧包对新工具的实证，不是新分支构建或新的release/学校验收。构建失败/无新APK两项PowerShell隔离检查及7项核验边界检查通过；初次夹具输出编码问题已显式UTF8处理，不计首次通过。新分支双包顺序构建待提交后执行。
+- F2成果0c35317已推送；31项工具/文档/图标检查通过（report-2533354b237b4cf0bb154729919ccda7.json）。随后从干净0c353174e465e8428f976bbd99811efc744439c8顺序构建debug/release并完整核验通过，两包嵌入同一干净SHA、0.3/code12及既有可信证书；未安装/发布。debug为221496120字节、SHA256 361a936ddb731e023a8b345681878da0d0ee08ab8ea3b5eee545acc7114244ff；release为64808486字节、SHA256 144a05d51b75a155967226d4f01641f81b7ae51af5ba4fcc0999d933fbb66c93。
+- 本轮预览在build/flutter-previews/0c353174-6e7d78a3c0c2423a97ea44f37dd137be/，同目录有元数据/校验文件；详细日志在build/flutter-preview-logs/0c353174-*-{debug,release}.log及build/checks/stage-f2-preview.log。kind=preview，CI字段null，不冒充发布候选验证；未重跑设备R8/原生媒体/学校链路，不替换旧0.3附件。
 
 ## 2026-11-16 工程优化E分项
 
