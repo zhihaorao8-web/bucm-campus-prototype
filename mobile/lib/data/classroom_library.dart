@@ -297,7 +297,17 @@ class ClassroomLibrary {
     _changed();
     final operation = _tail.then((_) async {
       final file = await _file();
-      if (await file.exists()) await file.delete();
+      final obsolete = File(
+        '${file.parent.path}/${StoragePolicy.obsoleteLinksFile}',
+      );
+      for (final target in [
+        file,
+        pendingFile(file),
+        obsolete,
+        pendingFile(obsolete),
+      ]) {
+        if (await target.exists()) await target.delete();
+      }
     });
     _tail = operation.catchError((Object _) {});
     return operation;

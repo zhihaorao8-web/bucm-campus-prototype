@@ -16,7 +16,6 @@ import '../application/classroom_connection_coordinator.dart';
 import '../application/classroom_import_coordinator.dart';
 import '../application/classroom_playback_preparation.dart';
 import '../application/classroom_connection_status.dart';
-import '../data/classroom_links.dart';
 import '../data/classroom_library.dart';
 import '../data/classroom_playback_progress.dart';
 import '../domain/classroom.dart';
@@ -65,7 +64,6 @@ class ClassroomCoursePage extends StatefulWidget {
     required this.course,
     this.date,
     required this.onDetails,
-    this.links,
     this.probe,
     this.library,
     this.importCourses,
@@ -77,7 +75,6 @@ class ClassroomCoursePage extends StatefulWidget {
   final Object? transitionTag;
   final DateTime? date;
   final void Function(BuildContext) onDetails;
-  final ClassroomLinks? links;
   final ProbeEndpoint? probe;
   final ClassroomLibrary? library;
   final List<Course>? importCourses;
@@ -91,7 +88,6 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     with WidgetsBindingObserver {
   final tabs = <_SchoolTab>[];
   final scroll = ScrollController();
-  late final links = widget.links ?? ClassroomLinks.shared;
   List<ClassroomCourse>? catalog;
   ClassroomCourse? selected;
   RecordingPage? recordings;
@@ -483,7 +479,6 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           onDetails: (_) {},
           importCourses: [localCourse],
           library: library,
-          links: links,
           probe: widget.probe,
           onImportResult: (value) => outcome = value,
           progressStore: widget.progressStore,
@@ -1189,11 +1184,6 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           } else {
             setState(() => message = '录播列表已变化，请刷新后重新选择。');
           }
-        }
-        try {
-          await links.bind(localCourse, page.course.id);
-        } catch (_) {
-          if (mounted) setState(() => message = '本次可继续查看，但课程关联未保存成功。');
         }
         return;
       }

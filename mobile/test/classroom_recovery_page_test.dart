@@ -95,6 +95,7 @@ void main() {
     ProbeState? failure,
     bool direct = false,
     ProbeEndpoint? probe,
+    double textScale = 1,
   }) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     ClassroomSessionCache.shared.clear();
@@ -106,6 +107,12 @@ void main() {
     await tester.pumpWidget(
       appearanceScope(
         MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
           home: ClassroomCoursePage(
             course: course,
             importCourses: [course],
@@ -139,6 +146,46 @@ void main() {
       await tester.pump();
     }
   }
+
+  testWidgets(
+    'current classroom keeps manual access choices on small large-text screen',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 740);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await open(tester, failure: ProbeState.unavailable, textScale: 1.5);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('继续导入'), 180);
+      expect(find.text('继续导入'), findsOneWidget);
+      final openButton = find.text('打开学校页面');
+      await tester.scrollUntilVisible(openButton.hitTestable(), 120);
+      await tester.pumpAndSettle();
+      await tester.tap(openButton);
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.byTooltip('学校访问方式'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('自动选择（重新检测）'), findsOneWidget);
+      expect(find.text('数字北中医（直接访问）'), findsOneWidget);
+      expect(find.text('校外访问（学校 WebVPN）'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'finishing a probe after leaving current classroom does not update disposed route',
+    (tester) async {
+      final pending = Completer<AccessProbe>();
+      await open(tester, probe: (_) => pending.future);
+      await tester.pumpWidget(const SizedBox());
+      pending.complete(const AccessProbe(ProbeState.unavailable));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final failure in [ProbeState.unavailable, ProbeState.certificateError]) {
     testWidgets('manual official page opens after route probe $failure', (

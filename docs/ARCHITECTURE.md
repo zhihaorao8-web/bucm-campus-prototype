@@ -65,7 +65,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
 | 外观 | `appearance-v1.json`，schema 1；独立于课表和学校会话 |
 | 录播目录 | `classroom-library-v1.json`，读取schema 1/2、写schema 2；账号会话退出清除 |
 | 本机进度 | `classroom-progress-v1.json`，schema 1；仅身份、位置、时长、更新时间；退出会话清除 |
-| 旧单课程关联 | `classroom-links-v1.json`仍有写入、应用无读取调用；列为待清理，尚未删除 |
+| 旧单课程关联 | 已停用读写；`ClassroomLibrary.clear`在清除学校会话/目录时删除固定旧文件及pending，不读取或迁移旧关联 |
 | 短时页面/诊断 | `ClassroomSessionCache`和`TestDiagnostics`只在内存；诊断200条，debug硬门控 |
 | 公共网页脚本 | 根`assets/`及`scripts/research/recording-api.cjs`为维护源，prepare复制；后者虽在research目录，已是运行时资产 |
 | Java共享核心 | `src/cn/bucm/campusprobe/`的`ScheduleParser`、`CourseTimes`、`CourseImportPlan`、`AcademicTerm`、`ExportWorkbook`、`SchoolExport`、`ClassroomMediaTransport`共7个文件 |
@@ -84,7 +84,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
 
 | 入口 | 管理范围/兼容要求 |
 |---|---|
-| storage_policy.dart | 五类现有JSON文件名、文件容量和进度条目上限；schema及持久化键仍由各模型负责，修改文件名须独立迁移设计 |
+| storage_policy.dart | 四类有效JSON文件名/容量、进度条目上限及旧关联清理名；schema及持久化键仍由各模型负责，修改有效文件名须独立迁移设计 |
 | classroom_limits.dart | 字段长度、模型/官方API分页边界、来源/记录上限、短时缓存、页面/桥接超时与阶段预算 |
 | playback_policy.dart | 毫秒续播阈值/时长容差、保存/轮询/准备间隔；模型与活动会话复用resumablePosition |
 | network_policy.dart | 固定官方入口及WebVPN已知路径、无凭据探测、课表导入等待、可选语录请求；入口不替代用途白名单 |

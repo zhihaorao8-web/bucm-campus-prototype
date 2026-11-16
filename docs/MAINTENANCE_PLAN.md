@@ -19,8 +19,8 @@
 
 | 对象 | 当前引用事实 | 删除前条件与最小验证 |
 |---|---|---|
-| `mobile/lib/ui/classroom_browser.dart` | 主应用无外部入口，只有自身及classroom_access_test引用 | 访问切换/旧请求取消等有效断言迁入真实课堂入口；访问/课堂连接测试通过后删页面与仅服务旧页面的测试 |
-| `mobile/lib/data/classroom_links.dart` | ClassroomCoursePage仍bind，应用无lookup调用；测试有读写 | 移除无用写入、依赖注入参数和错误文案；核对旧文件兼容/隐私处置，不擅自扫描或读取真实数据；名称合并/目录/恢复测试 |
+| 旧Flutter浏览页 | E1已删除无应用入口的classroom_browser.dart | 小屏手动访问与离页后探测断言迁到当前恢复页测试；保留纯路径探测测试 |
+| 旧单课程关联 | E1已删除classroom_links.dart及仅服务该实现的测试 | 当前页停止bind/注入/无用错误提示；旧文件不读取或迁移，清除学校会话/目录时按固定路径清理，合成测试覆盖其他数据保留 |
 | 根`src/.../MainActivity.java`、`ReminderReceiver.java`、`RestoreReceiver.java` | 旧页面/提醒互相引用，根Manifest和build.py仍引用 | 整组解除构建、Manifest及资源依赖；保留Manifest版本唯一来源；共享Java合成检查及prepare验证 |
 | 根`build.py`及旧`res/` | 原型构建入口，check.py仍从build导入EXE/java_tools | 公共JDK工具先迁出；检查入口不再依赖原型构建器，再删旧APK构建和资源 |
 | 旧接续/已完成专项文档 | RESUME、QINGXIN_HANDOFF、旧UI/数据访问计划等含失效“下一步” | 逐文档提取唯一决策、协议与待验事项到对应入口，修复引用，再删重复正文/文件；保留发布与学校证据 |

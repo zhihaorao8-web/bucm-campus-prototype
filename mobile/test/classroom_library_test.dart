@@ -57,6 +57,30 @@ void main() {
     await directory.delete(recursive: true);
   });
   test(
+    'retired associations are ignored and removed only on explicit clear',
+    () async {
+      final obsolete = File('${directory.path}/classroom-links-v1.json');
+      final pending = File('${obsolete.path}.pending');
+      final schedule = File('${directory.path}/schedule-v1.json');
+      final appearance = File('${directory.path}/appearance-v1.json');
+      await obsolete.writeAsString('synthetic unreadable legacy association');
+      await pending.writeAsString('synthetic obsolete pending');
+      await schedule.writeAsString('synthetic schedule preserved');
+      await appearance.writeAsString('synthetic preferences preserved');
+      expect(await library.lookup(local), isNull);
+      expect(await obsolete.exists(), isTrue);
+      await library.clear();
+      expect(await obsolete.exists(), isFalse);
+      expect(await pending.exists(), isFalse);
+      expect(await schedule.readAsString(), 'synthetic schedule preserved');
+      expect(
+        await appearance.readAsString(),
+        'synthetic preferences preserved',
+      );
+      await library.clear();
+    },
+  );
+  test(
     'legacy full-width keys remain readable and display original school titles',
     () async {
       final oldLocal = Course.fromJson(local.toJson()..['name'] = '合成课程Ⅱ（方向甲）');
