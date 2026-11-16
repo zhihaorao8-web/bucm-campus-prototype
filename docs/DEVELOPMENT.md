@@ -36,7 +36,7 @@ flutter test --no-pub --dart-define=CAMPUS_DIRECT_CATALOG=true test/classroom_ap
 flutter test --no-pub
 ```
 
-统一模块入口和变更映射已加入check.py：`python scripts/check.py --module player`、`python scripts/check.py --changed --base origin/main --dry-run`。完整分层、选择边界和报告见[TESTING](TESTING.md)。无参数保持旧离线行为，CI分流尚未实施；文档用--module docs，跨模块改动先预览--changed，发布候选用--all并按版本规范补独立构建验证。
+统一模块入口和变更映射已加入check.py：`python scripts/check.py --module player`、`python scripts/check.py --changed --base origin/main --dry-run`。完整分层、选择边界和报告见[TESTING](TESTING.md)。无参数保持旧离线行为，CI已按VERSIONING分支分流；文档用--module docs，跨模块改动先预览--changed，发布候选用--all并按版本规范补独立构建验证。
 
 普通默认回归会条件跳过直取和预览场景；直取相关变更须显式开启define，可选合成预览见FLUTTER。Android方法通道、R8 XLS和原生媒体属于独立检查，不能由Dart组件测试替代。真实学校验证只在本人授权会话下执行，不进入CI。
 

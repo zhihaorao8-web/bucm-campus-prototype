@@ -1,0 +1,30 @@
+name: Pinned Flutter environment
+description: Public dependencies only; preserve lock versions and hashes.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+      with:
+        distribution: temurin
+        java-version: '25'
+    - name: Prepare pinned SDK and public assets
+      shell: pwsh
+      run: |
+        git -c core.longpaths=true clone --depth 1 --branch 3.47.9 https://github.com/flutter/flutter.git build/flutter-ci
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        $revision = git -C build/flutter-ci rev-parse HEAD
+        if ($revision -ne 'c197ca5199e9ee5661e865596c9c07294dfab51c') { throw 'Flutter revision mismatch' }
+        "$env:GITHUB_WORKSPACE\build\flutter-ci\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+        python scripts/dependencies.py
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        python scripts/prepare_flutter.py
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    - name: Resolve locked public Flutter dependencies
+      shell: pwsh
+      working-directory: mobile
+      run: |
+        $lockPath = Join-Path $PWD 'pubspec.lock'
+        $lock = (Get-Content $lockPath -Raw).Replace('https://pub.flutter-io.cn', 'https://pub.dev')
+        [System.IO.File]::WriteAllText($lockPath, $lock)
+        flutter pub get --enforce-lockfile
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

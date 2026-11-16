@@ -5,72 +5,92 @@ on:
     branches: [main, 'codex/**']
   pull_request:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: Check changes, run full host checks, or build dual previews
+        type: choice
+        options: [changed, full, preview]
+        default: changed
 
 permissions:
   contents: read
 
 concurrency:
-  group: flutter-${{ github.ref }}
+  group: flutter-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PUB_HOSTED_URL: https://pub.dev
+  PUB_CACHE: ${{ github.workspace }}\build\pub-cache
+
 jobs:
-  android:
+  quality:
+    name: quality
     runs-on: windows-latest
-    env:
-      PUB_HOSTED_URL: https://pub.dev
-      # Kotlin incremental compilation on Windows requires package sources and
-      # the Android project to share a drive (runner profile is on C:, repo D:).
-      PUB_CACHE: ${{ github.workspace }}\build\pub-cache
-    timeout-minutes: 45
+    timeout-minutes: 30
+    outputs:
+      sha: ${{ steps.scope.outputs.sha }}
+      preview: ${{ steps.scope.outputs.preview }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.12'
+      - name: Pin source, comparison base and required checks
+        id: scope
+        run: python scripts/ci_plan.py plan
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+        if: steps.scope.outputs.java == 'true' && steps.scope.outputs.flutter != 'true'
         with:
           distribution: temurin
           java-version: '25'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        if: steps.scope.outputs.node == 'true'
         with:
           node-version: '22'
-      - name: Prepare pinned Flutter SDK
-        shell: pwsh
-        run: |
-          git -c core.longpaths=true clone --depth 1 --branch 3.47.9 https://github.com/flutter/flutter.git build/flutter-ci
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $revision = git -C build/flutter-ci rev-parse HEAD
-          if ($revision -ne 'c197ca5199e9ee5661e865596c9c07294dfab51c') { throw 'Flutter revision mismatch' }
-          "${{ github.workspace }}\build\flutter-ci\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-      - name: Prepare public parsers and dependencies
-        run: |
-          python scripts/dependencies.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python scripts/check.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python scripts/prepare_flutter.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Flutter analysis and synthetic tests
-        working-directory: mobile
-        run: |
-          # The local lock uses the China mirror. On hosted CI use the official
-          # endpoint, retaining every locked version and SHA-256 verbatim.
-          $lock = (Get-Content pubspec.lock -Raw).Replace('https://pub.flutter-io.cn', 'https://pub.dev')
-          [System.IO.File]::WriteAllText((Join-Path $PWD 'pubspec.lock'), $lock)
-          flutter pub get --enforce-lockfile
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          flutter analyze --no-pub
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          flutter test --no-pub
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          flutter test --no-pub --dart-define=CAMPUS_DIRECT_CATALOG=true test/classroom_api_reader_test.dart test/classroom_direct_import_test.dart
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: ./.github/actions/flutter-environment
+        if: steps.scope.outputs.flutter == 'true'
+      - name: Prepare pinned XLS dependencies for host-only checks
+        if: steps.scope.outputs.deps == 'true' && steps.scope.outputs.flutter != 'true'
+        run: python scripts/dependencies.py
+      - name: Run selected checks
+        run: python scripts/ci_plan.py run
+      - name: Preserve scope and check reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: campus-checks-${{ github.sha }}
+          path: |
+            build/ci-plan.json
+            build/checks/*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  preview:
+    name: dual-preview
+    needs: quality
+    if: needs.quality.outputs.preview == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.quality.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - uses: ./.github/actions/flutter-environment
       - name: Build debug and release previews sequentially
         shell: pwsh
         run: ./scripts/build_flutter_previews.ps1
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: campus-flutter-apks-${{ github.sha }}
+          name: campus-flutter-apks-${{ needs.quality.outputs.sha }}
           path: build/flutter-previews/*
           if-no-files-found: error
           retention-days: 14
@@ -79,7 +99,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: campus-flutter-build-logs-${{ github.sha }}
+          name: campus-flutter-build-logs-${{ needs.quality.outputs.sha }}
           path: build/flutter-preview-logs/*.log
           if-no-files-found: warn
           retention-days: 14

@@ -13,7 +13,7 @@
 
 ## 当前构建入口
 
-[scripts/build_flutter_previews.ps1](../scripts/build_flutter_previews.ps1)在同一源码顺序构建debug/release，分别传入直取true及诊断true/false；保留成功/失败详细日志和退出码。不可并发刷新插件注册表。当前工作流仍为完整检查/双包预览，按分支分流与发布核验工具留工程优化F阶段，不写成已配置。
+[scripts/build_flutter_previews.ps1](../scripts/build_flutter_previews.ps1)在同一源码顺序构建debug/release，分别传入直取true及诊断true/false；保留成功/失败详细日志和退出码。不可并发刷新插件注册表。CI已分quality检查与受门禁控制的dual-preview任务；普通工作分支/PR不默认构建APK，main/发布候选或显式preview才顺序构建双包。F2补充包核验工具，远端运行结果另记STATUS。
 
 预览输出为build/flutter-previews/，日志为build/flutter-preview-logs/；文件名沿用已发布规则：
 

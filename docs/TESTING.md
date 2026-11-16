@@ -1,6 +1,6 @@
 # 分层测试与排查入口
 
-更新：2026-11-16。统一入口为根目录`scripts/check.py`，纯选择规则在`scripts/check_plan.py`。已有业务计算与职责见[架构](ARCHITECTURE.md)，Android专项操作见[FLUTTER](FLUTTER.md)。本页描述已实现的本地检查调度，CI分流在工程优化F阶段实施。
+更新：2026-11-16。统一入口为根目录`scripts/check.py`，纯选择规则在`scripts/check_plan.py`。已有业务计算与职责见[架构](ARCHITECTURE.md)，Android专项操作见[FLUTTER](FLUTTER.md)。本页描述已实现的本地检查调度，CI分流已复用同一计划/Runner，分支职责见VERSIONING。
 
 ## 日常命令
 
@@ -75,4 +75,4 @@ python scripts/check.py --module docs --module tooling
 
 按步骤顺序执行、遇错停止；子进程失败码传回调用方，后续步骤不继续执行，报告保持failed；人工中断返回130。控制台保留原测试输出，报告不收集通用logcat、认证数据或原始异常正文。测试报告与生成文件均不提交。
 
-Windows公共依赖与工程同盘；Flutter命令使用--no-pub，环境准备与检查分开。单次命令只调用一次静态分析，测试集合去重，默认/直取两种配置顺序执行；不要与构建或其他会刷新Flutter插件注册表的命令并发。CI目前仍保留旧完整检查/双包，F阶段再按相同选择规则分工。
+Windows公共依赖与工程同盘；Flutter命令使用--no-pub，环境准备与检查分开。单次命令只调用一次静态分析，测试集合去重，默认/直取两种配置顺序执行；不要与构建或其他会刷新Flutter插件注册表的命令并发。CI工作分支/PR按变更，main/发布候选全量，双包预览独立受门禁控制；实际远端结果另记精确SHA。
