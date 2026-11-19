@@ -29,6 +29,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 设置）
 | 录播导入 | `classroom_import_page.dart` / `ClassroomCoursePage` → 官方上下文 → `ClassroomImportCoordinator`协调API或DOM收集结果 | `ClassroomArchive`校验所有来源完整分页，协调器按捕获的revision调用`ClassroomLibrary`整组保存；目录可读不代表认证有效 |
 | 播放 | 时间线保留来源课程ID、录播ID及原分页 → `ClassroomPlaybackPreparation` → 原生`ClassroomPlayback` / `ClassroomPlayerGroup` | 准备器负责移交前的原生会话释放；页面负责当次来源/权限导航与播放器路由；原生拥有媒体描述、Cookie和解码器，Dart只接收纹理、显示配置和受限状态 |
 | 退出会话 | `SchoolAdapter.clearSession`清除诊断、页面缓存、目录、续播及原生WebView会话 | 缓存/存储revision和任务generation阻止旧回调写回；离线课表保留 |
+| 图书馆座位预约 | 设置的校园服务入口打开 `LibrarySeatPage`，由官方可见WebView处理认证和预约 | `SchoolEndpoints.librarySeatHome`固定入口。 `library_seat_navigation.dart`限制预约和CAS主文档，返回只使用预约站内历史。离页销毁页面，复用原生WebView的会话清理 |
 | 外观与语录 | `AppearanceController`、`QuoteService` → 主题及今日展示 | 外观独立存储；在线语录默认关闭，失败回退本地 |
 
 认证由用户在可见官方页面完成，App不额外保存凭据。下载Cookie仅在原生内存中按验证后的目标使用，不返回Dart。学校导出、主文档、认证和媒体分别校验用途/域名/端口/路径，不能合并为宽泛白名单。真实数据不进入测试或Git。

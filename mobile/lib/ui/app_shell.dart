@@ -17,6 +17,7 @@ import '../platform/school_adapter.dart';
 import 'course_widgets.dart';
 import 'course_surface.dart';
 import 'import_page.dart';
+import 'library_seat_page.dart';
 import 'week_grid.dart';
 import 'weekday_tabs.dart';
 import 'glass_navigation.dart';
@@ -832,6 +833,22 @@ class _AppShellState extends ConsumerState<AppShell>
                   ),
                 ),
                 const SizedBox(height: 24),
+                sectionLabel('校园服务'),
+                QuietCard(
+                  cornerRadius: AppRadius.card,
+                  insideMargin: EdgeInsets.zero,
+                  child: AppArrowPreference(
+                    title: '图书馆座位预约',
+                    startAction: const AppIcon(AppIcons.calendar),
+                    enabled: !busy && !demo,
+                    onClick: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const LibrarySeatPage(),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.xl),
                 sectionLabel('登录与隐私'),
                 QuietCard(
                   cornerRadius: 24,
