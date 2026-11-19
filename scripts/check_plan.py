@@ -6,7 +6,7 @@ import re
 
 MODULES = ('docs', 'schedule', 'storage', 'classroom', 'player', 'ui', 'adapter', 'tooling')
 FLUTTER_TESTS = {
-    'adapter': ('schedule', 'classroom_policy', 'library_seat_navigation'),
+    'adapter': ('schedule', 'classroom_policy', 'library_seat_navigation', 'library_seat_queries'),
     'schedule': ('schedule', 'schedule_difference', 'schedule_freshness',
                  'today_focus', 'week_grid', 'week_stack', 'weekday_tabs', 'course_colors'),
     'storage': ('atomic_file', 'schedule_recovery', 'classroom_library',
@@ -22,7 +22,7 @@ FLUTTER_TESTS = {
                'classroom_small_window', 'classroom_playback_progress'),
     'ui': ('ui', 'settings', 'appearance', 'quiet_design', 'atmosphere', 'artistic_title',
            'app_icons', 'navigation_motion', 'schedule_motion', 'course_interaction',
-           'classroom_ui_polish', 'quote_service'),
+           'classroom_ui_polish', 'quote_service', 'library_seat_queries'),
 }
 DIRECT_TESTS = ('test/classroom_api_reader_test.dart', 'test/classroom_direct_import_test.dart')
 DEBUG_FLOWS = {
@@ -59,7 +59,7 @@ JAVA_SOURCES = {
     'ClassroomMediaTest': ('ClassroomMediaTransport',),
 }
 NODE_TESTS = {
-    'adapter': ('extract-test', 'school-viewport-test', 'export-nav-test', 'coverage-check-test'),
+    'adapter': ('extract-test', 'school-viewport-test', 'export-nav-test', 'coverage-check-test', 'library-seat-read-test'),
     'classroom': ('classroom-test', 'recording-api-test', 'recording-api-bridge-test', 'classroom-entry-test'),
     'player': ('classroom-player-test',),
 }
@@ -168,7 +168,7 @@ def make_plan(root, modules=(), changed=None, legacy=False, direct=False, all_ch
             elif path.startswith('assets/') and path.endswith(('.js', '.cjs')):
                 module = ('player' if path.endswith('/classroom-player.js') else
                           'classroom' if Path(path).name in ('classroom.js', 'classroom-entry.js', 'recording-api-bridge.js', 'recording-api.cjs')
-                          else 'adapter' if Path(path).name in ('extract.js', 'school-viewport.js', 'export-nav.js', 'coverage-check.js') else None)
+                          else 'adapter' if Path(path).name in ('extract.js', 'school-viewport.js', 'export-nav.js', 'coverage-check.js', 'library-seat-read.js') else None)
                 if module:
                     selected.add(module)
                 else:

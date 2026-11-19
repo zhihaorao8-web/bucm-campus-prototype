@@ -33,5 +33,6 @@ flutter:
     - assets/classroom-entry.js
     - assets/recording-api.cjs
     - assets/recording-api-bridge.js
+    - assets/library-seat-read.js
     - assets/app-icon.png
     - assets/developer-avatar.png

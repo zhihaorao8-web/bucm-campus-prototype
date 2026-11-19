@@ -54,6 +54,8 @@ def source_assets(source):
     expected = {'assets/classroom-player.js': values['assets/classroom-player.js']}
     scripts = ['extract.js', 'school-viewport.js', 'export-nav.js', 'coverage-check.js',
                'classroom.js', 'classroom-entry.js', 'recording-api-bridge.js', 'recording-api.cjs']
+    if 'assets/library-seat-read.js' in values:
+        scripts.append('library-seat-read.js')
     for name in scripts:
         key = 'assets/' + name
         value = values.get(key)

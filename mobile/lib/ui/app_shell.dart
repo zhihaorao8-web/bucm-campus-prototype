@@ -17,7 +17,7 @@ import '../platform/school_adapter.dart';
 import 'course_widgets.dart';
 import 'course_surface.dart';
 import 'import_page.dart';
-import 'library_seat_page.dart';
+import 'library_seat_query_page.dart';
 import 'week_grid.dart';
 import 'weekday_tabs.dart';
 import 'glass_navigation.dart';
@@ -843,7 +843,7 @@ class _AppShellState extends ConsumerState<AppShell>
                     enabled: !busy && !demo,
                     onClick: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const LibrarySeatPage(),
+                        builder: (_) => const LibrarySeatQueryPage(),
                       ),
                     ),
                   ),

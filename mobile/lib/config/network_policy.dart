@@ -26,6 +26,18 @@ abstract final class ImportPolicy {
   static const viewportTimeout = Duration(seconds: 3);
 }
 
+abstract final class LibrarySeatPolicy {
+  static const _host = SchoolEndpoints.librarySeatHost;
+  static const origin = 'https://$_host';
+  static const document = '/config/config.js';
+  static const readAsset = 'assets/library-seat-read.js';
+  static const bookingPageSize = 10;
+  static const bookingStatusFilter = '8582';
+  static const timeout = Duration(seconds: 12);
+  static const maxRows = 2048;
+  static const maxBodyBytes = 4 * 1024 * 1024;
+}
+
 abstract final class QuotePolicy {
   static const endpoint = 'https://v1.hitokoto.cn/?encode=json';
   static const responseBytes = 16 * 1024;

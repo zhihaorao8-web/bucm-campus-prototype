@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from scripts import check
-from scripts.check_plan import (MODULES, DIRECT_TESTS, affected_tests,
+from scripts.check_plan import (MODULES, DIRECT_TESTS, NODE_TESTS, affected_tests,
                                 flutter_files, make_plan, validate_inventory)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,7 +30,9 @@ class SelectionTest(unittest.TestCase):
     def test_legacy_keeps_all_offline_suites_without_flutter(self):
         plan = make_plan(ROOT, legacy=True)
         self.assertEqual(len(plan.java), 5)
-        self.assertEqual(len(plan.node), 9)
+        self.assertEqual(set(plan.node), {
+            name + '.cjs' for suites in NODE_TESTS.values() for name in suites
+        })
         self.assertTrue(plan.icons and plan.examples)
         self.assertFalse(plan.flutter or plan.direct or plan.analyze)
 

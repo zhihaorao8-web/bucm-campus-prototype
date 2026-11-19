@@ -1,5 +1,6 @@
 import '../config/runtime_config.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../domain/schedule.dart';
 import 'classroom_session_cache.dart';
@@ -43,6 +44,8 @@ class ParsedBatch {
 /// UI, persistence and calendar logic are Dart; iOS/Windows XLS adapters are pending.
 class SchoolAdapter {
   static const channel = MethodChannel(AppChannels.school);
+  static final _session = ValueNotifier(0);
+  static ValueListenable<int> get sessionChanges => _session;
   Future<ParsedBatch> download(
     String url,
     String userAgent,
@@ -84,6 +87,7 @@ class SchoolAdapter {
   }
 
   Future<void> clearSession() async {
+    _session.value++;
     TestDiagnostics.shared.clear();
     ClassroomSessionCache.shared.clear();
     await Future.wait<void>([

@@ -14,6 +14,15 @@
 | 工程优化E | 旧Flutter/Java原型与关联清理，运行时资产迁移，文档按职责归并；分项检查通过 | 697de30、fdbbe82、d025f08及状态6c37980已推送；用户继续确认通过，进入F，未新增构建/设备/学校验证 |
 | 工程优化F | 分层CI、精确双包构建/核验、五条复用调试场景已实现；本地及分项远端证据见F节 | e2b39fd、0c35317、d756fed、f0c449c已推送；2026-11-16用户明确审核通过，A–F全部完成审核；主线集成见下节，main保护模板未应用，未发布/安装或新增学校验证 |
 
+## 2026-11-19 图书馆座位预约原生选座与查单
+
+- 基于公开 `kjyy.bucm.edu.cn` 前端脚本核实查询与展示规则：PC 与移动版均按 `(devProp & 2) > 0 || onlyView === true` 筛选可见座位并按 `devSn` 升序排序（解释此前二层北区多出的 6 条设备记录），同时排除 `resvStatus & 128` 已结束预约，解析字符串与毫秒时间戳，并按官方 `resvStatus` 位掩码（`2` 待生效、`4` 生效中、`16` 违约、`64` 已签到、`128` 已结束、`256` 待审核、`512` 审核未通过、`1024` 审核通过、`2048` 暂离中、`4096` 已签离）解码个人预约状态。
+- 实现阶段 4 原生只读选座与查单分层（[library-seat-read.js](../assets/library-seat-read.js)、[library_seats.dart](../mobile/lib/domain/library_seats.dart)、[library_seat_reader.dart](../mobile/lib/platform/library_seat_reader.dart)、[library_seat_queries.dart](../mobile/lib/application/library_seat_queries.dart)、[library_seat_query_page.dart](../mobile/lib/ui/library_seat_query_page.dart)），WebView 桥接脚本在出错时自动重置并严格剔除预约人身份字段，将 [library-seat-read-test.cjs](../tests/library-seat-read-test.cjs) 与 [library_seat_queries_test.dart](../mobile/test/library_seat_queries_test.dart) 登记到 `adapter` 与 `ui` 检查模块。
+- 执行 `python scripts/prepare_flutter.py` 与 `python scripts/check.py --all` 全部通过（报告 `build/checks/report-9080c7dee8454abcbc5afdfdcd0d990d.json`）：`docs` 186 个本地文件目标、`tooling` 37 项、`icons` 与合成示例、`java` 5 组、`node` 10 组（含 `library-seat-read-test.cjs` 6 项）、`flutter analyze` 0 问题、Flutter 默认 318 项通过 / 9 项条件跳过、直取专项 23 项通过（合成覆盖空列表、半空闲/使用中/不开放/仅查看、失败重连、会话过期、退出/清除后迟到响应隔离、浅深色、320px 窄屏、1.5x/2.0x 大字号、高对比度与减少动画）。
+- 构建普通包名（`cn.bucm.campus_schedule`，版本 `0.3` / `code 12`）Debug APK，SHA-256 为 `3383F18FB57225565C2A943B70367A680F66F54E191F10C9C8EAAADEC07B4B8D`，在 `Pixel_8_API_36` 模拟器保留数据安装并核对设备端 `base.apk` 摘要一致。
+- 2026-11-19 23:46–23:51（北京时间）复用本人在可见官方页面完成的统一身份认证会话完成模拟器实机核对：`/ic-web/seatMenu` 返回 2 至 5 层全部 16 个可选区域；二层北区 `2026-11-19 08:30–22:00` 为 `共 282 个座位 · 空闲 282 · 半空闲 0 · 使用中 0 · 不可用 0`（对应官方页 `282/282`）；`2026-11-20 08:30–22:00`（`明天`）为 `共 282 个座位 · 空闲 280 · 半空闲 2 · 使用中 0 · 不可用 0`，与官方移动版同日期同时间段座位分布图逐一吻合（280 空闲、2 半空闲、0 使用中、0 不开放）；选中 `2N001` 显示“已选候选座位”横幅并支持“清除选择”，`仅看空闲` 筛选可切换恢复；`我的预约`（`2026-11-16 至 2026-11-22`）显示 `第 1 页 · 共 0 条` / `暂无座位预约`，与官方 `预约管理` 的“暂无预约”一致。
+- 当前限制与待验：非空个人预约实测留待阶段 5 有真实预约时补验；真实“退出学校会话”会清除课堂本地目录与续播进度，需本人同意后验证；提交预约写入与确认流留待阶段 5，取消预约留待阶段 6，图形化座位分布图不在当前范围。
+
 ## 2026-11-19 图书馆座位预约同源查询验证
 
 - 源码基线为 `a14c489`。查阅学校图书馆公开入口及站点检索结果，未找到公开的座位预约开发者接口文档。本次使用本人此前在 Ego Browser 完成认证的官方预约页面。先观察官网实际发出的查询，再在相同页面独立发送同源 GET。

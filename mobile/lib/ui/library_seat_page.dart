@@ -80,6 +80,12 @@ class _LibrarySeatPageState extends State<LibrarySeatPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('图书馆座位预约'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('返回应用'),
+            ),
+          ],
           leading: IconButton(
             tooltip: '返回',
             icon: const AppIcon(AppIcons.arrowBack),

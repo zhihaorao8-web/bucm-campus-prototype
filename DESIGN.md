@@ -33,7 +33,7 @@
 | 课程信息/冲突抽屉 | showQuietSheet、QuietSheet | 长内容滚动，安全区/关闭/系统返回可用；优先显示仅本次生效，不写回学校课表 | settings、week_stack |
 | 维护/连接恢复 | AppActionButton、ClassroomConnectionCard | 主操作tonal、次操作outline，统一圆角/内边距/48dp最小高度；Wrap允许换行 | classroom_ui_polish、classroom_connection |
 | 图书馆官方认证与回退入口（已实现） | 设置分组、AppArrowPreference、官方WebView、AppActionButton | 在可见的学校页面认证，必要时打开官方预约流程。返回优先站内历史，加载失败可重新打开预约首页 | Android模拟器检查入口、认证、返回与恢复 |
-| 图书馆原生预约界面（计划） | 沿用基础筛选控件、座位列表、确认对话框和操作按钮 | 区域、座位、日期和起止时间在确认时可见。余位、不可用、会话过期和结果待核对均用文字说明 | 按[开发计划](docs/DEVELOPMENT_PLAN.md#图书馆座位预约)分别验收查询、提交和取消 |
+| 图书馆原生预约界面 | 沿用基础筛选控件、座位列表和操作按钮 | 当前展示区域、日期（含今天/明天快捷项）、起止时间、仅看空闲筛选、状态计数、座位列表、已选候选座位与清除选择、我的预约及状态解码；会话过期或清除时清空列表并可打开学校页面登录，返回后重新查询；确认预约和取消按后续阶段实施 | 按[开发计划](docs/DEVELOPMENT_PLAN.md#图书馆座位预约)分别验收查询、提交和取消 |
 | 周/日、录播/直播 | ScheduleModeSwitch、ClassroomSectionSwitch、AppSegmentIndicator | 共用滑动指示器；父组件保留自身标签、语义、焦点和尺寸，不复写动画坐标算法 | schedule_motion、classroom_ui_polish |
 | 星期切换 | WeekdayTabs | 按文字和系统字号测量，七天可达，至少48高；窄屏横滚，禁止固定宽截断汉字 | weekday_tabs |
 | 图标/设置展开 | AppIcon、AppExpansionTile、AppArrowPreference | 离线SVG、语义标签、焦点/禁用反馈；使用统一尾箭头与返回图标 | app_icons、appearance |

@@ -7,7 +7,7 @@
 在仓库根目录执行；首次准备公开依赖/资产与Flutter环境见[DEVELOPMENT](DEVELOPMENT.md)。脚本不自动下载依赖或运行pub get，缺少环境/锁定依赖直接失败。
 
 ```powershell
-# 无参数保持旧CI离线行为：图标、合成样本、5组Java、9组Node，无Flutter
+# 无参数运行离线检查，包括图标、合成样本和已登记的 Java/Node 检查
 python scripts/check.py
 # 明确模块；可重复--module组合，重叠测试去重
 python scripts/check.py --module schedule
@@ -36,8 +36,8 @@ python scripts/check.py --module docs --module tooling
 | storage | 无Java/Node | 原子文件、课表恢复、目录（含旧关联清理）、续播存储、外观；覆盖相应仓库读写与失败保护 |
 | classroom | 目录DOM、入口导航、目录API和桥接Node | 课程匹配、分页/来源组、进度、连接/恢复、短时缓存、时间线、提示与诊断 |
 | player | 独立媒体传输Java、播放准备Node | 播放控制器、路由、横屏、控件显隐、手势/进度条预览、小窗与续播 |
-| ui | 图标资产摘要与许可检查 | 主题、导航、设置、外观、材质/按压、课堂列表、艺术标题及语录 |
-| adapter | 课表解析/XLS/作息/教师Java，导出/DOM范围/缩放Node | 课程模型、学校URL/认证边界及图书馆主文档导航白名单 |
+| ui | 图标资产摘要与许可检查 | 主题、导航、设置、外观、材质/按压、课堂列表、艺术标题、语录及图书馆只读查询页 |
+| adapter | 课表解析/XLS/作息/教师Java，导出/DOM范围/缩放Node，图书馆只读脚本的字段边界和固定请求 | 课程模型、学校URL/认证边界、图书馆主文档校验、时段状态和会话切换 |
 | tooling | 检查调度Python回归、图标、示例标记 | 无 |
 
 模块是当前测试文件的命名集合，不宣称已拆成独立Dart package，也不宣称每个文件内只有一个测试层级。准确集合以check_plan.py输出为准；新增/删除Flutter或Java/Node测试必须更新注册表，否则立即报错，不默默跳过。预览截图显式排除，见下文。
