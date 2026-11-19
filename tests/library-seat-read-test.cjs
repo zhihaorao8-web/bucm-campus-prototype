@@ -37,7 +37,14 @@ test('seat query uses the official visible bit, sorts by devSn, drops finished e
     devStatus: 0,
     openStart: '08:30',
     openEnd: '22:00',
-    resvRule: { minResvTime: 30 },
+    resvRule: {
+      minResvTime: 30,
+      maxResvTime: 240,
+      earliestResvTime: 1440,
+      latestResvTime: 0,
+      cancelTime: 30,
+      limit: 8,
+    },
     openTimes: [{ openStartTime: '08:30:00', openEndTime: '22:00:00' }],
     resvInfo: [
       { startTime: '2026-10-10 12:30:00', endTime: '2026-10-10 13:30:00', resvStatus: 4, trueName: '合成姓名' },
@@ -69,6 +76,14 @@ test('seat query uses the official visible bit, sorts by devSn, drops finished e
   assert.deepEqual(data.rows.map(row => row.id), ['103', '100', '102']);
   assert.equal(data.rows[2].viewOnly, true);
   assert.deepEqual(data.rows[0].hours, [['08:30', '22:00']]);
+  assert.deepEqual(data.rows[0].rule, {
+    minMinutes: 30,
+    maxMinutes: 240,
+    earliestMinutes: 1440,
+    latestMinutes: 0,
+    cancelMinutes: 30,
+    limit: 8,
+  });
   assert.deepEqual(data.rows[0].reservations, [['2026-10-10 14:00', '2026-10-10 15:30']]);
   assert.deepEqual(data.rows[1].reservations, [['2026-10-10 12:30', '2026-10-10 13:30']]);
   assert.doesNotMatch(JSON.stringify(data), /trueName|合成姓名|devProp|logonName|合成学号|accNo/);

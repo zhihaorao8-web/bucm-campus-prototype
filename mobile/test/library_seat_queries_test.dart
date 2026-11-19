@@ -24,6 +24,7 @@ LibrarySeat seat({
   bool open = true,
   List<LibraryHours> hours = const [(510, 1320)],
   List<LibraryInterval> reservations = const [],
+  LibrarySeatRule? rule,
 }) => LibrarySeat(
   id: id,
   label: label,
@@ -31,6 +32,7 @@ LibrarySeat seat({
   viewOnly: viewOnly,
   hours: hours,
   reservations: reservations,
+  rule: rule,
 );
 
 class FakeLibrarySeatReader extends LibrarySeatReader {
@@ -44,6 +46,14 @@ class FakeLibrarySeatReader extends LibrarySeatReader {
   Future<List<LibrarySeat>> Function(String area, DateTime date)? onSeats;
   Future<LibraryBookingPage> Function(DateTime begin, DateTime end, int page)?
   onBookings;
+  Future<LibraryWriteResult> Function(
+    String seatId,
+    DateTime date,
+    int startMinutes,
+    int endMinutes,
+  )?
+  onReserve;
+  int reserveCalls = 0;
   int resetCount = 0;
 
   @override
@@ -64,6 +74,20 @@ class FakeLibrarySeatReader extends LibrarySeatReader {
   Future<LibraryBookingPage> bookings(DateTime begin, DateTime end, int page) {
     if (onBookings != null) return onBookings!(begin, end, page);
     return Future.value(LibraryBookingPage(const [], false, page: page));
+  }
+
+  @override
+  Future<LibraryWriteResult> reserve({
+    required String seatId,
+    required DateTime date,
+    required int startMinutes,
+    required int endMinutes,
+  }) {
+    reserveCalls++;
+    if (onReserve != null) {
+      return onReserve!(seatId, date, startMinutes, endMinutes);
+    }
+    return Future.value(const LibraryWriteResult(LibraryWriteStatus.ok));
   }
 
   @override
@@ -584,11 +608,385 @@ void main() {
         await reveal(tester, find.text('A001'));
         await tester.tap(find.text('A001'));
         await tester.pumpAndSettle();
-        await reveal(tester, find.text('已选候选座位'));
-        expect(find.text('已选候选座位'), findsOneWidget);
+        await reveal(tester, find.text('确认预约'));
+        await tester.tap(find.text('确认预约'));
+        await tester.pumpAndSettle();
+        expect(find.text('确认预约座位'), findsOneWidget);
+        await tester.tap(find.text('取消'));
+        await tester.pumpAndSettle();
+        expect(reader.reserveCalls, 0);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       },
     );
   }
+
+  test('seat rules decode limits, check durations, and match confirmed bookings', () {
+    const rule = LibrarySeatRule(
+      minMinutes: 30,
+      maxMinutes: 240,
+      earliestMinutes: 1440,
+      latestMinutes: 0,
+      cancelMinutes: 30,
+      limit: 1 | 8 | 32,
+    );
+    expect(formatLibraryDuration(150), '2 小时 30 分钟');
+    expect(formatLibraryDuration(1440), '1 天');
+    expect(rule.limitLabels, ['需要审核', '增删改预约不发送短信', '预约结束必须操作才能离开']);
+    expect(rule.durationViolation(540, 550), contains('至少 30 分钟'));
+    expect(rule.durationViolation(540, 900), contains('最长 4 小时'));
+    expect(rule.durationViolation(540, 660), isNull);
+
+    final req = LibraryBookingRequest(
+      areaId: '32',
+      areaName: '二层北区',
+      areaLabel: '二层 · 二层北区',
+      seatId: '100',
+      seatLabel: '2N001',
+      date: DateTime(2026, 10, 10),
+      startMinutes: 540,
+      endMinutes: 660,
+      rule: rule,
+    );
+    expect(req.beginTimestamp, '2026-10-10 09:00');
+    expect(req.endTimestamp, '2026-10-10 11:00');
+    expect(req.weekBegin, DateTime(2026, 10, 5));
+    expect(req.weekEnd, DateTime(2026, 10, 11));
+    expect(
+      req.matchesBooking(
+        const LibraryBooking(
+          '5566',
+          '二层北区',
+          '2N001',
+          '2026-10-10 09:00',
+          '2026-10-10 11:00',
+          2,
+        ),
+        bookingId: '5566',
+      ),
+      true,
+    );
+    expect(
+      req.matchesBooking(
+        const LibraryBooking(
+          '9999',
+          '二层北区',
+          '2N001',
+          '2026-10-10 09:00',
+          '2026-10-10 11:00',
+          128,
+        ),
+        bookingId: '5566',
+      ),
+      false,
+    );
+    expect(
+      req.matchesBooking(
+        const LibraryBooking(
+          '5566',
+          '二层北区',
+          '2N001',
+          '2026-10-10 09:00',
+          '2026-10-10 11:00',
+          2,
+        ),
+      ),
+      true,
+    );
+  });
+
+  test('duplicate submitReservation calls send only one write', () async {
+    final writeCompleter = Completer<LibraryWriteResult>();
+    final reader = FakeLibrarySeatReader()
+      ..onSeats = ((_, _) async => [seat(id: '100', label: 'N001')])
+      ..onReserve = ((_, _, _, _) => writeCompleter.future)
+      ..onBookings = ((_, _, _) async => const LibraryBookingPage([
+        LibraryBooking(
+          '5566',
+          '二层北区',
+          'N001',
+          '2026-10-10 08:30',
+          '2026-10-10 22:00',
+          2,
+        ),
+      ], false));
+    final controller = LibrarySeatQueries(reader);
+    addTearDown(controller.dispose);
+
+    final req = LibraryBookingRequest(
+      areaId: '32',
+      areaName: '二层北区',
+      areaLabel: '二层 · 二层北区',
+      seatId: '100',
+      seatLabel: 'N001',
+      date: day,
+      startMinutes: 510,
+      endMinutes: 1320,
+    );
+
+    final first = controller.submitReservation(req);
+    final second = await controller.submitReservation(req);
+    expect(second, isNull);
+    writeCompleter.complete(
+      const LibraryWriteResult(LibraryWriteStatus.ok, bookingId: '5566'),
+    );
+    final outcome = await first;
+    expect(reader.reserveCalls, 1);
+    expect(outcome?.kind, LibrarySubmissionKind.confirmed);
+  });
+
+  testWidgets(
+    'confirmation dialog verifies rules and confirms single submission into my bookings',
+    variant: androidOnly,
+    (tester) async {
+      const rule = LibrarySeatRule(
+        minMinutes: 30,
+        maxMinutes: 900,
+        earliestMinutes: 1440,
+        latestMinutes: 0,
+        cancelMinutes: 30,
+        limit: 8,
+      );
+      var bookings = const <LibraryBooking>[];
+      final reader = FakeLibrarySeatReader()
+        ..onSeats = ((_, _) async => [seat(id: '100', label: 'N001', rule: rule)])
+        ..onReserve = ((_, _, _, _) async {
+          bookings = const [
+            LibraryBooking(
+              '5566',
+              '二层北区',
+              'N001',
+              '2026-10-10 08:30',
+              '2026-10-10 22:00',
+              2,
+            ),
+          ];
+          return const LibraryWriteResult(
+            LibraryWriteStatus.ok,
+            bookingId: '5566',
+            message: '预约成功',
+          );
+        })
+        ..onBookings = ((_, _, page) async => LibraryBookingPage(
+          bookings,
+          false,
+          page: page,
+          totalCount: bookings.length,
+        ));
+
+      // Before 08:30 so default 08:30-22:00 is not in the past.
+      await tester.pumpWidget(
+        wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
+      );
+      await tester.pumpAndSettle();
+
+      await reveal(tester, find.text('N001'));
+      await tester.tap(find.text('N001'));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('确认预约'));
+      await tester.tap(find.text('确认预约'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('确认预约座位'), findsOneWidget);
+      expect(find.text('日期：2026-10-10'), findsOneWidget);
+      expect(find.text('时段：08:30–22:00'), findsOneWidget);
+      expect(find.textContaining('最长 15 小时'), findsWidgets);
+      expect(find.textContaining('最多提前 1 天'), findsWidgets);
+
+      // Cancel issues zero writes.
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(reader.reserveCalls, 0);
+
+      // Confirm once issues one write and verifies in bookings.
+      await tester.tap(find.text('确认预约'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('确认提交预约'));
+      await tester.pumpAndSettle();
+
+      expect(reader.reserveCalls, 1);
+      expect(find.text('预约已核对'), findsOneWidget);
+      expect(find.textContaining('预约编号 5566'), findsOneWidget);
+
+      await tester.tap(find.text('查看“我的预约”'));
+      await tester.pumpAndSettle();
+      expect(find.text('二层北区 · N001'), findsOneWidget);
+      expect(find.text('待生效 · 预约编号 5566'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'dialog blocks invalid duration or past start time on today without sending writes',
+    variant: androidOnly,
+    (tester) async {
+      const strictRule = LibrarySeatRule(minMinutes: 30, maxMinutes: 240);
+      final reader = FakeLibrarySeatReader()
+        ..onSeats = ((_, _) async => [
+          seat(id: '100', label: 'N001', rule: strictRule),
+        ]);
+
+      await tester.pumpWidget(
+        wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 9, 30)),
+      );
+      await tester.pumpAndSettle();
+
+      await reveal(tester, find.text('N001'));
+      await tester.tap(find.text('N001'));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('确认预约'));
+      await tester.tap(find.text('确认预约'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('开始时间早于当前时间，请先调整开始时间。'), findsOneWidget);
+      final pastConfirm = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, '确认提交预约'),
+      );
+      expect(pastConfirm.onPressed, isNull);
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('明天'));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('N001'));
+      await tester.tap(find.text('N001'));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('确认预约'));
+      await tester.tap(find.text('确认预约'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('超过学校允许的最长时长'), findsOneWidget);
+      final overDurationConfirm = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, '确认提交预约'),
+      );
+      expect(overDurationConfirm.onPressed, isNull);
+      expect(reader.reserveCalls, 0);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'handles availability change, rejection, web-required, auth interruption without auto-retry, and uncertain查单',
+    variant: androidOnly,
+    (tester) async {
+      var seatsResult = [seat(id: '100', label: 'N001')];
+      LibraryWriteResult Function() reserveBehavior = () =>
+          const LibraryWriteResult(LibraryWriteStatus.ok, bookingId: '1');
+      final reader = FakeLibrarySeatReader()
+        ..onSeats = ((_, _) async => seatsResult)
+        ..onReserve = ((_, _, _, _) async => reserveBehavior())
+        ..onBookings = ((_, _, page) async => LibraryBookingPage(
+          const [
+            LibraryBooking(
+              '8001',
+              '二层北区',
+              'N001',
+              '2026-10-10 08:30',
+              '2026-10-10 22:00',
+              2,
+            ),
+          ],
+          false,
+          page: page,
+          totalCount: 1,
+        ));
+
+      Future<void> openAndConfirmFirstSeat() async {
+        await reveal(tester, find.text('N001'));
+        await tester.tap(find.text('N001'));
+        await tester.pumpAndSettle();
+        await reveal(tester, find.text('确认预约'));
+        await tester.tap(find.text('确认预约'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('确认提交预约'));
+        await tester.pumpAndSettle();
+      }
+
+      await tester.pumpWidget(
+        wrapLibraryPage(
+          reader,
+          now: () => DateTime(2026, 10, 10, 8, 0),
+          officialPageBuilder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () {
+                  seatsResult = [seat(id: '100', label: 'N001')];
+                  Navigator.of(context).pop();
+                },
+                child: const Text('认证完成返回'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 1. Availability changed during pre-check -> 0 writes.
+      await reveal(tester, find.text('N001'));
+      await tester.tap(find.text('N001'));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('确认预约'));
+      await tester.tap(find.text('确认预约'));
+      await tester.pumpAndSettle();
+      seatsResult = [
+        seat(id: '100', label: 'N001', reservations: [(at(10), at(12))]),
+      ];
+      await tester.tap(find.text('确认提交预约'));
+      await tester.pumpAndSettle();
+      expect(find.text('余位已变化，未提交预约'), findsOneWidget);
+      expect(reader.reserveCalls, 0);
+
+      // Reset seat back to available.
+      seatsResult = [seat(id: '100', label: 'N001')];
+      await tester.tap(find.text('刷新座位'));
+      await tester.pumpAndSettle();
+
+      // 2. School rejection -> 1 write, no retry.
+      reserveBehavior = () => const LibraryWriteResult(
+        LibraryWriteStatus.rejected,
+        message: '预约人数已达上限',
+      );
+      await openAndConfirmFirstSeat();
+      expect(reader.reserveCalls, 1);
+      expect(find.text('学校平台未受理预约'), findsOneWidget);
+      expect(find.textContaining('预约人数已达上限'), findsOneWidget);
+
+      // 3. Web required -> 1 write call (preflight stopped in bridge), no retry.
+      reserveBehavior = () => const LibraryWriteResult(
+        LibraryWriteStatus.webRequired,
+        reason: 'captcha',
+      );
+      await openAndConfirmFirstSeat();
+      expect(reader.reserveCalls, 2);
+      expect(find.text('需要前往学校网页完成确认'), findsOneWidget);
+      expect(find.textContaining('验证码'), findsOneWidget);
+
+      // 4. Auth interrupted -> clears personal data, re-login does NOT auto-retry POST!
+      reserveBehavior = () =>
+          const LibraryWriteResult(LibraryWriteStatus.login);
+      await openAndConfirmFirstSeat();
+      expect(reader.reserveCalls, 3);
+      expect(find.text('登录状态已中断，已停止本次提交'), findsOneWidget);
+      expect(find.text('需要登录学校账号'), findsNothing);
+      expect(find.text('N001'), findsNothing);
+      await tester.tap(find.text('打开学校页面登录').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('认证完成返回'));
+      await tester.pumpAndSettle();
+      expect(reader.reserveCalls, 3);
+      expect(find.text('N001'), findsOneWidget);
+
+      // 5. Timeout / uncertain -> no auto-retry, prompts user to verify in My Bookings.
+      reserveBehavior = () =>
+          const LibraryWriteResult(LibraryWriteStatus.uncertain);
+      await openAndConfirmFirstSeat();
+      expect(reader.reserveCalls, 4);
+      expect(find.text('提交结果暂不明确，请先查单'), findsOneWidget);
+      await tester.tap(find.text('去“我的预约”查单'));
+      await tester.pumpAndSettle();
+      expect(reader.reserveCalls, 4);
+      expect(find.text('待生效 · 预约编号 8001'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 }

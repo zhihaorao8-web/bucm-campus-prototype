@@ -42,6 +42,85 @@ String formatLibraryInterval(LibraryInterval interval) {
   return '${hhmm(begin)}–${hhmm(end)}';
 }
 
+String formatLibraryDuration(int minutes) {
+  if (minutes <= 0) return '0 分钟';
+  final days = minutes ~/ 1440;
+  final rem = minutes % 1440;
+  final hours = rem ~/ 60;
+  final mins = rem % 60;
+  final parts = <String>[
+    if (days > 0) '$days 天',
+    if (hours > 0) '$hours 小时',
+    if (mins > 0) '$mins 分钟',
+  ];
+  return parts.join(' ');
+}
+
+const _ruleLimitFlags = <(int, String)>[
+  (1, '需要审核'),
+  (2, '暂时离开超时仍保留'),
+  (8, '增删改预约不发送短信'),
+  (16, '仅适用活动'),
+  (32, '预约结束必须操作才能离开'),
+  (64, '开始时间须为当前时间或开馆时间'),
+  (128, '结束时间须为闭馆时间'),
+];
+
+class LibrarySeatRule {
+  const LibrarySeatRule({
+    this.minMinutes,
+    this.maxMinutes,
+    this.earliestMinutes,
+    this.latestMinutes,
+    this.cancelMinutes,
+    this.limit,
+  });
+
+  final int? minMinutes,
+      maxMinutes,
+      earliestMinutes,
+      latestMinutes,
+      cancelMinutes,
+      limit;
+
+  factory LibrarySeatRule.fromJson(Map<String, dynamic> json) =>
+      LibrarySeatRule(
+        minMinutes: json['minMinutes'] as int?,
+        maxMinutes: json['maxMinutes'] as int?,
+        earliestMinutes: json['earliestMinutes'] as int?,
+        latestMinutes: json['latestMinutes'] as int?,
+        cancelMinutes: json['cancelMinutes'] as int?,
+        limit: json['limit'] as int?,
+      );
+
+  List<String> get limitLabels {
+    final value = limit;
+    if (value == null || value == 0) return const [];
+    return List.unmodifiable([
+      for (final (flag, label) in _ruleLimitFlags)
+        if ((value & flag) != 0) label,
+    ]);
+  }
+
+  String? durationViolation(int startMinutes, int endMinutes) {
+    if (startMinutes >= endMinutes) return '结束时间须晚于开始时间。';
+    final duration = endMinutes - startMinutes;
+    final min = minMinutes;
+    final max = maxMinutes;
+    final range = [
+      if (min != null && min > 0) '至少 ${formatLibraryDuration(min)}',
+      if (max != null && max > 0) '最长 ${formatLibraryDuration(max)}',
+    ].join('，');
+    if (min != null && min > 0 && duration < min) {
+      return '所选时长短于学校允许的最短时长（$range）。';
+    }
+    if (max != null && max > 0 && duration > max) {
+      return '所选时长超过学校允许的最长时长（$range）。';
+    }
+    return null;
+  }
+}
+
 class LibraryArea {
   const LibraryArea(this.id, this.name, this.floor);
 
@@ -69,12 +148,14 @@ class LibrarySeat {
     required this.viewOnly,
     required this.hours,
     required this.reservations,
+    this.rule,
   });
 
   final String id, label;
   final bool open, viewOnly;
   final List<LibraryHours> hours;
   final List<LibraryInterval> reservations;
+  final LibrarySeatRule? rule;
 
   factory LibrarySeat.fromJson(Map<String, dynamic> json) => LibrarySeat(
     id: json['id'] as String,
@@ -95,6 +176,9 @@ class LibrarySeat {
           ),
         )
         .toList(),
+    rule: json['rule'] is Map<String, dynamic>
+        ? LibrarySeatRule.fromJson(json['rule'] as Map<String, dynamic>)
+        : null,
   );
 
   static (DateTime, DateTime) _window(DateTime date, int start, int end) {
@@ -182,4 +266,40 @@ class LibraryBookingPage {
   final bool hasMore;
   final int page;
   final int totalCount;
+}
+
+class LibraryBookingRequest {
+  const LibraryBookingRequest({
+    required this.areaId,
+    required this.areaName,
+    required this.areaLabel,
+    required this.seatId,
+    required this.seatLabel,
+    required this.date,
+    required this.startMinutes,
+    required this.endMinutes,
+    this.rule,
+  });
+
+  final String areaId, areaName, areaLabel, seatId, seatLabel;
+  final DateTime date;
+  final int startMinutes, endMinutes;
+  final LibrarySeatRule? rule;
+
+  String get beginTimestamp =>
+      '${isoDate(date)} ${formatClockMinutes(startMinutes)}';
+  String get endTimestamp =>
+      '${isoDate(date)} ${formatClockMinutes(endMinutes)}';
+  DateTime get weekBegin => calendarAdd(date, 1 - date.weekday);
+  DateTime get weekEnd => calendarAdd(weekBegin, 6);
+
+  bool matchesBooking(LibraryBooking booking, {String bookingId = ''}) {
+    if (bookingId.isNotEmpty) return booking.id == bookingId;
+    return booking.seat == seatLabel &&
+        booking.begin == beginTimestamp &&
+        booking.end == endTimestamp &&
+        (booking.room.isEmpty ||
+            areaName.isEmpty ||
+            booking.room == areaName);
+  }
 }

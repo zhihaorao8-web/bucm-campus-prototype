@@ -10,6 +10,29 @@ import '../domain/schedule.dart';
 
 enum LibraryReadFailure { login, unavailable }
 
+enum LibraryWriteStatus {
+  ok,
+  rejected,
+  login,
+  webRequired,
+  precheckFailed,
+  uncertain,
+}
+
+class LibraryWriteResult {
+  const LibraryWriteResult(
+    this.status, {
+    this.bookingId = '',
+    this.message = '',
+    this.reason = '',
+  });
+
+  final LibraryWriteStatus status;
+  final String bookingId;
+  final String message;
+  final String reason;
+}
+
 class LibrarySeatReader {
   HeadlessInAppWebView? _view;
   Future<InAppWebViewController?>? _opening;
@@ -84,21 +107,7 @@ class LibrarySeatReader {
       if (!identical(_opening, opening)) throw LibraryReadFailure.unavailable;
       final response = await web
           .callAsyncJavaScript(
-            functionBody: src
-                .replaceFirst('__LIBRARY_SEAT_COMMAND__', jsonEncode(job))
-                .replaceFirst(
-                  '__LIBRARY_SEAT_CONFIG__',
-                  jsonEncode({
-                    'origin': _origin,
-                    'document': _path,
-                    'bookingPageSize': LibrarySeatPolicy.bookingPageSize,
-                    'bookingStatusFilter':
-                        LibrarySeatPolicy.bookingStatusFilter,
-                    'timeout': LibrarySeatPolicy.timeout.inMilliseconds,
-                    'maxRows': LibrarySeatPolicy.maxRows,
-                    'maxBodyBytes': LibrarySeatPolicy.maxBodyBytes,
-                  }),
-                ),
+            functionBody: _scriptWithCommand(src, job),
           )
           .timeout(LibrarySeatPolicy.timeout + const Duration(seconds: 2));
       final value = response?.value;
@@ -125,6 +134,93 @@ class LibrarySeatReader {
     } catch (_) {
       if (identical(_opening, opening)) await reset();
       throw LibraryReadFailure.unavailable;
+    }
+  }
+
+  String _scriptWithCommand(String src, Map<String, Object> job) => src
+      .replaceFirst('__LIBRARY_SEAT_COMMAND__', jsonEncode(job))
+      .replaceFirst(
+        '__LIBRARY_SEAT_CONFIG__',
+        jsonEncode({
+          'origin': _origin,
+          'document': _path,
+          'bookingPageSize': LibrarySeatPolicy.bookingPageSize,
+          'bookingStatusFilter': LibrarySeatPolicy.bookingStatusFilter,
+          'timeout': LibrarySeatPolicy.timeout.inMilliseconds,
+          'maxRows': LibrarySeatPolicy.maxRows,
+          'maxBodyBytes': LibrarySeatPolicy.maxBodyBytes,
+        }),
+      );
+
+  Future<LibraryWriteResult> reserve({
+    required String seatId,
+    required DateTime date,
+    required int startMinutes,
+    required int endMinutes,
+  }) async {
+    final opening = _opening ??= _open();
+    final web = await opening.catchError((Object _) => null);
+    if (web == null || !identical(_opening, opening)) {
+      if (identical(_opening, opening)) await reset();
+      return const LibraryWriteResult(LibraryWriteStatus.precheckFailed);
+    }
+    var invoked = false;
+    try {
+      final src = await rootBundle.loadString(LibrarySeatPolicy.writeAsset);
+      if (!identical(_opening, opening)) {
+        return const LibraryWriteResult(LibraryWriteStatus.precheckFailed);
+      }
+      final body = _scriptWithCommand(src, {
+        'action': 'reserve',
+        'seat': seatId,
+        'date': isoDate(date),
+        'start': formatClockMinutes(startMinutes),
+        'end': formatClockMinutes(endMinutes),
+      });
+      invoked = true;
+      final response = await web
+          .callAsyncJavaScript(functionBody: body)
+          .timeout(LibrarySeatPolicy.timeout + const Duration(seconds: 2));
+      final value = response?.value;
+      if (!identical(_opening, opening) ||
+          response?.error != null ||
+          value is! String ||
+          value.length > LibrarySeatPolicy.maxBodyBytes) {
+        if (identical(_opening, opening)) await reset();
+        return const LibraryWriteResult(LibraryWriteStatus.uncertain);
+      }
+      final payload = jsonDecode(value) as Map<String, dynamic>;
+      String field(String key) => payload[key] is String ? payload[key] as String : '';
+      switch (payload['status']) {
+        case 'ok':
+          return LibraryWriteResult(
+            LibraryWriteStatus.ok,
+            bookingId: field('bookingId'),
+            message: field('message'),
+          );
+        case 'rejected':
+          return LibraryWriteResult(
+            LibraryWriteStatus.rejected,
+            message: field('message'),
+          );
+        case 'login':
+          return const LibraryWriteResult(LibraryWriteStatus.login);
+        case 'web_required':
+          return LibraryWriteResult(
+            LibraryWriteStatus.webRequired,
+            reason: field('reason'),
+          );
+        case 'precheck_error':
+          return const LibraryWriteResult(LibraryWriteStatus.precheckFailed);
+        default:
+          if (identical(_opening, opening)) await reset();
+          return const LibraryWriteResult(LibraryWriteStatus.uncertain);
+      }
+    } catch (_) {
+      if (identical(_opening, opening)) await reset();
+      return LibraryWriteResult(
+        invoked ? LibraryWriteStatus.uncertain : LibraryWriteStatus.precheckFailed,
+      );
     }
   }
 

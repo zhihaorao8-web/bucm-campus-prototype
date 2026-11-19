@@ -43,6 +43,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
       _onlyAvailable = false;
 
   DateTime _currentSchoolNow() => (widget.now ?? schoolNow)();
+  bool get _busy => _openingOfficial || _queries.submitting;
 
   @override
   void initState() {
@@ -121,13 +122,30 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   }
 
   Future<void> _loadBookings([int page = 1]) {
+    if (_busy) return Future<void>.value();
     _bookingPage = page;
     _selected = null;
     return _queries.loadBookings(_bookingBegin, _bookingEnd, page);
   }
 
+  Future<void> _openBookingsFor(DateTime date, {bool reload = true}) async {
+    if (_busy) return;
+    final begin = calendarAdd(date, 1 - date.weekday);
+    final end = calendarAdd(begin, 6);
+    setState(() {
+      _showBookings = true;
+      _bookingBegin = begin;
+      _bookingEnd = end;
+      _bookingPage = 1;
+      _selected = null;
+    });
+    if (reload || _queries.bookings == null) {
+      await _queries.loadBookings(begin, end, 1);
+    }
+  }
+
   Future<void> _official() async {
-    if (_openingOfficial) return;
+    if (_busy) return;
     setState(() {
       _openingOfficial = true;
       _selected = null;
@@ -146,10 +164,12 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   }
 
   Future<void> _selectSeatDate(DateTime date) async {
+    if (_busy) return;
     final normalized = dateOnly(date);
     if (normalized == _date && _queries.seats != null && !_queries.failed) {
       return;
     }
+    _queries.clearSubmission();
     setState(() {
       _date = normalized;
       _start = _end = null;
@@ -159,6 +179,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   }
 
   Future<void> _chooseDate() async {
+    if (_busy) return;
     final today = dateOnly(_currentSchoolNow());
     final date = await showDatePicker(
       context: context,
@@ -172,6 +193,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   }
 
   Future<void> _chooseTime(bool start) async {
+    if (_busy) return;
     final time = await showTimePicker(
       context: context,
       initialTime:
@@ -179,6 +201,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
       helpText: start ? '选择开始时间' : '选择结束时间',
     );
     if (time == null || !mounted) return;
+    _queries.clearSubmission();
     setState(() {
       if (start) {
         _start = time;
@@ -190,6 +213,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   }
 
   Future<void> _chooseBookingDates() async {
+    if (_busy) return;
     final today = dateOnly(_currentSchoolNow());
     final range = await showDateRangePicker(
       context: context,
@@ -205,9 +229,179 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   }
 
   void _switch(bool bookings) {
-    if (bookings == _showBookings || _openingOfficial) return;
+    if (bookings == _showBookings || _busy) return;
     setState(() => _showBookings = bookings);
     unawaited(bookings ? _loadBookings(_bookingPage) : _loadSeats());
+  }
+
+  List<String> _ruleLines(LibrarySeat seat) {
+    final lines = <String>[];
+    if (seat.hours.isNotEmpty) {
+      final windows = seat.hours
+          .map(
+            (h) =>
+                '${formatClockMinutes(h.$1)}–${formatClockMinutes(h.$2)}',
+          )
+          .join('、');
+      lines.add('当日开放：$windows');
+    }
+    final rule = seat.rule;
+    if (rule != null) {
+      final min = rule.minMinutes;
+      final max = rule.maxMinutes;
+      if ((min != null && min > 0) || (max != null && max > 0)) {
+        final parts = [
+          if (min != null && min > 0) '最短 ${formatLibraryDuration(min)}',
+          if (max != null && max > 0) '最长 ${formatLibraryDuration(max)}',
+        ];
+        lines.add('允许时长：${parts.join(' · ')}');
+      }
+      final earliest = rule.earliestMinutes;
+      final latest = rule.latestMinutes;
+      if (earliest != null || latest != null) {
+        if ((earliest ?? 0) == 0 && (latest ?? 0) == 0) {
+          lines.add('提前预约范围：当天');
+        } else if (earliest != null && earliest > 0) {
+          final latestText = latest != null && latest > 0
+              ? '提前 ${formatLibraryDuration(latest)} 至 '
+              : '最多提前 ';
+          lines.add('提前预约范围：$latestText${formatLibraryDuration(earliest)}');
+        }
+      }
+      final cancel = rule.cancelMinutes;
+      if (cancel != null && cancel > 0) {
+        lines.add(
+          '签到提示：预约生效后 ${formatLibraryDuration(cancel)} 内未签到即视作违约 1 次，预约不再保留',
+        );
+      }
+      if (rule.limitLabels.isNotEmpty) {
+        lines.add('规则限制：${rule.limitLabels.join('、')}');
+      }
+    }
+    if (lines.isEmpty) {
+      lines.add('适用规则：以学校平台实时校验为准');
+    }
+    return lines;
+  }
+
+  Future<void> _confirmReservation(
+    LibrarySeat seat,
+    TimeOfDay start,
+    TimeOfDay end,
+  ) async {
+    if (_busy) return;
+    final startMin = _minutes(start);
+    final endMin = _minutes(end);
+    final now = _currentSchoolNow();
+    final pastTodayStart =
+        _date == dateOnly(now) && startMin < now.hour * 60 + now.minute;
+    final durationIssue = seat.rule?.durationViolation(startMin, endMin);
+    final blockingReason = pastTodayStart
+        ? '开始时间早于当前时间，请先调整开始时间。'
+        : durationIssue;
+    final area = _area;
+    final areaLabel = area?.label ?? '';
+    final ruleLines = _ruleLines(seat);
+    var confirmed = false;
+
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        final colors = theme.colorScheme;
+        return AlertDialog(
+          title: const Text('确认预约座位'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  areaLabel.isEmpty ? seat.label : '$areaLabel · ${seat.label}',
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpace.xs),
+                Text(
+                  '日期：${isoDate(_date)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontFeatures: tabularTime,
+                  ),
+                ),
+                const SizedBox(height: AppSpace.xs),
+                Text(
+                  '时段：${_clockText(start)}–${_clockText(end)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontFeatures: tabularTime,
+                  ),
+                ),
+                const SizedBox(height: AppSpace.md),
+                Text('适用规则', style: theme.textTheme.titleSmall),
+                const SizedBox(height: AppSpace.xs),
+                for (final line in ruleLines)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                    child: Text(
+                      line,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                if (blockingReason != null) ...[
+                  const SizedBox(height: AppSpace.sm),
+                  Text(
+                    blockingReason,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.error,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: AppSpace.sm),
+                Text(
+                  '确认后将向学校平台发送一次预约申请，并在“我的预约”中回查结果。',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: blockingReason != null
+                  ? null
+                  : () {
+                      if (confirmed) return;
+                      confirmed = true;
+                      Navigator.of(dialogContext).pop(true);
+                    },
+              child: const Text('确认提交预约'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (proceed != true || !mounted || _busy) return;
+    final request = LibraryBookingRequest(
+      areaId: area?.id ?? '',
+      areaName: area?.name ?? '',
+      areaLabel: areaLabel,
+      seatId: seat.id,
+      seatLabel: seat.label,
+      date: _date,
+      startMinutes: startMin,
+      endMinutes: endMin,
+      rule: seat.rule,
+    );
+    final outcome = await _queries.submitReservation(request);
+    if (!mounted || outcome == null) return;
+    setState(() => _selected = null);
   }
 
   String _timeLabel(TimeOfDay? value, String placeholder) =>
@@ -333,12 +527,12 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                           ChoiceChip(
                             label: const Text('选座'),
                             selected: !_showBookings,
-                            onSelected: (_) => _switch(false),
+                            onSelected: _busy ? null : (_) => _switch(false),
                           ),
                           ChoiceChip(
                             label: const Text('我的预约'),
                             selected: _showBookings,
-                            onSelected: (_) => _switch(true),
+                            onSelected: _busy ? null : (_) => _switch(true),
                           ),
                           TextButton(
                             style: TextButton.styleFrom(
@@ -347,24 +541,37 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                                 AppLayout.minTap,
                               ),
                             ),
-                            onPressed: _openingOfficial ? null : _official,
+                            onPressed: _busy ? null : _official,
                             child: Text(
                               _queries.needsLogin ? '打开学校页面登录' : '学校预约网页',
                             ),
                           ),
                         ],
                       ),
-                      if (_queries.loading) ...[
+                      if (_queries.loading || _queries.submitting) ...[
                         const SizedBox(height: AppSpace.md),
                         const ClipRRect(
                           borderRadius: BorderRadius.all(Radius.circular(4)),
                           child: LinearProgressIndicator(minHeight: 3),
                         ),
+                        if (_queries.submitting) ...[
+                          const SizedBox(height: AppSpace.sm),
+                          Text(
+                            '正在核对余位并提交预约…',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ],
                     ],
                   ),
                 ),
               ),
+              if (_queries.submission != null) ...[
+                const SizedBox(height: AppSpace.md),
+                _submissionCard(context, _queries.submission!),
+              ],
               if (_queries.sessionCleared &&
                   !_queries.loading &&
                   !_queries.needsLogin &&
@@ -378,13 +585,13 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                     AppActionButton(
                       label: '打开学校页面登录',
                       icon: AppIcons.chevronRight,
-                      onPressed: _openingOfficial ? null : _official,
+                      onPressed: _busy ? null : _official,
                     ),
                     AppActionButton(
                       label: '刷新',
                       icon: AppIcons.refresh,
                       outlined: true,
-                      onPressed: _openingOfficial
+                      onPressed: _busy
                           ? null
                           : () => _showBookings
                                 ? _loadBookings(_bookingPage)
@@ -393,7 +600,9 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                   ],
                 ),
               ],
-              if (_queries.needsLogin) ...[
+              if (_queries.needsLogin &&
+                  _queries.submission?.kind !=
+                      LibrarySubmissionKind.authInterrupted) ...[
                 const SizedBox(height: AppSpace.md),
                 _statusCard(
                   context,
@@ -404,7 +613,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                     AppActionButton(
                       label: '打开学校页面登录',
                       icon: AppIcons.chevronRight,
-                      onPressed: _openingOfficial ? null : _official,
+                      onPressed: _busy ? null : _official,
                     ),
                   ],
                 ),
@@ -420,7 +629,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                     AppActionButton(
                       label: '重试查询',
                       icon: AppIcons.refresh,
-                      onPressed: _queries.loading || _openingOfficial
+                      onPressed: _queries.loading || _busy
                           ? null
                           : () => _showBookings
                                 ? _loadBookings(_bookingPage)
@@ -430,7 +639,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                       label: '打开学校预约网页',
                       icon: AppIcons.chevronRight,
                       outlined: true,
-                      onPressed: _openingOfficial ? null : _official,
+                      onPressed: _busy ? null : _official,
                     ),
                   ],
                 ),
@@ -579,15 +788,18 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                       ),
                     )
                     .toList(),
-                onChanged: (area) {
-                  if (area == null) return;
-                  setState(() {
-                    _area = area;
-                    _start = _end = null;
-                    _selected = null;
-                  });
-                  unawaited(_loadSeats());
-                },
+                onChanged: _busy
+                    ? null
+                    : (area) {
+                        if (area == null) return;
+                        _queries.clearSubmission();
+                        setState(() {
+                          _area = area;
+                          _start = _end = null;
+                          _selected = null;
+                        });
+                        unawaited(_loadSeats());
+                      },
               ),
               const SizedBox(height: AppSpace.md),
             ],
@@ -608,36 +820,45 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                 ChoiceChip(
                   label: const Text('今天'),
                   selected: _date == today,
-                  onSelected: (_) => unawaited(_selectSeatDate(today)),
+                  onSelected: _busy
+                      ? null
+                      : (_) => unawaited(_selectSeatDate(today)),
                 ),
                 ChoiceChip(
                   label: const Text('明天'),
                   selected: _date == tomorrow,
-                  onSelected: (_) => unawaited(_selectSeatDate(tomorrow)),
+                  onSelected: _busy
+                      ? null
+                      : (_) => unawaited(_selectSeatDate(tomorrow)),
                 ),
                 OutlinedButton(
-                  onPressed: _chooseDate,
+                  onPressed: _busy ? null : _chooseDate,
                   child: Text(isoDate(_date)),
                 ),
                 OutlinedButton(
-                  onPressed: () => _chooseTime(true),
+                  onPressed: _busy ? null : () => _chooseTime(true),
                   child: Text(_timeLabel(start, '开始')),
                 ),
                 OutlinedButton(
-                  onPressed: () => _chooseTime(false),
+                  onPressed: _busy ? null : () => _chooseTime(false),
                   child: Text(_timeLabel(end, '结束')),
                 ),
                 FilterChip(
                   label: const Text('仅看空闲'),
                   selected: _onlyAvailable,
-                  onSelected: (value) => setState(() => _onlyAvailable = value),
+                  onSelected: _busy
+                      ? null
+                      : (value) => setState(() => _onlyAvailable = value),
                 ),
                 AppActionButton(
                   label: '刷新座位',
                   icon: AppIcons.refresh,
-                  onPressed: _queries.loading || _openingOfficial
+                  onPressed: _queries.loading || _busy
                       ? null
-                      : _loadSeats,
+                      : () {
+                          _queries.clearSubmission();
+                          unawaited(_loadSeats());
+                        },
                 ),
               ],
             ),
@@ -683,6 +904,189 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     );
   }
 
+  Widget _submissionCard(BuildContext context, LibrarySubmissionState state) {
+    final request = state.request;
+    final slot =
+        '${request.areaLabel.isEmpty ? request.seatLabel : '${request.areaLabel} · ${request.seatLabel}'} · '
+        '${request.beginTimestamp}–${formatClockMinutes(request.endMinutes)}';
+    switch (state.kind) {
+      case LibrarySubmissionKind.confirmed:
+        final booking = state.booking!;
+        final labels = libraryBookingStatusLabels(booking.status);
+        final statusText = labels.isEmpty ? '已登记' : labels.join(' · ');
+        return _statusCard(
+          context,
+          title: '预约已核对',
+          detail:
+              '${booking.room.isEmpty ? booking.seat : '${booking.room} · ${booking.seat}'}'
+              '（${booking.begin} 至 ${booking.end}）\n状态：$statusText · 预约编号 ${booking.id}',
+          actions: [
+            AppActionButton(
+              label: '查看“我的预约”',
+              icon: AppIcons.chevronRight,
+              onPressed: _busy
+                  ? null
+                  : () => _openBookingsFor(request.date, reload: false),
+            ),
+            AppActionButton(
+              label: '继续浏览座位',
+              icon: AppIcons.refresh,
+              outlined: true,
+              onPressed: _busy ? null : _queries.clearSubmission,
+            ),
+          ],
+        );
+      case LibrarySubmissionKind.submittedUnverified:
+        final idNote =
+            state.bookingId.isEmpty ? '' : '（编号 ${state.bookingId}）';
+        return _statusCard(
+          context,
+          title: '已提交预约，请核对“我的预约”',
+          detail:
+              '学校已接收 $slot 的预约请求$idNote，但自动回查暂未确认记录。为避免重复预约，系统不会自动重发。',
+          actions: [
+            AppActionButton(
+              label: '去“我的预约”查单',
+              icon: AppIcons.chevronRight,
+              onPressed: _busy ? null : () => _openBookingsFor(request.date),
+            ),
+            AppActionButton(
+              label: '打开学校预约网页',
+              icon: AppIcons.chevronRight,
+              outlined: true,
+              onPressed: _busy ? null : _official,
+            ),
+          ],
+        );
+      case LibrarySubmissionKind.availabilityChanged:
+        return _statusCard(
+          context,
+          title: '余位已变化，未提交预约',
+          detail:
+              '提交前复核显示 $slot 在所选时段已不可预约，已为你刷新最新座位列表，未向学校发送预约请求。',
+          isError: true,
+          actions: [
+            AppActionButton(
+              label: '关闭提示',
+              icon: AppIcons.check,
+              outlined: true,
+              onPressed: _queries.clearSubmission,
+            ),
+          ],
+        );
+      case LibrarySubmissionKind.rejected:
+        final schoolMsg = state.message.isEmpty
+            ? '学校平台未接受本次预约申请。'
+            : '学校返回：${state.message}。';
+        return _statusCard(
+          context,
+          title: '学校平台未受理预约',
+          detail: '$schoolMsg 已停止本次申请，不会自动重发；可核对余位或“我的预约”。',
+          isError: true,
+          actions: [
+            AppActionButton(
+              label: '去“我的预约”确认',
+              icon: AppIcons.chevronRight,
+              outlined: true,
+              onPressed: _busy ? null : () => _openBookingsFor(request.date),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: const Size(AppLayout.minTap, AppLayout.minTap),
+              ),
+              onPressed: _queries.clearSubmission,
+              child: const Text('关闭'),
+            ),
+          ],
+        );
+      case LibrarySubmissionKind.webRequired:
+        final reasonText = switch (state.reason) {
+          'captcha' => '当前学校系统启用了预约验证码',
+          'notice' => '当前区域要求确认预约须知',
+          'theme' => '当前区域要求填写预约主题',
+          'memo' => '当前区域要求填写预约备注',
+          _ => '当前学校规则要求在官方网页确认步骤',
+        };
+        return _statusCard(
+          context,
+          title: '需要前往学校网页完成确认',
+          detail: '$reasonText，请打开学校预约网页继续操作；原生端尚未发送写入请求。',
+          actions: [
+            AppActionButton(
+              label: '打开学校预约网页',
+              icon: AppIcons.chevronRight,
+              onPressed: _busy ? null : _official,
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: const Size(AppLayout.minTap, AppLayout.minTap),
+              ),
+              onPressed: _queries.clearSubmission,
+              child: const Text('关闭'),
+            ),
+          ],
+        );
+      case LibrarySubmissionKind.precheckFailed:
+        return _statusCard(
+          context,
+          title: '未完成提交前核验，已停止提交',
+          detail: '未能读取学校最新余位或规则配置，本次尚未发送预约请求。请检查网络后重试，或打开学校预约网页查看。',
+          isError: true,
+          actions: [
+            AppActionButton(
+              label: '刷新座位',
+              icon: AppIcons.refresh,
+              onPressed: _busy
+                  ? null
+                  : () {
+                      _queries.clearSubmission();
+                      unawaited(_loadSeats());
+                    },
+            ),
+            AppActionButton(
+              label: '打开学校预约网页',
+              icon: AppIcons.chevronRight,
+              outlined: true,
+              onPressed: _busy ? null : _official,
+            ),
+          ],
+        );
+      case LibrarySubmissionKind.authInterrupted:
+        return _statusCard(
+          context,
+          title: '登录状态已中断，已停止本次提交',
+          detail: '学校认证已过期或中断，已清空当前数据。请重新登录后先核对“我的预约”与座位状态；系统不会自动重发写请求。',
+          actions: [
+            AppActionButton(
+              label: '打开学校页面登录',
+              icon: AppIcons.chevronRight,
+              onPressed: _busy ? null : _official,
+            ),
+          ],
+        );
+      case LibrarySubmissionKind.uncertain:
+        return _statusCard(
+          context,
+          title: '提交结果暂不明确，请先查单',
+          detail: '请求可能已送达学校但响应超时或连接中断。为避免重复预约，系统禁止自动重发，请先到“我的预约”核对。',
+          isError: true,
+          actions: [
+            AppActionButton(
+              label: '去“我的预约”查单',
+              icon: AppIcons.chevronRight,
+              onPressed: _busy ? null : () => _openBookingsFor(request.date),
+            ),
+            AppActionButton(
+              label: '打开学校预约网页',
+              icon: AppIcons.chevronRight,
+              outlined: true,
+              onPressed: _busy ? null : _official,
+            ),
+          ],
+        );
+    }
+  }
+
   Widget _selectedBanner(
     BuildContext context,
     LibrarySeat seat,
@@ -691,6 +1095,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   ) {
     final colors = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
+    final rules = _ruleLines(seat);
     return QuietCard(
       child: Padding(
         padding: const EdgeInsets.all(AppSpace.lg),
@@ -717,7 +1122,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                   style: TextButton.styleFrom(
                     minimumSize: const Size(AppLayout.minTap, AppLayout.minTap),
                   ),
-                  onPressed: () => setState(() => _selected = null),
+                  onPressed: _busy ? null : () => setState(() => _selected = null),
                   child: const Text('清除选择'),
                 ),
               ],
@@ -736,12 +1141,24 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                 fontFeatures: tabularTime,
               ),
             ),
-            const SizedBox(height: AppSpace.sm),
-            Text(
-              '当前阶段仅提供选座与记录查询；提交预约将在下一阶段接入，如需立即预约可打开学校预约网页。',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colors.onSurfaceVariant,
+            const SizedBox(height: AppSpace.xs),
+            for (final line in rules)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Text(
+                  line,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
               ),
+            const SizedBox(height: AppSpace.md),
+            AppActionButton(
+              label: '确认预约',
+              icon: AppIcons.check,
+              onPressed: _busy
+                  ? null
+                  : () => _confirmReservation(seat, start, end),
             ),
           ],
         ),
@@ -800,8 +1217,11 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
             type: MaterialType.transparency,
             child: InkWell(
               borderRadius: BorderRadius.circular(AppRadius.input),
-              onTap: canSelect
-                  ? () => setState(() => _selected = selected ? null : seat.id)
+              onTap: canSelect && !_busy
+                  ? () {
+                      _queries.clearSubmission();
+                      setState(() => _selected = selected ? null : seat.id);
+                    }
                   : null,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: AppLayout.minTap),
@@ -868,7 +1288,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     final theme = Theme.of(context);
     final page = _queries.bookings;
     final begin = isoDate(_bookingBegin), end = isoDate(_bookingEnd);
-    final disabled = _queries.loading || _openingOfficial;
+    final disabled = _queries.loading || _busy;
     return QuietCard(
       child: Padding(
         padding: const EdgeInsets.all(AppSpace.lg),
@@ -881,7 +1301,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 OutlinedButton(
-                  onPressed: _chooseBookingDates,
+                  onPressed: _busy ? null : _chooseBookingDates,
                   child: Text('$begin 至 $end'),
                 ),
                 AppActionButton(

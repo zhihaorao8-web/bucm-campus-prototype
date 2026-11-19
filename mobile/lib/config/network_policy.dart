@@ -31,6 +31,7 @@ abstract final class LibrarySeatPolicy {
   static const origin = 'https://$_host';
   static const document = '/config/config.js';
   static const readAsset = 'assets/library-seat-read.js';
+  static const writeAsset = 'assets/library-seat-write.js';
   static const bookingPageSize = 10;
   static const bookingStatusFilter = '8582';
   static const timeout = Duration(seconds: 12);

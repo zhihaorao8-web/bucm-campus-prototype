@@ -56,6 +56,8 @@ def source_assets(source):
                'classroom.js', 'classroom-entry.js', 'recording-api-bridge.js', 'recording-api.cjs']
     if 'assets/library-seat-read.js' in values:
         scripts.append('library-seat-read.js')
+    if 'assets/library-seat-write.js' in values:
+        scripts.append('library-seat-write.js')
     for name in scripts:
         key = 'assets/' + name
         value = values.get(key)

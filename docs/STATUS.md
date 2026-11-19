@@ -1,6 +1,6 @@
 # 当前验证概览
 
-更新：2026-11-19。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
+更新：2026-11-20。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
@@ -13,6 +13,15 @@
 | 工程优化D | 业务配置、原子文件操作及课堂连接/导入/播放准备公共入口已完成；受影响模块检查通过，详情见D节 | 938f108、6de667e、f756644及状态8fe2a4f已推送；用户继续指令确认通过，进入E |
 | 工程优化E | 旧Flutter/Java原型与关联清理，运行时资产迁移，文档按职责归并；分项检查通过 | 697de30、fdbbe82、d025f08及状态6c37980已推送；用户继续确认通过，进入F，未新增构建/设备/学校验证 |
 | 工程优化F | 分层CI、精确双包构建/核验、五条复用调试场景已实现；本地及分项远端证据见F节 | e2b39fd、0c35317、d756fed、f0c449c已推送；2026-11-16用户明确审核通过，A–F全部完成审核；主线集成见下节，main保护模板未应用，未发布/安装或新增学校验证 |
+
+## 2026-11-20 图书馆座位预约原生预约确认与结果核对
+
+- 基于公开 `kjyy.bucm.edu.cn` 前端脚本与公开配置接口核实提交流程：移动版选座图（`chunk-a8895e30`）点击座位仅选中并跳转，不触发锁座，`freeUseSeatLockTime` 公开配置为 `'0'`；移动提交页（`chunk-2ddf8094`）确认后发出单次 `POST /ic-web/reserve` JSON（`sysKind: 8`、`memberKind: 1`、`resvProperty: 0`、`resvDev: [devId]`，`appAccNo` 与 `resvMember` 取自同源 `/ic-web/auth/userInfo`），并由 `ResearchInfo` 展示 `openTimes`、`minResvTime`/`maxResvTime`、`earliestResvTime`/`latestResvTime`、`cancelTime` 与 `limit` 规则。公开接口 `/ic-web/sysConfig/public` 返回 `resvCode: '0'`、`needToKnow: ''`、`resvTheme: '1'`、`resvthememust: null`、`classKindMemoRequired: '0'`、`resvTimeUnit: '10'`，规则中文文案对照 `/ic-web/Language/getLanList` 核实。
+- 实现阶段 5 原生确认与单次提交回查：[library-seat-read.js](../assets/library-seat-read.js) 补充数值规则字段（仅 `resvRule` 白名单）；新增独立单次写入桥接 [library-seat-write.js](../assets/library-seat-write.js)，仅在固定 `https://kjyy.bucm.edu.cn/config/config.js` 顶层文档执行，先请求 `/ic-web/sysConfig/public` 与 `/ic-web/auth/userInfo`（启用验证码/须知/必填主题或备注时 fail-closed 返回网页办理且零 POST；身份标识别留在 JS 局部并从返回消息剥离），最多发送一次 `POST /ic-web/reserve` 且禁止自动重试。[library_seats.dart](../mobile/lib/domain/library_seats.dart)、[library_seat_reader.dart](../mobile/lib/platform/library_seat_reader.dart)、[library_seat_queries.dart](../mobile/lib/application/library_seat_queries.dart) 与 [library_seat_query_page.dart](../mobile/lib/ui/library_seat_query_page.dart) 实现候选横幅规则、滚动确认对话框（本地当天过去时段与时长拦截、防双击保护）、提交前实时余位复核、提交后立即回查“我的预约”及 8 类结果卡片（含认证中断后不自动重发与结果不明查单提示）。
+- 执行 `python scripts/prepare_flutter.py` 与 `python scripts/check.py --all` 全部通过（报告 `build/checks/report-338b37ae19174a0dbe0d1cde7f3be73d.json`）：`docs` 194 个本地目标、`tooling` 37 项、`icons` 与合成示例、`java` 5 组、`node` 11 组（含 `library-seat-read-test.cjs` 6 项与新增 [library-seat-write-test.cjs](../tests/library-seat-write-test.cjs) 5 项）、`flutter analyze` 0 问题、Flutter 默认 323 项通过 / 9 项条件跳过（[library_seat_queries_test.dart](../mobile/test/library_seat_queries_test.dart) 16 项覆盖规则解码/拦截、重复点击单写、余位变化、学校拒绝、需网页办理、认证中断后重登零自动重发、超时不明转查单、320px/2.0x/深色确认对话框）、直取专项 23 项通过；恢复并 `--enforce-lockfile` 验证 `mobile/pubspec.lock` 未被篡改。
+- 构建普通包名（`cn.bucm.campus_schedule`，版本 `0.3` / `code 12`）Debug APK，SHA-256 为 `B66961E9C11BD73DB7576E79EB0F5EB4D41B665374DAF6C411454AC8AA60C266`，保留数据覆盖安装到 `Pixel_8_API_36` 并核对设备端 `base.apk` 摘要一致。
+- 2026-11-20 00:25–00:28（北京时间）完成模拟器只读确认对话框核对：隔日空闲后旧 IC 会话失效提示“需要登录学校账号”，点击“打开学校页面登录”后原 CAS 会话自动续签回到预约首页；返回应用后成功读取 `图书馆二层 · 二层北区` `2026-11-20 08:30–22:00`（`共 282 个座位 · 空闲 279 · 半空闲 3 · 使用中 0 · 不可用 0`）。选中 `2N001` 并打开“确认预约座位”对话框，实测展示区域、座位、日期、时段及学校真实规则（`当日开放：08:30–22:00`、`允许时长：最短 30 分钟 · 最长 1 天`、`提前预约范围：最多提前 1 天`、`签到提示：预约生效后 30 分钟 内未签到即视作违约 1 次，预约不再保留`），核对无溢出后点击“取消”，未发送任何写入请求。
+- 当前限制与待验：未在未获用户对真实目标座位与时段的明确确认前发出真实 `POST /ic-web/reserve`，**真实预约写入与非空个人预约回查**待用户提供明确实际需求后手动实测；真实“退出学校会话”清理需本人同意；原生取消预约属阶段 6，图形化座位图留待功能验收后优化。
 
 ## 2026-11-19 图书馆座位预约原生选座与查单
 

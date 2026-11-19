@@ -4,6 +4,14 @@ const result = (status, rows = [], count = 0) => JSON.stringify({status, rows, c
 const text = (value, max = 96) => typeof value === 'string' ? value.trim().slice(0, max) : '';
 const id = value => (typeof value === 'string' || Number.isSafeInteger(value)) &&
   /^(?:[1-9]\d{0,17})$/.test(String(value)) ? String(value) : '';
+const nonNegInt = value => {
+  if (Number.isSafeInteger(value) && value >= 0 && value <= 9999999) return value;
+  if (typeof value === 'string' && /^\d{1,7}$/.test(value.trim())) {
+    const parsed = Number(value.trim());
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  }
+  return null;
+};
 const pad = n => String(n).padStart(2, '0');
 const timestamp = value => {
   if (Number.isSafeInteger(value) && value >= 946684800000 && value <= 4102444800000) {
@@ -143,12 +151,21 @@ try {
         .filter(item => item && (Number(item.resvStatus) & 128) === 0)
         .slice(0, 96)
         .map(item => [timestamp(item.startTime), timestamp(item.endTime)]) : [];
+      const rule = device.resvRule && typeof device.resvRule === 'object' ? {
+        minMinutes: nonNegInt(device.resvRule.minResvTime),
+        maxMinutes: nonNegInt(device.resvRule.maxResvTime),
+        earliestMinutes: nonNegInt(device.resvRule.earliestResvTime),
+        latestMinutes: nonNegInt(device.resvRule.latestResvTime),
+        cancelMinutes: nonNegInt(device.resvRule.cancelTime),
+        limit: nonNegInt(device.resvRule.limit),
+      } : null;
       return {
         id: id(device.devId), label: text(device.devName),
         viewOnly: device.onlyView === true,
         open: isSeatOpen(device, hours),
         hours,
         reservations,
+        rule,
       };
     });
     if (rows.some(row => !row.id || !row.label ||

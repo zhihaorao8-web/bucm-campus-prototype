@@ -59,7 +59,7 @@ JAVA_SOURCES = {
     'ClassroomMediaTest': ('ClassroomMediaTransport',),
 }
 NODE_TESTS = {
-    'adapter': ('extract-test', 'school-viewport-test', 'export-nav-test', 'coverage-check-test', 'library-seat-read-test'),
+    'adapter': ('extract-test', 'school-viewport-test', 'export-nav-test', 'coverage-check-test', 'library-seat-read-test', 'library-seat-write-test'),
     'classroom': ('classroom-test', 'recording-api-test', 'recording-api-bridge-test', 'classroom-entry-test'),
     'player': ('classroom-player-test',),
 }
@@ -168,7 +168,7 @@ def make_plan(root, modules=(), changed=None, legacy=False, direct=False, all_ch
             elif path.startswith('assets/') and path.endswith(('.js', '.cjs')):
                 module = ('player' if path.endswith('/classroom-player.js') else
                           'classroom' if Path(path).name in ('classroom.js', 'classroom-entry.js', 'recording-api-bridge.js', 'recording-api.cjs')
-                          else 'adapter' if Path(path).name in ('extract.js', 'school-viewport.js', 'export-nav.js', 'coverage-check.js', 'library-seat-read.js') else None)
+                          else 'adapter' if Path(path).name in ('extract.js', 'school-viewport.js', 'export-nav.js', 'coverage-check.js', 'library-seat-read.js', 'library-seat-write.js') else None)
                 if module:
                     selected.add(module)
                 else:
