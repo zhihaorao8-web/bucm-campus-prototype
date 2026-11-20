@@ -1,6 +1,6 @@
 # Flutter Android开发与专项验证
 
-更新：2026-11-16。当前范围为课表、今日速览与后续获批录播；需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，日常入口见[DEVELOPMENT](DEVELOPMENT.md)。认证采用学校官方页面，不保存密码，失效后由本人重新登录。
+更新：2026-11-20。当前范围为课表、今日速览、录播与图书馆座位预约；需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，日常入口见[DEVELOPMENT](DEVELOPMENT.md)。认证采用学校官方页面，不保存密码，失效后由本人重新登录。
 
 ## 工程与迁移边界
 
@@ -51,7 +51,7 @@ $env:JAVA_HOME='D:\AndroidStudio\jbr'
 
 `prepare_flutter.py`只同步公开JS、7个共享Java核心源文件、SHA-256验证过的HSSF依赖和第三方许可；生成文件不入Git。解析器唯一维护源仍在根`src/`。修改它们后先运行`python scripts/check.py`，再重新prepare。Flutter应用依赖锁文件、宿主和Gradle wrapper应提交，SDK、缓存、JAR、密钥和APK不提交。
 
-应用版本从根`AndroidManifest.xml`读取；prepare同步pubspec，Android构建也直接读取根版本。当前Android显示版本为`0.3`、code为12，pubspec规范化为`0.3.0+12`。版本及历史标签规则见[VERSIONING](VERSIONING.md)，实际发布证据见[0.3](releases/0.3.md)。
+应用版本从根`AndroidManifest.xml`读取；prepare同步pubspec，Android构建也直接读取根版本。当前Android显示版本为`0.4`、code为13，pubspec规范化为`0.4.0+13`。版本及历史标签规则见[VERSIONING](VERSIONING.md)，实际发布证据见[0.4](releases/0.4.md)与[0.3](releases/0.3.md)。
 
 正常APK使用`flutter build apk --release --dart-define=CAMPUS_DIRECT_CATALOG=true --dart-define=CAMPUS_TEST_DIAGNOSTICS=false`，debug改为`--debug`及诊断true；两包顺序构建且来源相同。构建时重新生成对应插件注册表。当前沿用本机兼容开发签名、标记预发布；其他机器的密钥不能保证覆盖安装，正式生产签名尚未建立。详见[双包规范](BUILD_VARIANTS.md)。
 

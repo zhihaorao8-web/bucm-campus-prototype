@@ -2,27 +2,28 @@
 
 面向北京中医药大学的非官方 Flutter Android 课表与课程录播应用。本人在学校官方页面完成认证，应用在本机导入课表、整理录播目录并播放课程。
 
-**当前版本：0.3 预发布 · Android 8.0 及以上。** 主线工程位于 `mobile/`，默认分支为 `main`。更新内容见 [CHANGELOG](CHANGELOG.md)。
+**当前版本：0.4 预发布 · Android 8.0 及以上。** 主线工程位于 `mobile/`，默认分支为 `main`。更新内容见 [CHANGELOG](CHANGELOG.md)。
 
 ## 下载安装
 
 | 安装包 | 适用场景 | 下载 |
 |---|---|---|
-| 正常版 release | 日常使用，关闭测试诊断与测试入口 | [0.3 正常版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.3/campus-schedule-0.3-android-release.apk) |
-| 测试版 debug | 问题排查，内置可复制、可清空的白名单诊断 | [0.3 测试版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.3/campus-schedule-0.3-android-debug.apk) |
+| 正常版 release | 日常使用，关闭测试诊断与测试入口 | [0.4 正常版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.4/campus-schedule-0.4-android-release.apk) |
+| 测试版 debug | 问题排查，内置可复制、可清空的白名单诊断 | [0.4 测试版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.4/campus-schedule-0.4-android-debug.apk) |
 
-[发布说明与 SHA-256 校验文件](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.3) · [详细版本说明](docs/releases/0.3.md)
+[发布说明与 SHA-256 校验文件](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.4) · [详细版本说明](docs/releases/0.4.md)
 
 两个包来自同一源码，均启用本轮已确认的录播目录直取路径；包名、版本与本机开发签名一致，可以覆盖切换并保留数据。沿用既有 Flutter 预览版升级时无需清数据；与早期 Java 原型的包名不同。当前仍使用开发签名，正式生产签名方案尚未建立。仓库已公开，可通过发布页下载安装包。
 
 ## 已有功能
 
 - **课表导入与离线查看**：通过官方页面导出 XLS，整批校验、去除完全重复并保存（兼容课程名全半角括号）；支持今日/下一节授课分段进度、连接时间轴、周视图（全宽层叠冲突 + 底部详情抽屉、可选周末列与周次横滑）、日视图（单层磨砂星期栏）与学期切换。失败保留原课表，提供备份恢复和导入变化摘要。
-- **今日语录与艺术标题**：「今日」「课表」大标题采用自研 B1 Macintosh Skeletal Filled 矢量轮廓与 1350ms 逐笔描边入场动效；今日页顶端提供 24 条本地中文语录，并在外观设置中提供默认关闭的“在线一言”可选开关。
+- **今日语录与艺术标题**：「今日」「课表」「图书馆」展开大标题采用自研 B1 Macintosh Skeletal Filled 矢量轮廓与 1350ms 逐笔描边入场动效（上滑折叠与「设置」保持系统字体）；今日页顶端提供 24 条本地中文语录，并在外观设置中提供默认关闭的“在线一言”可选开关。
+- **图书馆座位预约**：四项悬浮底栏（今日 · 课表 · 图书馆 · 设置）支持惰性加载与示例模式隔离；三级渐进空间选座串联楼层目录、2F 独立/3–5 层整体平面示意图与具体区域等比平面/紧凑网格双视图，内置 `08:30–22:00` 时段抽屉、余位复核与防连点 `QuietSheet`、“我的预约”焦点票卡及原生预约/查单/取消。
 - **课程录播与课堂选择页**：统一导入或单课刷新，同学期精确名称匹配全部同名来源，完整分页成功后保存目录；「课程课堂」页采用实时模糊“录播 / 直播”滑动胶囊、合并维护卡与结构化回放来源列表，离线可查看，播放时重新核对学校权限。
 - **多画面播放器**：PPT、教师与学生画面按实际来源选择；主小画面交换、小窗拖动/缩放、暂停、倍速、前后10秒和本机续播；点击播放按钮 280ms 圆形扩张过渡。主画面左右滑动与进度条拖动均支持时间预览，松手跳转。
 - **沉浸式横屏**：透明进度控件，闲置自动隐藏、轻点恢复；右上角单按钮打开不超过半屏的画面切换侧抽屉。
-- **外观与图标**：MIUIX 界面、柔光亚克力浅/深色弥散光场、悬浮玻璃胶囊底栏、Monet 动态配色、字号/缩放/高对比度等偏好；43 个统一的 IconMCP 离线 SVG 功能图标，许可随包提供。
+- **外观与图标**：MIUIX 界面、柔光亚克力浅/深色弥散光场、悬浮玻璃胶囊底栏、Monet 动态配色、字号/缩放/高对比度等偏好；49 个统一的 IconMCP 离线 SVG 功能图标，许可随包提供。
 
 ## 使用与数据保护
 
@@ -32,9 +33,9 @@
 
 ## 验证范围
 
-已有合成测试、Android 构建、模拟器UI验收与早期版本分项实机反馈：官方 XLS 导入保存、自动选择直连后的目录取数、录播画面/声音与续播、滑动进度/横屏侧抽屉、柔光亚克力界面与 B1 艺术标题动效。0.3 的精确检查、构建与发布证据见 [STATUS](docs/STATUS.md) 与 [0.3 发布说明](docs/releases/0.3.md)。
+已有合成测试、Android 构建、模拟器UI/功能验收与早期版本分项实机反馈：官方 XLS 导入保存、自动选择直连后的目录取数、录播画面/声音与续播、滑动进度/横屏侧抽屉、柔光亚克力界面、B1 艺术标题动效，以及模拟器真实校园会话下的图书馆原生选座、单次预约、查单、取消、三级空间示意图与双视图体验。0.4 的精确检查、构建与发布证据见 [STATUS](docs/STATUS.md) 与 [0.4 发布说明](docs/releases/0.4.md)。
 
-仍待独立验证：完整学期逐项准确性、完整课时与长期会话、开启水印的全部组合、真实认证失效恢复及更多网络/设备。学校 WebVPN 曾返回上游连接拒绝，当前没有恢复成功证据。**本机续播不等于学校观看记录。** 实际直播、学校观看记录上报、图书馆、提醒、社区、视频下载、后台播放及 iOS/Windows 交付均未开放。
+仍待独立验证：完整学期逐项准确性、完整课时与长期会话、真实退出学校会话清理、开启水印的全部组合、真实认证失效恢复及更多真机与网络条件。学校 WebVPN 曾返回上游连接拒绝，当前没有恢复成功证据。**本机续播不等于学校观看记录。** 实际直播、学校观看记录上报、图书馆其他业务、提醒、社区、视频下载、后台播放及 iOS/Windows 交付均未开放。
 
 ## 开发与构建
 
@@ -67,7 +68,7 @@ python scripts/check.py --module classroom --direct-catalog
 
 ## 分支与文档
 
-- `main`：当前 Flutter Android 主线，已随 `0.3` 合入 `codex/quiet-ui-refresh` 并接续完整开发历史。
+- `main`：当前 Flutter Android 主线，已随 `0.3` 合入 `codex/quiet-ui-refresh`，并于 `0.4` 合入 `codex/library-seat-booking` 接续完整开发历史。
 - [`codex/legacy-java-prototype`](https://github.com/zhihaorao8-web/bucm-campus-prototype/tree/codex/legacy-java-prototype)：早期 Java 测试原型，固定保留原主线 `611ec8e`；旧版本标签与附件继续保留。
 - 日常开发继续使用独立分支；阶段进展与验证边界见 [当前开发进度](docs/DEVELOPMENT_PLAN.md) 与 [STATUS](docs/STATUS.md)。
 
