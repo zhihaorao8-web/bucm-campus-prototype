@@ -4,11 +4,25 @@
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
-| 0.4/code13发布 | 图书馆阶段1–8D已全部获用户审核通过并获授权升级至0.4/code13、合入main与发布v0.4；待提交后完成精确源码CI、R8隔离XLS、可信签名双包核验及release模拟器抽查并追加记录 | 物理真机性能/功耗与提交/取消、真实退出学校会话、完整TalkBack、预测返回及完整学期准确性仍待验 |
+| 0.4/code13发布 | 源码`7a73decf`全量`--all`检查（`report-9c934563...json`）、精确`main` CI `44750357261`（`quality`+`dual-preview`）成功、隔离R8 XLS `1/1`（`ReleaseParserTest`）、可信开发签名`4584a62b...`双包核验（`dist/release-0.4/`）、`0.4` release模拟器抽查（`发布构建/7a73decf/0.4 (13)`且无`测试诊断`）与`v0.4`注释标签已推送；待本机`gh`登录后上传Pre-release附件 | 物理真机性能/功耗与提交/取消、真实退出学校会话、完整TalkBack、预测返回及完整学期准确性仍待验；`gh`未登录致远端Release附件待上传 |
 | 0.3/code12发布 | 729663f本地合成/静态检查、隔离R8 XLS 1/1、同源双包签名/摘要、最终release模拟器抽查及4份远端附件核对 | 精确提交的Actions因当时账户计费限制未运行；用户仅就该次发布授权例外，不作为未来跳过CI规则 |
 | 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
 | 学校链路 | 历史分项XLS导入、直连目录、短时播放和续播样本 | 全学期独立准确性、完整课时、水印组合、WebVPN恢复、真实认证失效及7天会话待验 |
 | 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）、7B（`9d5d2bd`）与 7C（`b4227e5`）已全部获用户审核通过；三级渐进空间选座及顶栏 B1 统一阶段 8A（`cf0189b`）、8B（`bf2e2e2`）、8C（`6c47522`）与 8D（`ff716b2`）已全部获用户审核通过，通过主机变更检查（`report-fb07fac86c6944828ac2fa41d4fb9608.json`）与 Pixel 8 API 36 真实校园会话深/浅色只读验收（0 POST 写入） | 真实退出会话与真机提交/取消另行验收 |
+
+## 2026-11-20 0.4（code 13）版本核验与标签发布
+
+- 日期：2026-11-20
+- 版本与精确源码：分支 `main` 快进合并 `codex/library-seat-booking` 至 `7a73decf7f887af4fb296ce84ed8107ec1448269`，根 `AndroidManifest.xml` 为 `0.4` / `versionCode 13`，`mobile/pubspec.yaml` 同步为 `0.4.0+13`（`mobile/pubspec.lock` 未改动）。
+- 全量宿主检查：`python scripts/dependencies.py`、`python scripts/prepare_flutter.py`、`flutter pub get --enforce-lockfile`，以及 `python scripts/check.py --all --flutter C:\studentsAPP\build\toolchain\flutter\bin\flutter.bat` 全部通过（耗时 `67.141s`，报告 `build/checks/report-9c934563184c40b1be2ea909db89cef1.json`：`docs`、`tooling`、`icons`、`examples`、`java-compile`、5 项 Java、11 项 Node、`flutter-analyze`、`flutter-default` 351 通过 / 9 条件跳过、`flutter-direct` 23 通过）。
+- 精确提交远端 CI：`main` 推送触发 GitHub Actions 运行 [`44750357261`](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/44750357261)（`status: completed`, `conclusion: success`）：`quality`（`14:06:57Z`–`14:11:11Z`）与 `dual-preview`（`14:11:14Z`–`14:25:21Z`）均通过。
+- 隔离 R8 二进制 XLS 测试：刷新正式插件注册表后，于 `Pixel_8_API_36` 执行 `.\gradlew.bat connectedReleaseAndroidTest -PcampusReleaseParserTest=true`（隔离包 `cn.bucm.campus_schedule.releasetest`），`cn.bucm.campus_schedule.ReleaseParserTest#optimizedBinaryXlsKeepsTeacherWeeksAndSegments` 1/1 通过。
+- 可信签名双包校验：以 `pwsh -NoProfile -File ./scripts/build_flutter_previews.ps1 -Kind release`（关联 CI `44750357261`、证书 SHA-256 `4584a62b3daab61954f0842f65c4d7974f9cf9bb84155b150741b7d538faf40c`、Flutter SDK `c197ca5199e9ee5661e865596c9c07294dfab51c`）通过 `scripts/verify_apks.py` 全项检查并归档至 `dist/release-0.4/`：
+  - `campus-schedule-0.4-android-release.apk`：`68,733,994` 字节，SHA-256 `e6256285158bd8a215843c37168573cddce4199fb1e380786907db2aae17c4a1`
+  - `campus-schedule-0.4-android-debug.apk`：`185,220,270` 字节，SHA-256 `e2d2c5fbd5fd5e4faa6f98dd75fb390b3bd6619cf9192cd28f2fcefaf14cfefa`
+  - `SHA256SUMS.txt`：`212` 字节，SHA-256 `f9e8e9852b26bf1ea9e0ac29833938143858c52ffa5bc05a197756f15011864f`
+  - `build-metadata.json`：`1,715` 字节，SHA-256 `2a797a6ec3da2da20c15a9185018399a79f13c1cac9184866219b42347b067f3`
+- 模拟器 release 抽查与标签：将 `campus-schedule-0.4-android-release.apk` 覆盖安装至 `Pixel_8_API_36`（设备 `base.apk` SHA-256 与上述一致、`Night mode: no`、0 POST 写入），冷启动核对“今日”“图书馆”及“设置 → 项目信息（`发布构建 / 源码 7a73decf / 版本 0.4 (13)`）”，确认无“测试诊断”。注释标签 `v0.4`（`1fbaae17efa1bdf83bb1d6bbaab8f78f66e192b5`）已指向 `7a73decf7f887af4fb296ce84ed8107ec1448269` 并推送至 `origin`；因本机 `gh auth status` 未登录，GitHub Pre-release 页面与 4 份附件上传待本人登录后完成。
 
 ## 2026-11-20 图书馆顶栏统一高度与 B1 艺术标题阶段 8D
 
