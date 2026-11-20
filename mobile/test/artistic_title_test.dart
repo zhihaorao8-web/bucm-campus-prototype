@@ -11,22 +11,26 @@ import 'week_grid_test.dart' show weeklyPreviewData;
 
 void main() {
   testWidgets(
-    'Today and Schedule headers render B1 Macintosh Hello vector titles while Settings stays clean',
+    'Today, Schedule, and Library headers render B1 Macintosh Hello vector titles at matched height while Settings stays clean',
     (tester) async {
       expect(
         macintoshHelloB1Glyphs.keys,
-        containsAll(['今', '日', '课', '表']),
+        containsAll(['今', '日', '课', '表', '图', '书', '馆']),
       );
 
-      for (final (dark, scale) in [(false, 1.0), (true, 1.5), (false, 2.0)]) {
-        tester.view.physicalSize = const Size(390, 844);
+      for (final (dark, scale, viewport) in [
+        (false, 1.0, const Size(390, 844)),
+        (true, 1.5, const Size(390, 844)),
+        (false, 2.0, const Size(320, 720)),
+      ]) {
+        tester.view.physicalSize = viewport;
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
         await tester.pumpWidget(
           KeyedSubtree(
-            key: ValueKey('$dark-$scale'),
+            key: ValueKey('$dark-$scale-${viewport.width}'),
             child: app(
               MemoryRepository(weeklyPreviewData(DateTime.now())),
               dark: dark,
@@ -41,6 +45,8 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('今日'), findsWidgets);
+        final todayHeaderHeight =
+            tester.getSize(find.byKey(const ValueKey('topbar-0'))).height;
 
         await tester.tap(find.byKey(const ValueKey('tab-1')));
         await tester.pumpAndSettle();
@@ -49,10 +55,16 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('课表'), findsWidgets);
+        final scheduleHeaderHeight =
+            tester.getSize(find.byKey(const ValueKey('topbar-1'))).height;
+        expect(scheduleHeaderHeight, closeTo(todayHeaderHeight, 0.5));
 
         await tester.tap(find.byKey(const ValueKey('tab-2')));
         await tester.pumpAndSettle();
-        expect(find.byKey(const ValueKey('hello-title-图书馆')), findsNothing);
+        expect(
+          find.byKey(const ValueKey('hello-title-图书馆')),
+          findsOneWidget,
+        );
         expect(
           find.descendant(
             of: find.byKey(const ValueKey('topbar-2')),
@@ -60,6 +72,9 @@ void main() {
           ),
           findsWidgets,
         );
+        final libraryHeaderHeight =
+            tester.getSize(find.byKey(const ValueKey('topbar-2'))).height;
+        expect(libraryHeaderHeight, closeTo(todayHeaderHeight, 0.5));
 
         await tester.tap(find.byKey(const ValueKey('tab-3')));
         await tester.pumpAndSettle();
@@ -77,33 +92,9 @@ void main() {
   );
 
   testWidgets(
-    'MacintoshHelloTitle animates strokes progressively on entrance and settles cleanly',
+    'MacintoshHelloTitle animates strokes progressively for 今日 and 图书馆 and settles cleanly',
     (tester) async {
-      final boundaryKey = GlobalKey();
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [ambientMotionEnabledProvider.overrideWithValue(true)],
-          child: MaterialApp(
-            home: Scaffold(
-              backgroundColor: Colors.white,
-              body: RepaintBoundary(
-                key: boundaryKey,
-                child: const Center(
-                  child: MacintoshHelloTitle(
-                    text: '今日',
-                    color: Colors.black,
-                    glyphSize: 80,
-                    active: true,
-                    duration: Duration(milliseconds: 1200),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      Future<int> countInkPixels() async {
+      Future<int> countInkPixels(GlobalKey boundaryKey) async {
         final boundary =
             boundaryKey.currentContext!.findRenderObject()!
                 as RenderRepaintBoundary;
@@ -118,64 +109,80 @@ void main() {
         return ink;
       }
 
-      // Advance progressively through the write-on timeline.
-      await tester.pump(const Duration(milliseconds: 180));
-      final earlyInk = await tester.runAsync(countInkPixels) ?? 0;
-
-      await tester.pump(const Duration(milliseconds: 450));
-      final midInk = await tester.runAsync(countInkPixels) ?? 0;
-
-      await tester.pump(const Duration(milliseconds: 800));
-      final doneInk = await tester.runAsync(countInkPixels) ?? 0;
-
-      expect(earlyInk, greaterThan(20));
-      expect(midInk, greaterThan(earlyInk));
-      expect(doneInk, greaterThan(midInk));
-
-      // Reduce-motion immediately snaps to completed ink without waiting.
-      final reducedKey = GlobalKey();
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [ambientMotionEnabledProvider.overrideWithValue(true)],
-          child: MediaQuery(
-            data: const MediaQueryData(disableAnimations: true),
+      for (final word in ['今日', '图书馆']) {
+        final boundaryKey = GlobalKey();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [ambientMotionEnabledProvider.overrideWithValue(true)],
             child: MaterialApp(
               home: Scaffold(
                 backgroundColor: Colors.white,
                 body: RepaintBoundary(
-                  key: reducedKey,
-                  child: const Center(
+                  key: boundaryKey,
+                  child: Center(
                     child: MacintoshHelloTitle(
-                      text: '课表',
+                      key: ValueKey('anim-$word'),
+                      text: word,
                       color: Colors.black,
                       glyphSize: 80,
                       active: true,
+                      duration: const Duration(milliseconds: 1200),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pump();
-      final reducedInk =
-          await tester.runAsync(() async {
-            final boundary =
-                reducedKey.currentContext!.findRenderObject()!
-                    as RenderRepaintBoundary;
-            final image = await boundary.toImage(pixelRatio: 1);
-            final bytes = await image.toByteData();
-            image.dispose();
-            final data = bytes!.buffer.asUint8List();
-            var ink = 0;
-            for (var i = 0; i < data.length; i += 4) {
-              if (data[i + 3] > 20) ink++;
-            }
-            return ink;
-          }) ??
-          0;
-      expect(reducedInk, greaterThan(400));
+        );
+
+        // Advance progressively through the write-on timeline.
+        await tester.pump(const Duration(milliseconds: 180));
+        final earlyInk = await tester.runAsync(() => countInkPixels(boundaryKey)) ?? 0;
+
+        await tester.pump(const Duration(milliseconds: 450));
+        final midInk = await tester.runAsync(() => countInkPixels(boundaryKey)) ?? 0;
+
+        await tester.pump(const Duration(milliseconds: 800));
+        final doneInk = await tester.runAsync(() => countInkPixels(boundaryKey)) ?? 0;
+
+        expect(earlyInk, greaterThan(20));
+        expect(midInk, greaterThan(earlyInk));
+        expect(doneInk, greaterThan(midInk));
+      }
+
+      // Reduce-motion immediately snaps to completed ink without waiting.
+      for (final word in ['课表', '图书馆']) {
+        final reducedKey = GlobalKey();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [ambientMotionEnabledProvider.overrideWithValue(true)],
+            child: MediaQuery(
+              data: const MediaQueryData(disableAnimations: true),
+              child: MaterialApp(
+                home: Scaffold(
+                  backgroundColor: Colors.white,
+                  body: RepaintBoundary(
+                    key: reducedKey,
+                    child: Center(
+                      child: MacintoshHelloTitle(
+                        key: ValueKey('reduced-$word'),
+                        text: word,
+                        color: Colors.black,
+                        glyphSize: 80,
+                        active: true,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        final reducedInk =
+            await tester.runAsync(() => countInkPixels(reducedKey)) ?? 0;
+        expect(reducedInk, greaterThan(400));
+      }
       expect(tester.takeException(), isNull);
     },
   );

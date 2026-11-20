@@ -7,7 +7,28 @@
 | 0.3/code12发布 | 729663f本地合成/静态检查、隔离R8 XLS 1/1、同源双包签名/摘要、最终release模拟器抽查及4份远端附件核对 | 精确提交的Actions因当时账户计费限制未运行；用户仅就该次发布授权例外，不作为未来跳过CI规则 |
 | 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
 | 学校链路 | 历史分项XLS导入、直连目录、短时播放和续播样本 | 全学期独立准确性、完整课时、水印组合、WebVPN恢复、真实认证失效及7天会话待验 |
-| 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）、7B（`9d5d2bd`）与 7C（`b4227e5`）已全部获用户审核通过；三级渐进空间选座阶段 8A（`cf0189b`）与 8B（`bf2e2e2`）已落地，阶段 8C 已针对 3 项体验反馈完成控制区三组重排、平面图 `1.72:1` 等比修正与索引条垂直居中，并通过主机变更检查（`report-dc99e3e34ad747d49a934e21700954da.json`）与 Pixel 8 API 36 真实校园会话深/浅色只读验收（0 POST 写入，待用户审核） | 真实退出会话与真机提交/取消另行验收 |
+| 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）、7B（`9d5d2bd`）与 7C（`b4227e5`）已全部获用户审核通过；三级渐进空间选座阶段 8A（`cf0189b`）、8B（`bf2e2e2`）与 8C（`6c47522`）已推送；阶段 8D 已统一 `图书馆` 顶栏展开高度并补充“图/书/馆”B1 艺术字形与 1350ms 描边入场/折叠回退动效，通过主机变更检查（`report-fb07fac86c6944828ac2fa41d4fb9608.json`）与 Pixel 8 API 36 真实校园会话深/浅色只读验收（0 POST 写入，待用户审核） | 真实退出会话与真机提交/取消另行验收 |
+
+## 2026-11-20 图书馆顶栏统一高度与 B1 艺术标题阶段 8D
+
+- 日期：2026-11-20
+- 验证版本与安装口径：
+  - 分支 `codex/library-seat-booking`（版本维持 `AndroidManifest.xml` 的 `0.3` / `code 12`，`mobile/pubspec.yaml` 为 `0.3.0+12`）。
+  - `python scripts/prepare_flutter.py`（`Android 0.3, pubspec 0.3.0+12`）后执行 `flutter build apk --debug --no-pub`，生成 `mobile/build/app/outputs/flutter-apk/app-debug.apk`；`adb -s emulator-5554 install -r` 安装至 `Pixel_8_API_36` 模拟器，主机 APK 与设备端已安装 `base.apk` 的 SHA-256 一致，均为 `e9071ab1ac21a5ecf1ed51ba3f11e0c70e997e9145e5434c1c53448011e006c2`。
+- 完成范围：
+  - `scripts/generate_macintosh_hello_glyphs.py` 与 `mobile/lib/ui/macintosh_hello_glyphs.g.dart`：新增“图”（3 轮廓、`[32, 100, 8]` cubics、7 笔）、“书”（3 轮廓、`[87, 14, 12]` cubics、4 笔）、“馆”（3 轮廓、`[138, 13, 12]` cubics、9 笔）自研 B1 Macintosh 骨骼填充字形与笔顺，7 字全集为 `['今', '日', '课', '表', '图', '书', '馆']`。
+  - `mobile/lib/ui/app_shell.dart`：`navigationHeader` 仅在 `设置`（`index == _settingsTab`）跳过 B1 覆盖，使 `图书馆`（`index == _libraryTab`）与 `今日`、`课表` 共用 `AppType.artisticHeader`（`40.0`、`height: 1.16`、`FontWeight.w400`）展开大标题高度、透明 `largeTitle` 占位与 `MacintoshHelloHeaderOverlay`（1350ms 书写动画，滚动折叠后显现居中系统标题）。
+  - `mobile/test/artistic_title_test.dart` 与 `DESIGN.md`：覆盖 7 字全集、`hello-title-图书馆` 渲染、`topbar-2` 与 `topbar-0`/`topbar-1` 高度一致（`(false, 1.0, 390x844)`、`(true, 1.5, 390x844)` 与 `(false, 2.0, 320x720)` 差值 `< 0.5dp`）、`hello-title-设置` 不存在、`图书馆` 笔顺渐进推进与 `disableAnimations: true` 跳过首尾断言，并同步 `DESIGN.md` 规范说明。
+- 主机检查结果（最终代码与测试编辑后）：
+  - `python scripts/generate_macintosh_hello_glyphs.py`：Clean 生成 7 字 `mobile/lib/ui/macintosh_hello_glyphs.g.dart`。
+  - `C:\studentsAPP\build\toolchain\flutter\bin\flutter.bat analyze --no-pub`：`No issues found! (ran in 3.6s)`。
+  - `flutter test --no-pub test/artistic_title_test.dart test/atmosphere_test.dart test/library_seat_queries_test.dart`：`00:13 +55: All tests passed!`（随后追加 `320x720` 视口用例并复跑 `flutter test --no-pub test/artistic_title_test.dart`：`00:03 +2: All tests passed!`）。
+  - `python scripts/check.py --changed`：退出码 `0`（耗时 `59.046s`，报告 `build/checks/report-fb07fac86c6944828ac2fa41d4fb9608.json`：`docs`、`tooling`、`icons`、`examples`、`java-compile`、5 项 Java 测试、11 项 Node 测试、`flutter-analyze`、`flutter-default` 351 passed / 9 skipped、`flutter-direct` 23 passed）。
+- Android 模拟器真实校园会话只读验收（Pixel 8 API 36 / `emulator-5554`，0 POST 写入）：
+  - **深色模式**：`今日` 展开大标题像素范围 `y=[214, 308]`（高 `95px`、`x=[68, 267]`），`课表` `y=[213, 311]`（高 `99px`、`x=[69, 278]`），`图书馆` 完成 1350ms 书写后 `y=[215, 309]`（高 `95px`、`x=[71, 397]`、`w=327px`），`设置` 保持纯系统字体。
+  - **浅色模式**：`图书馆` 展开大标题像素范围 `y=[215, 309]`（高 `95px`、`x=[70, 397]`、`w=328px`）；进入 `图书馆五层 → 五层南区`（164 席）切换紧凑网格并上滑滚动后，B1 艺术标题平滑淡出，顶栏居中显示折叠系统标题 `图书馆`。
+  - **收尾状态**：已切回 `今日` 页、确认 `cmd uimode night` 为 `no`，并清理设备 `/data/local/tmp` 临时截图与 XML。
+- 未验证边界：真实物理机与真实预约提交/取消写操作未在本阶段触发，仍按既有边界单独验收。
 
 ## 2026-11-20 图书馆座位预约三级选座体验微调阶段 8C
 

@@ -326,7 +326,7 @@ class _AppShellState extends ConsumerState<AppShell>
       final topBar = MiuixTopAppBar(
         key: ValueKey('topbar-$index'),
         title: _tabTitles[index],
-        largeTitleColor: index >= _libraryTab ? null : Colors.transparent,
+        largeTitleColor: index == _settingsTab ? null : Colors.transparent,
         color: Theme.of(context).colorScheme.surface,
         scrollBehavior: scrollBehaviors[index],
         blurred: !opaque,
@@ -381,7 +381,7 @@ class _AppShellState extends ConsumerState<AppShell>
           const SizedBox(width: 8),
         ],
       );
-      if (index >= _libraryTab) return topBar;
+      if (index == _settingsTab) return topBar;
       final miuixTheme = MiuixTheme.of(context);
       return Stack(
         fit: StackFit.passthrough,

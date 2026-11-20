@@ -24,7 +24,7 @@
 
 | 场景 | 必须复用的入口 | 交互/布局要求 | 代表验收 |
 |---|---|---|---|
-| 主页面/背景 | AppShell、QuietBackdrop、GlassNavigation | 今日/课表/图书馆/设置四个目的地；同一分页时钟，独立滚动/折叠状态，非当前页隔离触控/焦点/语义/ticker；B1仅用于今日/课表，图书馆切入后惰性加载 | navigation_motion、atmosphere、ui |
+| 主页面/背景 | AppShell、QuietBackdrop、GlassNavigation | 今日/课表/图书馆/设置四个目的地；同一分页时钟，独立滚动/折叠状态，非当前页隔离触控/焦点/语义/ticker；B1用于今日/课表/图书馆展开标题，折叠标题及设置用系统字体；图书馆切入后惰性加载 | navigation_motion、atmosphere、ui |
 | 设置子页 | SettingsScaffold、settingsGroup、AppArrowPreference | 顶栏遮挡登记到滚动视口，末项可滚出底栏；保留返回和大字换行 | settings、appearance |
 | 课程阅读顶栏 | QuietSliverAppBar | 与主/设置顶栏共享AppHeader计算，不覆盖可见内容或系统栏前景 | atmosphere、settings |
 | 焦点大卡 | AcrylicSurface、FocusCourseCard | 仅局部裁剪模糊；优先显示此刻/下一节、开始/结束及授课分段进度 | today_focus、quiet_design |
@@ -33,7 +33,7 @@
 | 课程信息/冲突抽屉 | showQuietSheet、QuietSheet | 长内容滚动，安全区/关闭/系统返回可用；优先显示仅本次生效，不写回学校课表 | settings、week_stack |
 | 维护/连接恢复 | AppActionButton、ClassroomConnectionCard | 主操作tonal、次操作outline，统一圆角/内边距/48dp最小高度；Wrap允许换行 | classroom_ui_polish、classroom_connection |
 | 图书馆官方认证与回退入口（已实现） | 设置分组、AppArrowPreference、官方WebView、AppActionButton | 在可见的学校页面认证，必要时打开官方预约流程。返回优先站内历史，加载失败可重新打开预约首页。底部“图书馆”栏顶栏与设置入口共同收敛到图书馆页 | Android模拟器检查入口、认证、返回与恢复 |
-| 图书馆原生预约界面 | 内嵌一级页使用 `MiuixTopAppBar`（系统字体）与 `AppShell` 惰性加载；三级渐进空间选座组件（`ui/library_floor_overview.dart`：`LibraryFloorListView`、`LibraryFloorListSkeleton`、`LibraryFloorMiniPreview`、`LibraryFloorSchematicView`、`LibrarySpatialBreadcrumbBar`、`LibrarySpatialLocatorPill`、`LibrarySpatialLevelTransition`、`LibrarySeatViewModeTransition`）；第三级选座双视图（`LibrarySeatFloorMap`、`LibrarySeatGridRow`、`LibrarySeatPalette`、`LibrarySeatLoadingSkeleton`、`ClassroomSectionSwitch`）、三分组紧凑筛选卡与可点状态图例、选区/时段/确认与取消 `QuietSheet`（`showLibraryAreaSheet`、`showLibraryTimeSlotSheet`、`showLibraryConfirmReservationSheet`、`showLibraryConfirmCancelSheet`）、悬浮选中胶囊与“我的预约”焦点票卡（`AcrylicSurface`、`LibraryBookingFocusTicket`、`LibraryBookingHistoryRow`、`LibraryBookingsControlsCard`） | L1（楼层）仅先拉取 `/ic-web/seatMenu` 分层展示可用楼层与方位缩略图；L2（楼层平面示意图）按二层独立绘出与 3–5 层同东北方位的 `北区`（`libraryNorthZoneRect`）及周边未标明非选座轮廓，3–5 层绘出 `西A`/`西B`/连续 L 形 `西C`（双触控区 `library-zone-westC-east` 与 `library-zone-westC-south`）/`北区`/`南区` 与 `中庭`、`↑ 北` 及北侧未标明非选座轮廓；L3（区域具体座位）进入后按需拉取座位清单并采用等比映射（`schoolCanvasAspect = 1.72` 与 `computeLibraryFloorMapLayout` 保真呈现长条及混合圆桌布局、无挤压方席与统一居中缩放显号、切区复位 `1.0x`），无坐标回落可搜分段网格；顶栏 `LibrarySpatialBreadcrumbBar` 三段与分隔符统一垂直居中对齐；控制区按“空间定位与视图 / 预约日期与时段（统一 `AppRadius.small` 与 `38dp` 高度）/ 席位统计与`仅看空闲`筛选”三组以细分隔线清晰分区；`LibrarySpatialLocatorPill`、`BreadcrumbBar` 与 `PopScope` 支持逐级返回（L3→L2→L1）；`QuietSheet` 承担规则提示与防连点确认，合成示例模式下不发起学校请求 | 按[开发计划](docs/DEVELOPMENT_PLAN.md#图书馆座位预约)分别验收查询、提交、取消及阶段7A–8C |
+| 图书馆原生预约界面 | 内嵌一级页与今日/课表共用 `MiuixTopAppBar` 高度（`AppType.artisticHeader`）、B1艺术标题（`MacintoshHelloHeaderOverlay`，折叠后回退系统字体）及 `AppShell` 惰性加载；三级渐进空间选座组件（`ui/library_floor_overview.dart`：`LibraryFloorListView`、`LibraryFloorListSkeleton`、`LibraryFloorMiniPreview`、`LibraryFloorSchematicView`、`LibrarySpatialBreadcrumbBar`、`LibrarySpatialLocatorPill`、`LibrarySpatialLevelTransition`、`LibrarySeatViewModeTransition`）；第三级选座双视图（`LibrarySeatFloorMap`、`LibrarySeatGridRow`、`LibrarySeatPalette`、`LibrarySeatLoadingSkeleton`、`ClassroomSectionSwitch`）、三分组紧凑筛选卡与可点状态图例、选区/时段/确认与取消 `QuietSheet`（`showLibraryAreaSheet`、`showLibraryTimeSlotSheet`、`showLibraryConfirmReservationSheet`、`showLibraryConfirmCancelSheet`）、悬浮选中胶囊与“我的预约”焦点票卡（`AcrylicSurface`、`LibraryBookingFocusTicket`、`LibraryBookingHistoryRow`、`LibraryBookingsControlsCard`） | L1（楼层）仅先拉取 `/ic-web/seatMenu` 分层展示可用楼层与方位缩略图；L2（楼层平面示意图）按二层独立绘出与 3–5 层同东北方位的 `北区`（`libraryNorthZoneRect`）及周边未标明非选座轮廓，3–5 层绘出 `西A`/`西B`/连续 L 形 `西C`（双触控区 `library-zone-westC-east` 与 `library-zone-westC-south`）/`北区`/`南区` 与 `中庭`、`↑ 北` 及北侧未标明非选座轮廓；L3（区域具体座位）进入后按需拉取座位清单并采用等比映射（`schoolCanvasAspect = 1.72` 与 `computeLibraryFloorMapLayout` 保真呈现长条及混合圆桌布局、无挤压方席与统一居中缩放显号、切区复位 `1.0x`），无坐标回落可搜分段网格；顶栏 `LibrarySpatialBreadcrumbBar` 三段与分隔符统一垂直居中对齐；控制区按“空间定位与视图 / 预约日期与时段（统一 `AppRadius.small` 与 `38dp` 高度）/ 席位统计与`仅看空闲`筛选”三组以细分隔线清晰分区；`LibrarySpatialLocatorPill`、`BreadcrumbBar` 与 `PopScope` 支持逐级返回（L3→L2→L1）；`QuietSheet` 承担规则提示与防连点确认，合成示例模式下不发起学校请求 | 按[开发计划](docs/DEVELOPMENT_PLAN.md#图书馆座位预约)分别验收查询、提交、取消及阶段7A–8D |
 | 周/日、录播/直播 | ScheduleModeSwitch、ClassroomSectionSwitch、AppSegmentIndicator | 共用滑动指示器；父组件保留自身标签、语义、焦点和尺寸，不复写动画坐标算法 | schedule_motion、classroom_ui_polish |
 | 星期切换 | WeekdayTabs | 按文字和系统字号测量，七天可达，至少48高；窄屏横滚，禁止固定宽截断汉字 | weekday_tabs |
 | 图标/设置展开 | AppIcon、AppExpansionTile、AppArrowPreference | 离线SVG、语义标签、焦点/禁用反馈；使用统一尾箭头与返回图标 | app_icons、appearance |
@@ -53,7 +53,7 @@ AppActionButton的busy/权限决定仍由调用方传onPressed。等待时禁用
 | 导航/分段 | 一级260ms；周日/录播页签220ms；换周/日内容180ms进入/120ms退出 | 减少动画即时切换，旧内容不能继续响应操作 |
 | 课程/播放路由 | 280ms进入/220ms返回；共享既有导航缓出曲线 | 减少动画即时，键盘播放不做按钮扩张；保持原生返回 |
 | 图书馆空间转场 | L1↔L2 楼层景深进退（`AppMotion.routeEnter` 280ms / `AppMotion.routeExit` 220ms，`AppMotion.navigationCurve`）；L2↔L3 以选区 `libraryZoneAnchor` 为缩放枢轴推进/退回（280ms/220ms，退回 L2 时脉冲高亮刚浏览区域并在 L1 标记`刚才查看`）；L3 平面图↔网格共享轴平滑切换（`AppMotion.segment` 220ms，`AppMotion.segmentCurve`）；仅使用 GPU `Transform` + `Opacity` 并隔离旧视图交互、焦点与语义 | 减少动画下全部层级与视图切换即时完成；无坐标轮廓与过渡中旧视图均不可点击或聚焦 |
-| 今日柔光/标题 | 10秒环境光，自研B1标题1350ms描边；其他阅读页静态光场 | 前台+可见才持续运行；减少动画保留静态，高对比度关闭装饰 |
+| 今日柔光/标题 | 今日页10秒环境光，今日/课表/图书馆自研B1标题1350ms描边；其他阅读页静态光场 | 前台+可见才持续运行；减少动画保留静态，高对比度关闭装饰 |
 
 减少动画与透明材质是不同偏好：减少动画不自动移除静态材质。抽屉在传统焦点模式下即时出现。系统字号/80%–120%整体缩放继续生效；后台/不可见页面不能靠动画维持活动。玻璃是Flutter视觉实现，不宣称系统原生折射。
 
@@ -73,7 +73,7 @@ AppActionButton的busy/权限决定仍由调用方传onPressed。等待时禁用
 
 ## 页面与领域特例
 
-- 今日：教学周、此刻/下一节、分段进度、时间轴；真实空档≥10分钟显示休息，重叠课程中不造休息。语录默认24条离线内容，在线一言默认关闭、失败回退。B1仅用于今日/课表展开标题，折叠标题及设置用系统字体。
+- 今日：教学周、此刻/下一节、分段进度、时间轴；真实空档≥10分钟显示休息，重叠课程中不造休息。语录默认24条离线内容，在线一言默认关闭、失败回退。B1用于今日/课表/图书馆展开标题（切页可见时播放1350ms描边），折叠标题及设置用系统字体。
 - 课表：默认工作日五列同屏，可选周末七列；日/今日始终能读周末数据。五个教学时段与压缩休息条保留，默认不横滚；矮屏/大字可纵向展开。密集格宽度可能小于48，保留完整语义和日视图大尺寸替代入口，不用扩大列宽破坏布局。
 - 冲突：按真实时间端点分片层叠，+N展开全部课程；相邻错色是展示分配，不代表课程身份，不写学校数据。详情保留教师、地点、周次/节次、授课分段与来源原文。
 - 课堂：同学期完整名称匹配全部同名来源，教师只作标签。日期展示排序不改来源/原分页身份；统一导入任务区分未匹配、失败、取消与认证等待。录播默认、直播明确未开放。
