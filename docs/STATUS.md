@@ -1,10 +1,10 @@
 # 当前验证概览
 
-更新：2026-11-20。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
+更新：2026-11-21。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
-| 0.4/code13发布 | 源码`7a73decf`全量`--all`检查（`report-9c934563...json`）、精确`main` CI `44750357261`（`quality`+`dual-preview`）成功、隔离R8 XLS `1/1`（`ReleaseParserTest`）、可信开发签名`4584a62b...`双包核验（`dist/release-0.4/`）、`0.4` release模拟器抽查（`发布构建/7a73decf/0.4 (13)`且无`测试诊断`）与`v0.4`注释标签已推送；待本机`gh`登录后上传Pre-release附件 | 物理真机性能/功耗与提交/取消、真实退出学校会话、完整TalkBack、预测返回及完整学期准确性仍待验；`gh`未登录致远端Release附件待上传 |
+| 0.4/code13 发布 | 源码 `7a73decf` 全量 `--all` 检查、精确 `main` CI `44750357261` 成功、隔离 R8 XLS `1/1`、双包签名与 release 模拟器抽查通过。`v0.4` 已预发布，四份附件的大小和 SHA-256 已核对。[0.4 发布说明](releases/0.4.md) | 物理真机性能/功耗与提交/取消、真实退出学校会话、完整 TalkBack、预测返回及完整学期准确性仍待验 |
 | 0.3/code12发布 | 729663f本地合成/静态检查、隔离R8 XLS 1/1、同源双包签名/摘要、最终release模拟器抽查及4份远端附件核对 | 精确提交的Actions因当时账户计费限制未运行；用户仅就该次发布授权例外，不作为未来跳过CI规则 |
 | 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
 | 学校链路 | 历史分项XLS导入、直连目录、短时播放和续播样本 | 全学期独立准确性、完整课时、水印组合、WebVPN恢复、真实认证失效及7天会话待验 |
@@ -22,7 +22,8 @@
   - `campus-schedule-0.4-android-debug.apk`：`185,220,270` 字节，SHA-256 `e2d2c5fbd5fd5e4faa6f98dd75fb390b3bd6619cf9192cd28f2fcefaf14cfefa`
   - `SHA256SUMS.txt`：`212` 字节，SHA-256 `f9e8e9852b26bf1ea9e0ac29833938143858c52ffa5bc05a197756f15011864f`
   - `build-metadata.json`：`1,715` 字节，SHA-256 `2a797a6ec3da2da20c15a9185018399a79f13c1cac9184866219b42347b067f3`
-- 模拟器 release 抽查与标签：将 `campus-schedule-0.4-android-release.apk` 覆盖安装至 `Pixel_8_API_36`（设备 `base.apk` SHA-256 与上述一致、`Night mode: no`、0 POST 写入），冷启动核对“今日”“图书馆”及“设置 → 项目信息（`发布构建 / 源码 7a73decf / 版本 0.4 (13)`）”，确认无“测试诊断”。注释标签 `v0.4`（`1fbaae17efa1bdf83bb1d6bbaab8f78f66e192b5`）已指向 `7a73decf7f887af4fb296ce84ed8107ec1448269` 并推送至 `origin`；因本机 `gh auth status` 未登录，GitHub Pre-release 页面与 4 份附件上传待本人登录后完成。
+- 模拟器 release 抽查：将 `campus-schedule-0.4-android-release.apk` 覆盖安装至 `Pixel_8_API_36`（设备 `base.apk` SHA-256 与上述一致、`Night mode: no`、0 POST 写入），冷启动核对“今日”“图书馆”及“设置 → 项目信息（`发布构建 / 源码 7a73decf / 版本 0.4 (13)`）”，确认无“测试诊断”。
+- 2026-11-21 核对 GitHub 预发布状态。远端 `v0.4` 解析为源码 `7a73decf7f887af4fb296ce84ed8107ec1448269`。Release API 返回 `prerelease=true`、`draft=false`，两个 APK、`SHA256SUMS.txt` 与 `build-metadata.json` 共四份附件均为 `uploaded`。逐项比对文件大小及 SHA-256，均与本地归档一致。[GitHub 预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.4)
 
 ## 2026-11-20 图书馆顶栏统一高度与 B1 艺术标题阶段 8D
 

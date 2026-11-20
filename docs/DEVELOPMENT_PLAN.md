@@ -1,12 +1,12 @@
 # 当前开发进度与下一步
 
-更新：2026-11-20。本页只维护当前状态，历史分项证据见[STATUS](STATUS.md)、[发布记录](releases/0.3.md)及Git历史。生效规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。
+更新：2026-11-21。本页只维护当前状态，历史分项证据见[STATUS](STATUS.md)、[发布记录](releases/0.4.md)及Git历史。生效规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。
 
 ## 当前基线
 
 - 主线为Flutter Android课表、录播与已获批图书馆座位预约；当前版本基线为0.4/code13（发布源码`7a73decf7f887af4fb296ce84ed8107ec1448269`，注释标签`v0.4`已推送至`origin`，精确CI `44750357261`、R8 `1/1`、可信签名双包及模拟器抽查见[0.4发布说明](releases/0.4.md)；历史0.3/code12见[0.3发布说明](releases/0.3.md)）。
 - 柔光亚克力五阶段、浅色光效、B1标题/语录与图书馆1–8D均已在模拟器分项验收；0.4最终release已于模拟器核对“今日”“图书馆”及“设置 → 项目信息（发布构建 / 源码 7a73decf / 版本 0.4 (13)）”。不能再以发布前“未合入/待安装”描述当前交付状态。
-- 本轮A–F及SDK37签名校验修复（PR #2，96213b2）已合入main；`codex/library-seat-booking`已随0.4快进合入`main`（`7a73decf`），仅余本机`gh auth login`后创建GitHub Pre-release页并上传`dist/release-0.4/`的4份已验核附件；详见[CHANGELOG](../CHANGELOG.md)与[0.4发布说明](releases/0.4.md)。
+- 本轮 A–F、SDK 37 签名校验修复（PR #2，`96213b2`）和图书馆座位预约已合入 `main`。`v0.4` 已在 GitHub 预发布，四份远端附件的大小和 SHA-256 均与本地归档一致。[CHANGELOG](../CHANGELOG.md) · [GitHub 预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.4)
 
 ## 图书馆座位预约
 
@@ -23,8 +23,6 @@
 | 8B．模拟器真实只读三层级联验收与文档同步 | 在 Android 模拟器（`Pixel 8 API 36`）用户已登录真实校园会话下以 0 POST 只读核对浅/深色双主题的 L1 楼层目录、2F 专绘北区、3F 连续 L 形 `西C` 与 `南区` 真实座位加载、双视图切换、`LibrarySpatialLocatorPill` 与系统返回逐级回退，恢复浅色模式并同步 `DESIGN.md`、`docs/ARCHITECTURE.md`、`docs/DEVELOPMENT_PLAN.md`、`docs/STATUS.md`。 | 模拟器浅/深色只读抽查通过、清理设备临时文件并恢复浅色，`python scripts/check.py --module docs` 通过，提交推送后停审。 | **已验收（反馈微调并入 8C）**（`bf2e2e2`，见[阶段 8A 与 8B 记录](STATUS.md#2026-11-20-图书馆座位预约三级空间选座阶段-8a-与-8b)） |
 | 8C．L3 控制区三组重排、平面图 `1.72:1` 等比修正与索引条垂直居中 | 重排 `_seatControlsCard` 为“空间与视图 / 日期与时段 / 统计与`仅看空闲`”三组并统一 `AppRadius.small` 与 `38dp` 控件规格（清除黑底 Chip 与错位留白）；`computeLibraryFloorMapLayout` 以 `schoolCanvasAspect = 1.72` 等比投影修正 `西A区`/`南区` 变形与竖条挤压、统一居中显号与切区缩放复位；修复 `LibrarySpatialBreadcrumbBar` 垂直居中与深色迷你预览对比度；新增 2 条合成回归测试。 | `flutter analyze --no-pub`、扩充合成测试（41+12 条）、`python scripts/check.py --changed` 及模拟器深浅色真实核对通过，更新文档并提交推送后停审。 | **已审核通过**（用户审核通过，`6c47522`，见[阶段 8C 记录](STATUS.md#2026-11-20-图书馆座位预约三级选座体验微调阶段-8c)） |
 | 8D．图书馆顶栏统一高度与 B1 艺术标题 | 在 `scripts/generate_macintosh_hello_glyphs.py` 与 `mobile/lib/ui/macintosh_hello_glyphs.g.dart` 中补充“图 / 书 / 馆”三字自研 B1 Macintosh 骨骼填充轮廓与有向中心笔顺（共 20 笔）；调整 `ui/app_shell.dart` 使 `图书馆` 顶栏与 `今日` / `课表` 共用 `AppType.artisticHeader`（`40.0`、`height: 1.16`、`w400`）折叠大标题高度与 `MacintoshHelloHeaderOverlay`（1350ms 写字入场动画、滚动淡出回退居中系统标题），仅保留 `设置` 为纯系统字体；更新 `test/artistic_title_test.dart` 与 `DESIGN.md`。 | `flutter analyze --no-pub`、`artistic_title_test.dart`（含 390×844 与 320×720 多缩放高度一致性及 `图书馆` 笔顺动画/减动效回归）、`python scripts/check.py --changed` 及 Pixel 8 API 36 深/浅色只读核对（含滚动折叠居中标题）通过，同步文档并提交推送后停审。 | **已审核通过**（用户审核通过，`ff716b2`，见[阶段 8D 记录](STATUS.md#2026-11-20-图书馆顶栏统一高度与-b1-艺术标题阶段-8d)） |
-
-> 阶段 7A–8D（`4bd9329`、`9d5d2bd`、`b4227e5`、`cf0189b`、`bf2e2e2`、`6c47522`、`ff716b2`）与 `0.4/code13` 合并/校验/`v0.4` 标签推送（`7a73decf`）已全部完成（[0.4发布说明](releases/0.4.md)）；`dist/release-0.4/` 4 份已验核附件待 `gh auth login` 后上传至 GitHub Pre-release。
 
 阶段 1 的桌面只读验证已获审核（`664ea18`）。阶段 2 的 Android 官方页面入口已实现并推送（`a8c95d7`），模拟器验证了认证回跳、二层北区选座页、预约管理入口及离页后会话复用（`eb70c39`）。真实退出会清除本机录播目录与续播进度，单列为阶段 2 待验项，操作前需本人同意。[桌面记录](STATUS.md#2026-11-19-图书馆座位预约只读验证) · [Android 记录](STATUS.md#2026-11-19-图书馆座位预约-android-接入)
 
