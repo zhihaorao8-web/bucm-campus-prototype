@@ -18,8 +18,13 @@ class GlassNavigation extends ConsumerWidget {
   final int selected;
   final double? position;
   final ValueChanged<int> onSelect;
-  static const labels = ['今日', '课表', '设置'];
-  static const icons = [AppIcons.sun, AppIcons.calendarWeek, AppIcons.sliders];
+  static const labels = ['今日', '课表', '图书馆', '设置'];
+  static const icons = [
+    AppIcons.sun,
+    AppIcons.calendarWeek,
+    AppIcons.book,
+    AppIcons.sliders,
+  ];
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(currentAppearanceProvider);
@@ -117,11 +122,14 @@ class GlassNavigation extends ConsumerWidget {
                                     : Duration.zero,
                                 curve: Curves.easeOutCubic,
                                 alignment: Alignment(
-                                  -1.0 + (position ?? selected),
+                                  -1.0 +
+                                      2.0 *
+                                          (position ?? selected) /
+                                          (labels.length - 1),
                                   0,
                                 ),
                                 child: FractionallySizedBox(
-                                  widthFactor: 1 / 3,
+                                  widthFactor: 1 / labels.length,
                                   heightFactor: 1,
                                   child: DecoratedBox(
                                     decoration: BoxDecoration(
@@ -169,25 +177,39 @@ class GlassNavigation extends ConsumerWidget {
                                                       : colors.onSurfaceVariant,
                                                 ),
                                                 const SizedBox(height: 3),
-                                                Text(
-                                                  labels[index],
-                                                  maxLines: 1,
-                                                  style: theme
-                                                      .textTheme
-                                                      .bodySmall!
-                                                      .copyWith(
-                                                        fontSize:
-                                                            AppType.smallLabel,
-                                                        height: 1.2,
-                                                        fontWeight:
-                                                            selected == index
-                                                            ? FontWeight.w600
-                                                            : FontWeight.w400,
-                                                        color: selected == index
-                                                            ? colors.primary
-                                                            : colors
-                                                                  .onSurfaceVariant,
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 2,
                                                       ),
+                                                  child: FittedBox(
+                                                    fit: BoxFit.scaleDown,
+                                                    child: Text(
+                                                      labels[index],
+                                                      maxLines: 1,
+                                                      style: theme
+                                                          .textTheme
+                                                          .bodySmall!
+                                                          .copyWith(
+                                                            fontSize: AppType
+                                                                .smallLabel,
+                                                            height: 1.2,
+                                                            fontWeight:
+                                                                selected ==
+                                                                    index
+                                                                ? FontWeight
+                                                                      .w600
+                                                                : FontWeight
+                                                                      .w400,
+                                                            color:
+                                                                selected ==
+                                                                    index
+                                                                ? colors.primary
+                                                                : colors
+                                                                      .onSurfaceVariant,
+                                                          ),
+                                                    ),
+                                                  ),
                                                 ),
                                               ],
                                             ),

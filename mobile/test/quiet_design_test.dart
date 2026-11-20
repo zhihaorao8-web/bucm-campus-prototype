@@ -131,7 +131,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('paper-grain')), findsNothing);
       expect(find.byKey(const ValueKey('aurora-0')), findsNothing);
-      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

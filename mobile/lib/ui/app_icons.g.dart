@@ -7,14 +7,8 @@ abstract final class AppIcons {
   static const calendarWeek = AppIconData('calendar-week');
   static const sliders = AppIconData('sliders');
   static const arrowBack = AppIconData('arrow-left', matchTextDirection: true);
-  static const chevronLeft = AppIconData(
-    'chevron-left',
-    matchTextDirection: true,
-  );
-  static const chevronRight = AppIconData(
-    'chevron-right',
-    matchTextDirection: true,
-  );
+  static const chevronLeft = AppIconData('chevron-left', matchTextDirection: true);
+  static const chevronRight = AppIconData('chevron-right', matchTextDirection: true);
   static const chevronDown = AppIconData('chevron-down');
   static const chevronUp = AppIconData('chevron-up');
   static const sync = AppIconData('sync');
@@ -51,6 +45,12 @@ abstract final class AppIcons {
   static const code = AppIconData('code');
   static const close = AppIconData('close');
   static const moreVertical = AppIconData('more-vertical');
+  static const book = AppIconData('book');
+  static const map = AppIconData('map');
+  static const grid = AppIconData('grid');
+  static const search = AppIconData('search');
+  static const clock = AppIconData('clock');
+  static const globe = AppIconData('globe');
 
   static const values = <AppIconData>[
     sun,
@@ -96,5 +96,11 @@ abstract final class AppIcons {
     code,
     close,
     moreVertical,
+    book,
+    map,
+    grid,
+    search,
+    clock,
+    globe,
   ];
 }

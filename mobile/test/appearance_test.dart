@@ -234,11 +234,11 @@ void main() {
         tester.getSize(find.byType(Scaffold).first).width,
         closeTo(325, .1),
       );
-      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<Semantics>(find.byKey(const ValueKey('tab-2')))
+            .widget<Semantics>(find.byKey(const ValueKey('tab-3')))
             .properties
             .selected,
         isTrue,
@@ -278,7 +278,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('外观设置'));
       await tester.pumpAndSettle();
@@ -373,7 +373,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<Semantics>(find.byKey(const ValueKey('tab-1')))
+            .widget<Semantics>(find.byKey(const ValueKey('tab-2')))
             .properties
             .selected,
         isTrue,

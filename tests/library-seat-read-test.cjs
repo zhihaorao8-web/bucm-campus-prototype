@@ -223,3 +223,39 @@ test('the bridge rejects other document origins, URLs and commands before fetch'
   assert.equal((await read({ action: 'seats', area: '../wrong', date: '2026-10-10' }, {})).calls.length, 0);
   assert.equal((await read({ action: 'cancel', id: '42' }, {})).calls.length, 0);
 });
+
+test('seat coordinates normalize valid percentages and nullify malformed values without failing', async () => {
+  const base = {
+    devName: '坐标测试',
+    devProp: 2,
+    openState: 1,
+    devStatus: 0,
+    resvRule: { minResvTime: 30 },
+    openTimes: [{ openStartTime: '08:30:00', openEndTime: '22:00:00' }],
+    resvInfo: [],
+  };
+  const { data } = await read({ action: 'seats', area: '32', date: '2026-10-10' }, {
+    code: 0,
+    data: [
+      { ...base, devId: 1, devSn: 1, devName: 'A1', coordinate: '12.5,64.2' },
+      { ...base, devId: 2, devSn: 2, devName: 'A2', coordinate: ' 0 , 100 ' },
+      { ...base, devId: 3, devSn: 3, devName: 'A3', coordinate: null },
+      { ...base, devId: 4, devSn: 4, devName: 'A4', coordinate: '' },
+      { ...base, devId: 5, devSn: 5, devName: 'A5', coordinate: '-1,50' },
+      { ...base, devId: 6, devSn: 6, devName: 'A6', coordinate: '101,20' },
+      { ...base, devId: 7, devSn: 7, devName: 'A7', coordinate: 'abc,10' },
+      { ...base, devId: 8, devSn: 8, devName: 'A8', coordinate: '10,20,30' },
+    ],
+  });
+  assert.equal(data.status, 'ok');
+  assert.deepEqual(data.rows.map(r => [r.id, r.x, r.y]), [
+    ['1', 12.5, 64.2],
+    ['2', 0, 100],
+    ['3', null, null],
+    ['4', null, null],
+    ['5', null, null],
+    ['6', null, null],
+    ['7', null, null],
+    ['8', null, null],
+  ]);
+});

@@ -270,6 +270,42 @@
       "sha256": "323c7c1cf8ea56d9952b2f837684a9e20a417c4e040e81d8fb316948d9a6a7c3",
       "label": "More vertical",
       "set": "generic"
+    },
+    "book": {
+      "name": "book",
+      "sha256": "fff7739328d8cca3007d6babc21007b0b08c5373b22f28856cc5a863d8ee688c",
+      "label": "Closed book",
+      "set": "files"
+    },
+    "map": {
+      "name": "map",
+      "sha256": "ed781fa82f9d1834f441b4c53c6bdd5e968c20d62558314cc974ec92a934b90e",
+      "label": "Map",
+      "set": "travel"
+    },
+    "grid": {
+      "name": "grid",
+      "sha256": "f452564edc9033ed50e2384e0acdabc67fc11d7d2a481f0fbdeb99f1c55c6c55",
+      "label": "Grid",
+      "set": "generic"
+    },
+    "search": {
+      "name": "search",
+      "sha256": "ddf6ce7af5538a261cea3027edbaa6d5d3a1adf693a35184f5819472d3a62b3a",
+      "label": "Search",
+      "set": "generic"
+    },
+    "clock": {
+      "name": "clock",
+      "sha256": "a69fe655e67d4c862700937ec23a3ae64dd665c87fec75e2c3edb3393db04f31",
+      "label": "Clock",
+      "set": "generic"
+    },
+    "globe": {
+      "name": "globe",
+      "sha256": "6328193565058b9db70c8b324c77d0f21d30770a3f6f4cb28c2d1dd9b6873593",
+      "label": "Globe",
+      "set": "generic"
     }
   },
   "materialAliases": {

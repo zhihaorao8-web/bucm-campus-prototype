@@ -34,6 +34,20 @@ const clock = value => {
   const match = /^((?:[01]\d|2[0-3]):[0-5]\d)(?::[0-5]\d)?$/.exec(value.trim());
   return match ? match[1] : '';
 };
+const coordinate = value => {
+  if (typeof value !== 'string') return null;
+  const parts = value.split(',');
+  if (parts.length !== 2) return null;
+  const nums = [];
+  for (const raw of parts) {
+    const part = raw.trim();
+    if (!/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(part)) return null;
+    const n = Number(part);
+    if (!Number.isFinite(n) || n < 0 || n > 100) return null;
+    nums.push(n);
+  }
+  return nums;
+};
 const day = value => /^\d{4}-\d{2}-\d{2}$/.test(value);
 const collectAreas = (nodes, floorName = '', depth = 0) => {
   const out = [];
@@ -162,6 +176,7 @@ try {
         cancelMinutes: nonNegInt(device.resvRule.cancelTime),
         limit: nonNegInt(device.resvRule.limit),
       } : null;
+      const coords = coordinate(device.coordinate);
       return {
         id: id(device.devId), label: text(device.devName),
         viewOnly: device.onlyView === true,
@@ -169,6 +184,8 @@ try {
         hours,
         reservations,
         rule,
+        x: coords ? coords[0] : null,
+        y: coords ? coords[1] : null,
       };
     });
     if (rows.some(row => !row.id || !row.label ||

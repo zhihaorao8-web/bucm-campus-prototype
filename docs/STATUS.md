@@ -7,7 +7,18 @@
 | 0.3/code12发布 | 729663f本地合成/静态检查、隔离R8 XLS 1/1、同源双包签名/摘要、最终release模拟器抽查及4份远端附件核对 | 精确提交的Actions因当时账户计费限制未运行；用户仅就该次发布授权例外，不作为未来跳过CI规则 |
 | 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
 | 学校链路 | 历史分项XLS导入、直连目录、短时播放和续播样本 | 全学期独立准确性、完整课时、水印组合、WebVPN恢复、真实认证失效及7天会话待验 |
-| 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消，详见下节。阶段 6 已获用户审核通过 | 真实退出会话另行验收 |
+| 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已获用户审核通过）；阶段 7A 四项底栏、坐标提取与 49 个图标离线/合成检查通过 | 阶段 7A 待用户审核；阶段 7B（双视图/筛选/时段轴）与 7C（确认/取消抽屉与焦点票卡）及新界面真机抽查待推进；真实退出会话另行验收 |
+
+## 2026-11-20 图书馆座位预约前端重设计阶段 7A
+
+- 基于 `229f002`（阶段 6 已审核基线）与用户确认的“四项悬浮底栏（今日 / 课表 / 图书馆 / 设置）+ 阶段 7A→7B→7C 方案”实施阶段 7A：
+  1. 离线从已配置 `iconmcp` 服务增补 6 个 MIT outline SVG（`book`、`map`、`grid`、`search`、`clock`、`globe`）至 [清单](../design/icons/iconmcp/manifest.json) 与 [app_icons.g.dart](../mobile/lib/ui/app_icons.g.dart)，共 49 个；原有 43 个 SVG 文件与摘要未改动。
+  2. 扩展 [library-seat-read.js](../assets/library-seat-read.js)（`coordinate` 百分比提取，缺失或越界/畸形安全置 `null` 且不阻塞查询）与 [library_seats.dart](../mobile/lib/domain/library_seats.dart)（`LibrarySeat.x/y` 及 `hasCoordinates`，要求双分量均在 `[0, 100]` 有限范围）。
+  3. 升级 [glass_navigation.dart](../mobile/lib/ui/glass_navigation.dart)（四项标签 `今日 / 课表 / 图书馆 / 设置`、4 等分滑块及窄屏防溢出排版）、[app_palette.dart](../mobile/lib/design/app_palette.dart)（`tab == 2` 图书馆浅/深色静谧阅览柔光，原设置移至 `tab == 3`）、[library_seat_query_page.dart](../mobile/lib/ui/library_seat_query_page.dart)（内嵌一级页壳层、`LibrarySeatTabController` 顶栏联动、仅在激活且非示例模式下惰性加载）与 [app_shell.dart](../mobile/lib/ui/app_shell.dart)（四页切换与滑过中间页不误唤醒图书馆加载；图书馆独立于本地课表状态；顶栏沿用系统字体而非 B1 艺术标题；设置页入口同步直达底部“图书馆”栏）。
+  4. 同步迁改 8 组现有导航/外观/设置测试并补测 [app_icons_test.dart](../mobile/test/app_icons_test.dart)（49 图标解码）、[ui_test.dart](../mobile/test/ui_test.dart)（4 项触控区 `>= 48dp` 与 320px `1.5x/2.0x` 大字号不溢出）、[atmosphere_test.dart](../mobile/test/atmosphere_test.dart)（四页光场与顶栏模糊）与 [library_seat_queries_test.dart](../mobile/test/library_seat_queries_test.dart)（坐标校验、未激活零加载、示例隔离及设置联动跳转）。
+- 同步更新 [DESIGN.md](../DESIGN.md)、[PROJECT_BRIEF.md](PROJECT_BRIEF.md)、[ICON_SYSTEM.md](ICON_SYSTEM.md)、[THIRD_PARTY.md](THIRD_PARTY.md)、[ARCHITECTURE.md](ARCHITECTURE.md) 与 [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md)。
+- 本地验证通过：`python scripts/iconmcp_assets.py`（49 个本地 SVG 离线校验）、`python scripts/prepare_flutter.py`（`Android 0.3, pubspec 0.3.0+12`）与 `python scripts/check.py --changed`（报告 `build/checks/report-1ad3bf49cafd43618a066c56b5a7c72b.json`：`docs` 203 个本地目标、`tooling` 37 项、`icons`/`examples`、`java` 5 组、`node` 11 组（含 `library-seat-read-test.cjs` 8 项与 `library-seat-write-test.cjs` 9 项）、`flutter analyze --no-pub` 0 问题、`flutter-default` 333 项通过 / 9 项条件跳过、`flutter-direct` 23 项通过）。
+- 本阶段未重构页内选座双视图/抽屉与票卡（留待 7B/7C），未重新打包 APK 或在模拟器/真实学校会话实机安装运行；`mobile/pubspec.lock` 未改动；等待用户审核 7A 后开展 7B。
 | 工程优化A | 当前规则/进度入口、模块索引与清理清单已整理；文档检查通过，详情见A节 | 成果222ae74及状态1664bdb已推送；用户继续指令确认通过，进入B；未新增运行时验证 |
 | 工程优化B | 模块/变更测试调度与分层规范已实现；本地检查通过，详情见B节 | 成果a215cb7已普通推送到origin/codex/maintenance-stage-b，用户继续指令确认通过，进入C；L3设备、构建/学校验证未运行 |
 | 工程优化C | 公共视觉令牌/策略、维护与分段控件、页面参数及可执行规范已完成；对应回归、直取与合成预览通过 | eca3e55、41c26d3已推送至codex/maintenance-stage-c，用户继续指令确认通过，进入D；真机/学校验证不由本轮补齐 |

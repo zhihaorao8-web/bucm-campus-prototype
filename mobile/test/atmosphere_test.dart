@@ -8,14 +8,39 @@ import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'package:campus_schedule/ui/acrylic_surface.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'package:campus_schedule/application/appearance_controller.dart';
+import 'package:campus_schedule/domain/library_seats.dart';
+import 'package:campus_schedule/platform/library_seat_reader.dart';
 import 'support/memory_appearance.dart';
 import 'ui_test.dart' show app;
 import 'schedule_test.dart' show MemoryRepository;
 import 'week_grid_test.dart' show weeklyPreviewData;
 
+class _AtmosphereLibraryReader extends LibrarySeatReader {
+  @override
+  Future<List<LibraryArea>> areas() async => const [
+    LibraryArea('32', '二层北区', '二层'),
+  ];
+
+  @override
+  Future<List<LibrarySeat>> seats(String area, DateTime date) async => [
+    for (var i = 1; i <= 12; i++)
+      LibrarySeat(
+        id: '$i',
+        label: 'A${i.toString().padLeft(3, '0')}',
+        open: true,
+        viewOnly: false,
+        hours: const [(510, 1320)],
+        reservations: const [],
+      ),
+  ];
+
+  @override
+  Future<void> reset() async {}
+}
+
 void main() {
   for (final brightness in [Brightness.dark, Brightness.light]) {
-    for (final tab in [1, 2]) {
+    for (final tab in [1, 2, 3]) {
       testWidgets(
         '${brightness.name} reading light fields reach the page body tab=$tab',
         (tester) async {
@@ -286,7 +311,11 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
         await tester.pumpWidget(
-          app(MemoryRepository(weeklyPreviewData(DateTime.now())), dark: dark),
+          app(
+            MemoryRepository(weeklyPreviewData(DateTime.now())),
+            dark: dark,
+            libraryReader: _AtmosphereLibraryReader(),
+          ),
         );
         await tester.pumpAndSettle();
         final radius = tester
@@ -296,7 +325,8 @@ void main() {
           (0, 'today-page'),
           (1, 'timetable-page'),
           (1, 'timetable-day-page'),
-          (2, 'settings-page'),
+          (2, 'library-tab-page'),
+          (3, 'settings-page'),
         ]) {
           await tester.tap(find.byKey(ValueKey('tab-$index')));
           await tester.pumpAndSettle();
@@ -325,7 +355,7 @@ void main() {
         await container
             .read(appearanceProvider.notifier)
             .change((p) => p.copyWith(glass: false));
-        for (final index in [0, 1, 2]) {
+        for (final index in [0, 1, 2, 3]) {
           await tester.tap(find.byKey(ValueKey('tab-$index')));
           await tester.pumpAndSettle();
           expect(

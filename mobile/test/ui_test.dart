@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:campus_schedule/application/schedule_controller.dart';
 import 'package:campus_schedule/domain/schedule.dart';
+import 'package:campus_schedule/platform/library_seat_reader.dart';
 import 'package:campus_schedule/ui/app_shell.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'package:campus_schedule/ui/glass_navigation.dart';
@@ -20,6 +21,7 @@ Widget app(
   bool highContrast = false,
   double colorContrast = 0,
   bool reduceMotion = false,
+  LibrarySeatReader? libraryReader,
 }) => ProviderScope(
   overrides: [
     ambientMotionEnabledProvider.overrideWithValue(false),
@@ -49,7 +51,7 @@ Widget app(
       ),
       child: MiuixThemeBridge(child: child!),
     ),
-    home: const AppShell(),
+    home: AppShell(libraryReader: libraryReader),
   ),
 );
 
@@ -81,7 +83,7 @@ void main() {
             .offset,
         greaterThan(100),
       );
-      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
       expect(
         tester
@@ -133,11 +135,11 @@ void main() {
             (filter.child! as DecoratedBox).decoration as BoxDecoration;
         expect(material.color!.a, 1);
         expect(material.gradient, isNull);
-        await tester.tap(find.byKey(const ValueKey('tab-2')));
+        await tester.tap(find.byKey(const ValueKey('tab-3')));
         await tester.pumpAndSettle();
         expect(
           tester
-              .widget<Semantics>(find.byKey(const ValueKey('tab-2')))
+              .widget<Semantics>(find.byKey(const ValueKey('tab-3')))
               .properties
               .selected,
           isTrue,
@@ -161,15 +163,15 @@ void main() {
       expect(dock.left, greaterThan(0));
       expect(dock.right, lessThan(390));
       expect(dock.bottom, lessThanOrEqualTo(832));
-      for (var i = 0; i < 3; i++) {
+      for (var i = 0; i < 4; i++) {
         final bounds = tester.getSize(find.byKey(ValueKey('tab-$i')));
         expect(bounds.width, greaterThanOrEqualTo(48));
         expect(bounds.height, greaterThanOrEqualTo(48));
       }
-      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
       final selected = tester.widget<Semantics>(
-        find.byKey(const ValueKey('tab-2')),
+        find.byKey(const ValueKey('tab-3')),
       );
       expect(selected.properties.selected, isTrue);
       final footer = find.text('项目信息');
@@ -228,23 +230,49 @@ void main() {
       },
     );
   }
-  testWidgets('small phone and large system text keep navigation usable', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(320, 720);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(
-      app(MemoryRepository(const ScheduleData()), scale: 1.5),
+  for (final scale in [1.5, 2.0]) {
+    testWidgets(
+      'small phone and large system text ($scale) keep all 4 navigation labels usable',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 720);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(
+          app(MemoryRepository(const ScheduleData()), scale: scale),
+        );
+        await tester.pumpAndSettle();
+        for (final label in GlassNavigation.labels) {
+          expect(find.text(label), findsWidgets);
+        }
+        await tester.drag(
+          find.byKey(const PageStorageKey('empty-page-0')),
+          const Offset(0, -240),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('先体验合成示例'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('tab-1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('tab-2')));
+        await tester.pumpAndSettle();
+        expect(find.text('合成示例模式'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('tab-3')));
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(
+          find.text('外观设置'),
+          120,
+          scrollable: find
+              .descendant(
+                of: find.byKey(const PageStorageKey('settings-page')),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        expect(find.text('外观设置'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
     );
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('先体验合成示例'));
-    await tester.tap(find.text('先体验合成示例'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('课表').last);
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
+  }
 }

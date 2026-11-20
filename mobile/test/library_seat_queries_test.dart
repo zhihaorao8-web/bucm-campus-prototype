@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:campus_schedule/application/appearance_controller.dart';
 import 'package:campus_schedule/application/library_seat_queries.dart';
 import 'package:campus_schedule/domain/library_seats.dart';
+import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/platform/library_seat_reader.dart';
 import 'package:campus_schedule/platform/school_adapter.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
+import 'package:campus_schedule/ui/glass_navigation.dart';
 import 'package:campus_schedule/ui/library_seat_query_page.dart';
 import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +17,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'schedule_test.dart' show MemoryRepository;
 import 'support/memory_appearance.dart';
+import 'ui_test.dart' show app;
 
 LibrarySeat seat({
   String id = '1',
@@ -1108,6 +1112,180 @@ void main() {
       await tester.pumpAndSettle();
       expect(reader.reserveCalls, 4);
       expect(find.text('待生效 · 预约编号 8001'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  test('LibrarySeat.fromJson parses valid coordinates and rejects out-of-range pairs', () {
+    Map<String, dynamic> payload(Object? x, Object? y) => {
+      'id': '1',
+      'label': '2N001',
+      'open': true,
+      'viewOnly': false,
+      'hours': [
+        ['08:30', '22:00'],
+      ],
+      'reservations': const <Object>[],
+      'x': x,
+      'y': y,
+    };
+
+    final valid = LibrarySeat.fromJson(payload(12.5, 64));
+    expect(valid.hasCoordinates, true);
+    expect(valid.x, 12.5);
+    expect(valid.y, 64.0);
+
+    for (final (x, y) in [
+      (null, 20),
+      (10, null),
+      (-0.1, 20),
+      (10, 100.1),
+      (double.nan, 10),
+    ]) {
+      final invalid = LibrarySeat.fromJson(payload(x, y));
+      expect(invalid.hasCoordinates, false);
+      expect(invalid.x, isNull);
+      expect(invalid.y, isNull);
+    }
+  });
+
+  testWidgets(
+    'embedded library page loads lazily only when active and stays offline in demo mode',
+    (tester) async {
+      var areaCalls = 0;
+      var seatCalls = 0;
+      final reader = FakeLibrarySeatReader()
+        ..onAreas = () async {
+          areaCalls++;
+          return const [LibraryArea('32', '二层北区', '二层')];
+        }
+        ..onSeats = (_, _) async {
+          seatCalls++;
+          return [seat(id: '10', label: '2N010')];
+        };
+
+      Widget buildEmbedded({
+        required bool active,
+        required bool demo,
+        VoidCallback? onExitDemo,
+      }) => ProviderScope(
+        overrides: [
+          appearanceRepositoryProvider.overrideWithValue(
+            MemoryAppearanceRepository(),
+          ),
+        ],
+        child: MaterialApp(
+          theme: appTheme(Brightness.light),
+          home: Scaffold(
+            body: LibrarySeatQueryPage(
+              reader: reader,
+              embedded: true,
+              active: active,
+              demo: demo,
+              onExitDemo: onExitDemo,
+              now: () => DateTime(2026, 10, 10, 9),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(buildEmbedded(active: false, demo: false));
+      await tester.pumpAndSettle();
+      expect(areaCalls, 0);
+      expect(seatCalls, 0);
+
+      await tester.pumpWidget(buildEmbedded(active: true, demo: true));
+      await tester.pumpAndSettle();
+      expect(areaCalls, 0);
+      expect(seatCalls, 0);
+      expect(find.text('合成示例模式'), findsOneWidget);
+
+      var exited = false;
+      await tester.pumpWidget(
+        buildEmbedded(
+          active: true,
+          demo: true,
+          onExitDemo: () => exited = true,
+        ),
+      );
+      await tester.tap(find.text('退出示例'));
+      await tester.pumpAndSettle();
+      expect(exited, true);
+
+      await tester.pumpWidget(buildEmbedded(active: true, demo: false));
+      await tester.pumpAndSettle();
+      expect(areaCalls, 1);
+      expect(seatCalls, 1);
+      expect(find.text('2N010'), findsOneWidget);
+
+      await tester.pumpWidget(buildEmbedded(active: false, demo: false));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(buildEmbedded(active: true, demo: false));
+      await tester.pumpAndSettle();
+      expect(areaCalls, 1);
+      expect(seatCalls, 1);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'AppShell four-tab dock switches to 图书馆 lazily and Settings entry jumps to 图书馆 tab',
+    variant: androidOnly,
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      var seatCalls = 0;
+      final reader = FakeLibrarySeatReader()
+        ..onSeats = (_, _) async {
+          seatCalls++;
+          return [seat(id: '10', label: '2N018')];
+        };
+
+      await tester.pumpWidget(
+        app(MemoryRepository(const ScheduleData()), libraryReader: reader),
+      );
+      await tester.pumpAndSettle();
+
+      expect(GlassNavigation.labels, ['今日', '课表', '图书馆', '设置']);
+      expect(seatCalls, 0);
+
+      // Going straight from 今日 (0) to 设置 (3) must not wake the library reader.
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
+      await tester.pumpAndSettle();
+      expect(seatCalls, 0);
+      expect(find.text('图书馆座位预约'), findsOneWidget);
+      expect(find.text('也可从底部“图书馆”栏直接进入'), findsOneWidget);
+
+      // Tapping Settings -> 图书馆座位预约 jumps to the 图书馆 tab and loads seats.
+      await tester.scrollUntilVisible(
+        find.text('图书馆座位预约'),
+        180,
+        scrollable: find
+            .descendant(
+              of: find.byKey(const PageStorageKey('settings-page')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.tap(find.text('图书馆座位预约'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<Semantics>(find.byKey(const ValueKey('tab-2')))
+            .properties
+            .selected,
+        isTrue,
+      );
+      expect(seatCalls, 1);
+      expect(find.text('2N018'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('library-refresh-button')));
+      await tester.pumpAndSettle();
+      expect(seatCalls, 2);
       await tester.pumpWidget(const SizedBox());
     },
   );

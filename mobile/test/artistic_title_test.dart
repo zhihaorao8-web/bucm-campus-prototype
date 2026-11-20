@@ -52,10 +52,21 @@ void main() {
 
         await tester.tap(find.byKey(const ValueKey('tab-2')));
         await tester.pumpAndSettle();
-        expect(find.byKey(const ValueKey('hello-title-设置')), findsNothing);
+        expect(find.byKey(const ValueKey('hello-title-图书馆')), findsNothing);
         expect(
           find.descendant(
             of: find.byKey(const ValueKey('topbar-2')),
+            matching: find.text('图书馆'),
+          ),
+          findsWidgets,
+        );
+
+        await tester.tap(find.byKey(const ValueKey('tab-3')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('hello-title-设置')), findsNothing);
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('topbar-3')),
             matching: find.text('设置'),
           ),
           findsWidgets,

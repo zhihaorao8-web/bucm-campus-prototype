@@ -5,7 +5,7 @@
 ## 来源与离线资产
 
 - 2026-11-13素材获取通过已配置的公开HTTPS MCP入口`https://iconmcp.com/mcp`完成初始化、只读search_icons/list_sets/get_icon；没有读取配置凭据或执行写操作。后续开发优先使用当前已配置的IconMCP工具，不把当时的工具加载状态当成环境限制。
-- 43个已检索确认的SVG，统一outline、24px、1.75px描边、radius 2，原始viewBox为16单位。源名、分类、下载参数、业务别名与SHA256见[清单](../design/icons/iconmcp/manifest.json)，SVG随源码保留，本机构建复制到Flutter assets，应用运行不请求服务。
+- 49个已检索确认的SVG（2026-11-13 首批 43 个 + 2026-11-20 阶段 7A 新增 `book`、`map`、`grid`、`search`、`clock`、`globe` 6 个，原有 43 个文件与摘要不变），统一outline、24px、1.75px描边、radius 2，原始viewBox为16单位。源名、分类、下载参数、业务别名与SHA256见[清单](../design/icons/iconmcp/manifest.json)，SVG随源码保留，本机构建复制到Flutter assets，应用运行不请求服务。
 - SVG通过仓库属性固定LF行尾，避免Windows检出自动转换导致原始素材SHA256变化；检查和构建仍严格核对摘要。
 - [官方许可证](https://iconmcp.com/licence)为MIT，Copyright (c) 2026 UI8；原文从该页公开前端资源核对并保留。页面说明少数手形参考Phosphor/Tabler/Lucide，手势图标连同这些上游MIT/ISC许可证一并随包保存，并注册到Flutter许可列表。
 - `python scripts/iconmcp_assets.py --fetch`为显式开发时更新，会校验全部响应后写文件；正常`python scripts/iconmcp_assets.py`、检查和prepare仅校验本地摘要/SVG独立性，不联网。新源名及许可变更须重新审查，不自动更新现有包。

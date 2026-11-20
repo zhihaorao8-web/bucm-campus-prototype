@@ -73,6 +73,12 @@ abstract final class AppPalette {
               Color(0xFFB8BBFF),
             ],
             2 => const [
+              Color(0xFF60C6A8),
+              Color(0xFF72B8FF),
+              Color(0xFFC2E8DB),
+              Color(0xFFDCC8A2),
+            ],
+            3 => const [
               Color(0xFFA882F5),
               Color(0xFFF5C391),
               Color(0xFFE1CEFA),
@@ -88,6 +94,12 @@ abstract final class AppPalette {
               Color(0xFFB7B3FF),
             ],
             2 => const [
+              Color(0xFF6ED8BC),
+              Color(0xFF7CBEFF),
+              Color(0xFFA2DFCC),
+              Color(0xFF8FCFFF),
+            ],
+            3 => const [
               Color(0xFFB398FF),
               Color(0xFFFFC59F),
               Color(0xFFE0CCFF),

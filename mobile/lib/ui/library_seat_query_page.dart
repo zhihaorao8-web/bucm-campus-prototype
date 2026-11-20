@@ -15,17 +15,56 @@ import 'course_surface.dart';
 import 'library_seat_page.dart';
 import 'quiet_backdrop.dart';
 
+class LibrarySeatTabController {
+  VoidCallback? _onRefresh;
+  VoidCallback? _onOpenOfficial;
+
+  void _attach({
+    required VoidCallback onRefresh,
+    required VoidCallback onOpenOfficial,
+  }) {
+    _onRefresh = onRefresh;
+    _onOpenOfficial = onOpenOfficial;
+  }
+
+  void _detach(VoidCallback onRefresh) {
+    if (identical(_onRefresh, onRefresh)) {
+      _onRefresh = null;
+      _onOpenOfficial = null;
+    }
+  }
+
+  void refresh() => _onRefresh?.call();
+  void openOfficial() => _onOpenOfficial?.call();
+  void dispose() {
+    _onRefresh = null;
+    _onOpenOfficial = null;
+  }
+}
+
 class LibrarySeatQueryPage extends StatefulWidget {
   const LibrarySeatQueryPage({
     super.key,
     this.reader,
     this.now,
     this.officialPageBuilder,
+    this.embedded = false,
+    this.active = true,
+    this.demo = false,
+    this.onExitDemo,
+    this.scrollController,
+    this.contentInsets,
+    this.tabController,
   });
 
   final LibrarySeatReader? reader;
   final DateTime Function()? now;
   final WidgetBuilder? officialPageBuilder;
+  final bool embedded, active, demo;
+  final VoidCallback? onExitDemo;
+  final ScrollController? scrollController;
+  final EdgeInsets? contentInsets;
+  final LibrarySeatTabController? tabController;
 
   @override
   State<LibrarySeatQueryPage> createState() => _LibrarySeatQueryPageState();
@@ -40,10 +79,46 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   int _bookingPage = 1;
   bool _showBookings = false,
       _openingOfficial = false,
-      _onlyAvailable = false;
+      _onlyAvailable = false,
+      _started = false;
 
   DateTime _currentSchoolNow() => (widget.now ?? schoolNow)();
   bool get _busy => _openingOfficial || _queries.submitting;
+  bool get _canRunNativeQueries =>
+      widget.reader != null || defaultTargetPlatform == TargetPlatform.android;
+
+  late final VoidCallback _tabRefreshCallback = _handleTabRefresh;
+  late final VoidCallback _tabOfficialCallback = _handleTabOfficial;
+
+  void _handleTabRefresh() {
+    if (!mounted ||
+        _busy ||
+        _queries.loading ||
+        widget.demo ||
+        !_canRunNativeQueries) {
+      return;
+    }
+    _started = true;
+    _queries.clearSubmission();
+    unawaited(_showBookings ? _loadBookings(_bookingPage) : _loadSeats());
+  }
+
+  void _handleTabOfficial() {
+    if (!mounted || _busy || widget.demo || !_canRunNativeQueries) return;
+    unawaited(_official());
+  }
+
+  void _maybeLazyStart() {
+    if (!widget.embedded ||
+        _started ||
+        !widget.active ||
+        widget.demo ||
+        !_canRunNativeQueries) {
+      return;
+    }
+    _started = true;
+    unawaited(_loadSeats());
+  }
 
   @override
   void initState() {
@@ -54,13 +129,36 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     _bookingBegin = calendarAdd(today, 1 - today.weekday);
     _bookingEnd = calendarAdd(_bookingBegin, 6);
     SchoolAdapter.sessionChanges.addListener(_sessionCleared);
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      unawaited(_loadSeats());
+    widget.tabController?._attach(
+      onRefresh: _tabRefreshCallback,
+      onOpenOfficial: _tabOfficialCallback,
+    );
+    if (!widget.embedded) {
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        _started = true;
+        unawaited(_loadSeats());
+      }
+    } else {
+      _maybeLazyStart();
     }
   }
 
   @override
+  void didUpdateWidget(covariant LibrarySeatQueryPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tabController != widget.tabController) {
+      oldWidget.tabController?._detach(_tabRefreshCallback);
+      widget.tabController?._attach(
+        onRefresh: _tabRefreshCallback,
+        onOpenOfficial: _tabOfficialCallback,
+      );
+    }
+    _maybeLazyStart();
+  }
+
+  @override
   void dispose() {
+    widget.tabController?._detach(_tabRefreshCallback);
     SchoolAdapter.sessionChanges.removeListener(_sessionCleared);
     _queries.dispose();
     super.dispose();
@@ -159,7 +257,10 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
       ),
     );
     if (!mounted) return;
-    setState(() => _openingOfficial = false);
+    setState(() {
+      _openingOfficial = false;
+      _started = true;
+    });
     await (_showBookings ? _loadBookings(_bookingPage) : _loadSeats());
   }
 
@@ -439,6 +540,34 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      if (widget.demo) {
+        return _embeddedNotice(
+          context,
+          title: '合成示例模式',
+          detail: '合成示例模式下不访问学校图书馆预约，退出示例后可使用。',
+          actions: [
+            if (widget.onExitDemo != null)
+              AppActionButton(
+                label: '退出示例',
+                icon: AppIcons.check,
+                onPressed: widget.onExitDemo,
+              ),
+          ],
+        );
+      }
+      if (!_canRunNativeQueries) {
+        return _embeddedNotice(
+          context,
+          title: '图书馆座位预约',
+          detail: '座位预约目前支持 Android。',
+        );
+      }
+      return ListenableBuilder(
+        listenable: _queries,
+        builder: (_, _) => _content(context),
+      );
+    }
     final body = defaultTargetPlatform == TargetPlatform.android
         ? ListenableBuilder(
             listenable: _queries,
@@ -459,6 +588,62 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
         ),
         body: SafeArea(top: false, child: body),
       ),
+    );
+  }
+
+  Widget _embeddedNotice(
+    BuildContext context, {
+    required String title,
+    required String detail,
+    List<Widget> actions = const [],
+  }) {
+    final insets = widget.contentInsets ?? EdgeInsets.zero;
+    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    return CustomScrollView(
+      key: const PageStorageKey('library-tab-page'),
+      controller: widget.scrollController,
+      slivers: [
+        PinnedHeaderSliver(child: SizedBox(height: insets.top)),
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpace.lg + insets.left,
+            AppSpace.md,
+            AppSpace.lg + insets.right,
+            insets.bottom + AppSpace.xxl,
+          ),
+          sliver: SliverList.list(
+            children: [
+              if (actions.isNotEmpty)
+                _statusCard(
+                  context,
+                  title: title,
+                  detail: detail,
+                  actions: actions,
+                )
+              else
+                QuietCard(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpace.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: theme.textTheme.titleMedium),
+                        const SizedBox(height: AppSpace.xs),
+                        Text(
+                          detail,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -501,15 +686,32 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
       }
     }
 
+    final insets = widget.embedded
+        ? (widget.contentInsets ?? EdgeInsets.zero)
+        : EdgeInsets.zero;
+    final bottomInset = widget.embedded
+        ? insets.bottom + AppSpace.xxl
+        : AppSpace.xxl;
+    final hasBottomList =
+        (!_showBookings && seatItems.isNotEmpty) ||
+        (_showBookings && page != null && page.rows.isNotEmpty);
+
     return CustomScrollView(
-      key: PageStorageKey(_showBookings ? 'library_bookings' : 'library_seats'),
+      key: widget.embedded
+          ? const PageStorageKey('library-tab-page')
+          : PageStorageKey(
+              _showBookings ? 'library_bookings' : 'library_seats',
+            ),
+      controller: widget.embedded ? widget.scrollController : null,
       slivers: [
+        if (widget.embedded)
+          PinnedHeaderSliver(child: SizedBox(height: insets.top)),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpace.lg,
+          padding: EdgeInsets.fromLTRB(
+            AppSpace.lg + insets.left,
             AppSpace.md,
-            AppSpace.lg,
-            AppSpace.md,
+            AppSpace.lg + insets.right,
+            hasBottomList ? AppSpace.md : bottomInset,
           ),
           sliver: SliverList.list(
             children: [
@@ -690,7 +892,11 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
         ),
         if (!_showBookings && seatItems.isNotEmpty)
           SliverPadding(
-            padding: const EdgeInsets.only(bottom: AppSpace.xxl),
+            padding: EdgeInsets.only(
+              left: insets.left,
+              right: insets.right,
+              bottom: bottomInset,
+            ),
             sliver: SliverList.builder(
               itemCount: seatItems.length,
               itemBuilder: (_, index) {
@@ -706,9 +912,13 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
               },
             ),
           ),
-        if (_showBookings && page != null)
+        if (_showBookings && page != null && page.rows.isNotEmpty)
           SliverPadding(
-            padding: const EdgeInsets.only(bottom: AppSpace.xxl),
+            padding: EdgeInsets.only(
+              left: insets.left,
+              right: insets.right,
+              bottom: bottomInset,
+            ),
             sliver: SliverList.builder(
               itemCount: page.rows.length,
               itemBuilder: (_, index) => _bookingRow(context, page.rows[index]),

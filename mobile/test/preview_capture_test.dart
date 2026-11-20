@@ -167,7 +167,7 @@ void main() {
         await tester.pumpAndSettle();
         await sampleTransition(
           'navfix-$label-direct',
-          () => tester.tap(find.byKey(const ValueKey('tab-2'))),
+          () => tester.tap(find.byKey(const ValueKey('tab-3'))),
         );
         await tester.tap(find.byKey(const ValueKey('tab-1')));
         await tester.pumpAndSettle();
@@ -213,7 +213,7 @@ void main() {
           await tester.tap(find.text('日'));
           await tester.pumpAndSettle();
           await capture('$name-day');
-          await tester.tap(find.byKey(const ValueKey('tab-2')));
+          await tester.tap(find.byKey(const ValueKey('tab-3')));
           await tester.pumpAndSettle();
           await capture('$name-settings');
           await tester.tap(find.text('外观设置'));
@@ -239,7 +239,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     await capture('week-scrolled');
-    await tester.tap(find.byKey(const ValueKey('tab-2')));
+    await tester.tap(find.byKey(const ValueKey('tab-3')));
     await tester.pumpAndSettle();
     await capture('settings');
     final about = find.byKey(const ValueKey('project-info-entry'));
@@ -286,7 +286,7 @@ void main() {
     await tester.tap(find.text('先体验合成示例'));
     await tester.pumpAndSettle();
     await capture('dark');
-    await tester.tap(find.byKey(const ValueKey('tab-2')));
+    await tester.tap(find.byKey(const ValueKey('tab-3')));
     await tester.pumpAndSettle();
     final darkAbout = find.byKey(const ValueKey('project-info-entry'));
     await tester.scrollUntilVisible(
@@ -387,7 +387,7 @@ void main() {
         highContrast: variant == 'contrast',
         reducedMotion: variant == 'reduced',
       );
-      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
       await capture('stage4-settings-$variant');
       await tester.tap(find.text('外观设置'));

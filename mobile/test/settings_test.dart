@@ -124,7 +124,7 @@ void main() {
         app(MemoryRepository(const ScheduleData()), dark: true, scale: scale),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
       await tester.drag(
         find.byKey(const PageStorageKey('settings-page')),
@@ -260,7 +260,7 @@ void main() {
       );
       await tester.pumpWidget(app(repo));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
       expect(find.text('外观设置'), findsOneWidget);
       expect(find.text('登录与隐私'), findsOneWidget);
@@ -384,7 +384,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
       await reveal(tester, find.byKey(const ValueKey('project-info-entry')));
       await tester.tap(find.text('项目信息'));
@@ -459,7 +459,7 @@ void main() {
         app(MemoryRepository(const ScheduleData()), dark: true, scale: 1.5),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('外观设置'));
       await tester.pumpAndSettle();

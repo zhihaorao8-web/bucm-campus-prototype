@@ -71,7 +71,7 @@ void main() {
         final settingsY = tester.getTopLeft(settingsTitle).dy;
         await tester.tap(find.byKey(const ValueKey('tab-0')));
         await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const ValueKey('tab-2')));
+        await tester.tap(find.byKey(const ValueKey('tab-3')));
         await tester.pump();
         for (var frame = 0; frame < 13; frame++) {
           await tester.pump(const Duration(milliseconds: 20));
@@ -118,6 +118,8 @@ void main() {
       expect(position, greaterThan(0));
       expect(position, lessThan(1));
       await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.pump(const Duration(milliseconds: 25));
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pump(const Duration(milliseconds: 35));
       await tester.tap(find.byKey(const ValueKey('tab-0')));
       await tester.pumpAndSettle();
@@ -180,11 +182,11 @@ void main() {
     'reduced motion changes tabs immediately and preserves swipe preference',
     (tester) async {
       await mount(tester, reduced: true);
-      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pump();
       expect(
         tester.widget<GlassNavigation>(find.byType(GlassNavigation)).position,
-        2,
+        3,
       );
       final container = ProviderScope.containerOf(
         tester.element(find.byType(AppShell)),
@@ -200,7 +202,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester.widget<GlassNavigation>(find.byType(GlassNavigation)).selected,
-        1,
+        2,
       );
       await tester.pumpWidget(const SizedBox());
     },

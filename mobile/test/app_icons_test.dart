@@ -7,7 +7,7 @@ import 'package:campus_schedule/ui/app_icons.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test('all offline IconMCP SVGs decode and paint visible pixels', () async {
-    expect(AppIcons.values.length, 43);
+    expect(AppIcons.values.length, 49);
     for (final icon in AppIcons.values) {
       final picture = await vg.loadPicture(SvgAssetLoader(icon.asset), null);
       expect(picture.size, const Size(16, 16), reason: icon.name);

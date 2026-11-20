@@ -149,6 +149,8 @@ class LibrarySeat {
     required this.hours,
     required this.reservations,
     this.rule,
+    this.x,
+    this.y,
   });
 
   final String id, label;
@@ -156,30 +158,48 @@ class LibrarySeat {
   final List<LibraryHours> hours;
   final List<LibraryInterval> reservations;
   final LibrarySeatRule? rule;
+  final double? x, y;
 
-  factory LibrarySeat.fromJson(Map<String, dynamic> json) => LibrarySeat(
-    id: json['id'] as String,
-    label: json['label'] as String,
-    open: json['open'] as bool,
-    viewOnly: json['viewOnly'] as bool,
-    hours: (json['hours'] as List)
-        .map(
-          (row) =>
-              (clockMinutes(row[0] as String), clockMinutes(row[1] as String)),
-        )
-        .toList(),
-    reservations: (json['reservations'] as List)
-        .map(
-          (row) => (
-            _schoolInstant(row[0] as String),
-            _schoolInstant(row[1] as String),
-          ),
-        )
-        .toList(),
-    rule: json['rule'] is Map<String, dynamic>
-        ? LibrarySeatRule.fromJson(json['rule'] as Map<String, dynamic>)
-        : null,
-  );
+  bool get hasCoordinates => x != null && y != null;
+
+  static double? _coord(Object? value) {
+    if (value is! num) return null;
+    final d = value.toDouble();
+    return d.isFinite && d >= 0 && d <= 100 ? d : null;
+  }
+
+  factory LibrarySeat.fromJson(Map<String, dynamic> json) {
+    final rawX = _coord(json['x']);
+    final rawY = _coord(json['y']);
+    final validCoords = rawX != null && rawY != null;
+    return LibrarySeat(
+      id: json['id'] as String,
+      label: json['label'] as String,
+      open: json['open'] as bool,
+      viewOnly: json['viewOnly'] as bool,
+      hours: (json['hours'] as List)
+          .map(
+            (row) => (
+              clockMinutes(row[0] as String),
+              clockMinutes(row[1] as String),
+            ),
+          )
+          .toList(),
+      reservations: (json['reservations'] as List)
+          .map(
+            (row) => (
+              _schoolInstant(row[0] as String),
+              _schoolInstant(row[1] as String),
+            ),
+          )
+          .toList(),
+      rule: json['rule'] is Map<String, dynamic>
+          ? LibrarySeatRule.fromJson(json['rule'] as Map<String, dynamic>)
+          : null,
+      x: validCoords ? rawX : null,
+      y: validCoords ? rawY : null,
+    );
+  }
 
   static (DateTime, DateTime) _window(DateTime date, int start, int end) {
     final midnight = DateTime.utc(

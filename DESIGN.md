@@ -1,6 +1,6 @@
 # 界面与交互开发规范
 
-更新：2026-11-16。适用当前Flutter Android课表与录播，保留0.3已验收的MIUIX结构、柔光亚克力和B1标题。本文是当前组件规范；需求见[PROJECT_BRIEF](docs/PROJECT_BRIEF.md)，公共计算见[ARCHITECTURE](docs/ARCHITECTURE.md)，验证证据见[STATUS](docs/STATUS.md)，独有模拟器采样见[UI验证](docs/research/UI_VALIDATION.md)。旧UI计划已精简，不覆盖本文。
+更新：2026-11-20。适用当前Flutter Android课表与录播，保留0.3已验收的MIUIX结构、柔光亚克力和B1标题。本文是当前组件规范；需求见[PROJECT_BRIEF](docs/PROJECT_BRIEF.md)，公共计算见[ARCHITECTURE](docs/ARCHITECTURE.md)，验证证据见[STATUS](docs/STATUS.md)，独有模拟器采样见[UI验证](docs/research/UI_VALIDATION.md)。旧UI计划已精简，不覆盖本文。
 
 ## 开发顺序与参数来源
 
@@ -24,7 +24,7 @@
 
 | 场景 | 必须复用的入口 | 交互/布局要求 | 代表验收 |
 |---|---|---|---|
-| 主页面/背景 | AppShell、QuietBackdrop、GlassNavigation | 今日/课表/设置三个目的地；同一分页时钟，独立滚动/折叠状态，非当前页隔离触控/焦点/语义/ticker | navigation_motion、atmosphere |
+| 主页面/背景 | AppShell、QuietBackdrop、GlassNavigation | 今日/课表/图书馆/设置四个目的地；同一分页时钟，独立滚动/折叠状态，非当前页隔离触控/焦点/语义/ticker；B1仅用于今日/课表，图书馆切入后惰性加载 | navigation_motion、atmosphere、ui |
 | 设置子页 | SettingsScaffold、settingsGroup、AppArrowPreference | 顶栏遮挡登记到滚动视口，末项可滚出底栏；保留返回和大字换行 | settings、appearance |
 | 课程阅读顶栏 | QuietSliverAppBar | 与主/设置顶栏共享AppHeader计算，不覆盖可见内容或系统栏前景 | atmosphere、settings |
 | 焦点大卡 | AcrylicSurface、FocusCourseCard | 仅局部裁剪模糊；优先显示此刻/下一节、开始/结束及授课分段进度 | today_focus、quiet_design |
@@ -32,8 +32,8 @@
 | 课程按压/跳转 | CoursePressable、CourseCardLink、CourseDetailsRoute | 接触反馈；移动/取消释放；同一入口防重复打开；每个可见实例独立Hero身份 | course_interaction |
 | 课程信息/冲突抽屉 | showQuietSheet、QuietSheet | 长内容滚动，安全区/关闭/系统返回可用；优先显示仅本次生效，不写回学校课表 | settings、week_stack |
 | 维护/连接恢复 | AppActionButton、ClassroomConnectionCard | 主操作tonal、次操作outline，统一圆角/内边距/48dp最小高度；Wrap允许换行 | classroom_ui_polish、classroom_connection |
-| 图书馆官方认证与回退入口（已实现） | 设置分组、AppArrowPreference、官方WebView、AppActionButton | 在可见的学校页面认证，必要时打开官方预约流程。返回优先站内历史，加载失败可重新打开预约首页 | Android模拟器检查入口、认证、返回与恢复 |
-| 图书馆原生预约界面 | 沿用基础筛选控件、座位列表、确认对话框和操作按钮 | 展示区域、日期、时段、空闲筛选和状态计数。预约确认显示学校规则，提交前复核余位。我的预约对待生效记录提供取消确认，展示座位、时段、预约编号及释放影响。结果不明或认证中断时提示查单 | 按[开发计划](docs/DEVELOPMENT_PLAN.md#图书馆座位预约)分别验收查询、提交和取消 |
+| 图书馆官方认证与回退入口（已实现） | 设置分组、AppArrowPreference、官方WebView、AppActionButton | 在可见的学校页面认证，必要时打开官方预约流程。返回优先站内历史，加载失败可重新打开预约首页。底部“图书馆”栏顶栏与设置入口共同收敛到图书馆页 | Android模拟器检查入口、认证、返回与恢复 |
+| 图书馆原生预约界面 | 内嵌一级页使用 `MiuixTopAppBar`（系统字体）与 `AppShell` 惰性加载；独立入口与页内暂沿用基础筛选控件、座位列表、确认对话框和操作按钮（7B/7C 视觉重设计待推进） | 展示区域、日期、时段、空闲筛选和状态计数。预约确认显示学校规则，提交前复核余位。我的预约对待生效记录提供取消确认，展示座位、时段、预约编号及释放影响。结果不明或认证中断时提示查单；合成示例模式下不发起学校请求 | 按[开发计划](docs/DEVELOPMENT_PLAN.md#图书馆座位预约)分别验收查询、提交、取消及阶段7A–7C |
 | 周/日、录播/直播 | ScheduleModeSwitch、ClassroomSectionSwitch、AppSegmentIndicator | 共用滑动指示器；父组件保留自身标签、语义、焦点和尺寸，不复写动画坐标算法 | schedule_motion、classroom_ui_polish |
 | 星期切换 | WeekdayTabs | 按文字和系统字号测量，七天可达，至少48高；窄屏横滚，禁止固定宽截断汉字 | weekday_tabs |
 | 图标/设置展开 | AppIcon、AppExpansionTile、AppArrowPreference | 离线SVG、语义标签、焦点/禁用反馈；使用统一尾箭头与返回图标 | app_icons、appearance |
@@ -82,7 +82,7 @@ AppActionButton的busy/权限决定仍由调用方传onPressed。等待时禁用
 
 ## 图标资源与开发使用
 
-43个功能图标已统一为IconMCP离线outline SVG（24px、1.75描边、radius 2）；按主题/实际尺寸绘制，操作保留触控区与语义。新增图标可用已配置MCP的search_icons/get_icon检索并本地打包，不在运行时依赖MCP或下载图标。来源、摘要与许可见[ICON_SYSTEM](docs/ICON_SYSTEM.md)和[THIRD_PARTY](docs/THIRD_PARTY.md)；启动品牌图与学校网页图标不随功能图标替换。
+49个功能图标已统一为IconMCP离线outline SVG（24px、1.75描边、radius 2）；按主题/实际尺寸绘制，操作保留触控区与语义。新增图标可用已配置MCP的search_icons/get_icon检索并本地打包，不在运行时依赖MCP或下载图标。来源、摘要与许可见[ICON_SYSTEM](docs/ICON_SYSTEM.md)和[THIRD_PARTY](docs/THIRD_PARTY.md)；启动品牌图与学校网页图标不随功能图标替换。
 
 ## 完成与复核
 
