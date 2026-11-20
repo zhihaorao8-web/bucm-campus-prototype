@@ -15,6 +15,7 @@ import 'app_icons.dart';
 import 'app_theme.dart';
 import 'classroom_section_switch.dart';
 import 'course_surface.dart';
+import 'library_seat_bookings.dart';
 import 'library_seat_map.dart';
 import 'library_seat_page.dart';
 import 'library_seat_sheets.dart';
@@ -421,6 +422,23 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     if (range == null || !mounted) return;
     _bookingBegin = dateOnly(range.start);
     _bookingEnd = dateOnly(range.end);
+    _bookingPage = 1;
+    await _loadBookings(1);
+  }
+
+  Future<void> _selectBookingRange(DateTime begin, DateTime end) async {
+    if (_busy) return;
+    final nextBegin = dateOnly(begin);
+    final nextEnd = dateOnly(end);
+    if (nextBegin == _bookingBegin &&
+        nextEnd == _bookingEnd &&
+        _queries.bookings != null &&
+        !_queries.failed) {
+      return;
+    }
+    _bookingBegin = nextBegin;
+    _bookingEnd = nextEnd;
+    _bookingPage = 1;
     await _loadBookings(1);
   }
 
@@ -498,89 +516,15 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     final area = _area;
     final areaLabel = area?.label ?? '';
     final ruleLines = _ruleLines(seat);
-    var confirmed = false;
-
-    final proceed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        final theme = Theme.of(dialogContext);
-        final colors = theme.colorScheme;
-        return AlertDialog(
-          title: const Text('确认预约座位'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  areaLabel.isEmpty ? seat.label : '$areaLabel · ${seat.label}',
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpace.xs),
-                Text(
-                  '日期：${isoDate(_date)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontFeatures: tabularTime,
-                  ),
-                ),
-                const SizedBox(height: AppSpace.xs),
-                Text(
-                  '时段：${_clockText(start)}–${_clockText(end)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontFeatures: tabularTime,
-                  ),
-                ),
-                const SizedBox(height: AppSpace.md),
-                Text('适用规则', style: theme.textTheme.titleSmall),
-                const SizedBox(height: AppSpace.xs),
-                for (final line in ruleLines)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpace.xs),
-                    child: Text(
-                      line,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                if (blockingReason != null) ...[
-                  const SizedBox(height: AppSpace.sm),
-                  Text(
-                    blockingReason,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colors.error,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpace.sm),
-                Text(
-                  '确认后将向学校平台发送一次预约申请，并在“我的预约”中回查结果。',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: blockingReason != null
-                  ? null
-                  : () {
-                      if (confirmed) return;
-                      confirmed = true;
-                      Navigator.of(dialogContext).pop(true);
-                    },
-              child: const Text('确认提交预约'),
-            ),
-          ],
-        );
-      },
+    final proceed = await showLibraryConfirmReservationSheet(
+      context,
+      seat: seat,
+      areaLabel: areaLabel,
+      date: _date,
+      start: start,
+      end: end,
+      ruleLines: ruleLines,
+      blockingReason: blockingReason,
     );
 
     if (proceed != true || !mounted || _busy) return;
@@ -838,6 +782,52 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     final gridColumns = LibrarySeatGridRow.columnsFor(context, contentWidth);
     final gridRowCount = (gridItems.length / gridColumns).ceil();
 
+    final now = _currentSchoolNow();
+    final bookingFocusRows = <LibraryBooking>[];
+    final bookingHistoryRows = <LibraryBooking>[];
+    if (_showBookings && page != null) {
+      for (final row in page.rows) {
+        if (isFocusLibraryBooking(row, now)) {
+          bookingFocusRows.add(row);
+        } else {
+          bookingHistoryRows.add(row);
+        }
+      }
+    }
+    final bookingWidgets = <Widget>[
+      for (final row in bookingFocusRows)
+        LibraryBookingFocusTicket(
+          row: row,
+          now: now,
+          canCancel: _queries.canCancelBooking(row),
+          busy: _busy,
+          onCancel: () => _confirmCancellation(row),
+          onOpenOfficial: _official,
+        ),
+      if (bookingFocusRows.isNotEmpty && bookingHistoryRows.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.lg,
+            AppSpace.xs,
+            AppSpace.lg,
+            AppSpace.sm,
+          ),
+          child: Text(
+            '近期记录',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        ),
+      for (final row in bookingHistoryRows)
+        LibraryBookingHistoryRow(
+          row: row,
+          canCancel: _queries.canCancelBooking(row),
+          busy: _busy,
+          onCancel: () => _confirmCancellation(row),
+        ),
+    ];
+
     final showCapsule =
         !_showBookings && selectedSeat != null && hasValidRange;
     final extraCapsuleSpace = showCapsule ? 108.0 : 0.0;
@@ -846,7 +836,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
         extraCapsuleSpace;
     final hasBottomList =
         (!_showBookings && !usingMap && gridRowCount > 0) ||
-        (_showBookings && page != null && page.rows.isNotEmpty);
+        (_showBookings && bookingWidgets.isNotEmpty);
 
     final scrollView = CustomScrollView(
       key: widget.embedded
@@ -973,7 +963,19 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
               ],
               const SizedBox(height: AppSpace.md),
               if (_showBookings)
-                _bookingControlsCard(context)
+                LibraryBookingsControlsCard(
+                  begin: _bookingBegin,
+                  end: _bookingEnd,
+                  now: now,
+                  page: page,
+                  busy: _busy,
+                  loading: _queries.loading,
+                  onSelectRange: (b, e) => unawaited(_selectBookingRange(b, e)),
+                  onChooseCustomRange: _chooseBookingDates,
+                  onRefresh: () => unawaited(_loadBookings(_bookingPage)),
+                  onPageChanged: (nextPage) =>
+                      unawaited(_loadBookings(nextPage)),
+                )
               else
                 _seatControlsCard(
                   context,
@@ -988,6 +990,30 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
               if (_showBookings && _queries.cancellation != null) ...[
                 const SizedBox(height: AppSpace.md),
                 _cancellationCard(context, _queries.cancellation!),
+              ],
+              if (_showBookings && _queries.loading && page == null) ...[
+                const SizedBox(height: AppSpace.md),
+                const LibraryBookingsLoadingSkeleton(),
+              ],
+              if (_showBookings && page != null && page.rows.isEmpty) ...[
+                const SizedBox(height: AppSpace.md),
+                LibraryBookingsEmptyCard(
+                  page: page,
+                  begin: _bookingBegin,
+                  end: _bookingEnd,
+                  now: now,
+                  busy: _busy,
+                  onGoToSelectSeat: () => _switch(false),
+                  onViewRecent30Days: () {
+                    final today = dateOnly(now);
+                    unawaited(
+                      _selectBookingRange(
+                        calendarAdd(today, -29),
+                        calendarAdd(today, 1),
+                      ),
+                    );
+                  },
+                ),
               ],
               if (!_showBookings && _queries.loading && seats == null) ...[
                 const SizedBox(height: AppSpace.md),
@@ -1116,7 +1142,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
               },
             ),
           ),
-        if (_showBookings && page != null && page.rows.isNotEmpty)
+        if (_showBookings && bookingWidgets.isNotEmpty)
           SliverPadding(
             padding: EdgeInsets.only(
               left: insets.left,
@@ -1124,8 +1150,8 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
               bottom: bottomInset,
             ),
             sliver: SliverList.builder(
-              itemCount: page.rows.length,
-              itemBuilder: (_, index) => _bookingRow(context, page.rows[index]),
+              itemCount: bookingWidgets.length,
+              itemBuilder: (_, index) => bookingWidgets[index],
             ),
           ),
       ],
@@ -1802,180 +1828,13 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     );
   }
 
-  Widget _bookingControlsCard(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
-    final page = _queries.bookings;
-    final begin = isoDate(_bookingBegin), end = isoDate(_bookingEnd);
-    final disabled = _queries.loading || _busy;
-    return QuietCard(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpace.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Wrap(
-              spacing: AppSpace.sm,
-              runSpacing: AppSpace.sm,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                OutlinedButton(
-                  onPressed: _busy ? null : _chooseBookingDates,
-                  child: Text('$begin 至 $end'),
-                ),
-                AppActionButton(
-                  label: '刷新预约',
-                  icon: AppIcons.refresh,
-                  onPressed: disabled ? null : () => _loadBookings(_bookingPage),
-                ),
-              ],
-            ),
-            if (page != null) ...[
-              const SizedBox(height: AppSpace.sm),
-              Wrap(
-                spacing: AppSpace.sm,
-                runSpacing: AppSpace.xs,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(
-                    '第 ${page.page} 页 · 共 ${page.totalCount} 条',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                      fontFeatures: tabularTime,
-                    ),
-                  ),
-                  if (page.page > 1)
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size(
-                          AppLayout.minTap,
-                          AppLayout.minTap,
-                        ),
-                      ),
-                      onPressed: disabled
-                          ? null
-                          : () => _loadBookings(page.page - 1),
-                      child: const Text('上一页'),
-                    ),
-                  if (page.hasMore)
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size(
-                          AppLayout.minTap,
-                          AppLayout.minTap,
-                        ),
-                      ),
-                      onPressed: disabled
-                          ? null
-                          : () => _loadBookings(page.page + 1),
-                      child: const Text('下一页'),
-                    ),
-                ],
-              ),
-              if (page.rows.isEmpty) ...[
-                const SizedBox(height: AppSpace.sm),
-                Text(
-                  page.page == 1 && !page.hasMore ? '暂无座位预约' : '本页无座位预约',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _bookingRow(BuildContext context, LibraryBooking row) {
-    final colors = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
-    final labels = libraryBookingStatusLabels(row.status);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpace.lg,
-        0,
-        AppSpace.lg,
-        AppSpace.sm,
-      ),
-      child: QuietCard(
-        cornerRadius: AppRadius.input,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                row.room.isEmpty ? row.seat : '${row.room} · ${row.seat}',
-                style: theme.textTheme.titleMedium,
-              ),
-              const SizedBox(height: AppSpace.xs),
-              Text(
-                '${row.begin} 至 ${row.end}',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontFeatures: tabularTime,
-                ),
-              ),
-              const SizedBox(height: AppSpace.xs),
-              Text(
-                labels.isEmpty
-                    ? '预约编号 ${row.id}'
-                    : '${labels.join(' · ')} · 预约编号 ${row.id}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  fontFeatures: tabularTime,
-                ),
-              ),
-              if (_queries.canCancelBooking(row) && !_busy) ...[
-                const SizedBox(height: AppSpace.xs),
-                TextButton(
-                  onPressed: () => _confirmCancellation(row),
-                  child: const Text('取消预约'),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _confirmCancellation(LibraryBooking row) async {
     if (_busy || !_queries.canCancelBooking(row)) return;
     final page = _bookingPage;
     final begin = _bookingBegin, end = _bookingEnd;
-    final place = row.room.isEmpty
-        ? row.seat
-        : [row.room, row.seat].join(' · ');
-    final period = [row.begin, row.end].join(' 至 ');
-    final id = row.id;
-    var confirmed = false;
-    final proceed = await showDialog<bool>(
-      context: context,
-      builder: (dialog) => AlertDialog(
-        title: const Text('确认取消预约'),
-        content: SingleChildScrollView(
-          child: Text(
-            '$place\n$period\n预约编号 $id\n\n'
-            '学校接受取消后，这笔预约将释放。取消资格由学校平台确认。',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog, false),
-            child: const Text('保留预约'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (confirmed) return;
-              confirmed = true;
-              Navigator.pop(dialog, true);
-            },
-            child: const Text('确认取消'),
-          ),
-        ],
-      ),
+    final proceed = await showLibraryConfirmCancelSheet(
+      context,
+      booking: row,
     );
     if (proceed != true ||
         !mounted ||

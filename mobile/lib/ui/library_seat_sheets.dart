@@ -922,3 +922,617 @@ class _ClockPickerTile extends StatelessWidget {
     );
   }
 }
+
+Future<bool?> showLibraryConfirmReservationSheet(
+  BuildContext context, {
+  required LibrarySeat seat,
+  required String areaLabel,
+  required DateTime date,
+  required TimeOfDay start,
+  required TimeOfDay end,
+  required List<String> ruleLines,
+  required String? blockingReason,
+}) {
+  final startMin = start.hour * 60 + start.minute;
+  final endMin = end.hour * 60 + end.minute;
+  final durationText = formatLibraryDuration(endMin - startMin);
+  var confirmed = false;
+
+  return showQuietSheet<bool>(
+    context,
+    barrierLabel: '确认预约座位',
+    builder: (sheetContext) {
+      final theme = Theme.of(sheetContext);
+      final colors = theme.colorScheme;
+      final dark = theme.brightness == Brightness.dark;
+      final highContrast = MediaQuery.highContrastOf(sheetContext);
+      final partialTone = LibrarySeatPalette.toneOf(
+        sheetContext,
+        LibrarySeatStatus.partial,
+      );
+      final maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.86;
+
+      return SafeArea(
+        key: const ValueKey('library-confirm-reservation-sheet'),
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.lg,
+              AppSpace.md,
+              AppSpace.lg,
+              AppSpace.lg,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SheetHeader(
+                  title: '确认预约座位',
+                  closeTooltip: '关闭预约确认',
+                  onClose: () => Navigator.of(sheetContext).pop(false),
+                ),
+                const SizedBox(height: AppSpace.sm),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        CourseSurface(
+                          dense: true,
+                          radius: AppRadius.inset,
+                          color: highContrast
+                              ? colors.surface
+                              : colors.primaryContainer.withValues(
+                                  alpha: dark ? 0.45 : 0.72,
+                                ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppSpace.md),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                LayoutBuilder(
+                                  builder: (context, heroConstraints) {
+                                    final compactHero =
+                                        MediaQuery.textScalerOf(
+                                              context,
+                                            ).scale(14) >
+                                            20 ||
+                                        heroConstraints.maxWidth < 280;
+                                    final durationPill = endMin > startMin
+                                        ? Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: AppSpace.sm,
+                                              vertical: AppSpace.xs,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: highContrast
+                                                  ? colors.surface
+                                                  : colors.surface.withValues(
+                                                      alpha: dark ? 0.65 : 0.85,
+                                                    ),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppRadius.small,
+                                                  ),
+                                              border: Border.all(
+                                                color: highContrast
+                                                    ? colors.outline
+                                                    : colors.primary.withValues(
+                                                        alpha: 0.28,
+                                                      ),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              durationText,
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    color: colors.primary,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontFeatures: tabularTime,
+                                                  ),
+                                            ),
+                                          )
+                                        : null;
+                                    final titleRow = Row(
+                                      children: [
+                                        DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            color: highContrast
+                                                ? colors.surface
+                                                : colors.primary.withValues(
+                                                    alpha: dark ? 0.25 : 0.14,
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              AppRadius.small,
+                                            ),
+                                            border: highContrast
+                                                ? Border.all(
+                                                    color: colors.outline,
+                                                  )
+                                                : null,
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(
+                                              AppSpace.sm,
+                                            ),
+                                            child: AppIcon(
+                                              AppIcons.book,
+                                              size: AppControl.icon,
+                                              color: colors.primary,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: AppSpace.sm),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                seat.label,
+                                                style: theme
+                                                    .textTheme
+                                                    .titleLarge
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      fontFeatures: tabularTime,
+                                                    ),
+                                              ),
+                                              if (areaLabel.isNotEmpty)
+                                                Text(
+                                                  areaLabel,
+                                                  style: theme
+                                                      .textTheme
+                                                      .bodySmall
+                                                      ?.copyWith(
+                                                        color: colors
+                                                            .onSurfaceVariant,
+                                                      ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (!compactHero &&
+                                            durationPill != null) ...[
+                                          const SizedBox(width: AppSpace.sm),
+                                          durationPill,
+                                        ],
+                                      ],
+                                    );
+                                    if (!compactHero || durationPill == null) {
+                                      return titleRow;
+                                    }
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        titleRow,
+                                        const SizedBox(height: AppSpace.xs),
+                                        durationPill,
+                                      ],
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: AppSpace.sm),
+                                Text(
+                                  '日期：${isoDate(date)}',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontFeatures: tabularTime,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpace.xs),
+                                Text(
+                                  '时段：${formatClockMinutes(startMin)}–${formatClockMinutes(endMin)}',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontFeatures: tabularTime,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpace.md),
+                        CourseSurface(
+                          dense: true,
+                          radius: AppRadius.inset,
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppSpace.md),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text('适用规则', style: theme.textTheme.titleSmall),
+                                const SizedBox(height: AppSpace.sm),
+                                for (final line in ruleLines)
+                                  if (line.startsWith('签到提示：'))
+                                    Container(
+                                      margin: const EdgeInsets.only(
+                                        bottom: AppSpace.xs,
+                                      ),
+                                      padding: const EdgeInsets.all(
+                                        AppSpace.sm,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: partialTone.background,
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadius.small,
+                                        ),
+                                        border: Border.all(
+                                          color: partialTone.border,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 1,
+                                            ),
+                                            child: AppIcon(
+                                              AppIcons.info,
+                                              size: 16,
+                                              color: partialTone.foreground,
+                                            ),
+                                          ),
+                                          const SizedBox(width: AppSpace.xs),
+                                          Expanded(
+                                            child: Text(
+                                              line,
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    color:
+                                                        partialTone.foreground,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  else
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: AppSpace.xs,
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 2,
+                                            ),
+                                            child: AppIcon(
+                                              line.startsWith('当日开放：') ||
+                                                      line.startsWith('允许时长：')
+                                                  ? AppIcons.clock
+                                                  : AppIcons.info,
+                                              size: 15,
+                                              color: colors.onSurfaceVariant,
+                                            ),
+                                          ),
+                                          const SizedBox(width: AppSpace.xs),
+                                          Expanded(
+                                            child: Text(
+                                              line,
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    color:
+                                                        colors.onSurfaceVariant,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (blockingReason != null) ...[
+                          const SizedBox(height: AppSpace.sm),
+                          Container(
+                            padding: const EdgeInsets.all(AppSpace.sm),
+                            decoration: BoxDecoration(
+                              color: highContrast
+                                  ? colors.surface
+                                  : colors.errorContainer.withValues(
+                                      alpha: dark ? 0.45 : 0.70,
+                                    ),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.small,
+                              ),
+                              border: Border.all(
+                                color: highContrast
+                                    ? colors.outline
+                                    : colors.error.withValues(alpha: 0.40),
+                              ),
+                            ),
+                            child: Text(
+                              blockingReason,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colors.error,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: AppSpace.sm),
+                        Text(
+                          '确认后将向学校平台发送一次预约申请，并在“我的预约”中回查结果。',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.md),
+                _ResponsiveSheetActions(
+                  secondaryLabel: '取消',
+                  onSecondary: () => Navigator.of(sheetContext).pop(false),
+                  primaryLabel: '确认提交预约',
+                  onPrimary: blockingReason != null
+                      ? null
+                      : () {
+                          if (confirmed) return;
+                          confirmed = true;
+                          Navigator.of(sheetContext).pop(true);
+                        },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Future<bool?> showLibraryConfirmCancelSheet(
+  BuildContext context, {
+  required LibraryBooking booking,
+}) {
+  final place = booking.room.isEmpty
+      ? booking.seat
+      : '${booking.room} · ${booking.seat}';
+  var confirmed = false;
+
+  return showQuietSheet<bool>(
+    context,
+    barrierLabel: '确认取消预约',
+    builder: (sheetContext) {
+      final theme = Theme.of(sheetContext);
+      final colors = theme.colorScheme;
+      final dark = theme.brightness == Brightness.dark;
+      final highContrast = MediaQuery.highContrastOf(sheetContext);
+      final maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.82;
+
+      return SafeArea(
+        key: const ValueKey('library-confirm-cancel-sheet'),
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.lg,
+              AppSpace.md,
+              AppSpace.lg,
+              AppSpace.lg,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SheetHeader(
+                  title: '确认取消预约',
+                  closeTooltip: '关闭取消确认',
+                  onClose: () => Navigator.of(sheetContext).pop(false),
+                ),
+                const SizedBox(height: AppSpace.sm),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        CourseSurface(
+                          dense: true,
+                          radius: AppRadius.inset,
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppSpace.md),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(place, style: theme.textTheme.titleMedium),
+                                const SizedBox(height: AppSpace.xs),
+                                Text(
+                                  '${booking.begin} 至 ${booking.end}',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontFeatures: tabularTime,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpace.xs),
+                                Text(
+                                  '预约编号 ${booking.id}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colors.onSurfaceVariant,
+                                    fontFeatures: tabularTime,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpace.md),
+                        Container(
+                          padding: const EdgeInsets.all(AppSpace.md),
+                          decoration: BoxDecoration(
+                            color: highContrast
+                                ? colors.surface
+                                : colors.errorContainer.withValues(
+                                    alpha: dark ? 0.40 : 0.60,
+                                  ),
+                            borderRadius: BorderRadius.circular(
+                              AppRadius.inset,
+                            ),
+                            border: Border.all(
+                              color: highContrast
+                                  ? colors.outline
+                                  : colors.error.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 1),
+                                child: AppIcon(
+                                  AppIcons.info,
+                                  size: AppControl.icon,
+                                  color: colors.error,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpace.sm),
+                              Expanded(
+                                child: Text(
+                                  '学校接受取消后，这笔预约将释放。取消资格由学校平台确认。',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colors.onSurface,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.md),
+                _ResponsiveSheetActions(
+                  secondaryLabel: '保留预约',
+                  onSecondary: () => Navigator.of(sheetContext).pop(false),
+                  primaryLabel: '确认取消',
+                  destructive: true,
+                  onPrimary: () {
+                    if (confirmed) return;
+                    confirmed = true;
+                    Navigator.of(sheetContext).pop(true);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+class _SheetHeader extends StatelessWidget {
+  const _SheetHeader({
+    required this.title,
+    required this.closeTooltip,
+    required this.onClose,
+  });
+
+  final String title, closeTooltip;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: colors.outlineVariant,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpace.sm),
+        Row(
+          children: [
+            Expanded(child: Text(title, style: theme.textTheme.titleLarge)),
+            IconButton(
+              tooltip: closeTooltip,
+              icon: const AppIcon(AppIcons.close),
+              onPressed: onClose,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ResponsiveSheetActions extends StatelessWidget {
+  const _ResponsiveSheetActions({
+    required this.secondaryLabel,
+    required this.onSecondary,
+    required this.primaryLabel,
+    required this.onPrimary,
+    this.destructive = false,
+  });
+
+  final String secondaryLabel, primaryLabel;
+  final VoidCallback onSecondary;
+  final VoidCallback? onPrimary;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final scaled = MediaQuery.textScalerOf(context).scale(14);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final primaryButton = FilledButton(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(AppLayout.minTap, AppLayout.minTap),
+            backgroundColor: destructive ? colors.error : null,
+            foregroundColor: destructive ? colors.onError : null,
+          ),
+          onPressed: onPrimary,
+          child: Text(primaryLabel),
+        );
+        final secondaryButton = OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(AppLayout.minTap, AppLayout.minTap),
+          ),
+          onPressed: onSecondary,
+          child: Text(secondaryLabel),
+        );
+
+        if (scaled > 22 || constraints.maxWidth < 300) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              primaryButton,
+              const SizedBox(height: AppSpace.sm),
+              secondaryButton,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            secondaryButton,
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: primaryButton),
+          ],
+        );
+      },
+    );
+  }
+}

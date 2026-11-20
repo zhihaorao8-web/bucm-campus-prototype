@@ -29,7 +29,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 | 录播导入 | `classroom_import_page.dart` / `ClassroomCoursePage` → 官方上下文 → `ClassroomImportCoordinator`协调API或DOM收集结果 | `ClassroomArchive`校验所有来源完整分页，协调器按捕获的revision调用`ClassroomLibrary`整组保存；目录可读不代表认证有效 |
 | 播放 | 时间线保留来源课程ID、录播ID及原分页 → `ClassroomPlaybackPreparation` → 原生`ClassroomPlayback` / `ClassroomPlayerGroup` | 准备器负责移交前的原生会话释放；页面负责当次来源/权限导航与播放器路由；原生拥有媒体描述、Cookie和解码器，Dart只接收纹理、显示配置和受限状态 |
 | 退出会话 | `SchoolAdapter.clearSession`清除诊断、页面缓存、目录、续播及原生WebView会话 | 缓存/存储revision和任务generation阻止旧回调写回；离线课表保留 |
-| 图书馆座位预约 | 底部“图书馆”一级页或设置校园服务入口跳至 `LibrarySeatQueryPage`（一级页切入后惰性加载，合成示例模式下隔离）；`LibrarySeatQueries` 协调查询、预约确认和取消 | `LibrarySeatReader` 使用固定的学校同源读写脚本（只读新增 `coordinate` 百分比提取）。预约前复核余位和学校配置。取消前在当前账号的预约页核对归属、座位、时段及可取消状态，学校取消标识只在 WebView 内使用。写入后回查，结果不明时只做查询。 `LibrarySeatPage` 提供官方认证及回退。退出会话或离页丢弃迟到响应与个人数据 |
+| 图书馆座位预约 | 底部“图书馆”一级页或设置校园服务入口跳至 `ui/library_seat_query_page.dart`（一级页切入后惰性加载，合成示例模式下隔离）；选座双视图与骨架在 `ui/library_seat_map.dart`，区域/时段轴/预约与取消确认 `QuietSheet` 在 `ui/library_seat_sheets.dart`，“我的预约”焦点票卡与历史分层在 `ui/library_seat_bookings.dart`；`LibrarySeatQueries` 协调查询、预约确认和取消 | `LibrarySeatReader` 使用固定的学校同源读写脚本（只读新增 `coordinate` 百分比提取）。预约前复核余位和学校配置。取消前在当前账号的预约页核对归属、座位、时段及可取消状态，学校取消标识只在 WebView 内使用。写入后回查，结果不明时只做查询。 `LibrarySeatPage` 提供官方认证及回退。退出会话或离页丢弃迟到响应与个人数据 |
 | 外观与语录 | `AppearanceController`、`QuoteService` → 主题及今日展示 | 外观独立存储；在线语录默认关闭，失败回退本地 |
 
 认证由用户在可见官方页面完成，App不额外保存凭据。下载Cookie仅在原生内存中按验证后的目标使用，不返回Dart。学校导出、主文档、认证和媒体分别校验用途/域名/端口/路径，不能合并为宽泛白名单。真实数据不进入测试或Git。

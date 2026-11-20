@@ -7,7 +7,24 @@
 | 0.3/code12发布 | 729663f本地合成/静态检查、隔离R8 XLS 1/1、同源双包签名/摘要、最终release模拟器抽查及4份远端附件核对 | 精确提交的Actions因当时账户计费限制未运行；用户仅就该次发布授权例外，不作为未来跳过CI规则 |
 | 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
 | 学校链路 | 历史分项XLS导入、直连目录、短时播放和续播样本 | 全学期独立准确性、完整课时、水印组合、WebVPN恢复、真实认证失效及7天会话待验 |
-| 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；阶段 7A 四项底栏方案已审核通过（`4bd9329`）；阶段 7B 双视图、紧凑筛选、区域/时段轴 `QuietSheet` 与悬浮胶囊已通过主机静态/合成检查及模拟器只读浅/深色实景抽查 | 阶段 7B 待用户审核；阶段 7C（确认/取消 `QuietSheet` 与“我的预约”焦点票卡重设计）待 7B 审核后推进；真实退出会话另行验收 |
+| 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）与 7B（`9d5d2bd`）已审核通过；阶段 7C（确认/取消 `QuietSheet` 与“我的预约”焦点票卡分层）已通过主机全套变更检查及模拟器浅/深色只读抽查 | 阶段 7C 待用户审核；真实退出会话另行验收 |
+
+## 2026-11-20 图书馆座位预约前端重设计阶段 7C
+
+- 基于已审核基线 `9d5d2bd`（阶段 7B）完成阶段 7C 收尾重设计，保持所有提交前余位复核、防连点、取消预检、fail-closed 写入与示例隔离语义不变：
+  1. 扩展 [library_seat_sheets.dart](../mobile/lib/ui/library_seat_sheets.dart)：复用 `QuietSheet` 新增 `showLibraryConfirmReservationSheet`（响应式英雄摘要卡含 `AppIcons.book` 与时长胶囊、`适用规则` 列表、琥珀色`签到提示：`提醒框、越权/时段阻塞提示及防连点吸底操作区）与 `showLibraryConfirmCancelSheet`（预约标的摘要、红色释位提示框及破坏性`确认取消`防连点吸底操作区），并在窄屏大字号下自动纵向叠放按钮。
+  2. 新增 [library_seat_bookings.dart](../mobile/lib/ui/library_seat_bookings.dart)：实现 `isFocusLibraryBooking`、时区无关的 `libraryBookingTimeHint`、`LibraryBookingsControlsCard`（`本周` / `近 30 天` 快捷切片 + 自定义范围 + 刷新与分页）、`LibraryBookingsLoadingSkeleton`、`LibraryBookingsEmptyCard`（`去选座` / `查看近 30 天` 快捷操作）、`LibraryBookingFocusTicket`（基于 `AcrylicSurface` 展示待生效/生效中票卡、相对倒计时、`HH:MM–HH:MM` 大号时间与操作栏）及 `LibraryBookingHistoryRow`（近期记录分组下的 `QuietCard` 历史行）。
+  3. 集成 [library_seat_query_page.dart](../mobile/lib/ui/library_seat_query_page.dart)：将原 `AlertDialog` 提交与取消确认替换为 `showLibraryConfirmReservationSheet` 与 `showLibraryConfirmCancelSheet`；重构“我的预约”为聚焦票卡 + `近期记录` 分层视图并移除被替代的旧 `_bookingControlsCard` / `_bookingRow`。
+  4. 扩充 [library_seat_queries_test.dart](../mobile/test/library_seat_queries_test.dart)：保留阶段 4–6 全部防超卖/防重发/取消确认断言并新增 5 项 7C 专项测试（聚焦状态与 7 天倒计时规则单元测试、`QuietSheet` 规则/释放提示与关闭零写入测试、`我的预约` 焦点 `AcrylicSurface` 票卡与历史分层及`近 30 天` / `去选座`交互测试，以及 320px `1.5x` 浅色与 `2.0x` 深色高对比关闭玻璃和动画的 7C 响应式检查）。
+- **静态与合成检查通过**（与真机/学校验收分列）：
+  - `mobile/` 下 `flutter analyze --no-pub`：0 问题（`No issues found!`）。
+  - 靶向 `flutter test --no-pub test/library_seat_queries_test.dart test/atmosphere_test.dart test/ui_test.dart`：55 项全部通过。
+  - `python scripts/check.py --changed`：退出码 0，报告 `build/checks/report-8ac94089c2414e8d875b974f450e2304.json`（49.984s：`docs`、`tooling`、`icons`、`examples`、Java 5 组、Node 11 组、`flutter-analyze`、`flutter-default` **344 项通过 / 9 项条件跳过**、`flutter-direct` **23 项通过**）；`mobile/pubspec.lock` 无改动。
+- **Android 模拟器只读浅/深色视觉核对通过**（`emulator-5554` / `Pixel 8 API 36`，debug 包 `0.3/code12`，宿主机与设备 `/data/app/.../base.apk` SHA-256 校验一致：`5654e003a85d7c0408772140fbd8b7f66a6cd289ad854d802286cbc514af6baf`）：
+  - 在已登录官方会话下仅执行只读查询与确认抽屉弹出核对（全程 **0 次写入请求**，未点击`确认提交预约`或`确认取消`）。
+  - 浅色模式核对：`二层北区` 选中 `2N172` 呼出 `确认预约座位` `QuietSheet`（英雄摘要卡、规则列表、琥珀色 `签到提示：`、`开始时间早于当前时间` 阻断提示与禁用状态 `确认提交预约` 布局清晰，点`取消`关闭零写入）；`我的预约` 在`本周`显示空态引导卡片，切换`近 30 天`后真实加载 2 条历史记录卡片（`三层西A区 · 3WA040`、`四层北区 · 4N163`）无溢出。
+  - 深色模式核对：通过应用内 `设置 → 外观设置 → 深色` 切换后核对`我的预约`（2 条历史记录卡片 + 四项底栏）与 `确认预约座位` `QuietSheet` 对比度与圆角边距均清晰无遮挡，查验后已恢复应用外观为`浅色`并切回`今日`。
+- 更新 [DESIGN.md](../DESIGN.md)、[ARCHITECTURE.md](ARCHITECTURE.md) 与 [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md)；不修改应用版本，停止等待用户审核阶段 7C。
 
 ## 2026-11-20 图书馆座位预约前端重设计阶段 7B
 

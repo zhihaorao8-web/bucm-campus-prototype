@@ -7,9 +7,11 @@ import 'package:campus_schedule/domain/library_seats.dart';
 import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/platform/library_seat_reader.dart';
 import 'package:campus_schedule/platform/school_adapter.dart';
+import 'package:campus_schedule/ui/acrylic_surface.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'package:campus_schedule/ui/course_surface.dart';
 import 'package:campus_schedule/ui/glass_navigation.dart';
+import 'package:campus_schedule/ui/library_seat_bookings.dart';
 import 'package:campus_schedule/ui/library_seat_map.dart';
 import 'package:campus_schedule/ui/library_seat_query_page.dart';
 import 'package:campus_schedule/ui/quiet_backdrop.dart';
@@ -1672,4 +1674,332 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  test('focus classification and countdown hints respect active statuses and 7-day window', () {
+    final now = DateTime(2026, 10, 10, 8, 5);
+    const upcoming = LibraryBooking(
+      '9001',
+      '二层北区',
+      '2N018',
+      '2026-10-10 08:30',
+      '2026-10-10 12:00',
+      2 | 1024,
+    );
+    const inProgress = LibraryBooking(
+      '9002',
+      '二层北区',
+      '2N019',
+      '2026-10-10 07:30',
+      '2026-10-10 10:05',
+      4 | 64,
+    );
+    const farFuture = LibraryBooking(
+      '9003',
+      '二层北区',
+      '2N020',
+      '2026-10-25 09:00',
+      '2026-10-25 12:00',
+      2,
+    );
+    const ended = LibraryBooking(
+      '9004',
+      '三层南区',
+      '3S001',
+      '2026-10-09 14:00',
+      '2026-10-09 18:00',
+      128 | 4096,
+    );
+    const violated = LibraryBooking(
+      '9005',
+      '三层南区',
+      '3S002',
+      '2026-10-08 09:00',
+      '2026-10-08 11:00',
+      16,
+    );
+
+    expect(isFocusLibraryBooking(upcoming, now), true);
+    expect(isFocusLibraryBooking(inProgress, now), true);
+    expect(isFocusLibraryBooking(ended, now), false);
+    expect(isFocusLibraryBooking(violated, now), false);
+
+    expect(libraryBookingTimeHint(upcoming, now), '25 分钟后开始');
+    expect(libraryBookingTimeHint(inProgress, now), '距结束还剩 2 小时');
+    expect(libraryBookingTimeHint(farFuture, now), isNull);
+    expect(libraryBookingTimeHint(ended, now), isNull);
+  });
+
+  testWidgets(
+    'Stage 7C confirmation QuietSheets show rules, release impact, and send zero writes when closed',
+    variant: androidOnly,
+    (tester) async {
+      const rule = LibrarySeatRule(
+        minMinutes: 30,
+        maxMinutes: 900,
+        cancelMinutes: 30,
+        limit: 8,
+      );
+      final reader = FakeLibrarySeatReader()
+        ..onSeats = ((_, _) async => [seat(id: '100', label: '2N018', rule: rule)])
+        ..onBookings = ((_, _, page) async => LibraryBookingPage(
+          [cancellationFixture],
+          false,
+          page: page,
+          totalCount: 1,
+        ));
+
+      await tester.pumpWidget(
+        wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
+      );
+      await tester.pumpAndSettle();
+
+      await reveal(tester, find.text('2N018'));
+      await tester.tap(find.text('2N018'));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('确认预约'));
+      await tester.tap(find.text('确认预约'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('library-confirm-reservation-sheet')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(QuietSheet),
+          matching: find.text('确认预约座位'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('签到提示：预约生效后 30 分钟 内未签到'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('关闭预约确认'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('library-confirm-reservation-sheet')),
+        findsNothing,
+      );
+      expect(reader.reserveCalls, 0);
+
+      await tester.tap(find.text('我的预约'));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('取消预约'));
+      await tester.tap(find.text('取消预约'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('library-confirm-cancel-sheet')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(QuietSheet),
+          matching: find.text('确认取消预约'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('学校接受取消后，这笔预约将释放。取消资格由学校平台确认。'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byTooltip('关闭取消确认'));
+      await tester.pumpAndSettle();
+      expect(reader.cancelCalls, 0);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'Stage 7C my bookings layers focus AcrylicSurface tickets above history and supports quick ranges and empty CTA',
+    variant: androidOnly,
+    (tester) async {
+      final queriedRanges = <(DateTime, DateTime)>[];
+      var emptyMode = false;
+      final reader = FakeLibrarySeatReader()
+        ..onSeats = ((_, _) async => [seat(id: '100', label: '2N018')])
+        ..onBookings = (begin, end, page) async {
+          queriedRanges.add((begin, end));
+          if (emptyMode) {
+            return LibraryBookingPage(const [], false, page: page, totalCount: 0);
+          }
+          return const LibraryBookingPage(
+            [
+              LibraryBooking(
+                '7002',
+                '三层南区',
+                'S008',
+                '2026-10-08 14:00',
+                '2026-10-08 18:00',
+                128,
+              ),
+              LibraryBooking(
+                '7001',
+                '二层北区',
+                '2N018',
+                '2026-10-10 08:30',
+                '2026-10-10 12:00',
+                2 | 1024,
+              ),
+            ],
+            false,
+            page: 1,
+            totalCount: 2,
+          );
+        };
+
+      await tester.pumpWidget(
+        wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 5)),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('我的预约'));
+      await tester.pumpAndSettle();
+
+      final focusFinder = find.byKey(const ValueKey('library-booking-focus-7001'));
+      final historyFinder = find.byKey(const ValueKey('library-booking-history-7002'));
+      expect(focusFinder, findsOneWidget);
+      expect(
+        find.descendant(of: focusFinder, matching: find.byType(AcrylicSurface)),
+        findsOneWidget,
+      );
+      expect(find.text('25 分钟后开始'), findsOneWidget);
+      expect(find.text('08:30–12:00'), findsOneWidget);
+      expect(find.text('2026-10-10 · 今天'), findsOneWidget);
+      expect(find.text('近期记录'), findsOneWidget);
+
+      await reveal(tester, historyFinder);
+      expect(historyFinder, findsOneWidget);
+      expect(
+        tester.getTopLeft(focusFinder).dy < tester.getTopLeft(historyFinder).dy,
+        true,
+      );
+
+      // Quick range 近 30 天 triggers reload from today - 29 to today + 1 and transitions empty CTA back to 选座.
+      emptyMode = true;
+      await reveal(tester, find.text('近 30 天'));
+      await tester.tap(find.text('近 30 天'));
+      await tester.pumpAndSettle();
+      expect(queriedRanges.last.$1, DateTime(2026, 9, 11));
+      expect(queriedRanges.last.$2, DateTime(2026, 10, 11));
+      expect(find.text('暂无座位预约'), findsOneWidget);
+
+      await tester.tap(find.text('去选座'));
+      await tester.pumpAndSettle();
+      expect(find.text('2N018'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  for (final variant in [
+    (
+      name: 'light-narrow-1.5x-stage7c',
+      dark: false,
+      scale: 1.5,
+      highContrast: false,
+      disableAnimations: false,
+      glass: true,
+    ),
+    (
+      name: 'dark-narrow-2.0x-hc-noglass-stage7c',
+      dark: true,
+      scale: 2.0,
+      highContrast: true,
+      disableAnimations: true,
+      glass: false,
+    ),
+  ]) {
+    testWidgets(
+      'Stage 7C responsive and accessibility check: ${variant.name}',
+      variant: androidOnly,
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 720);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        const rule = LibrarySeatRule(
+          minMinutes: 30,
+          maxMinutes: 900,
+          cancelMinutes: 30,
+        );
+        final reader = FakeLibrarySeatReader()
+          ..onSeats = ((_, _) async => [seat(id: '1', label: '2N018', rule: rule)])
+          ..onBookings = ((_, _, page) async => const LibraryBookingPage(
+            [
+              LibraryBooking(
+                '7010',
+                '二层北区',
+                '2N018',
+                '2099-10-10 08:30',
+                '2099-10-10 12:00',
+                2 | 1024,
+              ),
+              LibraryBooking(
+                '7011',
+                '三层南区',
+                '3S001',
+                '2026-10-08 14:00',
+                '2026-10-08 18:00',
+                128,
+              ),
+            ],
+            false,
+            page: 1,
+            totalCount: 2,
+          ));
+
+        await tester.pumpWidget(
+          wrapLibraryPage(
+            reader,
+            now: () => DateTime(2026, 10, 10, 8, 0),
+            dark: variant.dark,
+            scale: variant.scale,
+            highContrast: variant.highContrast,
+            disableAnimations: variant.disableAnimations,
+            settings: AppearanceSettings(glass: variant.glass),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await reveal(tester, find.text('2N018'));
+        await tester.tap(find.text('2N018'));
+        await tester.pumpAndSettle();
+        await reveal(tester, find.text('确认预约'));
+        await tester.tap(find.text('确认预约'));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('library-confirm-reservation-sheet')),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('取消'));
+        await tester.pumpAndSettle();
+
+        await tester.drag(
+          find.byType(CustomScrollView),
+          const Offset(0, 600),
+        );
+        await tester.pumpAndSettle();
+        await reveal(tester, find.text('我的预约'));
+        await tester.tap(find.text('我的预约'));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('library-booking-focus-7010')),
+          findsOneWidget,
+        );
+        await reveal(tester, find.text('取消预约'));
+        await tester.tap(find.text('取消预约'));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('library-confirm-cancel-sheet')),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('保留预约'));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
 }
