@@ -8,7 +8,9 @@ import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/platform/library_seat_reader.dart';
 import 'package:campus_schedule/platform/school_adapter.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
+import 'package:campus_schedule/ui/course_surface.dart';
 import 'package:campus_schedule/ui/glass_navigation.dart';
+import 'package:campus_schedule/ui/library_seat_map.dart';
 import 'package:campus_schedule/ui/library_seat_query_page.dart';
 import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +31,8 @@ LibrarySeat seat({
   List<LibraryHours> hours = const [(510, 1320)],
   List<LibraryInterval> reservations = const [],
   LibrarySeatRule? rule,
+  double? x,
+  double? y,
 }) => LibrarySeat(
   id: id,
   label: label,
@@ -37,6 +41,8 @@ LibrarySeat seat({
   hours: hours,
   reservations: reservations,
   rule: rule,
+  x: x,
+  y: y,
 );
 
 class FakeLibrarySeatReader extends LibrarySeatReader {
@@ -460,34 +466,40 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('共 5 个座位 · 空闲 1 · 半空闲 1 · 使用中 1 · 不可用 2'),
-        findsOneWidget,
-      );
+      expect(find.text('共 5 席'), findsOneWidget);
+      expect(find.text('空闲 1'), findsOneWidget);
+      expect(find.text('半空闲 1'), findsOneWidget);
+      expect(find.text('使用中 1'), findsOneWidget);
+      expect(find.text('不可用 2'), findsOneWidget);
       expect(find.text('已约 10:00–11:00'), findsOneWidget);
 
-      // Tapping partial seat does not select it.
+      // Tapping partial seat opens the time-slot inspection sheet instead of silent no-op.
       await reveal(tester, find.text('N002'));
       await tester.tap(find.text('N002'));
       await tester.pumpAndSettle();
-      expect(find.text('已选候选座位'), findsNothing);
+      expect(find.text('查看可约空档'), findsOneWidget);
+      expect(find.text('N002 · 半空闲'), findsOneWidget);
+      await tester.tap(find.byTooltip('关闭时段选择'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('library-selected-capsule')), findsNothing);
 
-      // Tapping available seat selects it and displays candidate summary.
+      // Tapping available seat selects it and displays bottom floating capsule.
       await reveal(tester, find.text('N001'));
       await tester.tap(find.text('N001'));
       await tester.pumpAndSettle();
-      await reveal(tester, find.text('已选候选座位'));
-      expect(find.text('已选候选座位'), findsOneWidget);
-      expect(find.text('二层 · 二层北区 · N001'), findsOneWidget);
-      expect(find.text('2026-10-10 08:30–22:00'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('library-selected-capsule')),
+        findsOneWidget,
+      );
+      expect(find.text('二层北区 · N001'), findsOneWidget);
+      expect(find.textContaining('2026-10-10 08:30–22:00'), findsOneWidget);
 
       // Tapping clear deselects it.
-      await reveal(tester, find.text('清除选择'));
-      await tester.tap(find.text('清除选择'));
+      await tester.tap(find.byTooltip('清除选择'));
       await tester.pumpAndSettle();
-      expect(find.text('已选候选座位'), findsNothing);
+      expect(find.byKey(const ValueKey('library-selected-capsule')), findsNothing);
 
-      // Filtering only available hides non-available rows.
+      // Filtering only available hides non-available items.
       await reveal(tester, find.text('仅看空闲'));
       await tester.tap(find.text('仅看空闲'));
       await tester.pumpAndSettle();
@@ -522,15 +534,21 @@ void main() {
 
       await tester.tap(find.text('今日座位'));
       await tester.pumpAndSettle();
-      expect(find.text('已选候选座位'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('library-selected-capsule')),
+        findsOneWidget,
+      );
 
       // Switch to tomorrow while a manual refresh on today could still be pending.
-      await tester.tap(find.text('刷新座位'));
+      await tester.tap(find.byKey(const ValueKey('library-refresh-button')));
       await tester.pump();
       await tester.tap(find.text('明天'));
       await tester.pump();
 
-      expect(find.text('已选候选座位'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('library-selected-capsule')),
+        findsNothing,
+      );
       expect(requests.length, 3);
       expect(requests[1].$1, today);
       expect(requests[2].$1, tomorrow);
@@ -1064,7 +1082,7 @@ void main() {
 
       // Reset seat back to available.
       seatsResult = [seat(id: '100', label: 'N001')];
-      await tester.tap(find.text('刷新座位'));
+      await tester.tap(find.byKey(const ValueKey('library-refresh-button')));
       await tester.pumpAndSettle();
 
       // 2. School rejection -> 1 write, no retry.
@@ -1286,6 +1304,371 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('library-refresh-button')));
       await tester.pumpAndSettle();
       expect(seatCalls, 2);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'floor map defaults when coordinates exist, zooms safely, and toggles to searchable segmented grid',
+    variant: androidOnly,
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final items = [
+        for (var i = 1; i <= 120; i++)
+          seat(
+            id: '$i',
+            label: '2N${i.toString().padLeft(3, '0')}',
+            x: 10 + (i % 12) * 7.0,
+            y: 12 + (i ~/ 12) * 8.0,
+          ),
+      ];
+      final reader = FakeLibrarySeatReader()..onSeats = (_, _) async => items;
+
+      await tester.pumpWidget(
+        wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
+      );
+      await tester.pumpAndSettle();
+
+      // Floor map is active by default when coordinates are present.
+      expect(
+        find.byKey(const ValueKey('library-floor-map-viewport')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('library-seat-search')), findsNothing);
+
+      // Zoom in and reset controls work smoothly.
+      await tester.tap(find.byKey(const ValueKey('library-map-zoom-in')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('缩放'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('library-map-zoom-fit')));
+      await tester.pumpAndSettle();
+      expect(find.text('平面分布 · 双指缩放或点选座位'), findsOneWidget);
+
+      // Tap a seat in map -> floating selected capsule appears.
+      await tester.tap(find.text('2N001'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('library-selected-capsule')),
+        findsOneWidget,
+      );
+      expect(find.text('二层北区 · 2N001'), findsOneWidget);
+
+      // Toggle to compact grid, jump segment, and search for 2N115.
+      await tester.tap(find.byKey(const ValueKey('library-view-grid')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('library-seat-search')), findsOneWidget);
+      expect(find.text('81–120'), findsOneWidget);
+
+      await tester.tap(find.text('81–120'));
+      await tester.pumpAndSettle();
+      expect(find.text('2N001'), findsNothing);
+      expect(find.text('2N081'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('library-seat-search')),
+        '2N115',
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(LibrarySeatGridRow),
+          matching: find.text('2N115'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('2N081'), findsNothing);
+
+      // Searching an absent code shows empty guidance and clear action.
+      await tester.enterText(
+        find.byKey(const ValueKey('library-seat-search')),
+        'NO_SUCH_SEAT',
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('未找到包含'), findsOneWidget);
+      await tester.tap(find.text('清空搜索'));
+      await tester.pumpAndSettle();
+      expect(find.text('2N001'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'missing coordinates fall back to grid and area sheet filters by floor',
+    variant: androidOnly,
+    (tester) async {
+      String? requestedArea;
+      final reader = FakeLibrarySeatReader()
+        ..onAreas = (() async => const [
+          LibraryArea('32', '二层北区', '二层'),
+          LibraryArea('33', '三层南区', '三层'),
+          LibraryArea('41', '四层阅览室', '四层'),
+        ])
+        ..onSeats = ((area, _) async {
+          requestedArea = area;
+          return [
+            seat(id: '${area}01', label: area == '33' ? '3S001' : '2N001'),
+          ];
+        });
+
+      await tester.pumpWidget(
+        wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
+      );
+      await tester.pumpAndSettle();
+
+      // Without coordinates, falls back to grid and disables map switch.
+      expect(
+        find.byKey(const ValueKey('library-floor-map-viewport')),
+        findsNothing,
+      );
+      expect(find.byKey(const ValueKey('library-seat-search')), findsOneWidget);
+      final mapButton = tester.widget<IconButton>(
+        find.byKey(const ValueKey('library-view-map')),
+      );
+      expect(mapButton.onPressed, isNull);
+
+      // Open area drawer and filter to 三层.
+      await tester.tap(find.byKey(const ValueKey('library-area-picker')));
+      await tester.pumpAndSettle();
+      expect(find.text('选择座位区域'), findsOneWidget);
+      await tester.tap(find.widgetWithText(ChoiceChip, '三层'));
+      await tester.pumpAndSettle();
+      expect(find.text('四层阅览室'), findsNothing);
+      await tester.tap(find.text('三层南区'));
+      await tester.pumpAndSettle();
+
+      expect(requestedArea, '33');
+      expect(find.text('3S001'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'time slot sheet inspects partial seat gaps, validates duration, and applies clean gap selection',
+    variant: androidOnly,
+    (tester) async {
+      const rule = LibrarySeatRule(minMinutes: 30, maxMinutes: 240);
+      final reader = FakeLibrarySeatReader()
+        ..onSeats = (_, _) async => [
+          seat(
+            id: '24',
+            label: '2N024',
+            reservations: [(at(10), at(12))],
+            rule: rule,
+          ),
+        ];
+
+      await tester.pumpWidget(
+        wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
+      );
+      await tester.pumpAndSettle();
+
+      // Open time slot sheet from partial seat 2N024.
+      await tester.tap(find.text('2N024'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('查看可约空档'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('library-timeline-track')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(QuietSheet),
+          matching: find.text('已约 10:00–12:00'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('可用空档'), findsOneWidget);
+
+      // Free gap 08:30–10:00 was auto-selected and fits 240m limit cleanly.
+      expect(find.text('时段可用 · 共 1 小时 30 分钟'), findsOneWidget);
+      expect(find.text('12:00–22:00'), findsOneWidget);
+
+      // Picking 12:00–22:00 (10 hours) violates 4-hour max rule and disables apply CTA.
+      await tester.tap(find.text('12:00–22:00'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('超过学校允许的最长时长'), findsOneWidget);
+      final blockedButton = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, '采用此时段并选中 2N024'),
+      );
+      expect(blockedButton.onPressed, isNull);
+
+      // Switching back to 08:30–10:00 makes it valid and selects 2N024 cleanly.
+      await tester.tap(find.text('08:30–10:00').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('采用此时段并选中 2N024'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('library-selected-capsule')),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('2026-10-10 08:30–10:00 · 1 小时 30 分钟'),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  for (final variant in [
+    (
+      name: 'light-narrow-1.5x-floor',
+      dark: false,
+      scale: 1.5,
+      highContrast: false,
+      disableAnimations: false,
+      glass: true,
+    ),
+    (
+      name: 'dark-narrow-2.0x-hc-noglass',
+      dark: true,
+      scale: 2.0,
+      highContrast: true,
+      disableAnimations: true,
+      glass: false,
+    ),
+  ]) {
+    testWidgets(
+      'Stage 7B responsive and accessibility check: ${variant.name}',
+      variant: androidOnly,
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 720);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final reader = FakeLibrarySeatReader()
+          ..onSeats = (_, _) async => [
+            seat(id: '1', label: '2N001', x: 15, y: 20),
+            seat(
+              id: '2',
+              label: '2N002',
+              x: 55,
+              y: 45,
+              reservations: [(at(10), at(11))],
+            ),
+          ];
+
+        await tester.pumpWidget(
+          wrapLibraryPage(
+            reader,
+            now: () => DateTime(2026, 10, 10, 8, 0),
+            dark: variant.dark,
+            scale: variant.scale,
+            highContrast: variant.highContrast,
+            disableAnimations: variant.disableAnimations,
+            settings: AppearanceSettings(glass: variant.glass),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await reveal(tester, find.text('2N001'));
+        await tester.tap(find.text('2N001'));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('library-selected-capsule')),
+          findsOneWidget,
+        );
+
+        await reveal(tester, find.byKey(const ValueKey('library-view-grid')));
+        await tester.tap(find.byKey(const ValueKey('library-view-grid')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('library-seat-search')), findsOneWidget);
+
+        await reveal(tester, find.byKey(const ValueKey('library-time-picker')));
+        await tester.tap(find.byKey(const ValueKey('library-time-picker')));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('library-timeline-track')),
+          findsOneWidget,
+        );
+        await tester.tap(find.byTooltip('关闭时段选择'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  testWidgets(
+    'dense mixed-spacing floor map avoids seat overlap and keeps zoom controls above viewport',
+    variant: androidOnly,
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final items = <LibrarySeat>[
+        // Main 4x6 block with standard spacing.
+        for (var r = 0; r < 4; r++)
+          for (var c = 0; c < 6; c++)
+            seat(
+              id: 'm_${r}_$c',
+              label: '3S${(100 + r * 6 + c).toString().padLeft(3, '0')}',
+              x: 20 + c * 5.0,
+              y: 25 + r * 7.0,
+            ),
+        // Dense bottom strip (~2.3% horizontal spacing) similar to 三层南区 edge rows.
+        for (var c = 0; c < 12; c++)
+          seat(
+            id: 'd_$c',
+            label: '3S${(49 + c).toString().padLeft(3, '0')}',
+            x: 55 + c * 2.3,
+            y: 88,
+          ),
+      ];
+      final reader = FakeLibrarySeatReader()..onSeats = (_, _) async => items;
+
+      await tester.pumpWidget(
+        wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
+      );
+      await tester.pumpAndSettle();
+
+      final zoomRect = tester.getRect(
+        find.byKey(const ValueKey('library-map-zoom-in')),
+      );
+      final viewportRect = tester.getRect(
+        find.byKey(const ValueKey('library-floor-map-viewport')),
+      );
+      expect(zoomRect.overlaps(viewportRect), false);
+      expect(zoomRect.bottom <= viewportRect.top, true);
+
+      final seatMaterials = find
+          .descendant(
+            of: find.byKey(const ValueKey('library-floor-map-viewer')),
+            matching: find.byType(Material),
+          )
+          .evaluate()
+          .toList();
+      expect(seatMaterials.length, items.length);
+
+      final rects = <Rect>[
+        for (final element in seatMaterials)
+          tester.getRect(find.byElementPredicate((e) => e == element)),
+      ];
+      for (var i = 0; i < rects.length; i++) {
+        for (var j = i + 1; j < rects.length; j++) {
+          expect(
+            rects[i].overlaps(rects[j]),
+            false,
+            reason: 'seat rects $i (${rects[i]}) and $j (${rects[j]}) overlapped',
+          );
+        }
+      }
+
+      // Zooming in twice reveals labels on the dense bottom row.
+      await tester.tap(find.byKey(const ValueKey('library-map-zoom-in')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('library-map-zoom-in')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('225%'), findsOneWidget);
+      expect(find.text('3S049'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
   );

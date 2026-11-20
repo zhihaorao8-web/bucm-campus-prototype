@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -8,11 +9,15 @@ import '../domain/library_seats.dart';
 import '../domain/schedule.dart';
 import '../platform/library_seat_reader.dart';
 import '../platform/school_adapter.dart';
+import 'acrylic_surface.dart';
 import 'app_controls.dart';
 import 'app_icons.dart';
 import 'app_theme.dart';
+import 'classroom_section_switch.dart';
 import 'course_surface.dart';
+import 'library_seat_map.dart';
 import 'library_seat_page.dart';
+import 'library_seat_sheets.dart';
 import 'quiet_backdrop.dart';
 
 class LibrarySeatTabController {
@@ -71,15 +76,20 @@ class LibrarySeatQueryPage extends StatefulWidget {
 }
 
 class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
+  static const int _gridSegmentSize = 80;
+
   late final LibrarySeatQueries _queries;
   late DateTime _date, _bookingBegin, _bookingEnd;
+  final TextEditingController _searchController = TextEditingController();
   LibraryArea? _area;
   TimeOfDay? _start, _end;
   String? _selected;
-  int _bookingPage = 1;
+  String _searchQuery = '';
+  int _bookingPage = 1, _gridSegment = -1;
+  LibrarySeatStatus? _statusFilter;
   bool _showBookings = false,
       _openingOfficial = false,
-      _onlyAvailable = false,
+      _mapView = true,
       _started = false;
 
   DateTime _currentSchoolNow() => (widget.now ?? schoolNow)();
@@ -160,21 +170,27 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   void dispose() {
     widget.tabController?._detach(_tabRefreshCallback);
     SchoolAdapter.sessionChanges.removeListener(_sessionCleared);
+    _searchController.dispose();
     _queries.dispose();
     super.dispose();
   }
 
   void _sessionCleared() {
+    _searchController.clear();
     if (mounted) {
       setState(() {
         _selected = null;
         _area = null;
         _start = _end = null;
+        _searchQuery = '';
+        _gridSegment = -1;
       });
     } else {
       _selected = null;
       _area = null;
       _start = _end = null;
+      _searchQuery = '';
+      _gridSegment = -1;
     }
     unawaited(_queries.clearSession());
   }
@@ -271,10 +287,13 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
       return;
     }
     _queries.clearSubmission();
+    _searchController.clear();
     setState(() {
       _date = normalized;
       _start = _end = null;
       _selected = null;
+      _searchQuery = '';
+      _gridSegment = -1;
     });
     await _loadSeats();
   }
@@ -293,24 +312,100 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     await _selectSeatDate(date);
   }
 
-  Future<void> _chooseTime(bool start) async {
-    if (_busy) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime:
-          (start ? _start : _end) ?? const TimeOfDay(hour: 8, minute: 30),
-      helpText: start ? '选择开始时间' : '选择结束时间',
+  Future<void> _chooseArea(List<LibraryArea> areas) async {
+    if (_busy || areas.isEmpty) return;
+    final chosen = await showLibraryAreaSheet(
+      context,
+      areas: areas,
+      selected: _area,
     );
-    if (time == null || !mounted) return;
+    if (chosen == null || chosen.id == _area?.id || !mounted) return;
+    _queries.clearSubmission();
+    _searchController.clear();
+    setState(() {
+      _area = chosen;
+      _start = _end = null;
+      _selected = null;
+      _searchQuery = '';
+      _gridSegment = -1;
+    });
+    await _loadSeats();
+  }
+
+  Future<void> _chooseTimeSlot({LibrarySeat? focusSeat}) async {
+    if (_busy) return;
+    final seats = _queries.seats ?? const <LibrarySeat>[];
+    final openHours = focusSeat != null && focusSeat.hours.isNotEmpty
+        ? focusSeat.hours
+        : seats.firstWhere(
+            (seat) => seat.hours.isNotEmpty,
+            orElse: () => const LibrarySeat(
+              id: '',
+              label: '',
+              open: true,
+              viewOnly: false,
+              hours: [(510, 1320)],
+              reservations: [],
+            ),
+          ).hours;
+    final rule =
+        focusSeat?.rule ??
+        seats.map((seat) => seat.rule).whereType<LibrarySeatRule>().firstOrNull;
+    final picked = await showLibraryTimeSlotSheet(
+      context,
+      date: _date,
+      currentSchoolNow: _currentSchoolNow(),
+      initialStart: _start,
+      initialEnd: _end,
+      openHours: openHours,
+      focusSeat: focusSeat,
+      rule: rule,
+    );
+    if (picked == null || !mounted) return;
     _queries.clearSubmission();
     setState(() {
-      if (start) {
-        _start = time;
+      _start = picked.start;
+      _end = picked.end;
+      if (picked.selectSeat &&
+          focusSeat != null &&
+          focusSeat.statusOn(
+                _date,
+                _minutes(picked.start),
+                _minutes(picked.end),
+              ) ==
+              LibrarySeatStatus.available) {
+        _selected = focusSeat.id;
+        if (_statusFilter == LibrarySeatStatus.partial) {
+          _statusFilter = null;
+        }
       } else {
-        _end = time;
+        _selected = null;
       }
-      _selected = null;
     });
+  }
+
+  void _toggleStatusFilter(LibrarySeatStatus status) {
+    if (_busy) return;
+    setState(() {
+      _statusFilter = _statusFilter == status ? null : status;
+      if (_statusFilter != null && _statusFilter != LibrarySeatStatus.available) {
+        _selected = null;
+      }
+    });
+  }
+
+  void _handleSeatSelect(LibrarySeat seat) {
+    if (_busy) return;
+    _queries.clearSubmission();
+    setState(() => _selected = _selected == seat.id ? null : seat.id);
+  }
+
+  void _handleUnavailableTap(LibrarySeat seat, LibrarySeatStatus status) {
+    if (_busy) return;
+    final label = LibrarySeatPalette.statusLabel(status);
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('${seat.label} 当前时段$label')));
   }
 
   Future<void> _chooseBookingDates() async {
@@ -505,9 +600,6 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     setState(() => _selected = null);
   }
 
-  String _timeLabel(TimeOfDay? value, String placeholder) =>
-      value == null ? placeholder : '$placeholder ${_clockText(value)}';
-
   LibrarySeatStatus _seatStatus(
     LibrarySeat seat,
     TimeOfDay? start,
@@ -520,23 +612,6 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
         ? LibrarySeatStatus.viewOnly
         : LibrarySeatStatus.closed;
   }
-
-  String _statusLabel(LibrarySeatStatus status) => switch (status) {
-    LibrarySeatStatus.available => '空闲',
-    LibrarySeatStatus.partial => '半空闲',
-    LibrarySeatStatus.occupied => '使用中',
-    LibrarySeatStatus.closed => '不开放',
-    LibrarySeatStatus.viewOnly => '仅查看',
-  };
-
-  Color _statusColor(ColorScheme colors, LibrarySeatStatus status) =>
-      switch (status) {
-        LibrarySeatStatus.available => colors.primary,
-        LibrarySeatStatus.partial => colors.tertiary,
-        LibrarySeatStatus.occupied => colors.error,
-        LibrarySeatStatus.closed ||
-        LibrarySeatStatus.viewOnly => colors.onSurfaceVariant,
-      };
 
   @override
   Widget build(BuildContext context) {
@@ -585,6 +660,36 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
             icon: const AppIcon(AppIcons.arrowBack),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
+          actions: defaultTargetPlatform == TargetPlatform.android
+              ? [
+                  ListenableBuilder(
+                    listenable: _queries,
+                    builder: (_, _) => Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Tooltip(
+                          message: '刷新座位或预约',
+                          child: IconButton(
+                            key: const ValueKey('library-refresh-button'),
+                            onPressed: _busy || _queries.loading
+                                ? null
+                                : _handleTabRefresh,
+                            icon: const AppIcon(AppIcons.refresh),
+                          ),
+                        ),
+                        Tooltip(
+                          message: '打开学校预约网页',
+                          child: IconButton(
+                            key: const ValueKey('library-official-button'),
+                            onPressed: _busy ? null : _official,
+                            icon: const AppIcon(AppIcons.globe),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ]
+              : null,
         ),
         body: SafeArea(top: false, child: body),
       ),
@@ -656,7 +761,8 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     final hasValidRange =
         start != null && end != null && _minutes(start) < _minutes(end);
 
-    final seatItems = <(LibrarySeat, LibrarySeatStatus)>[];
+    final allEntries = <(LibrarySeat, LibrarySeatStatus)>[];
+    final filteredItems = <(LibrarySeat, LibrarySeatStatus)>[];
     var availableCount = 0;
     var partialCount = 0;
     var occupiedCount = 0;
@@ -666,6 +772,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     if (!_showBookings && seats != null) {
       for (final seat in seats) {
         final status = _seatStatus(seat, start, end);
+        allEntries.add((seat, status));
         switch (status) {
           case LibrarySeatStatus.available:
             availableCount++;
@@ -680,23 +787,68 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
         if (seat.id == _selected && status == LibrarySeatStatus.available) {
           selectedSeat = seat;
         }
-        if (!_onlyAvailable || status == LibrarySeatStatus.available) {
-          seatItems.add((seat, status));
+        if (_statusFilter == null || status == _statusFilter) {
+          filteredItems.add((seat, status));
         }
       }
     }
 
+    final hasFloorMap = canUseLibraryFloorMap(seats);
+    final usingMap = hasFloorMap && _mapView;
+    final trimmedQuery = _searchQuery.trim().toLowerCase();
+    final searchedItems = usingMap || trimmedQuery.isEmpty
+        ? filteredItems
+        : filteredItems
+              .where(
+                (entry) => entry.$1.label.toLowerCase().contains(trimmedQuery),
+              )
+              .toList();
+
+    final segmentCount = usingMap ||
+            trimmedQuery.isNotEmpty ||
+            searchedItems.length <= _gridSegmentSize
+        ? 0
+        : (searchedItems.length / _gridSegmentSize).ceil();
+    final activeSegment =
+        segmentCount <= 1 ? -1 : _gridSegment.clamp(-1, segmentCount - 1);
+    final segmentLabels = segmentCount <= 1
+        ? const <String>[]
+        : [
+            for (var i = 0; i < segmentCount; i++)
+              '${i * _gridSegmentSize + 1}–${math.min((i + 1) * _gridSegmentSize, searchedItems.length)}',
+          ];
+    final gridItems = activeSegment < 0
+        ? searchedItems
+        : searchedItems.sublist(
+            activeSegment * _gridSegmentSize,
+            math.min(
+              (activeSegment + 1) * _gridSegmentSize,
+              searchedItems.length,
+            ),
+          );
+
     final insets = widget.embedded
         ? (widget.contentInsets ?? EdgeInsets.zero)
         : EdgeInsets.zero;
-    final bottomInset = widget.embedded
-        ? insets.bottom + AppSpace.xxl
-        : AppSpace.xxl;
+    final contentWidth = math.max(
+      240.0,
+      math.min(MediaQuery.sizeOf(context).width, 1000.0) -
+          (AppSpace.lg * 2 + insets.left + insets.right),
+    );
+    final gridColumns = LibrarySeatGridRow.columnsFor(context, contentWidth);
+    final gridRowCount = (gridItems.length / gridColumns).ceil();
+
+    final showCapsule =
+        !_showBookings && selectedSeat != null && hasValidRange;
+    final extraCapsuleSpace = showCapsule ? 108.0 : 0.0;
+    final bottomInset =
+        (widget.embedded ? insets.bottom + AppSpace.xxl : AppSpace.xxl) +
+        extraCapsuleSpace;
     final hasBottomList =
-        (!_showBookings && seatItems.isNotEmpty) ||
+        (!_showBookings && !usingMap && gridRowCount > 0) ||
         (_showBookings && page != null && page.rows.isNotEmpty);
 
-    return CustomScrollView(
+    final scrollView = CustomScrollView(
       key: widget.embedded
           ? const PageStorageKey('library-tab-page')
           : PageStorageKey(
@@ -711,67 +863,37 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
             AppSpace.lg + insets.left,
             AppSpace.md,
             AppSpace.lg + insets.right,
-            hasBottomList ? AppSpace.md : bottomInset,
+            hasBottomList ? AppSpace.sm : bottomInset,
           ),
           sliver: SliverList.list(
             children: [
-              QuietCard(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpace.lg),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Wrap(
-                        spacing: AppSpace.sm,
-                        runSpacing: AppSpace.sm,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('选座'),
-                            selected: !_showBookings,
-                            onSelected: _busy ? null : (_) => _switch(false),
-                          ),
-                          ChoiceChip(
-                            label: const Text('我的预约'),
-                            selected: _showBookings,
-                            onSelected: _busy ? null : (_) => _switch(true),
-                          ),
-                          TextButton(
-                            style: TextButton.styleFrom(
-                              minimumSize: const Size(
-                                AppLayout.minTap,
-                                AppLayout.minTap,
-                              ),
-                            ),
-                            onPressed: _busy ? null : _official,
-                            child: Text(
-                              _queries.needsLogin ? '打开学校页面登录' : '学校预约网页',
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (_queries.loading || _queries.submitting) ...[
-                        const SizedBox(height: AppSpace.md),
-                        const ClipRRect(
-                          borderRadius: BorderRadius.all(Radius.circular(4)),
-                          child: LinearProgressIndicator(minHeight: 3),
-                        ),
-                        if (_queries.submitting) ...[
-                          const SizedBox(height: AppSpace.sm),
-                          Text(
-                            _showBookings
-                                ? '正在核对并取消预约…'
-                                : '正在核对余位并提交预约…',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colors.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ],
+              IgnorePointer(
+                ignoring: _busy,
+                child: Opacity(
+                  opacity: _busy ? 0.65 : 1.0,
+                  child: ClassroomSectionSwitch(
+                    tabs: const ['选座', '我的预约'],
+                    selectedIndex: _showBookings ? 1 : 0,
+                    onSelected: (index) => _switch(index == 1),
                   ),
                 ),
               ),
+              if (_queries.loading || _queries.submitting) ...[
+                const SizedBox(height: AppSpace.sm),
+                const ClipRRect(
+                  borderRadius: BorderRadius.all(Radius.circular(4)),
+                  child: LinearProgressIndicator(minHeight: 3),
+                ),
+                if (_queries.submitting) ...[
+                  const SizedBox(height: AppSpace.xs),
+                  Text(
+                    _showBookings ? '正在核对并取消预约…' : '正在核对余位并提交预约…',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
               if (_queries.submission != null) ...[
                 const SizedBox(height: AppSpace.md),
                 _submissionCard(context, _queries.submission!),
@@ -856,6 +978,8 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                 _seatControlsCard(
                   context,
                   seats: seats,
+                  hasFloorMap: hasFloorMap,
+                  usingMap: usingMap,
                   availableCount: availableCount,
                   partialCount: partialCount,
                   occupiedCount: occupiedCount,
@@ -865,49 +989,129 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                 const SizedBox(height: AppSpace.md),
                 _cancellationCard(context, _queries.cancellation!),
               ],
-              if (!_showBookings && selectedSeat != null && hasValidRange) ...[
+              if (!_showBookings && _queries.loading && seats == null) ...[
                 const SizedBox(height: AppSpace.md),
-                _selectedBanner(context, selectedSeat, start, end),
+                const LibrarySeatLoadingSkeleton(),
               ],
-              if (!_showBookings &&
-                  seats != null &&
-                  seats.isNotEmpty &&
-                  _onlyAvailable &&
-                  seatItems.isEmpty) ...[
-                const SizedBox(height: AppSpace.md),
-                QuietCard(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpace.lg),
-                    child: Text(
-                      '当前时段暂无空闲座位',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colors.onSurfaceVariant,
+              if (!_showBookings && seats != null && seats.isNotEmpty) ...[
+                if (filteredItems.isEmpty) ...[
+                  const SizedBox(height: AppSpace.md),
+                  QuietCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpace.lg),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _statusFilter == LibrarySeatStatus.partial
+                                  ? '当前时段暂无半空闲座位'
+                                  : '当前时段暂无空闲座位',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () =>
+                                setState(() => _statusFilter = null),
+                            child: const Text('显示全部'),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
+                ] else if (usingMap) ...[
+                  const SizedBox(height: AppSpace.md),
+                  LibrarySeatFloorMap(
+                    allSeats: allEntries,
+                    visibleSeats: filteredItems,
+                    selectedSeatId: _selected,
+                    busy: _busy,
+                    onSelectSeat: _handleSeatSelect,
+                    onInspectPartial: (seat) =>
+                        unawaited(_chooseTimeSlot(focusSeat: seat)),
+                    onUnavailableTap: _handleUnavailableTap,
+                  ),
+                ] else ...[
+                  const SizedBox(height: AppSpace.md),
+                  LibrarySeatGridControls(
+                    searchController: _searchController,
+                    query: _searchQuery,
+                    totalFilteredCount: searchedItems.length,
+                    segmentIndex: activeSegment,
+                    segmentCount: segmentCount,
+                    segmentLabels: segmentLabels,
+                    onQueryChanged: (value) => setState(() {
+                      _searchQuery = value;
+                      _gridSegment = -1;
+                    }),
+                    onSegmentSelected: (index) =>
+                        setState(() => _gridSegment = index),
+                  ),
+                  if (gridItems.isEmpty && trimmedQuery.isNotEmpty) ...[
+                    const SizedBox(height: AppSpace.md),
+                    QuietCard(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpace.lg),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '未找到包含“${_searchQuery.trim()}”的座位',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                              child: const Text('清空搜索'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ],
             ],
           ),
         ),
-        if (!_showBookings && seatItems.isNotEmpty)
+        if (!_showBookings && !usingMap && gridRowCount > 0)
           SliverPadding(
-            padding: EdgeInsets.only(
-              left: insets.left,
-              right: insets.right,
-              bottom: bottomInset,
+            padding: EdgeInsets.fromLTRB(
+              AppSpace.lg + insets.left,
+              0,
+              AppSpace.lg + insets.right,
+              bottomInset,
             ),
             sliver: SliverList.builder(
-              itemCount: seatItems.length,
-              itemBuilder: (_, index) {
-                final (seat, status) = seatItems[index];
-                return _seatRow(
-                  context,
-                  seat,
-                  status,
-                  start: start,
-                  end: end,
-                  hasValidRange: hasValidRange,
+              itemCount: gridRowCount,
+              itemBuilder: (_, rowIndex) {
+                final begin = rowIndex * gridColumns;
+                final endIndex = math.min(
+                  begin + gridColumns,
+                  gridItems.length,
+                );
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                  child: LibrarySeatGridRow(
+                    items: gridItems.sublist(begin, endIndex),
+                    columns: gridColumns,
+                    date: _date,
+                    start: start,
+                    end: end,
+                    hasValidRange: hasValidRange,
+                    selectedSeatId: _selected,
+                    busy: _busy,
+                    onSelectSeat: _handleSeatSelect,
+                    onInspectPartial: (seat) =>
+                        unawaited(_chooseTimeSlot(focusSeat: seat)),
+                    onUnavailableTap: _handleUnavailableTap,
+                  ),
                 );
               },
             ),
@@ -924,6 +1128,21 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
               itemBuilder: (_, index) => _bookingRow(context, page.rows[index]),
             ),
           ),
+      ],
+    );
+
+    if (!showCapsule) return scrollView;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        scrollView,
+        Positioned(
+          left: AppSpace.lg + insets.left,
+          right: AppSpace.lg + insets.right,
+          bottom: widget.embedded ? insets.bottom : AppSpace.md,
+          child: _selectedCapsule(context, selectedSeat, start, end),
+        ),
       ],
     );
   }
@@ -971,6 +1190,8 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   Widget _seatControlsCard(
     BuildContext context, {
     required List<LibrarySeat>? seats,
+    required bool hasFloorMap,
+    required bool usingMap,
     required int availableCount,
     required int partialCount,
     required int occupiedCount,
@@ -984,43 +1205,134 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
         start != null && end != null && _minutes(start) >= _minutes(end);
     final today = dateOnly(_currentSchoolNow());
     final tomorrow = calendarAdd(today, 1);
+    final timeLabel = start != null && end != null
+        ? '${_clockText(start)}–${_clockText(end)}'
+        : '选择时段';
 
     return QuietCard(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpace.lg),
+        padding: const EdgeInsets.all(AppSpace.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (areas.isNotEmpty) ...[
-              DropdownButtonFormField<LibraryArea>(
-                key: ValueKey(_area?.id),
-                initialValue: areas.contains(_area) ? _area : areas.first,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: '座位区域'),
-                items: areas
-                    .map(
-                      (area) => DropdownMenuItem(
-                        value: area,
-                        child: Text(area.label, overflow: TextOverflow.ellipsis),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      key: const ValueKey('library-area-picker'),
+                      borderRadius: BorderRadius.circular(AppRadius.small),
+                      onTap: _busy ? null : () => _chooseArea(areas),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minHeight: AppLayout.minTap,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpace.md,
+                            vertical: AppSpace.sm,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.surfaceContainerLow.withValues(
+                              alpha: .8,
+                            ),
+                            borderRadius: BorderRadius.circular(
+                              AppRadius.small,
+                            ),
+                            border: Border.all(
+                              width: 0.7,
+                              color: colors.outlineVariant,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _area?.label ?? areas.first.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.titleSmall,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpace.xs),
+                              const AppIcon(
+                                AppIcons.chevronDown,
+                                size: AppControl.icon,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    )
-                    .toList(),
-                onChanged: _busy
-                    ? null
-                    : (area) {
-                        if (area == null) return;
-                        _queries.clearSubmission();
-                        setState(() {
-                          _area = area;
-                          _start = _end = null;
-                          _selected = null;
-                        });
-                        unawaited(_loadSeats());
-                      },
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  CourseSurface(
+                    dense: true,
+                    radius: AppRadius.small,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          key: const ValueKey('library-view-map'),
+                          tooltip: hasFloorMap ? '平面选座图' : '当前区域暂无平面坐标',
+                          constraints: const BoxConstraints(
+                            minWidth: 44,
+                            minHeight: 44,
+                          ),
+                          padding: EdgeInsets.zero,
+                          style: IconButton.styleFrom(
+                            backgroundColor: usingMap
+                                ? colors.primaryContainer
+                                : Colors.transparent,
+                            foregroundColor: usingMap
+                                ? colors.primary
+                                : colors.onSurfaceVariant,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: !_busy && hasFloorMap
+                              ? () => setState(() => _mapView = true)
+                              : null,
+                          icon: const AppIcon(
+                            AppIcons.map,
+                            size: AppControl.icon,
+                          ),
+                        ),
+                        IconButton(
+                          key: const ValueKey('library-view-grid'),
+                          tooltip: '紧凑网格',
+                          constraints: const BoxConstraints(
+                            minWidth: 44,
+                            minHeight: 44,
+                          ),
+                          padding: EdgeInsets.zero,
+                          style: IconButton.styleFrom(
+                            backgroundColor: !usingMap
+                                ? colors.primaryContainer
+                                : Colors.transparent,
+                            foregroundColor: !usingMap
+                                ? colors.primary
+                                : colors.onSurfaceVariant,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: !_busy
+                              ? () => setState(() => _mapView = false)
+                              : null,
+                          icon: const AppIcon(
+                            AppIcons.grid,
+                            size: AppControl.icon,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpace.md),
-            ],
-            if (_queries.areas?.isEmpty == true) ...[
+              const SizedBox(height: AppSpace.sm),
+            ] else if (_queries.areas?.isEmpty == true) ...[
               Text(
                 '暂无座位区域',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -1031,7 +1343,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
             ],
             Wrap(
               spacing: AppSpace.sm,
-              runSpacing: AppSpace.sm,
+              runSpacing: AppSpace.xs,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 ChoiceChip(
@@ -1048,34 +1360,34 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                       ? null
                       : (_) => unawaited(_selectSeatDate(tomorrow)),
                 ),
-                OutlinedButton(
+                OutlinedButton.icon(
+                  key: const ValueKey('library-date-picker'),
                   onPressed: _busy ? null : _chooseDate,
-                  child: Text(isoDate(_date)),
+                  icon: const AppIcon(AppIcons.calendar, size: 16),
+                  label: Text(
+                    isoDate(_date),
+                    style: const TextStyle(fontFeatures: tabularTime),
+                  ),
                 ),
-                OutlinedButton(
-                  onPressed: _busy ? null : () => _chooseTime(true),
-                  child: Text(_timeLabel(start, '开始')),
-                ),
-                OutlinedButton(
-                  onPressed: _busy ? null : () => _chooseTime(false),
-                  child: Text(_timeLabel(end, '结束')),
+                OutlinedButton.icon(
+                  key: const ValueKey('library-time-picker'),
+                  onPressed: _busy ? null : () => _chooseTimeSlot(),
+                  icon: const AppIcon(AppIcons.clock, size: 16),
+                  label: Text(
+                    timeLabel,
+                    style: const TextStyle(fontFeatures: tabularTime),
+                  ),
                 ),
                 FilterChip(
                   label: const Text('仅看空闲'),
-                  selected: _onlyAvailable,
+                  selected: _statusFilter == LibrarySeatStatus.available,
                   onSelected: _busy
                       ? null
-                      : (value) => setState(() => _onlyAvailable = value),
-                ),
-                AppActionButton(
-                  label: '刷新座位',
-                  icon: AppIcons.refresh,
-                  onPressed: _queries.loading || _busy
-                      ? null
-                      : () {
-                          _queries.clearSubmission();
-                          unawaited(_loadSeats());
-                        },
+                      : (value) => setState(() {
+                          _statusFilter = value
+                              ? LibrarySeatStatus.available
+                              : null;
+                        }),
                 ),
               ],
             ),
@@ -1106,18 +1418,121 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
               ),
             ],
             if (seats != null && seats.isNotEmpty) ...[
-              const SizedBox(height: AppSpace.md),
-              Text(
-                '共 ${seats.length} 个座位 · 空闲 $availableCount · 半空闲 $partialCount · 使用中 $occupiedCount · 不可用 $unavailableCount',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  fontFeatures: tabularTime,
-                ),
+              const SizedBox(height: AppSpace.sm),
+              _statusLegend(
+                context,
+                total: seats.length,
+                availableCount: availableCount,
+                partialCount: partialCount,
+                occupiedCount: occupiedCount,
+                unavailableCount: unavailableCount,
               ),
             ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _statusLegend(
+    BuildContext context, {
+    required int total,
+    required int availableCount,
+    required int partialCount,
+    required int occupiedCount,
+    required int unavailableCount,
+  }) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    Widget pill({
+      required LibrarySeatStatus status,
+      required String text,
+      VoidCallback? onTap,
+      bool active = false,
+    }) {
+      final tone = LibrarySeatPalette.toneOf(context, status);
+      return Semantics(
+        button: onTap != null,
+        selected: active,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.small),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.sm,
+              vertical: 5,
+            ),
+            decoration: BoxDecoration(
+              color: active ? colors.primaryContainer : tone.background,
+              borderRadius: BorderRadius.circular(AppRadius.small),
+              border: Border.all(
+                width: active ? 1.2 : 0.7,
+                color: active ? colors.primary : tone.border,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: tone.dot,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  text,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: active ? colors.primary : tone.foreground,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                    fontFeatures: tabularTime,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Wrap(
+      spacing: AppSpace.xs,
+      runSpacing: AppSpace.xs,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(right: AppSpace.xs),
+          child: Text(
+            '共 $total 席',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontFeatures: tabularTime,
+            ),
+          ),
+        ),
+        pill(
+          status: LibrarySeatStatus.available,
+          text: '空闲 $availableCount',
+          active: _statusFilter == LibrarySeatStatus.available,
+          onTap: () => _toggleStatusFilter(LibrarySeatStatus.available),
+        ),
+        pill(
+          status: LibrarySeatStatus.partial,
+          text: '半空闲 $partialCount',
+          active: _statusFilter == LibrarySeatStatus.partial,
+          onTap: () => _toggleStatusFilter(LibrarySeatStatus.partial),
+        ),
+        if (occupiedCount > 0)
+          pill(status: LibrarySeatStatus.occupied, text: '使用中 $occupiedCount'),
+        if (unavailableCount > 0)
+          pill(
+            status: LibrarySeatStatus.closed,
+            text: '不可用 $unavailableCount',
+          ),
+      ],
     );
   }
 
@@ -1304,7 +1719,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     }
   }
 
-  Widget _selectedBanner(
+  Widget _selectedCapsule(
     BuildContext context,
     LibrarySeat seat,
     TimeOfDay start,
@@ -1312,187 +1727,74 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   ) {
     final colors = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
-    final rules = _ruleLines(seat);
-    return QuietCard(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpace.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: AppSpace.sm,
-              runSpacing: AppSpace.xs,
-              crossAxisAlignment: WrapCrossAlignment.center,
+    final duration = formatLibraryDuration(_minutes(end) - _minutes(start));
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: AcrylicSurface(
+          key: const ValueKey('library-selected-capsule'),
+          radius: AppRadius.card,
+          blurKey: const ValueKey('library-selected-blur'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.md,
+              vertical: AppSpace.sm,
+            ),
+            child: Row(
               children: [
-                AppIcon(
-                  AppIcons.check,
-                  size: AppControl.icon,
-                  color: colors.primary,
-                ),
-                Text(
-                  '已选候选座位',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: colors.primary,
-                  ),
-                ),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(AppLayout.minTap, AppLayout.minTap),
-                  ),
-                  onPressed: _busy ? null : () => setState(() => _selected = null),
-                  child: const Text('清除选择'),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpace.xs),
-            Text(
-              _area == null ? seat.label : '${_area!.label} · ${seat.label}',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: AppSpace.xs),
-            Text(
-              '${isoDate(_date)} ${_clockText(start)}–${_clockText(end)}',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontFeatures: tabularTime,
-              ),
-            ),
-            const SizedBox(height: AppSpace.xs),
-            for (final line in rules)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(
-                  line,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            const SizedBox(height: AppSpace.md),
-            AppActionButton(
-              label: '确认预约',
-              icon: AppIcons.check,
-              onPressed: _busy
-                  ? null
-                  : () => _confirmReservation(seat, start, end),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _seatRow(
-    BuildContext context,
-    LibrarySeat seat,
-    LibrarySeatStatus status, {
-    required TimeOfDay? start,
-    required TimeOfDay? end,
-    required bool hasValidRange,
-  }) {
-    final colors = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
-    final selected =
-        _selected == seat.id && status == LibrarySeatStatus.available;
-    final canSelect = status == LibrarySeatStatus.available;
-    final label = _statusLabel(status);
-    final statusColor = _statusColor(colors, status);
-    final overlaps =
-        hasValidRange &&
-            (status == LibrarySeatStatus.partial ||
-                status == LibrarySeatStatus.occupied)
-        ? seat.overlappingReservations(
-            _date,
-            _minutes(start!),
-            _minutes(end!),
-          )
-        : const <LibraryInterval>[];
-    final detailText = overlaps.isNotEmpty
-        ? '已约 ${overlaps.map(formatLibraryInterval).join('、')}'
-        : status == LibrarySeatStatus.closed && seat.hours.isNotEmpty
-        ? '开放 ${seat.hours.map((h) => '${formatClockMinutes(h.$1)}–${formatClockMinutes(h.$2)}').join('、')}'
-        : null;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpace.lg,
-        0,
-        AppSpace.lg,
-        AppSpace.sm,
-      ),
-      child: Semantics(
-        button: canSelect,
-        selected: selected,
-        enabled: canSelect,
-        child: CourseSurface(
-          radius: AppRadius.input,
-          color: selected
-              ? colors.primaryContainer.withValues(alpha: .55)
-              : null,
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(AppRadius.input),
-              onTap: canSelect && !_busy
-                  ? () {
-                      _queries.clearSubmission();
-                      setState(() => _selected = selected ? null : seat.id);
-                    }
-                  : null,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: AppLayout.minTap),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpace.lg,
-                    vertical: AppSpace.md,
-                  ),
-                  child: Row(
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              seat.label,
-                              style: theme.textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: AppSpace.xs),
-                            Text(
-                              selected ? '已选 · $label' : label,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: statusColor,
-                                fontWeight: selected
-                                    ? FontWeight.w600
-                                    : FontWeight.w500,
-                              ),
-                            ),
-                            if (detailText != null) ...[
-                              const SizedBox(height: AppSpace.xs),
-                              Text(
-                                detailText,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colors.onSurfaceVariant,
-                                  fontFeatures: tabularTime,
-                                ),
-                              ),
-                            ],
-                          ],
+                      Text(
+                        _area == null ? seat.label : '${_area!.name} · ${seat.label}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontFeatures: tabularTime,
                         ),
                       ),
-                      if (selected) ...[
-                        const SizedBox(width: AppSpace.sm),
-                        AppIcon(
-                          AppIcons.check,
-                          size: AppControl.icon,
-                          color: colors.primary,
-                          semanticLabel: '已选中',
+                      const SizedBox(height: 2),
+                      Text(
+                        '${isoDate(_date)} ${_clockText(start)}–${_clockText(end)} · $duration',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                          fontFeatures: tabularTime,
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
-              ),
+                IconButton(
+                  tooltip: '清除选择',
+                  constraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 40,
+                  ),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  icon: const AppIcon(AppIcons.close, size: AppControl.icon),
+                  onPressed: _busy ? null : () => setState(() => _selected = null),
+                ),
+                const SizedBox(width: AppSpace.xs),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpace.md,
+                      vertical: AppSpace.sm,
+                    ),
+                    minimumSize: const Size(0, 42),
+                  ),
+                  onPressed: _busy
+                      ? null
+                      : () => _confirmReservation(seat, start, end),
+                  child: const Text('确认预约'),
+                ),
+              ],
             ),
           ),
         ),

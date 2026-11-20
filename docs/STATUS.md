@@ -7,7 +7,23 @@
 | 0.3/code12发布 | 729663f本地合成/静态检查、隔离R8 XLS 1/1、同源双包签名/摘要、最终release模拟器抽查及4份远端附件核对 | 精确提交的Actions因当时账户计费限制未运行；用户仅就该次发布授权例外，不作为未来跳过CI规则 |
 | 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
 | 学校链路 | 历史分项XLS导入、直连目录、短时播放和续播样本 | 全学期独立准确性、完整课时、水印组合、WebVPN恢复、真实认证失效及7天会话待验 |
-| 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已获用户审核通过）；阶段 7A 四项底栏、坐标提取与 49 个图标离线/合成检查通过 | 阶段 7A 待用户审核；阶段 7B（双视图/筛选/时段轴）与 7C（确认/取消抽屉与焦点票卡）及新界面真机抽查待推进；真实退出会话另行验收 |
+| 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；阶段 7A 四项底栏方案已审核通过（`4bd9329`）；阶段 7B 双视图、紧凑筛选、区域/时段轴 `QuietSheet` 与悬浮胶囊已通过主机静态/合成检查及模拟器只读浅/深色实景抽查 | 阶段 7B 待用户审核；阶段 7C（确认/取消 `QuietSheet` 与“我的预约”焦点票卡重设计）待 7B 审核后推进；真实退出会话另行验收 |
+
+## 2026-11-20 图书馆座位预约前端重设计阶段 7B
+
+- 基于已审核基线 `4bd9329`（阶段 7A）实施并完成阶段 7B 选座体验重设计：
+  1. 新增 [library_seat_map.dart](../mobile/lib/ui/library_seat_map.dart)：实现 `LibrarySeatPalette`（浅/深色与高对比度状态语义配色）、`canUseLibraryFloorMap`、`LibrarySeatFloorMap`（基于学校归一化 `coordinate` 绘制平面布局，`InteractiveViewer` 1.0x–6.0x 双指缩放与顶栏外置 `+`/`-`/`复位` 控件，`1.6dp` 最小间隔无重叠节点测距并在缩放后显现密集座位编号，筛选命中外显示轻量轮廓，手势互不遮挡/不冲突）、`LibrarySeatGridControls`（座位号实时搜索 + 80 席号段快跳）、`LibrarySeatGridRow`（自适应 2–5 列紧凑网格）及 `LibrarySeatLoadingSkeleton`（加载骨架）。
+  2. 新增 [library_seat_sheets.dart](../mobile/lib/ui/library_seat_sheets.dart)：复用 `QuietSheet` 实现 `showLibraryAreaSheet`（楼层横向过滤切片 + 当前区域高亮列表）与 `showLibraryTimeSlotSheet`（`08:30–22:00` 可视时间轴刻度条、半空闲座位已约占位与可用空档切片、快捷时段、“+1/+2/+4 小时”调节及 `resvRule`/当前时间实时校验提示）。
+  3. 重构 [library_seat_query_page.dart](../mobile/lib/ui/library_seat_query_page.dart)：采用 `ClassroomSectionSwitch`（`选座` / `我的预约`）、2 行紧凑筛选卡、可点击状态计数图例（`共 N 席` / `空闲` / `半空闲` / 按需显示 `使用中` 与 `不可用`）、双视图自动切换与无坐标自动回落紧凑网格、点选半空闲座位呼出空档时间轴抽屉，以及悬浮于四项底栏之上的 `AcrylicSurface` 选中操作胶囊（展示完整时长、快速清除及 `确认预约` 主按钮）。独立页顶栏补充刷新与官方网页入口。保留现有确认弹窗及“我的预约”页结构供 7C 重构。
+  4. 更新与扩充 [library_seat_queries_test.dart](../mobile/test/library_seat_queries_test.dart)：迁移阶段 4–6 用例以适配新控件并保留全部零超卖/防重发/状态校验断言，新增 7 组 7B 专项用例（有坐标默认平面图/缩放与复位/切网格搜号段、无坐标回落网格+楼层筛选抽屉、半空闲空档校验与规则超限拦截、320px `1.5x` 浅色与 `2.0x` 深色高对比关闭玻璃和动画溢出检查，以及混合密集坐标零重叠与顶栏缩放控件不遮挡视口检查）。
+- **静态与合成检查通过**（与真机/学校验收分列）：
+  - 在 `mobile/` 下执行 `flutter analyze --no-pub`：0 问题（`No issues found!`）。
+  - 执行 `python scripts/check.py --changed`：退出码 0，报告 `build/checks/report-4ff47f82cda44ae7b24d7a58764eed4d.json`（45.953s：`docs`、`tooling`、`icons`、`examples`、Java 5 组、Node 11 组、`flutter-analyze`、`flutter-default` **339 项通过 / 9 项条件跳过**、`flutter-direct` **23 项通过**）；`mobile/pubspec.lock` 无改动。
+- **Android 模拟器只读视觉核对通过**（`emulator-5554` / `Pixel 8 API 36`，debug 包 `0.3/code12`，构建后宿主与设备 `/data/app/.../base.apk` SHA-256 校验一致：`cb5eeaf896c55d7dc53422a600c35daf2e245ef3a59b16d890effdf4186afb53`）：
+  - 使用已登录官方会话只读加载真实学校数据（全程 **0 次写入请求**，未点击`确认提交预约`或`确认取消`）。
+  - 首轮真机核对发现 `三层南区` 边缘密排座位（`3S001–3S010`、`3S049–3S061`）横向重叠、悬浮右下角缩放栏遮挡 `3S049–3S061` 及悬浮选中胶囊时长 `13 小时 30 分钟` 截断为 `13 小…`；已在上述代码中修复（外置缩放栏到视口上方标题栏、逐对 `1.6dp` 防重叠尺寸与缩放显号、胶囊副标题允许 2 行显示）。
+  - 修复重装并核对最终 SHA-256 包后复查通过：真实 `二层北区`（282 席）与 `三层南区`（145 席）在 `1.0x` 均零重叠且缩放栏不遮挡座位、`225%` 放大后编号清晰、选中胶囊完整显示 `13 小时 30 分钟`、区域抽屉 / 时段轴抽屉（含半空闲 `3S006` 空档）/ `今日` 四项底栏 / `我的预约` 及深色模式切换（测后已恢复浅色模式）均视觉正常。
+- 更新 [DESIGN.md](../DESIGN.md) 与 [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md)；不改应用版本号，等待用户审核 7B 后进入 7C。
 
 ## 2026-11-20 图书馆座位预约前端重设计阶段 7A
 

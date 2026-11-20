@@ -33,7 +33,7 @@
 | 课程信息/冲突抽屉 | showQuietSheet、QuietSheet | 长内容滚动，安全区/关闭/系统返回可用；优先显示仅本次生效，不写回学校课表 | settings、week_stack |
 | 维护/连接恢复 | AppActionButton、ClassroomConnectionCard | 主操作tonal、次操作outline，统一圆角/内边距/48dp最小高度；Wrap允许换行 | classroom_ui_polish、classroom_connection |
 | 图书馆官方认证与回退入口（已实现） | 设置分组、AppArrowPreference、官方WebView、AppActionButton | 在可见的学校页面认证，必要时打开官方预约流程。返回优先站内历史，加载失败可重新打开预约首页。底部“图书馆”栏顶栏与设置入口共同收敛到图书馆页 | Android模拟器检查入口、认证、返回与恢复 |
-| 图书馆原生预约界面 | 内嵌一级页使用 `MiuixTopAppBar`（系统字体）与 `AppShell` 惰性加载；独立入口与页内暂沿用基础筛选控件、座位列表、确认对话框和操作按钮（7B/7C 视觉重设计待推进） | 展示区域、日期、时段、空闲筛选和状态计数。预约确认显示学校规则，提交前复核余位。我的预约对待生效记录提供取消确认，展示座位、时段、预约编号及释放影响。结果不明或认证中断时提示查单；合成示例模式下不发起学校请求 | 按[开发计划](docs/DEVELOPMENT_PLAN.md#图书馆座位预约)分别验收查询、提交、取消及阶段7A–7C |
+| 图书馆原生预约界面 | 内嵌一级页使用 `MiuixTopAppBar`（系统字体）与 `AppShell` 惰性加载；选座双视图（`LibrarySeatFloorMap`、`LibrarySeatGridRow`、`LibrarySeatPalette`、`LibrarySeatLoadingSkeleton`、`ClassroomSectionSwitch`）、紧凑筛选与可点状态图例、`showLibraryAreaSheet` / `showLibraryTimeSlotSheet`（复用 `QuietSheet`）及悬浮选中胶囊（`AcrylicSurface`）；确认对话框与“我的预约”焦点票卡按 7C 推进 | 展示区域、日期、时段、仅看空闲筛选与状态计数。有坐标默认交互平面图（视口外顶栏集成 `+`/`-`/`复位`、`InteractiveViewer` 1.0x–6.0x 与无重叠节点测距；密集座位 1.0x 呈色块、放大后显编号），无坐标回落可搜分段网格。点击半空闲座位或时段可查看 `08:30–22:00` 时间轴与空档规则校核。预约确认与取消确认保留提交前余位复核、防连点及状态语义；合成示例模式下不发起学校请求 | 按[开发计划](docs/DEVELOPMENT_PLAN.md#图书馆座位预约)分别验收查询、提交、取消及阶段7A–7C |
 | 周/日、录播/直播 | ScheduleModeSwitch、ClassroomSectionSwitch、AppSegmentIndicator | 共用滑动指示器；父组件保留自身标签、语义、焦点和尺寸，不复写动画坐标算法 | schedule_motion、classroom_ui_polish |
 | 星期切换 | WeekdayTabs | 按文字和系统字号测量，七天可达，至少48高；窄屏横滚，禁止固定宽截断汉字 | weekday_tabs |
 | 图标/设置展开 | AppIcon、AppExpansionTile、AppArrowPreference | 离线SVG、语义标签、焦点/禁用反馈；使用统一尾箭头与返回图标 | app_icons、appearance |
