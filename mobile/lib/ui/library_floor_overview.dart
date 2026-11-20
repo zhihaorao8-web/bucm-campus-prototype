@@ -748,8 +748,8 @@ class _MiniFloorPainter extends CustomPainter {
     }
     if (!active || hasFocusMode) {
       return Paint()
-        ..color = colors.outlineVariant.withValues(
-          alpha: highContrast ? 0.55 : (dark ? 0.35 : 0.45),
+        ..color = colors.onSurfaceVariant.withValues(
+          alpha: highContrast ? 0.65 : (dark ? 0.40 : 0.32),
         );
     }
     return Paint()
@@ -759,8 +759,8 @@ class _MiniFloorPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final mutePaint = Paint()
-      ..color = colors.outlineVariant.withValues(
-        alpha: highContrast ? 0.48 : (dark ? 0.28 : 0.38),
+      ..color = colors.onSurfaceVariant.withValues(
+        alpha: highContrast ? 0.52 : (dark ? 0.30 : 0.24),
       );
     final courtyardPaint = Paint()
       ..color = colors.surfaceContainerHighest.withValues(
@@ -837,6 +837,12 @@ class LibrarySpatialBreadcrumbBar extends StatelessWidget {
     final colors = theme.colorScheme;
     final canStepFloors = level != LibrarySelectionLevel.floors && !busy;
     final canStepFloorMap = level == LibrarySelectionLevel.areaSeats && !busy;
+    final smallStyle = theme.textTheme.bodySmall;
+    final strut = StrutStyle(
+      fontSize: smallStyle?.fontSize ?? 12,
+      height: 1.2,
+      forceStrutHeight: true,
+    );
 
     Widget crumb({
       required Key key,
@@ -852,21 +858,26 @@ class LibrarySpatialBreadcrumbBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.small),
           onTap: onTap,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 38),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpace.sm,
-                vertical: AppSpace.compact,
-              ),
-              child: Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: active
-                      ? colors.onSurface
-                      : (onTap != null
-                            ? colors.primary
-                            : colors.onSurfaceVariant),
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+            constraints: const BoxConstraints(minHeight: 36),
+            child: Center(
+              widthFactor: 1,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.sm,
+                  vertical: 6,
+                ),
+                child: Text(
+                  label,
+                  strutStyle: strut,
+                  style: smallStyle?.copyWith(
+                    height: 1.2,
+                    color: active
+                        ? colors.onSurface
+                        : (onTap != null
+                              ? colors.primary
+                              : colors.onSurfaceVariant),
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -874,6 +885,18 @@ class LibrarySpatialBreadcrumbBar extends StatelessWidget {
         ),
       );
     }
+
+    Widget separator() => SizedBox(
+      height: 36,
+      child: Center(
+        widthFactor: 1,
+        child: AppIcon(
+          AppIcons.chevronRight,
+          size: 14,
+          color: colors.onSurfaceVariant,
+        ),
+      ),
+    );
 
     return CourseSurface(
       dense: true,
@@ -895,11 +918,7 @@ class LibrarySpatialBreadcrumbBar extends StatelessWidget {
               onTap: canStepFloors ? onSelectFloors : null,
             ),
             if (level != LibrarySelectionLevel.floors && floorName != null) ...[
-              AppIcon(
-                AppIcons.chevronRight,
-                size: 14,
-                color: colors.onSurfaceVariant,
-              ),
+              separator(),
               crumb(
                 key: const ValueKey('library-breadcrumb-floor'),
                 label: floorName!,
@@ -908,23 +927,11 @@ class LibrarySpatialBreadcrumbBar extends StatelessWidget {
               ),
             ],
             if (level == LibrarySelectionLevel.areaSeats && areaName != null) ...[
-              AppIcon(
-                AppIcons.chevronRight,
-                size: 14,
-                color: colors.onSurfaceVariant,
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpace.sm,
-                  vertical: AppSpace.compact,
-                ),
-                child: Text(
-                  areaName!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colors.onSurface,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+              separator(),
+              crumb(
+                key: const ValueKey('library-breadcrumb-area'),
+                label: areaName!,
+                active: true,
               ),
             ],
           ],

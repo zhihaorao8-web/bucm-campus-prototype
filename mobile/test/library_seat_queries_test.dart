@@ -2468,4 +2468,217 @@ void main() {
       },
     );
   }
+
+  test(
+    'Stage 8C isotropic layout keeps 西A区 compact and 南区 cloverleaf/edge rows square without overlap',
+    () {
+      final westASeats = <LibrarySeat>[
+        for (var i = 0; i < 24; i++) ...[
+          seat(
+            id: 'wa_n_$i',
+            label: '5WA${(i * 2 + 2).toString().padLeft(3, '0')}',
+            x: 6.0 + i * 3.8,
+            y: 55.0,
+          ),
+          seat(
+            id: 'wa_s_$i',
+            label: '5WA${(i * 2 + 1).toString().padLeft(3, '0')}',
+            x: 6.0 + i * 3.8,
+            y: 62.0,
+          ),
+        ],
+      ];
+
+      final westALayout = computeLibraryFloorMapLayout(westASeats, 340);
+      expect(westALayout.canvasHeight, lessThan(180.0));
+      final rowGap =
+          (westALayout.positions[1].dy - westALayout.positions[0].dy).abs();
+      expect(rowGap, lessThan(35.0));
+      for (final size in westALayout.sizes) {
+        expect((size.width - size.height).abs(), lessThan(0.01));
+      }
+      for (var i = 0; i < westALayout.positions.length; i++) {
+        final ri = Rect.fromCenter(
+          center: westALayout.positions[i],
+          width: westALayout.sizes[i].width,
+          height: westALayout.sizes[i].height,
+        );
+        for (var j = i + 1; j < westALayout.positions.length; j++) {
+          final rj = Rect.fromCenter(
+            center: westALayout.positions[j],
+            width: westALayout.sizes[j].width,
+            height: westALayout.sizes[j].height,
+          );
+          expect(ri.overlaps(rj), false);
+        }
+      }
+
+      // 南区 fixture: symmetric 4-seat cloverleaf (phys dx == dy => y% span = 1.72 * x% span),
+      // main study block, and dense window edge strip.
+      const cloverStepX = 3.0;
+      const cloverStepY = cloverStepX * LibrarySeatFloorMap.schoolCanvasAspect;
+      final southSeats = <LibrarySeat>[
+        // Main block
+        for (var r = 0; r < 4; r++)
+          for (var c = 0; c < 6; c++)
+            seat(
+              id: 'sm_${r}_$c',
+              label: '5S${(60 + r * 6 + c).toString().padLeft(3, '0')}',
+              x: 24.0 + c * 4.2,
+              y: 20.0 + r * 6.5,
+            ),
+        // Cloverleaf 4-seat table cluster
+        seat(id: 'sc_0', label: '5S033', x: 40.0, y: 60.0),
+        seat(id: 'sc_1', label: '5S034', x: 40.0 + cloverStepX, y: 60.0),
+        seat(id: 'sc_2', label: '5S031', x: 40.0, y: 60.0 + cloverStepY),
+        seat(
+          id: 'sc_3',
+          label: '5S032',
+          x: 40.0 + cloverStepX,
+          y: 60.0 + cloverStepY,
+        ),
+        // Dense bottom window row
+        for (var c = 0; c < 12; c++)
+          seat(
+            id: 'sd_$c',
+            label: '5S${(100 + c).toString().padLeft(3, '0')}',
+            x: 56.0 + c * 2.1,
+            y: 86.0,
+          ),
+      ];
+
+      final southLayout = computeLibraryFloorMapLayout(southSeats, 340);
+      for (final size in southLayout.sizes) {
+        final aspect = size.width / size.height;
+        expect(aspect, inInclusiveRange(0.85, 1.18));
+      }
+      final cloverDx =
+          (southLayout.positions[25].dx - southLayout.positions[24].dx).abs();
+      final cloverDy =
+          (southLayout.positions[26].dy - southLayout.positions[24].dy).abs();
+      expect((cloverDy / cloverDx - 1.0).abs(), lessThan(0.05));
+      for (var i = 0; i < southLayout.positions.length; i++) {
+        final ri = Rect.fromCenter(
+          center: southLayout.positions[i],
+          width: southLayout.sizes[i].width,
+          height: southLayout.sizes[i].height,
+        );
+        for (var j = i + 1; j < southLayout.positions.length; j++) {
+          final rj = Rect.fromCenter(
+            center: southLayout.positions[j],
+            width: southLayout.sizes[j].width,
+            height: southLayout.sizes[j].height,
+          );
+          expect(ri.overlaps(rj), false);
+        }
+      }
+    },
+  );
+
+  testWidgets(
+    'Stage 8C aligns breadcrumb segments, groups controls by function, and keeps 西A区 labels consistent across zoom',
+    variant: androidOnly,
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final westASeats = <LibrarySeat>[
+        for (var i = 0; i < 24; i++) ...[
+          seat(
+            id: 'wa_n_$i',
+            label: '5WA${(i * 2 + 2).toString().padLeft(3, '0')}',
+            x: 6.0 + i * 3.8,
+            y: 55.0,
+          ),
+          seat(
+            id: 'wa_s_$i',
+            label: '5WA${(i * 2 + 1).toString().padLeft(3, '0')}',
+            x: 6.0 + i * 3.8,
+            y: 62.0,
+          ),
+        ],
+      ];
+
+      final reader = FakeLibrarySeatReader()
+        ..onAreas = (() async => const [
+          LibraryArea('51', '五层西A区', '图书馆五层'),
+          LibraryArea('52', '五层南区', '图书馆五层'),
+          LibraryArea('53', '五层北区', '图书馆五层'),
+        ])
+        ..onSeats = ((_, _) async => westASeats);
+
+      await tester.pumpWidget(
+        wrapLibraryPage(
+          reader,
+          dark: true,
+          now: () => DateTime(2026, 11, 20, 9, 0),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('library-floor-card-图书馆五层')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('library-zone-westA')));
+      await tester.pumpAndSettle();
+
+      // 1. Breadcrumb segments share the same vertical center line.
+      final crumbAllY = tester.getCenter(find.text('全部楼层')).dy;
+      final crumbFloorY = tester.getCenter(find.text('图书馆五层')).dy;
+      final crumbAreaY = tester.getCenter(find.text('五层西A区')).dy;
+      final barCenterY =
+          tester.getCenter(find.byKey(const ValueKey('library-breadcrumb-area'))).dy;
+      expect((crumbAllY - crumbFloorY).abs(), lessThanOrEqualTo(1.5));
+      expect((crumbFloorY - crumbAreaY).abs(), lessThanOrEqualTo(1.5));
+      expect((crumbAllY - barCenterY).abs(), lessThanOrEqualTo(1.5));
+
+      // 2. Controls card orders Location -> Date/Time -> Status & Only-Available.
+      final locatorRect =
+          tester.getRect(find.byKey(const ValueKey('library-level3-locator')));
+      final viewToggleRect =
+          tester.getRect(find.byKey(const ValueKey('library-view-grid')));
+      final areaPickerRect =
+          tester.getRect(find.byKey(const ValueKey('library-area-picker')));
+      final todayCenterY = tester.getCenter(find.text('今天')).dy;
+      final tomorrowCenterY = tester.getCenter(find.text('明天')).dy;
+      final datePickerRect =
+          tester.getRect(find.byKey(const ValueKey('library-date-picker')));
+      final timePickerRect =
+          tester.getRect(find.byKey(const ValueKey('library-time-picker')));
+      final statsRect = tester.getRect(find.text('共 48 席'));
+      final onlyAvailRect = tester.getRect(
+        find.byKey(const ValueKey('library-only-available-toggle')),
+      );
+
+      expect((locatorRect.center.dy - viewToggleRect.center.dy).abs(), lessThan(8.0));
+      expect(locatorRect.bottom, lessThanOrEqualTo(areaPickerRect.top));
+      expect(areaPickerRect.bottom, lessThan(datePickerRect.top));
+      expect((todayCenterY - datePickerRect.center.dy).abs(), lessThanOrEqualTo(1.5));
+      expect((tomorrowCenterY - datePickerRect.center.dy).abs(), lessThanOrEqualTo(1.5));
+      expect(datePickerRect.bottom, lessThan(timePickerRect.top));
+      expect(timePickerRect.bottom, lessThan(statsRect.top));
+      expect(timePickerRect.bottom, lessThan(onlyAvailRect.top));
+      expect(find.byType(ChoiceChip), findsNothing);
+      expect(find.byType(FilterChip), findsNothing);
+
+      // 3. Dense 西A区 suppresses crowded labels consistently at 1.0x and reveals cleanly on zoom.
+      final seatTextCount1x = find
+          .descendant(
+            of: find.byKey(const ValueKey('library-floor-map-viewer')),
+            matching: find.byType(Text),
+          )
+          .evaluate()
+          .length;
+      expect(seatTextCount1x, 0);
+
+      await tester.tap(find.byKey(const ValueKey('library-map-zoom-in')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('library-map-zoom-in')));
+      await tester.pumpAndSettle();
+      expect(find.text('5WA001'), findsOneWidget);
+      expect(find.text('5WA048'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 }

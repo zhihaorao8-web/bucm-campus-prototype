@@ -119,7 +119,239 @@ abstract final class LibrarySeatPalette {
 bool canUseLibraryFloorMap(List<LibrarySeat>? seats) =>
     seats != null && seats.any((seat) => seat.hasCoordinates);
 
+/// Computed isotropic viewport geometry and non-overlapping node sizes for
+/// a library room's floor map.
+@immutable
+class LibraryFloorMapLayout {
+  const LibraryFloorMapLayout({
+    required this.canvasWidth,
+    required this.canvasHeight,
+    required this.positions,
+    required this.sizes,
+    required this.medianNodeWidth,
+  });
+
+  final double canvasWidth;
+  final double canvasHeight;
+  final List<Offset> positions;
+  final List<Size> sizes;
+  final double medianNodeWidth;
+}
+
+/// Projects school percentage coordinates isotropically onto [canvasWidth]
+/// using [LibrarySeatFloorMap.schoolCanvasAspect] so strip zones (e.g. 西A区)
+/// and mixed round-table halls (e.g. 南区) keep their real physical proportions.
+@visibleForTesting
+LibraryFloorMapLayout computeLibraryFloorMapLayout(
+  List<LibrarySeat> seats,
+  double canvasWidth,
+) {
+  final coordSeats = [
+    for (final seat in seats)
+      if (seat.hasCoordinates) seat,
+  ];
+  final count = coordSeats.length;
+  final safeWidth = math.max(1.0, canvasWidth);
+  if (count == 0) {
+    return LibraryFloorMapLayout(
+      canvasWidth: safeWidth,
+      canvasHeight: 168.0,
+      positions: const [],
+      sizes: const [],
+      medianNodeWidth: 0,
+    );
+  }
+
+  var physMinX = double.infinity,
+      physMaxX = -double.infinity,
+      physMinY = double.infinity,
+      physMaxY = -double.infinity;
+  final physCoords = <Offset>[];
+  for (final seat in coordSeats) {
+    final px = seat.x! * LibrarySeatFloorMap.schoolCanvasAspect;
+    final py = seat.y!;
+    physCoords.add(Offset(px, py));
+    physMinX = math.min(physMinX, px);
+    physMaxX = math.max(physMaxX, px);
+    physMinY = math.min(physMinY, py);
+    physMaxY = math.max(physMaxY, py);
+  }
+
+  final physSpanX = physMaxX - physMinX;
+  final physSpanY = physMaxY - physMinY;
+  final pad = count > 16 ? 12.0 : 24.0;
+  final usableW = math.max(1.0, safeWidth - pad * 2);
+
+  final double naturalH;
+  if (physSpanX > 0.5 && physSpanY > 0.5) {
+    naturalH = usableW * (physSpanY / physSpanX);
+  } else if (physSpanY <= 0.5) {
+    naturalH = 48.0;
+  } else {
+    naturalH = usableW * 0.75;
+  }
+
+  final canvasHeight = (naturalH + pad * 2).clamp(168.0, 320.0);
+  final usableH = math.max(1.0, canvasHeight - pad * 2);
+
+  final positions = <Offset>[];
+  if (physSpanX < 0.01 && physSpanY < 0.01) {
+    for (var i = 0; i < count; i++) {
+      positions.add(Offset(safeWidth / 2, canvasHeight / 2));
+    }
+  } else {
+    final double unitScale;
+    if (physSpanY < 0.01) {
+      unitScale = usableW / physSpanX;
+    } else if (physSpanX < 0.01) {
+      unitScale = usableH / physSpanY;
+    } else {
+      unitScale = math.min(usableW / physSpanX, usableH / physSpanY);
+    }
+    final originX = (safeWidth - physSpanX * unitScale) / 2;
+    final originY = (canvasHeight - physSpanY * unitScale) / 2;
+    for (final p in physCoords) {
+      positions.add(
+        Offset(
+          originX + (p.dx - physMinX) * unitScale,
+          originY + (p.dy - physMinY) * unitScale,
+        ),
+      );
+    }
+  }
+
+  final sizes = _computeIsotropicNodeSizes(positions, usableW, usableH);
+  final sortedWidths = [for (final s in sizes) s.width]..sort();
+  final medianNodeWidth =
+      sortedWidths.isEmpty ? 0.0 : sortedWidths[sortedWidths.length ~/ 2];
+  return LibraryFloorMapLayout(
+    canvasWidth: safeWidth,
+    canvasHeight: canvasHeight,
+    positions: positions,
+    sizes: sizes,
+    medianNodeWidth: medianNodeWidth,
+  );
+}
+
+List<Size> _computeIsotropicNodeSizes(
+  List<Offset> centers,
+  double usableW,
+  double usableH,
+) {
+  final count = centers.length;
+  if (count == 0) return const [];
+  if (count == 1) return const [Size(52.0, 32.0)];
+
+  final nearestDists = <double>[];
+  for (var i = 0; i < count; i++) {
+    var best = double.infinity;
+    for (var j = 0; j < count; j++) {
+      if (i == j) continue;
+      final dist = (centers[i] - centers[j]).distance;
+      if (dist > 0.5 && dist < best) best = dist;
+    }
+    if (best.isFinite) nearestDists.add(best);
+  }
+  nearestDists.sort();
+  final typicalSpacing = nearestDists.isEmpty
+      ? 44.0
+      : nearestDists[(nearestDists.length * 0.25).floor()];
+  final gap = typicalSpacing < 16.0 ? 1.1 : 1.6;
+
+  if (typicalSpacing < 26.0) {
+    final base = (typicalSpacing * 0.86).clamp(5.5, 24.0);
+    final side = List<double>.filled(count, base);
+    for (var i = 0; i < count; i++) {
+      for (var j = i + 1; j < count; j++) {
+        final dx = (centers[i].dx - centers[j].dx).abs();
+        final dy = (centers[i].dy - centers[j].dy).abs();
+        final needed = (side[i] + side[j]) / 2 + gap;
+        if (dx < needed && dy < needed) {
+          final maxEdge = math.max(dx, dy);
+          final lowerBound = math.min(4.2, math.max(2.0, maxEdge - 0.3));
+          final limit = math.max(lowerBound, maxEdge - gap);
+          side[i] = math.min(side[i], limit);
+          side[j] = math.min(side[j], limit);
+        }
+      }
+    }
+    return [for (var i = 0; i < count; i++) Size(side[i], side[i])];
+  }
+
+  final rowTol = math.max(6.0, usableH * 0.025);
+  final colTol = math.max(6.0, usableW * 0.025);
+  final sameRowDx = <double>[];
+  final sameColDy = <double>[];
+
+  for (var i = 0; i < count; i++) {
+    var bestDx = double.infinity;
+    var bestDy = double.infinity;
+    for (var j = 0; j < count; j++) {
+      if (i == j) continue;
+      final dx = (centers[i].dx - centers[j].dx).abs();
+      final dy = (centers[i].dy - centers[j].dy).abs();
+      if (dy <= rowTol && dx > 0.5 && dx < bestDx) bestDx = dx;
+      if (dx <= colTol && dy > 0.5 && dy < bestDy) bestDy = dy;
+    }
+    if (bestDx.isFinite) sameRowDx.add(bestDx);
+    if (bestDy.isFinite) sameColDy.add(bestDy);
+  }
+
+  sameRowDx.sort();
+  sameColDy.sort();
+  final typicalDx = sameRowDx.isEmpty
+      ? 48.0
+      : sameRowDx[(sameRowDx.length * 0.35).floor()];
+  final typicalDy = sameColDy.isEmpty
+      ? 34.0
+      : sameColDy[(sameColDy.length * 0.35).floor()];
+
+  var targetW = (typicalDx * 0.84).clamp(18.0, 52.0);
+  var targetH = (typicalDy * 0.82).clamp(16.0, 32.0);
+  targetW = math.min(targetW, targetH * 1.65);
+  targetH = math.min(targetH, targetW * 1.20);
+
+  final widths = List<double>.filled(count, targetW);
+  final heights = List<double>.filled(count, targetH);
+
+  void enforceAspect(int index) {
+    widths[index] = math.min(widths[index], heights[index] * 1.65);
+    heights[index] = math.min(heights[index], widths[index] * 1.20);
+  }
+
+  for (var i = 0; i < count; i++) {
+    for (var j = i + 1; j < count; j++) {
+      final dx = (centers[i].dx - centers[j].dx).abs();
+      final dy = (centers[i].dy - centers[j].dy).abs();
+      if (dx < (widths[i] + widths[j]) / 2 + gap &&
+          dy < (heights[i] + heights[j]) / 2 + gap) {
+        if (dx / targetW >= dy / targetH) {
+          final maxW = math.max(
+            math.min(4.5, math.max(2.0, dx - 0.3)),
+            dx - gap,
+          );
+          widths[i] = math.min(widths[i], maxW);
+          widths[j] = math.min(widths[j], maxW);
+        } else {
+          final maxH = math.max(
+            math.min(4.5, math.max(2.0, dy - 0.3)),
+            dy - gap,
+          );
+          heights[i] = math.min(heights[i], maxH);
+          heights[j] = math.min(heights[j], maxH);
+        }
+        enforceAspect(i);
+        enforceAspect(j);
+      }
+    }
+  }
+
+  return [for (var i = 0; i < count; i++) Size(widths[i], heights[i])];
+}
+
 class LibrarySeatFloorMap extends StatefulWidget {
+  static const double schoolCanvasAspect = 1.72;
+
   const LibrarySeatFloorMap({
     super.key,
     required this.allSeats,
@@ -194,74 +426,6 @@ class _LibrarySeatFloorMapState extends State<LibrarySeatFloorMap> {
     _controller.value = Matrix4.identity();
   }
 
-  List<Size> _computeNodeSizes(
-    List<Offset> centers,
-    double usableW,
-    double usableH,
-  ) {
-    final count = centers.length;
-    if (count == 0) return const [];
-    if (count == 1) return const [Size(52.0, 32.0)];
-
-    final rowTol = math.max(6.0, usableH * 0.025);
-    final colTol = math.max(6.0, usableW * 0.025);
-    final sameRowDx = <double>[];
-    final sameColDy = <double>[];
-
-    for (var i = 0; i < count; i++) {
-      var bestDx = double.infinity;
-      var bestDy = double.infinity;
-      for (var j = 0; j < count; j++) {
-        if (i == j) continue;
-        final dx = (centers[i].dx - centers[j].dx).abs();
-        final dy = (centers[i].dy - centers[j].dy).abs();
-        if (dy <= rowTol && dx > 0.5 && dx < bestDx) bestDx = dx;
-        if (dx <= colTol && dy > 0.5 && dy < bestDy) bestDy = dy;
-      }
-      if (bestDx.isFinite) sameRowDx.add(bestDx);
-      if (bestDy.isFinite) sameColDy.add(bestDy);
-    }
-
-    sameRowDx.sort();
-    sameColDy.sort();
-    final typicalDx = sameRowDx.isEmpty
-        ? 48.0
-        : sameRowDx[(sameRowDx.length * 0.35).floor()];
-    final typicalDy = sameColDy.isEmpty
-        ? 34.0
-        : sameColDy[(sameColDy.length * 0.35).floor()];
-
-    var targetW = (typicalDx * 0.88).clamp(8.0, 52.0);
-    var targetH = (typicalDy * 0.84).clamp(8.0, 32.0);
-    targetW = math.min(targetW, targetH * 1.9);
-    targetH = math.min(targetH, targetW * 1.35);
-
-    final widths = List<double>.filled(count, targetW);
-    final heights = List<double>.filled(count, targetH);
-    const gap = 1.6;
-
-    for (var i = 0; i < count; i++) {
-      for (var j = i + 1; j < count; j++) {
-        final dx = (centers[i].dx - centers[j].dx).abs();
-        final dy = (centers[i].dy - centers[j].dy).abs();
-        if (dx < (widths[i] + widths[j]) / 2 + gap &&
-            dy < (heights[i] + heights[j]) / 2 + gap) {
-          if (dx / targetW >= dy / targetH) {
-            final maxW = math.max(4.5, dx - gap);
-            widths[i] = math.min(widths[i], maxW);
-            widths[j] = math.min(widths[j], maxW);
-          } else {
-            final maxH = math.max(4.5, dy - gap);
-            heights[i] = math.min(heights[i], maxH);
-            heights[j] = math.min(heights[j], maxH);
-          }
-        }
-      }
-    }
-
-    return [for (var i = 0; i < count; i++) Size(widths[i], heights[i])];
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -271,40 +435,22 @@ class _LibrarySeatFloorMapState extends State<LibrarySeatFloorMap> {
     final coordEntries = widget.allSeats
         .where((item) => item.$1.hasCoordinates)
         .toList();
-
-    var minX = double.infinity,
-        maxX = -double.infinity,
-        minY = double.infinity,
-        maxY = -double.infinity;
-    for (final (seat, _) in coordEntries) {
-      minX = math.min(minX, seat.x!);
-      maxX = math.max(maxX, seat.x!);
-      minY = math.min(minY, seat.y!);
-      maxY = math.max(maxY, seat.y!);
-    }
-    final spanX = math.max(maxX - minX, 1.0);
-    final spanY = math.max(maxY - minY, 1.0);
-    final roomAspect = (spanX / spanY).clamp(0.90, 1.70);
+    final coordSeats = [for (final (seat, _) in coordEntries) seat];
 
     return QuietCard(
       child: Padding(
         padding: const EdgeInsets.all(AppSpace.md),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final canvasWidth = constraints.maxWidth;
-            final canvasHeight = (canvasWidth / roomAspect).clamp(250.0, 390.0);
-            final padX = coordEntries.length > 16 ? 14.0 : 28.0;
-            final padY = coordEntries.length > 16 ? 14.0 : 20.0;
-            final usableW = math.max(1.0, canvasWidth - padX * 2);
-            final usableH = math.max(1.0, canvasHeight - padY * 2);
-
-            final positions = <Offset>[];
-            for (final (seat, _) in coordEntries) {
-              final nx = maxX == minX ? 0.5 : (seat.x! - minX) / spanX;
-              final ny = maxY == minY ? 0.5 : (seat.y! - minY) / spanY;
-              positions.add(Offset(padX + nx * usableW, padY + ny * usableH));
-            }
-            final sizes = _computeNodeSizes(positions, usableW, usableH);
+            final layout = computeLibraryFloorMapLayout(
+              coordSeats,
+              constraints.maxWidth,
+            );
+            final canvasWidth = layout.canvasWidth;
+            final canvasHeight = layout.canvasHeight;
+            final positions = layout.positions;
+            final sizes = layout.sizes;
+            final medianNodeWidth = layout.medianNodeWidth;
             final viewportSize = Size(canvasWidth, canvasHeight);
 
             return Column(
@@ -429,6 +575,7 @@ class _LibrarySeatFloorMapState extends State<LibrarySeatFloorMap> {
                                   center: positions[i],
                                   width: sizes[i].width,
                                   height: sizes[i].height,
+                                  medianNodeWidth: medianNodeWidth,
                                 ),
                             ],
                           ),
@@ -453,6 +600,7 @@ class _LibrarySeatFloorMapState extends State<LibrarySeatFloorMap> {
     required Offset center,
     required double width,
     required double height,
+    required double medianNodeWidth,
   }) {
     final colors = Theme.of(context).colorScheme;
     final highContrast = MediaQuery.highContrastOf(context);
@@ -490,7 +638,7 @@ class _LibrarySeatFloorMapState extends State<LibrarySeatFloorMap> {
       selected: selected,
     );
     final statusText = LibrarySeatPalette.statusLabel(status);
-    final showLabel = width * _scale >= 9.5;
+    final showLabel = medianNodeWidth * _scale >= 12.5 && width * _scale >= 10.5;
     final borderWidth = selected
         ? (width < 12 ? 1.0 : 1.5)
         : (highContrast ? 1.0 : (width < 12 ? 0.55 : 0.8));

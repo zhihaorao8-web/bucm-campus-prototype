@@ -1177,6 +1177,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                   LibrarySeatViewModeTransition(
                     usingMap: usingMap,
                     mapChild: LibrarySeatFloorMap(
+                      key: ValueKey('library-floor-map-${_area?.id ?? ''}'),
                       allSeats: allEntries,
                       visibleSeats: filteredItems,
                       selectedSeatId: _selected,
@@ -1513,6 +1514,8 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   }) {
     final colors = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
+    final highContrast = MediaQuery.highContrastOf(context);
+    final reduced = MediaQuery.disableAnimationsOf(context);
     final List<LibraryArea> areas = _queries.areas ?? const [];
     final start = _start, end = _end;
     final invalidTimes =
@@ -1525,6 +1528,222 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     final locatorSlots = floorGroup == null
         ? {?_activeZoneSlot}
         : resolveFloorZones(floorGroup).mapped.keys.toSet();
+    final surfaceColor = colors.surfaceContainerLow.withValues(
+      alpha: highContrast ? 1.0 : .82,
+    );
+    final borderColor = highContrast ? colors.outline : colors.outlineVariant;
+    final borderWidth = highContrast ? 1.0 : 0.7;
+
+    Widget surfaceControlButton({
+      required Key key,
+      required String label,
+      required AppIconData trailingIcon,
+      required VoidCallback? onTap,
+      AppIconData? leadingIcon,
+      String? trailingLabel,
+      double minHeight = 38,
+      TextStyle? textStyle,
+    }) {
+      return Material(
+        color: surfaceColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.small),
+          side: BorderSide(width: borderWidth, color: borderColor),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: key,
+          borderRadius: BorderRadius.circular(AppRadius.small),
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: minHeight),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpace.md,
+                vertical: 7,
+              ),
+              child: Row(
+                children: [
+                  if (leadingIcon != null) ...[
+                    AppIcon(leadingIcon, size: 16, color: colors.primary),
+                    const SizedBox(width: AppSpace.xs),
+                  ],
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          textStyle ??
+                          theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: tabularTime,
+                          ),
+                    ),
+                  ),
+                  if (trailingLabel != null) ...[
+                    const SizedBox(width: AppSpace.xs),
+                    Text(
+                      trailingLabel,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: AppSpace.xs),
+                  AppIcon(
+                    trailingIcon,
+                    size: 16,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget daySegment({
+      required String label,
+      required bool selected,
+      required VoidCallback? onTap,
+    }) {
+      return Semantics(
+        button: true,
+        selected: selected,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.small - 2),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: reduced ? Duration.zero : AppMotion.segment,
+            curve: AppMotion.segmentCurve,
+            constraints: const BoxConstraints(minHeight: 34, minWidth: 52),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+            decoration: BoxDecoration(
+              color: selected
+                  ? (highContrast
+                        ? colors.primary
+                        : colors.primaryContainer.withValues(alpha: 0.92))
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.small - 2),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: selected
+                    ? (highContrast ? colors.onPrimary : colors.primary)
+                    : colors.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget buildDayQuickSwitch({required bool expanded}) {
+      final todayCell = daySegment(
+        label: '今天',
+        selected: _date == today,
+        onTap: _busy ? null : () => unawaited(_selectSeatDate(today)),
+      );
+      final tomorrowCell = daySegment(
+        label: '明天',
+        selected: _date == tomorrow,
+        onTap: _busy ? null : () => unawaited(_selectSeatDate(tomorrow)),
+      );
+      return Material(
+        color: surfaceColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.small),
+          side: BorderSide(width: borderWidth, color: borderColor),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Row(
+            mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: expanded
+                ? [
+                    Expanded(child: todayCell),
+                    const SizedBox(width: 2),
+                    Expanded(child: tomorrowCell),
+                  ]
+                : [
+                    todayCell,
+                    const SizedBox(width: 2),
+                    tomorrowCell,
+                  ],
+          ),
+        ),
+      );
+    }
+
+    Widget viewModeToggle() => CourseSurface(
+      dense: true,
+      radius: AppRadius.small,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            key: const ValueKey('library-view-map'),
+            tooltip: hasFloorMap ? '平面选座图' : '当前区域暂无平面坐标',
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+            padding: EdgeInsets.zero,
+            style: IconButton.styleFrom(
+              backgroundColor: usingMap
+                  ? colors.primaryContainer
+                  : Colors.transparent,
+              foregroundColor: usingMap
+                  ? colors.primary
+                  : colors.onSurfaceVariant,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.small - 2),
+              ),
+            ),
+            onPressed: !_busy && hasFloorMap
+                ? () => setState(() => _mapView = true)
+                : null,
+            icon: const AppIcon(AppIcons.map, size: AppControl.icon),
+          ),
+          IconButton(
+            key: const ValueKey('library-view-grid'),
+            tooltip: '紧凑网格',
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+            padding: EdgeInsets.zero,
+            style: IconButton.styleFrom(
+              backgroundColor: !usingMap
+                  ? colors.primaryContainer
+                  : Colors.transparent,
+              foregroundColor: !usingMap
+                  ? colors.primary
+                  : colors.onSurfaceVariant,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.small - 2),
+              ),
+            ),
+            onPressed: !_busy ? () => setState(() => _mapView = false) : null,
+            icon: const AppIcon(AppIcons.grid, size: AppControl.icon),
+          ),
+        ],
+      ),
+    );
+
+    Widget groupDivider() => Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+      child: Divider(
+        height: 1,
+        thickness: 0.6,
+        color: colors.outlineVariant.withValues(
+          alpha: highContrast ? 0.85 : 0.42,
+        ),
+      ),
+    );
 
     return QuietCard(
       child: Padding(
@@ -1532,136 +1751,56 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Section 1: 空间定位与视图
             if (floorGroup != null) ...[
-              Align(
-                alignment: Alignment.centerLeft,
-                child: LibrarySpatialLocatorPill(
-                  floorKind: floorGroup.kind,
-                  activeSlots: locatorSlots,
-                  activeSlot: _activeZoneSlot,
-                  busy: _busy,
-                  onBackToFloorMap: _backToFloorMap,
+              SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: AppSpace.sm,
+                  runSpacing: AppSpace.xs,
+                  children: [
+                    LibrarySpatialLocatorPill(
+                      floorKind: floorGroup.kind,
+                      activeSlots: locatorSlots,
+                      activeSlot: _activeZoneSlot,
+                      busy: _busy,
+                      onBackToFloorMap: _backToFloorMap,
+                    ),
+                    viewModeToggle(),
+                  ],
                 ),
               ),
-              const SizedBox(height: AppSpace.sm),
+              if (areas.isNotEmpty) const SizedBox(height: AppSpace.sm),
             ],
             if (areas.isNotEmpty) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      key: const ValueKey('library-area-picker'),
-                      borderRadius: BorderRadius.circular(AppRadius.small),
-                      onTap: _busy ? null : () => _chooseArea(areas),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          minHeight: AppLayout.minTap,
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpace.md,
-                            vertical: AppSpace.sm,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colors.surfaceContainerLow.withValues(
-                              alpha: .8,
-                            ),
-                            borderRadius: BorderRadius.circular(
-                              AppRadius.small,
-                            ),
-                            border: Border.all(
-                              width: 0.7,
-                              color: colors.outlineVariant,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _area?.label ?? areas.first.label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.titleSmall,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpace.xs),
-                              const AppIcon(
-                                AppIcons.chevronDown,
-                                size: AppControl.icon,
-                              ),
-                            ],
-                          ),
-                        ),
+              if (floorGroup != null)
+                surfaceControlButton(
+                  key: const ValueKey('library-area-picker'),
+                  label: _area?.label ?? areas.first.label,
+                  trailingIcon: AppIcons.chevronDown,
+                  minHeight: 42,
+                  textStyle: theme.textTheme.titleSmall,
+                  onTap: _busy ? null : () => _chooseArea(areas),
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: surfaceControlButton(
+                        key: const ValueKey('library-area-picker'),
+                        label: _area?.label ?? areas.first.label,
+                        trailingIcon: AppIcons.chevronDown,
+                        minHeight: 42,
+                        textStyle: theme.textTheme.titleSmall,
+                        onTap: _busy ? null : () => _chooseArea(areas),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpace.sm),
-                  CourseSurface(
-                    dense: true,
-                    radius: AppRadius.small,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          key: const ValueKey('library-view-map'),
-                          tooltip: hasFloorMap ? '平面选座图' : '当前区域暂无平面坐标',
-                          constraints: const BoxConstraints(
-                            minWidth: 44,
-                            minHeight: 44,
-                          ),
-                          padding: EdgeInsets.zero,
-                          style: IconButton.styleFrom(
-                            backgroundColor: usingMap
-                                ? colors.primaryContainer
-                                : Colors.transparent,
-                            foregroundColor: usingMap
-                                ? colors.primary
-                                : colors.onSurfaceVariant,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          onPressed: !_busy && hasFloorMap
-                              ? () => setState(() => _mapView = true)
-                              : null,
-                          icon: const AppIcon(
-                            AppIcons.map,
-                            size: AppControl.icon,
-                          ),
-                        ),
-                        IconButton(
-                          key: const ValueKey('library-view-grid'),
-                          tooltip: '紧凑网格',
-                          constraints: const BoxConstraints(
-                            minWidth: 44,
-                            minHeight: 44,
-                          ),
-                          padding: EdgeInsets.zero,
-                          style: IconButton.styleFrom(
-                            backgroundColor: !usingMap
-                                ? colors.primaryContainer
-                                : Colors.transparent,
-                            foregroundColor: !usingMap
-                                ? colors.primary
-                                : colors.onSurfaceVariant,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          onPressed: !_busy
-                              ? () => setState(() => _mapView = false)
-                              : null,
-                          icon: const AppIcon(
-                            AppIcons.grid,
-                            size: AppControl.icon,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpace.sm),
+                    const SizedBox(width: AppSpace.sm),
+                    viewModeToggle(),
+                  ],
+                ),
             ] else if (_queries.areas?.isEmpty == true) ...[
               Text(
                 '暂无座位区域',
@@ -1669,57 +1808,53 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                   color: colors.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: AppSpace.sm),
             ],
-            Wrap(
-              spacing: AppSpace.sm,
-              runSpacing: AppSpace.xs,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                ChoiceChip(
-                  label: const Text('今天'),
-                  selected: _date == today,
-                  onSelected: _busy
-                      ? null
-                      : (_) => unawaited(_selectSeatDate(today)),
-                ),
-                ChoiceChip(
-                  label: const Text('明天'),
-                  selected: _date == tomorrow,
-                  onSelected: _busy
-                      ? null
-                      : (_) => unawaited(_selectSeatDate(tomorrow)),
-                ),
-                OutlinedButton.icon(
+            groupDivider(),
+            // Section 2: 预约日期与时段（统一材质与高度）
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final stackDateRow =
+                    constraints.maxWidth < 285 ||
+                    MediaQuery.textScalerOf(context).scale(14) > 19.5;
+                final datePicker = surfaceControlButton(
                   key: const ValueKey('library-date-picker'),
-                  onPressed: _busy ? null : _chooseDate,
-                  icon: const AppIcon(AppIcons.calendar, size: 16),
-                  label: Text(
-                    isoDate(_date),
-                    style: const TextStyle(fontFeatures: tabularTime),
+                  leadingIcon: AppIcons.calendar,
+                  label: isoDate(_date),
+                  trailingIcon: AppIcons.chevronDown,
+                  onTap: _busy ? null : _chooseDate,
+                );
+                if (stackDateRow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      IntrinsicHeight(
+                        child: buildDayQuickSwitch(expanded: true),
+                      ),
+                      const SizedBox(height: AppSpace.xs),
+                      datePicker,
+                    ],
+                  );
+                }
+                return IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      buildDayQuickSwitch(expanded: false),
+                      const SizedBox(width: AppSpace.sm),
+                      Expanded(child: datePicker),
+                    ],
                   ),
-                ),
-                OutlinedButton.icon(
-                  key: const ValueKey('library-time-picker'),
-                  onPressed: _busy ? null : () => _chooseTimeSlot(),
-                  icon: const AppIcon(AppIcons.clock, size: 16),
-                  label: Text(
-                    timeLabel,
-                    style: const TextStyle(fontFeatures: tabularTime),
-                  ),
-                ),
-                FilterChip(
-                  label: const Text('仅看空闲'),
-                  selected: _statusFilter == LibrarySeatStatus.available,
-                  onSelected: _busy
-                      ? null
-                      : (value) => setState(() {
-                          _statusFilter = value
-                              ? LibrarySeatStatus.available
-                              : null;
-                        }),
-                ),
-              ],
+                );
+              },
+            ),
+            const SizedBox(height: AppSpace.xs),
+            surfaceControlButton(
+              key: const ValueKey('library-time-picker'),
+              leadingIcon: AppIcons.clock,
+              label: timeLabel,
+              trailingLabel: '调整',
+              trailingIcon: AppIcons.chevronRight,
+              onTap: _busy ? null : () => _chooseTimeSlot(),
             ),
             if (invalidTimes) ...[
               const SizedBox(height: AppSpace.sm),
@@ -1748,7 +1883,8 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
               ),
             ],
             if (seats != null && seats.isNotEmpty) ...[
-              const SizedBox(height: AppSpace.sm),
+              groupDivider(),
+              // Section 3: 席位统计与筛选
               _statusLegend(
                 context,
                 total: seats.length,
@@ -1774,6 +1910,8 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   }) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final highContrast = MediaQuery.highContrastOf(context);
+    final onlyAvailable = _statusFilter == LibrarySeatStatus.available;
 
     Widget pill({
       required LibrarySeatStatus status,
@@ -1785,84 +1923,161 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
       return Semantics(
         button: onTap != null,
         selected: active,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.small),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpace.sm,
-              vertical: 5,
+        child: Material(
+          color: active ? colors.primaryContainer : tone.background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.small),
+            side: BorderSide(
+              width: active ? 1.2 : 0.7,
+              color: active ? colors.primary : tone.border,
             ),
-            decoration: BoxDecoration(
-              color: active ? colors.primaryContainer : tone.background,
-              borderRadius: BorderRadius.circular(AppRadius.small),
-              border: Border.all(
-                width: active ? 1.2 : 0.7,
-                color: active ? colors.primary : tone.border,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.small),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpace.sm,
+                vertical: 5,
               ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: tone.dot,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: tone.dot,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  text,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: active ? colors.primary : tone.foreground,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                    fontFeatures: tabularTime,
+                  const SizedBox(width: 5),
+                  Text(
+                    text,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: active ? colors.primary : tone.foreground,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                      fontFeatures: tabularTime,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       );
     }
 
-    return Wrap(
-      spacing: AppSpace.xs,
-      runSpacing: AppSpace.xs,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(right: AppSpace.xs),
-          child: Text(
-            '共 $total 席',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colors.onSurfaceVariant,
-              fontFeatures: tabularTime,
+    final onlyAvailableToggle = Semantics(
+      button: true,
+      toggled: onlyAvailable,
+      child: Material(
+        color: onlyAvailable
+            ? (highContrast ? colors.primary : colors.primaryContainer)
+            : colors.surfaceContainerLow.withValues(
+                alpha: highContrast ? 1.0 : .82,
+              ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.small),
+          side: BorderSide(
+            width: onlyAvailable ? 1.2 : (highContrast ? 1.0 : 0.7),
+            color: onlyAvailable
+                ? colors.primary
+                : (highContrast ? colors.outline : colors.outlineVariant),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: const ValueKey('library-only-available-toggle'),
+          borderRadius: BorderRadius.circular(AppRadius.small),
+          onTap: _busy
+              ? null
+              : () => _toggleStatusFilter(LibrarySeatStatus.available),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.sm,
+              vertical: 5,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onlyAvailable) ...[
+                  AppIcon(
+                    AppIcons.check,
+                    size: 13,
+                    color: highContrast ? colors.onPrimary : colors.primary,
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                Text(
+                  '仅看空闲',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: onlyAvailable
+                        ? (highContrast ? colors.onPrimary : colors.primary)
+                        : colors.onSurfaceVariant,
+                    fontWeight: onlyAvailable
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-        pill(
-          status: LibrarySeatStatus.available,
-          text: '空闲 $availableCount',
-          active: _statusFilter == LibrarySeatStatus.available,
-          onTap: () => _toggleStatusFilter(LibrarySeatStatus.available),
-        ),
-        pill(
-          status: LibrarySeatStatus.partial,
-          text: '半空闲 $partialCount',
-          active: _statusFilter == LibrarySeatStatus.partial,
-          onTap: () => _toggleStatusFilter(LibrarySeatStatus.partial),
-        ),
-        if (occupiedCount > 0)
-          pill(status: LibrarySeatStatus.occupied, text: '使用中 $occupiedCount'),
-        if (unavailableCount > 0)
-          pill(
-            status: LibrarySeatStatus.closed,
-            text: '不可用 $unavailableCount',
+      ),
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpace.sm,
+        runSpacing: AppSpace.xs,
+        children: [
+          Wrap(
+            spacing: AppSpace.xs,
+            runSpacing: AppSpace.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpace.xs),
+                child: Text(
+                  '共 $total 席',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    fontFeatures: tabularTime,
+                  ),
+                ),
+              ),
+              pill(
+                status: LibrarySeatStatus.available,
+                text: '空闲 $availableCount',
+                active: _statusFilter == LibrarySeatStatus.available,
+                onTap: () => _toggleStatusFilter(LibrarySeatStatus.available),
+              ),
+              pill(
+                status: LibrarySeatStatus.partial,
+                text: '半空闲 $partialCount',
+                active: _statusFilter == LibrarySeatStatus.partial,
+                onTap: () => _toggleStatusFilter(LibrarySeatStatus.partial),
+              ),
+              if (occupiedCount > 0)
+                pill(
+                  status: LibrarySeatStatus.occupied,
+                  text: '使用中 $occupiedCount',
+                ),
+              if (unavailableCount > 0)
+                pill(
+                  status: LibrarySeatStatus.closed,
+                  text: '不可用 $unavailableCount',
+                ),
+            ],
           ),
-      ],
+          onlyAvailableToggle,
+        ],
+      ),
     );
   }
 
