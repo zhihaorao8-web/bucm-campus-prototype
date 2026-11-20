@@ -18,7 +18,13 @@ import 'week_grid_test.dart' show weeklyPreviewData;
 class _AtmosphereLibraryReader extends LibrarySeatReader {
   @override
   Future<List<LibraryArea>> areas() async => const [
-    LibraryArea('32', '二层北区', '二层'),
+    LibraryArea('32', '二层北区', '图书馆二层'),
+    LibraryArea('33', '三层北区', '图书馆三层'),
+    LibraryArea('34', '四层北区', '图书馆四层'),
+    LibraryArea('35', '五层北区', '图书馆五层'),
+    LibraryArea('36', '六层北区', '图书馆六层'),
+    LibraryArea('37', '七层北区', '图书馆七层'),
+    LibraryArea('38', '八层北区', '图书馆八层'),
   ];
 
   @override

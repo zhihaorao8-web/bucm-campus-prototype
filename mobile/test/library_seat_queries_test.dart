@@ -11,6 +11,7 @@ import 'package:campus_schedule/ui/acrylic_surface.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'package:campus_schedule/ui/course_surface.dart';
 import 'package:campus_schedule/ui/glass_navigation.dart';
+import 'package:campus_schedule/ui/library_floor_overview.dart';
 import 'package:campus_schedule/ui/library_seat_bookings.dart';
 import 'package:campus_schedule/ui/library_seat_map.dart';
 import 'package:campus_schedule/ui/library_seat_query_page.dart';
@@ -175,6 +176,19 @@ Future<void> reveal(WidgetTester tester, Finder target) async {
     await tester.scrollUntilVisible(target, 180);
   }
   await Scrollable.ensureVisible(tester.element(target), alignment: 0.5);
+  await tester.pumpAndSettle();
+}
+
+Future<void> enterLibraryArea(
+  WidgetTester tester, {
+  String floor = '二层',
+  String zoneKey = 'library-zone-north',
+}) async {
+  await reveal(tester, find.byKey(ValueKey('library-floor-card-$floor')));
+  await tester.tap(find.byKey(ValueKey('library-floor-card-$floor')));
+  await tester.pumpAndSettle();
+  await reveal(tester, find.byKey(ValueKey(zoneKey)));
+  await tester.tap(find.byKey(ValueKey(zoneKey)));
   await tester.pumpAndSettle();
 }
 
@@ -418,6 +432,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
       expect(find.text('该日期暂无座位'), findsOneWidget);
 
       final closedDayReader = FakeLibrarySeatReader()
@@ -433,6 +448,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
       expect(find.text('所选日期暂无开放时段。'), findsOneWidget);
       expect(find.text('N001'), findsOneWidget);
       expect(find.text('不开放'), findsOneWidget);
@@ -467,6 +483,7 @@ void main() {
         wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 9)),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
 
       expect(find.text('共 5 席'), findsOneWidget);
       expect(find.text('空闲 1'), findsOneWidget);
@@ -530,6 +547,10 @@ void main() {
       await tester.pumpWidget(
         wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 9)),
       );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('library-floor-card-二层')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('library-zone-north')));
       await tester.pump();
       requests[0].$2.complete([seat(id: '1', label: '今日座位')]);
       await tester.pumpAndSettle();
@@ -547,6 +568,11 @@ void main() {
       await tester.tap(find.text('明天'));
       await tester.pump();
 
+      expect(
+        find.byKey(const ValueKey('library-selected-capsule')).hitTestable(),
+        findsNothing,
+      );
+      await tester.pump(const Duration(milliseconds: 150));
       expect(
         find.byKey(const ValueKey('library-selected-capsule')),
         findsNothing,
@@ -682,6 +708,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
 
       // Step 1: needsLogin prompts user to open official page.
       expect(find.text('需要登录学校账号'), findsOneWidget);
@@ -750,6 +777,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        await enterLibraryArea(tester);
 
         await reveal(tester, find.text('A001'));
         await tester.tap(find.text('A001'));
@@ -925,6 +953,7 @@ void main() {
         wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
 
       await reveal(tester, find.text('N001'));
       await tester.tap(find.text('N001'));
@@ -976,6 +1005,7 @@ void main() {
         wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 9, 30)),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
 
       await reveal(tester, find.text('N001'));
       await tester.tap(find.text('N001'));
@@ -1066,6 +1096,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
 
       // 1. Availability changed during pre-check -> 0 writes.
       await reveal(tester, find.text('N001'));
@@ -1235,6 +1266,15 @@ void main() {
       await tester.pumpWidget(buildEmbedded(active: true, demo: false));
       await tester.pumpAndSettle();
       expect(areaCalls, 1);
+      expect(seatCalls, 0);
+      expect(find.byKey(const ValueKey('library-floor-card-二层')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('library-floor-card-二层')));
+      await tester.pumpAndSettle();
+      expect(seatCalls, 0);
+
+      await tester.tap(find.byKey(const ValueKey('library-zone-north')));
+      await tester.pumpAndSettle();
       expect(seatCalls, 1);
       expect(find.text('2N010'), findsOneWidget);
 
@@ -1300,6 +1340,10 @@ void main() {
             .selected,
         isTrue,
       );
+      expect(seatCalls, 0);
+      expect(find.byKey(const ValueKey('library-floor-card-二层')), findsOneWidget);
+
+      await enterLibraryArea(tester);
       expect(seatCalls, 1);
       expect(find.text('2N018'), findsOneWidget);
 
@@ -1334,6 +1378,7 @@ void main() {
         wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
 
       // Floor map is active by default when coordinates are present.
       expect(
@@ -1420,6 +1465,7 @@ void main() {
         wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
 
       // Without coordinates, falls back to grid and disables map switch.
       expect(
@@ -1467,6 +1513,7 @@ void main() {
         wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
 
       // Open time slot sheet from partial seat 2N024.
       await tester.tap(find.text('2N024'));
@@ -1568,6 +1615,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        await enterLibraryArea(tester);
 
         await reveal(tester, find.text('2N001'));
         await tester.tap(find.text('2N001'));
@@ -1631,6 +1679,7 @@ void main() {
         wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
 
       final zoomRect = tester.getRect(
         find.byKey(const ValueKey('library-map-zoom-in')),
@@ -1752,6 +1801,7 @@ void main() {
         wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
 
       await reveal(tester, find.text('2N018'));
       await tester.tap(find.text('2N018'));
@@ -1852,6 +1902,7 @@ void main() {
         wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 5)),
       );
       await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
 
       await tester.tap(find.text('我的预约'));
       await tester.pumpAndSettle();
@@ -1961,6 +2012,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        await enterLibraryArea(tester);
 
         await reveal(tester, find.text('2N018'));
         await tester.tap(find.text('2N018'));
@@ -1996,6 +2048,420 @@ void main() {
         );
         await tester.tap(find.text('保留预约'));
         await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  test(
+    'Stage 8A floor grouping, dedicated 2F vs 3F-5F parity, and zero schematic overlap',
+    () {
+      const sampleAreas = [
+        LibraryArea('32', '二层北区', '图书馆二层'),
+        LibraryArea('33', '三层南区', '图书馆三层'),
+        LibraryArea('34', '三层西A区', '图书馆三层'),
+        LibraryArea('35', '三层西B区', '图书馆三层'),
+        LibraryArea('36', '三层西C区', '图书馆三层'),
+        LibraryArea('37', '三层北区', '图书馆三层'),
+        LibraryArea('41', '四层北区', '图书馆四层'),
+        LibraryArea('42', '四层阅览室', '图书馆四层'),
+      ];
+      final groups = groupLibraryFloors(sampleAreas);
+      expect(groups.map((g) => g.floor).toList(), [
+        '图书馆二层',
+        '图书馆三层',
+        '图书馆四层',
+      ]);
+      expect(groups[0].kind, LibraryFloorKind.floor2);
+      expect(groups[1].kind, LibraryFloorKind.standard3to5);
+      expect(groups[2].kind, LibraryFloorKind.standard3to5);
+
+      // Dedicated 2F north wing shares exact northeast rect with 3F-5F.
+      expect(
+        libraryZoneRect(LibraryZoneSlot.north, kind: LibraryFloorKind.floor2),
+        libraryZoneRect(
+          LibraryZoneSlot.north,
+          kind: LibraryFloorKind.standard3to5,
+        ),
+      );
+      expect(
+        libraryZoneRect(LibraryZoneSlot.westA, kind: LibraryFloorKind.floor2),
+        isNull,
+      );
+      expect(
+        libraryZoneRect(LibraryZoneSlot.westC, kind: LibraryFloorKind.floor2),
+        isNull,
+      );
+      expect(
+        libraryZoneRect(LibraryZoneSlot.south, kind: LibraryFloorKind.floor2),
+        isNull,
+      );
+
+      final resolved2F = resolveFloorZones(const LibraryFloorGroup(
+        floor: '图书馆二层',
+        areas: [
+          LibraryArea('32', '二层北区', '图书馆二层'),
+          LibraryArea('39', '二层南区', '图书馆二层'),
+        ],
+        kind: LibraryFloorKind.floor2,
+      ));
+      expect(resolved2F.mapped.keys.toList(), [LibraryZoneSlot.north]);
+      expect(resolved2F.unmapped.single.id, '39');
+
+      final resolved4F = resolveFloorZones(groups[2]);
+      expect(resolved4F.mapped[LibraryZoneSlot.north]?.id, '41');
+      expect(resolved4F.unmapped.single.id, '42');
+
+      const nonOverlappingRects = <Rect>[
+        libraryWestARect,
+        libraryWestBRect,
+        libraryCourtyardRect,
+        libraryNorthNonSeatStrip,
+        libraryWestCEastArmRect,
+        libraryWestCSouthArmRect,
+        libraryNorthZoneRect,
+        librarySouthZoneRect,
+        libraryCompassRect,
+      ];
+      for (var i = 0; i < nonOverlappingRects.length; i++) {
+        for (var j = i + 1; j < nonOverlappingRects.length; j++) {
+          expect(
+            nonOverlappingRects[i].overlaps(nonOverlappingRects[j]),
+            false,
+            reason:
+                'schematic rects $i (${nonOverlappingRects[i]}) and $j (${nonOverlappingRects[j]}) overlapped',
+          );
+        }
+      }
+    },
+  );
+
+  testWidgets(
+    'Stage 8A 3-level spatial flow renders dedicated 2F map, L-shaped 西C dual-arm linkage, and lazy seat fetch',
+    variant: androidOnly,
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final seatRequests = <String>[];
+      final reader = FakeLibrarySeatReader()
+        ..onAreas = (() async => const [
+          LibraryArea('21', '二层北区', '图书馆二层'),
+          LibraryArea('31', '三层北区', '图书馆三层'),
+          LibraryArea('32', '三层南区', '图书馆三层'),
+          LibraryArea('33', '三层西A区', '图书馆三层'),
+          LibraryArea('34', '三层西B区', '图书馆三层'),
+          LibraryArea('35', '三层西C区', '图书馆三层'),
+          LibraryArea('41', '四层北区', '图书馆四层'),
+          LibraryArea('42', '四层阅览室', '图书馆四层'),
+        ])
+        ..onSeats = (area, _) async {
+          seatRequests.add(area);
+          return [
+            seat(
+              id: '${area}01',
+              label: area == '35' ? '3WC01' : '${area}S01',
+              x: 25,
+              y: 40,
+            ),
+          ];
+        };
+
+      await tester.pumpWidget(
+        wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
+      );
+      await tester.pumpAndSettle();
+
+      // Level 1 shows floors only; zero seat requests triggered yet.
+      expect(seatRequests, isEmpty);
+      expect(find.byKey(const ValueKey('library-floor-card-图书馆二层')), findsOneWidget);
+      expect(find.byKey(const ValueKey('library-floor-card-图书馆三层')), findsOneWidget);
+      expect(find.byKey(const ValueKey('library-floor-card-图书馆四层')), findsOneWidget);
+      expect(find.byKey(const ValueKey('library-floor-schematic-canvas')), findsNothing);
+
+      // 2F uses dedicated schematic: 北区 + 中庭 + ↑ 北 only, no 3F-5F zone labels.
+      await tester.tap(find.byKey(const ValueKey('library-floor-card-图书馆二层')));
+      await tester.pumpAndSettle();
+      expect(seatRequests, isEmpty);
+      expect(find.byKey(const ValueKey('library-floor-schematic-canvas')), findsOneWidget);
+      expect(find.text('北区'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('library-floor-schematic-canvas')),
+          matching: find.text('中庭'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('↑ 北'), findsOneWidget);
+      expect(find.text('南区'), findsNothing);
+      expect(find.text('西C'), findsNothing);
+
+      // Breadcrumb returns to Level 1, then enter 3F 5-zone schematic.
+      await tester.tap(find.byKey(const ValueKey('library-breadcrumb-floors')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('library-floor-card-图书馆三层')));
+      await tester.pumpAndSettle();
+      expect(seatRequests, isEmpty);
+      expect(find.byKey(const ValueKey('library-zone-north')), findsOneWidget);
+      expect(find.byKey(const ValueKey('library-zone-south')), findsOneWidget);
+      expect(find.byKey(const ValueKey('library-zone-westA')), findsOneWidget);
+      expect(find.byKey(const ValueKey('library-zone-westB')), findsOneWidget);
+      expect(find.byKey(const ValueKey('library-zone-westC-east')), findsOneWidget);
+      expect(find.byKey(const ValueKey('library-zone-westC-south')), findsOneWidget);
+
+      // Tapping east arm of L-shaped 西C loads 三层西C区 and shows locator pill.
+      await tester.tap(find.byKey(const ValueKey('library-zone-westC-east')));
+      await tester.pumpAndSettle();
+      expect(seatRequests, ['35']);
+      expect(find.text('3WC01'), findsOneWidget);
+      expect(find.text('中庭东南翼 · ↑ 北'), findsOneWidget);
+
+      // Tapping locator pill returns to 3F schematic; tapping south arm of 西C also opens 西C.
+      await tester.tap(find.byKey(const ValueKey('library-level3-locator')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('library-zone-westC-south')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('library-zone-westC-south')));
+      await tester.pumpAndSettle();
+      expect(seatRequests, ['35', '35']);
+      expect(find.text('3WC01'), findsOneWidget);
+
+      // 4F shows extra unmapped zone button cleanly beneath schematic.
+      await tester.tap(find.byKey(const ValueKey('library-breadcrumb-floors')));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.byKey(const ValueKey('library-floor-card-图书馆四层')));
+      await tester.tap(find.byKey(const ValueKey('library-floor-card-图书馆四层')));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.byKey(const ValueKey('library-zone-extra-42')));
+      expect(find.text('四层阅览室'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'Stage 8A spatial transitions block outgoing hit/focus, survive rapid interruption, step via system back, and honor reduced motion',
+    variant: androidOnly,
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      FakeLibrarySeatReader buildReader() => FakeLibrarySeatReader()
+        ..onAreas = (() async => const [
+          LibraryArea('21', '二层北区', '图书馆二层'),
+          LibraryArea('31', '三层南区', '图书馆三层'),
+          LibraryArea('32', '三层北区', '图书馆三层'),
+        ])
+        ..onSeats = (_, _) async => [
+          seat(id: '10', label: '3S001', x: 20, y: 30),
+        ];
+
+      final reader = buildReader();
+      await tester.pumpWidget(
+        wrapLibraryPage(reader, now: () => DateTime(2026, 10, 10, 8, 0)),
+      );
+      await tester.pumpAndSettle();
+
+      // 1. Mid-transition Level 1 -> Level 2 keeps outgoing blocked from hit/focus/semantics.
+      await tester.tap(find.byKey(const ValueKey('library-floor-card-图书馆三层')));
+      await tester.pump(const Duration(milliseconds: 90));
+      final spatial = find.byType(LibrarySpatialLevelTransition);
+      final outgoingFocusBlocker = find.descendant(
+        of: spatial,
+        matching: find.byWidgetPredicate((w) => w is ExcludeFocus && w.excluding),
+      );
+      expect(outgoingFocusBlocker, findsOneWidget);
+      expect(
+        find.descendant(
+          of: outgoingFocusBlocker,
+          matching: find.byWidgetPredicate((w) => w is IgnorePointer && w.ignoring),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: outgoingFocusBlocker,
+          matching: find.byWidgetPredicate((w) => w is ExcludeSemantics && w.excluding),
+        ),
+        findsAtLeastNWidgets(1),
+      );
+      expect(
+        find.descendant(
+          of: outgoingFocusBlocker,
+          matching: find.byType(LibraryFloorListView),
+        ),
+        findsOneWidget,
+      );
+      await tester.pumpAndSettle();
+      expect(outgoingFocusBlocker, findsNothing);
+
+      // 2. Rapid interruption: step back & switch floor mid-flight cleanly.
+      await tester.tap(find.byKey(const ValueKey('library-breadcrumb-floors')));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.byKey(const ValueKey('library-floor-card-图书馆三层')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('library-zone-south')), findsOneWidget);
+
+      // 3. Mid-transition Level 2 -> Level 3 (zoneDrillIn) and Level 3 map <-> grid.
+      await tester.tap(find.byKey(const ValueKey('library-zone-south')));
+      await tester.pump(const Duration(milliseconds: 90));
+      expect(outgoingFocusBlocker, findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('library-floor-map-viewport')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('library-view-grid')));
+      await tester.pump(const Duration(milliseconds: 90));
+      final modeSwitcher = find.byType(LibrarySeatViewModeTransition);
+      final modeOutgoingFocusBlocker = find.descendant(
+        of: modeSwitcher,
+        matching: find.byWidgetPredicate((w) => w is ExcludeFocus && w.excluding),
+      );
+      expect(modeOutgoingFocusBlocker, findsOneWidget);
+      expect(
+        find.descendant(
+          of: modeOutgoingFocusBlocker,
+          matching: find.byType(LibrarySeatFloorMap),
+        ),
+        findsOneWidget,
+      );
+      await tester.pumpAndSettle();
+      expect(modeOutgoingFocusBlocker, findsNothing);
+
+      // 4. PopScope system back steps cleanly Level 3 -> Level 2 -> Level 1.
+      final navigator = Navigator.of(
+        tester.element(find.byType(LibrarySeatQueryPage)),
+      );
+      await navigator.maybePop();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('library-floor-schematic-canvas')), findsOneWidget);
+
+      await navigator.maybePop();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('library-floor-card-图书馆二层')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+
+      // 5. disableAnimations: true performs instant switch without lingering outgoing layers.
+      await tester.pumpWidget(
+        wrapLibraryPage(
+          buildReader(),
+          pageKey: UniqueKey(),
+          now: () => DateTime(2026, 10, 10, 8, 0),
+          disableAnimations: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('library-floor-card-图书馆三层')));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('library-zone-south')), findsOneWidget);
+      expect(outgoingFocusBlocker, findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('library-zone-south')));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('library-floor-map-viewport')), findsOneWidget);
+      expect(outgoingFocusBlocker, findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('library-view-grid')));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('library-seat-search')), findsOneWidget);
+      expect(modeOutgoingFocusBlocker, findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  for (final variant in [
+    (
+      name: 'light-narrow-1.5x-stage8a',
+      dark: false,
+      scale: 1.5,
+      highContrast: false,
+      disableAnimations: false,
+      glass: true,
+    ),
+    (
+      name: 'dark-narrow-2.0x-hc-noglass-stage8a',
+      dark: true,
+      scale: 2.0,
+      highContrast: true,
+      disableAnimations: true,
+      glass: false,
+    ),
+  ]) {
+    testWidgets(
+      'Stage 8A responsive and accessibility check: ${variant.name}',
+      variant: androidOnly,
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 720);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final reader = FakeLibrarySeatReader()
+          ..onAreas = (() async => const [
+            LibraryArea('21', '二层北区', '图书馆二层'),
+            LibraryArea('31', '三层北区', '图书馆三层'),
+            LibraryArea('32', '三层南区', '图书馆三层'),
+            LibraryArea('33', '三层西A区', '图书馆三层'),
+            LibraryArea('34', '三层西B区', '图书馆三层'),
+            LibraryArea('35', '三层西C区', '图书馆三层'),
+          ])
+          ..onSeats = (_, _) async => [
+            seat(id: '1', label: '3N001', x: 18, y: 24),
+            seat(id: '2', label: '3N002', x: 48, y: 24),
+          ];
+
+        await tester.pumpWidget(
+          wrapLibraryPage(
+            reader,
+            now: () => DateTime(2026, 10, 10, 8, 0),
+            dark: variant.dark,
+            scale: variant.scale,
+            highContrast: variant.highContrast,
+            disableAnimations: variant.disableAnimations,
+            settings: AppearanceSettings(glass: variant.glass),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Check 2F schematic on narrow 320px + scaled typography.
+        await reveal(tester, find.byKey(const ValueKey('library-floor-card-图书馆二层')));
+        await tester.tap(find.byKey(const ValueKey('library-floor-card-图书馆二层')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('library-zone-north')), findsOneWidget);
+
+        // Return to Level 1 and verify 3F schematic + Level 3 map & grid.
+        await reveal(tester, find.byKey(const ValueKey('library-back-to-floors')));
+        await tester.tap(find.byKey(const ValueKey('library-back-to-floors')));
+        await tester.pumpAndSettle();
+
+        await reveal(tester, find.byKey(const ValueKey('library-floor-card-图书馆三层')));
+        await tester.tap(find.byKey(const ValueKey('library-floor-card-图书馆三层')));
+        await tester.pumpAndSettle();
+        await reveal(tester, find.byKey(const ValueKey('library-zone-westC-east')));
+        await tester.tap(find.byKey(const ValueKey('library-zone-westC-east')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('library-floor-map-viewport')), findsOneWidget);
+
+        await reveal(tester, find.byKey(const ValueKey('library-view-grid')));
+        await tester.tap(find.byKey(const ValueKey('library-view-grid')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('library-seat-search')), findsOneWidget);
+
+        await reveal(tester, find.byKey(const ValueKey('library-level3-locator')));
+        await tester.tap(find.byKey(const ValueKey('library-level3-locator')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('library-floor-schematic-canvas')), findsOneWidget);
+
+        await reveal(tester, find.byKey(const ValueKey('library-breadcrumb-floors')));
+        await tester.tap(find.byKey(const ValueKey('library-breadcrumb-floors')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('library-floor-card-图书馆二层')), findsOneWidget);
 
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
