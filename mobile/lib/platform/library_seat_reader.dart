@@ -15,6 +15,7 @@ enum LibraryWriteStatus {
   rejected,
   login,
   webRequired,
+  notEligible,
   precheckFailed,
   uncertain,
 }
@@ -157,7 +158,31 @@ class LibrarySeatReader {
     required DateTime date,
     required int startMinutes,
     required int endMinutes,
-  }) async {
+  }) => _write({
+    'action': 'reserve',
+    'seat': seatId,
+    'date': isoDate(date),
+    'start': formatClockMinutes(startMinutes),
+    'end': formatClockMinutes(endMinutes),
+  });
+
+  Future<LibraryWriteResult> cancelBooking(
+    LibraryBooking booking,
+    DateTime begin,
+    DateTime end,
+    int page,
+  ) => _write({
+    'action': 'cancel',
+    'bookingId': booking.id,
+    'seatLabel': booking.seat,
+    'beginAt': booking.begin,
+    'endAt': booking.end,
+    'begin': isoDate(begin),
+    'end': isoDate(end),
+    'page': page,
+  });
+
+  Future<LibraryWriteResult> _write(Map<String, Object> command) async {
     final opening = _opening ??= _open();
     final web = await opening.catchError((Object _) => null);
     if (web == null || !identical(_opening, opening)) {
@@ -170,13 +195,7 @@ class LibrarySeatReader {
       if (!identical(_opening, opening)) {
         return const LibraryWriteResult(LibraryWriteStatus.precheckFailed);
       }
-      final body = _scriptWithCommand(src, {
-        'action': 'reserve',
-        'seat': seatId,
-        'date': isoDate(date),
-        'start': formatClockMinutes(startMinutes),
-        'end': formatClockMinutes(endMinutes),
-      });
+      final body = _scriptWithCommand(src, command);
       invoked = true;
       final response = await web
           .callAsyncJavaScript(functionBody: body)
@@ -212,6 +231,8 @@ class LibrarySeatReader {
           );
         case 'precheck_error':
           return const LibraryWriteResult(LibraryWriteStatus.precheckFailed);
+        case 'not_eligible':
+          return const LibraryWriteResult(LibraryWriteStatus.notEligible);
         default:
           if (identical(_opening, opening)) await reset();
           return const LibraryWriteResult(LibraryWriteStatus.uncertain);

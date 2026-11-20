@@ -55,6 +55,76 @@ function defaultUser(overrides = {}) {
   });
 }
 
+const cancellation = {
+  action: 'cancel', bookingId: '5566', seatLabel: '合成座位',
+  beginAt: '2099-08-18 09:00', endAt: '2099-08-18 12:00',
+  begin: '2099-08-17', end: '2099-08-23', page: 2,
+};
+const cancellationRow = {
+  resvId: 5566, uuid: '00000000-0000-4000-8000-000000000001',
+  classKind: 8, logonName: 'synthetic-logon', resvStatus: 2,
+  resvBeginTime: '2099-08-18 09:00:00', resvEndTime: '2099-08-18 12:00:00',
+  resvDevInfoList: [{devName: '合成座位'}],
+};
+
+function cancellationResponse(rows, post = () => Response.json({code: 0})) {
+  return url => {
+    switch (url.pathname) {
+      case '/ic-web/auth/userInfo': return defaultUser();
+      case '/ic-web/reserve/resvInfo': return Response.json({code: 0, data: rows});
+      case '/ic-web/reserve/delete': return post();
+      default: throw new Error('unexpected path');
+    }
+  };
+}
+
+test('cancellation resolves the owner and the unchanged booking in the session before one POST', async () => {
+  const {data, calls} = await runWrite(cancellation, cancellationResponse([cancellationRow]));
+  assert.equal(calls.length, 3);
+  assert.equal(calls[1].url.searchParams.get('page'), '2');
+  assert.equal(calls[1].url.searchParams.get('beginDate'), cancellation.begin);
+  assert.equal(calls[2].options.method, 'POST');
+  assert.equal(calls[2].options.redirect, 'manual');
+  assert.equal(calls[2].url.pathname, '/ic-web/reserve/delete');
+  assert.deepEqual([...calls[2].url.searchParams], [['uuid', cancellationRow.uuid]]);
+  assert.deepEqual(data, {status: 'ok', bookingId: '5566', message: '', reason: ''});
+});
+
+test('cancellation sends no POST if ownership, time, status or the selected record changed', async () => {
+  const cases = [
+    [cancellation, []],
+    [cancellation, [cancellationRow, cancellationRow]],
+    [cancellation, [{...cancellationRow, logonName: 'other-user'}]],
+    [cancellation, [{...cancellationRow, resvStatus: 2 | 4}]],
+    [cancellation, [{...cancellationRow, resvStatus: 2 | 128}]],
+    [cancellation, [{...cancellationRow, resvEndTime: '2099-08-18 10:00:00'}]],
+    [cancellation, [{...cancellationRow, classKind: 1}]],
+    [{...cancellation, beginAt: '2000-08-18 09:00', endAt: '2000-08-18 12:00'},
+      [{...cancellationRow, resvBeginTime: '2000-08-18 09:00:00', resvEndTime: '2000-08-18 12:00:00'}]],
+  ];
+  for (const [command, rows] of cases) {
+    const {data, calls} = await runWrite(command, cancellationResponse(rows));
+    assert.equal(data.status, 'not_eligible');
+    assert.equal(calls.length, 2);
+  }
+  const unknownId = await runWrite(cancellation, cancellationResponse([{...cancellationRow, uuid: null}]));
+  assert.equal(unknownId.data.status, 'web_required');
+  assert.equal(unknownId.calls.length, 2);
+});
+
+test('cancellation exposes no raw result and never repeats the POST after an interrupted response', async () => {
+  for (const [response,status] of [
+    [() => {throw new Error('synthetic response lost');}, 'uncertain'],
+    [() => Response.json({code: 300}), 'login'],
+    [() => Response.json({code: 1, message: cancellationRow.uuid}), 'rejected'],
+  ]) {
+    const {data, calls} = await runWrite(cancellation, cancellationResponse([cancellationRow], response));
+    assert.equal(data.status, status);
+    assert.equal(calls.filter(c => c.options.method === 'POST').length, 1);
+    assert.doesNotMatch(JSON.stringify(data), /synthetic-logon|00000000/);
+  }
+});
+
 test('rejects wrong origin, document, action, seat, date, or time before any fetch', async () => {
   const valid = { action: 'reserve', seat: '100', date: '2026-10-10', start: '09:00', end: '12:00' };
   const cases = [

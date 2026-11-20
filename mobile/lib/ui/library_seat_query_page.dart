@@ -557,7 +557,9 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                         if (_queries.submitting) ...[
                           const SizedBox(height: AppSpace.sm),
                           Text(
-                            '正在核对余位并提交预约…',
+                            _showBookings
+                                ? '正在核对并取消预约…'
+                                : '正在核对余位并提交预约…',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: colors.onSurfaceVariant,
                             ),
@@ -601,6 +603,7 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                 ),
               ],
               if (_queries.needsLogin &&
+                  !(_showBookings && _queries.cancellation != null) &&
                   _queries.submission?.kind !=
                       LibrarySubmissionKind.authInterrupted) ...[
                 const SizedBox(height: AppSpace.md),
@@ -656,6 +659,10 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                   occupiedCount: occupiedCount,
                   unavailableCount: unavailableCount,
                 ),
+              if (_showBookings && _queries.cancellation != null) ...[
+                const SizedBox(height: AppSpace.md),
+                _cancellationCard(context, _queries.cancellation!),
+              ],
               if (!_showBookings && selectedSeat != null && hasValidRange) ...[
                 const SizedBox(height: AppSpace.md),
                 _selectedBanner(context, selectedSeat, start, end),
@@ -1408,10 +1415,111 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                   fontFeatures: tabularTime,
                 ),
               ),
+              if (_queries.canCancelBooking(row) && !_busy) ...[
+                const SizedBox(height: AppSpace.xs),
+                TextButton(
+                  onPressed: () => _confirmCancellation(row),
+                  child: const Text('取消预约'),
+                ),
+              ],
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _confirmCancellation(LibraryBooking row) async {
+    if (_busy || !_queries.canCancelBooking(row)) return;
+    final page = _bookingPage;
+    final begin = _bookingBegin, end = _bookingEnd;
+    final place = row.room.isEmpty
+        ? row.seat
+        : [row.room, row.seat].join(' · ');
+    final period = [row.begin, row.end].join(' 至 ');
+    final id = row.id;
+    var confirmed = false;
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: const Text('确认取消预约'),
+        content: SingleChildScrollView(
+          child: Text(
+            '$place\n$period\n预约编号 $id\n\n'
+            '学校接受取消后，这笔预约将释放。取消资格由学校平台确认。',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, false),
+            child: const Text('保留预约'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (confirmed) return;
+              confirmed = true;
+              Navigator.pop(dialog, true);
+            },
+            child: const Text('确认取消'),
+          ),
+        ],
+      ),
+    );
+    if (proceed != true ||
+        !mounted ||
+        _busy ||
+        !_showBookings ||
+        page != _bookingPage ||
+        begin != _bookingBegin ||
+        end != _bookingEnd) {
+      return;
+    }
+    await _queries.cancelBooking(row, begin, end, page);
+  }
+
+  Widget _cancellationCard(
+    BuildContext context,
+    LibraryCancellationState result,
+  ) {
+    final (title, detail) = switch (result.status) {
+      LibraryWriteStatus.ok when result.removed => (
+        '取消已核对',
+        '学校接受了取消请求，已从当前预约列表移除。',
+      ),
+      LibraryWriteStatus.ok => ('学校已接受取消请求', '请刷新预约列表或到学校网页核对最终状态。'),
+      LibraryWriteStatus.notEligible => (
+        '当前无法取消',
+        '预约可能已开始、已结束、发生变更或不属于当前账号。请刷新后查看。',
+      ),
+      LibraryWriteStatus.rejected => ('学校拒绝取消', '请到学校网页查看该预约的状态和适用规则。'),
+      LibraryWriteStatus.webRequired => ('请在学校网页办理', '此预约需要在学校网页确认取消。'),
+      LibraryWriteStatus.precheckFailed => ('取消未提交', '未能读取最新预约。请刷新列表后再确认。'),
+      LibraryWriteStatus.login => ('学校会话已失效', '重新登录后请先查看预约状态。应用不会自动重发。'),
+      LibraryWriteStatus.uncertain => ('取消结果待核对', '暂未收到学校的明确答复。请先查单。应用不会自动重发。'),
+    };
+    return _statusCard(
+      context,
+      title: title,
+      detail: _queries.needsLogin
+          ? detail
+          : [result.booking.seat, detail].join(' · '),
+      isError: result.status != LibraryWriteStatus.ok,
+      actions: [
+        if (!_queries.needsLogin)
+          AppActionButton(
+            label: '核对预约',
+            icon: AppIcons.refresh,
+            onPressed: _busy || _queries.loading
+                ? null
+                : () => _loadBookings(_bookingPage),
+          ),
+        AppActionButton(
+          label: _queries.needsLogin ? '打开学校页面登录' : '打开学校预约网页',
+          icon: AppIcons.chevronRight,
+          outlined: true,
+          onPressed: _busy ? null : _official,
+        ),
+      ],
     );
   }
 }

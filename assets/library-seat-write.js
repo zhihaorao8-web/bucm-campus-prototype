@@ -15,6 +15,13 @@ const clock = value => {
   const match = /^((?:[01]\d|2[0-3]):[0-5]\d)$/.exec(value.trim());
   return match ? match[1] : '';
 };
+const instant = value => {
+  if (Number.isSafeInteger(value)) return value;
+  if (typeof value !== 'string') return NaN;
+  const stamp = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(stamp)) return NaN;
+  return Date.parse(stamp.replace(' ', 'T') + '+08:00');
+};
 const sanitize = (value, ...secrets) => {
   if (typeof value !== 'string') return '';
   let out = value.replace(/<[^>]*>/g, '').replace(/[\u0000-\u001f\u007f]/g, ' ');
@@ -73,11 +80,16 @@ const parseConfig = data => {
 
 if (location.origin !== settings.origin || location.pathname !== settings.document ||
     window !== window.top) return result('precheck_error');
-if (!job || job.action !== 'reserve') return result('precheck_error');
+if (!job || !['reserve', 'cancel'].includes(job.action)) return result('precheck_error');
+const cancelling = job.action === 'cancel';
 const seat = id(job.seat);
 const start = clock(job.start);
 const end = clock(job.end);
-if (!seat || !Number.isSafeInteger(Number(seat)) || !day(job.date) ||
+if (cancelling ? !id(job.bookingId) || !day(job.begin) || !day(job.end) ||
+    job.begin > job.end || !Number.isSafeInteger(job.page) || job.page < 1 ||
+    !Number.isFinite(instant(job.beginAt)) || !Number.isFinite(instant(job.endAt)) ||
+    typeof job.seatLabel !== 'string' || !job.seatLabel || job.seatLabel.length > 96
+    : !seat || !Number.isSafeInteger(Number(seat)) || !day(job.date) ||
     !start || !end || start >= end) {
   return result('precheck_error');
 }
@@ -86,32 +98,34 @@ const stop = new AbortController();
 const timer = setTimeout(() => stop.abort(), settings.timeout);
 let posted = false;
 try {
-  const configResp = await fetch(new URL('/ic-web/sysConfig/public', settings.origin), {
-    method: 'GET',
-    credentials: 'same-origin',
-    cache: 'no-store',
-    redirect: 'manual',
-    signal: stop.signal,
-  });
-  const configBody = await readJson(configResp);
-  const config = configBody && configBody.code === 0 ? parseConfig(configBody.data) : null;
-  if (!config) return result('precheck_error');
+  if (!cancelling) {
+    const configResp = await fetch(new URL('/ic-web/sysConfig/public', settings.origin), {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      redirect: 'manual',
+      signal: stop.signal,
+    });
+    const configBody = await readJson(configResp);
+    const config = configBody && configBody.code === 0 ? parseConfig(configBody.data) : null;
+    if (!config) return result('precheck_error');
 
-  const resvCode = String(config.resvCode ?? '').trim();
-  if (resvCode === '1' || resvCode === '2') {
-    return result('web_required', {reason: 'captcha'});
-  }
-  const needToKnow = typeof config.needToKnow === 'string' ? config.needToKnow.trim() : '';
-  if (needToKnow && needToKnow.split('-').some(part => part.split(',')[0].trim() === '8')) {
-    return result('web_required', {reason: 'notice'});
-  }
-  const themeMust = Number(config.resvthememust ?? 0);
-  if (Number.isFinite(themeMust) && (themeMust & 8) !== 0) {
-    return result('web_required', {reason: 'theme'});
-  }
-  const memoRequired = Number(config.classKindMemoRequired ?? 0);
-  if (Number.isFinite(memoRequired) && (memoRequired & 8) !== 0) {
-    return result('web_required', {reason: 'memo'});
+    const resvCode = String(config.resvCode ?? '').trim();
+    if (resvCode === '1' || resvCode === '2') {
+      return result('web_required', {reason: 'captcha'});
+    }
+    const needToKnow = typeof config.needToKnow === 'string' ? config.needToKnow.trim() : '';
+    if (needToKnow && needToKnow.split('-').some(part => part.split(',')[0].trim() === '8')) {
+      return result('web_required', {reason: 'notice'});
+    }
+    const themeMust = Number(config.resvthememust ?? 0);
+    if (Number.isFinite(themeMust) && (themeMust & 8) !== 0) {
+      return result('web_required', {reason: 'theme'});
+    }
+    const memoRequired = Number(config.classKindMemoRequired ?? 0);
+    if (Number.isFinite(memoRequired) && (memoRequired & 8) !== 0) {
+      return result('web_required', {reason: 'memo'});
+    }
   }
 
   const userResp = await fetch(new URL('/ic-web/auth/userInfo', settings.origin), {
@@ -145,6 +159,64 @@ try {
     'lan': '1',
   };
   if (token) headers.token = token;
+  if (cancelling) {
+    // The web UI compares the booking owner to the signed-in user.
+    // Resolve the school's cancellation UUID within this session only.
+    const owner = userBody.data?.logonName;
+    if (typeof owner !== 'string' || !owner) return result('precheck_error');
+    const listUrl = new URL('/ic-web/reserve/resvInfo', settings.origin);
+    listUrl.search = new URLSearchParams({
+      beginDate: job.begin, endDate: job.end, page: job.page,
+      pageNum: settings.bookingPageSize, needStatus: settings.bookingStatusFilter,
+      orderKey: 'gmt_create', orderModel: 'desc',
+    });
+    const listResponse = await fetch(listUrl, {
+      method: 'GET', credentials: 'same-origin', headers,
+      cache: 'no-store', redirect: 'manual', signal: stop.signal,
+    });
+    if (listResponse.type === 'opaqueredirect' || [401, 403].includes(listResponse.status)) {
+      return result('login');
+    }
+    const list = await readJson(listResponse);
+    if (list?.code === 300) return result('login');
+    if (list?.code !== 0 || !Array.isArray(list.data) ||
+        list.data.length > settings.bookingPageSize) return result('precheck_error');
+    const matches = list.data.filter(row => row && id(row.resvId) === job.bookingId);
+    if (matches.length !== 1) return result('not_eligible');
+    const row = matches[0];
+    const status = Number(row.resvStatus);
+    const startsAt = instant(row.resvBeginTime);
+    const endsAt = instant(row.resvEndTime);
+    const minute = time => Math.floor(time / 60000);
+    const label = row.resvDevInfoList?.[0]?.devName;
+    const ineligibleFlags = 4 | 16 | 64 | 128 | 512 | 2048 | 4096;
+    if (Number(row.classKind) !== 8 || row.logonName !== owner ||
+        !Number.isSafeInteger(status) || (status & ineligibleFlags) !== 0 ||
+        (status & (2 | 256 | 1024)) === 0 || startsAt <= Date.now() ||
+        minute(startsAt) !== minute(instant(job.beginAt)) ||
+        minute(endsAt) !== minute(instant(job.endAt)) ||
+        typeof label !== 'string' || label.trim().slice(0, 96) !== job.seatLabel) {
+      return result('not_eligible');
+    }
+    const uuid = typeof row.uuid === 'string' && /^[A-Za-z0-9-]{16,80}$/.test(row.uuid)
+      ? row.uuid : '';
+    if (!uuid) return result('web_required', {reason: 'cancellation'});
+    const cancelUrl = new URL('/ic-web/reserve/delete', settings.origin);
+    cancelUrl.searchParams.set('uuid', uuid);
+    posted = true;
+    const cancelResp = await fetch(cancelUrl, {
+      method: 'POST', headers, credentials: 'same-origin',
+      cache: 'no-store', redirect: 'manual', signal: stop.signal,
+    });
+    if (cancelResp.type === 'opaqueredirect' || [401, 403].includes(cancelResp.status)) {
+      return result('login');
+    }
+    const body = await readJson(cancelResp);
+    if (body?.code === 300) return result('login');
+    if (body?.code === 0) return result('ok', {bookingId: job.bookingId});
+    if (Number.isSafeInteger(body?.code)) return result('rejected');
+    return result('uncertain');
+  }
   const payload = {
     testName: '',
     appAccNo: rawAcc,

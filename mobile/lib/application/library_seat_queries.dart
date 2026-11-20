@@ -34,6 +34,18 @@ class LibrarySubmissionState {
   final String reason;
 }
 
+class LibraryCancellationState {
+  const LibraryCancellationState(
+    this.status,
+    this.booking, {
+    this.removed = false,
+  });
+
+  final LibraryWriteStatus status;
+  final LibraryBooking booking;
+  final bool removed;
+}
+
 class LibrarySeatQueries extends ChangeNotifier {
   LibrarySeatQueries(this._reader);
 
@@ -49,6 +61,16 @@ class LibrarySeatQueries extends ChangeNotifier {
   List<LibrarySeat>? seats;
   LibraryBookingPage? bookings;
   LibrarySubmissionState? submission;
+  LibraryCancellationState? cancellation;
+  final _cancelledOrUncertain = <String>{};
+
+  bool canCancelBooking(LibraryBooking booking) =>
+      !_disposed &&
+      !loading &&
+      !submitting &&
+      !_cancelledOrUncertain.contains(booking.id) &&
+      bookings?.rows.contains(booking) == true &&
+      booking.canRequestCancellation(DateTime.now());
 
   void _handleError(Object error) {
     needsLogin = error == LibraryReadFailure.login;
@@ -289,6 +311,7 @@ class LibrarySeatQueries extends ChangeNotifier {
             reason: write.reason,
           );
         case LibraryWriteStatus.precheckFailed:
+        case LibraryWriteStatus.notEligible:
           submission = LibrarySubmissionState(
             kind: LibrarySubmissionKind.precheckFailed,
             request: request,
@@ -314,12 +337,79 @@ class LibrarySeatQueries extends ChangeNotifier {
     }
   }
 
+  Future<void> cancelBooking(
+    LibraryBooking booking,
+    DateTime begin,
+    DateTime end,
+    int page,
+  ) async {
+    if (!canCancelBooking(booking) || bookings?.page != page) return;
+    final revision = ++_revision;
+    submitting = true;
+    sessionCleared = false;
+    needsLogin = failed = false;
+    submission = null;
+    cancellation = null;
+    notifyListeners();
+
+    var status = LibraryWriteStatus.uncertain;
+    try {
+      try {
+        status = (await _reader.cancelBooking(
+          booking,
+          begin,
+          end,
+          page,
+        )).status;
+      } catch (_) {
+        // A transport failure may occur after the school received the request.
+      }
+      if (revision != _revision) return;
+      if (status == LibraryWriteStatus.ok ||
+          status == LibraryWriteStatus.uncertain ||
+          status == LibraryWriteStatus.login) {
+        _cancelledOrUncertain.add(booking.id);
+      }
+      var removed = false;
+      if (status == LibraryWriteStatus.login) {
+        _handleError(LibraryReadFailure.login);
+      } else if (status != LibraryWriteStatus.webRequired) {
+        try {
+          final refreshed = await _reader.bookings(begin, end, page);
+          if (revision != _revision) return;
+          bookings = refreshed;
+          // The filtered result must fit on one page to verify disappearance.
+          removed =
+              status == LibraryWriteStatus.ok &&
+              refreshed.page == 1 &&
+              !refreshed.hasMore &&
+              !refreshed.rows.any((row) => row.id == booking.id);
+        } catch (error) {
+          if (revision != _revision) return;
+          if (error == LibraryReadFailure.login) _handleError(error);
+        }
+      }
+      cancellation = LibraryCancellationState(
+        status,
+        booking,
+        removed: removed,
+      );
+    } finally {
+      if (revision == _revision) {
+        submitting = false;
+        notifyListeners();
+      }
+    }
+  }
+
   Future<void> clearSession() async {
     _revision++;
     areas = null;
     seats = null;
     bookings = null;
     submission = null;
+    cancellation = null;
+    _cancelledOrUncertain.clear();
     loading = false;
     submitting = false;
     failed = false;

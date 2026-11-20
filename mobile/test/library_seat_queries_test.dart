@@ -54,6 +54,8 @@ class FakeLibrarySeatReader extends LibrarySeatReader {
   )?
   onReserve;
   int reserveCalls = 0;
+  Future<LibraryWriteResult> Function(LibraryBooking)? onCancelBooking;
+  int cancelCalls = 0;
   int resetCount = 0;
 
   @override
@@ -91,10 +93,30 @@ class FakeLibrarySeatReader extends LibrarySeatReader {
   }
 
   @override
+  Future<LibraryWriteResult> cancelBooking(
+    LibraryBooking booking,
+    DateTime begin,
+    DateTime end,
+    int page,
+  ) {
+    cancelCalls++;
+    return onCancelBooking!(booking);
+  }
+
+  @override
   Future<void> reset() async {
     resetCount++;
   }
 }
+
+const cancellationFixture = LibraryBooking(
+  '8002',
+  '合成区域',
+  'N002',
+  '2099-10-10 09:00',
+  '2099-10-10 12:00',
+  2,
+);
 
 Widget wrapLibraryPage(
   LibrarySeatReader reader, {
@@ -145,8 +167,108 @@ Future<void> reveal(WidgetTester tester, Finder target) async {
 }
 
 void main() {
-  final day = DateTime(2026, 10, 10);
   final androidOnly = TargetPlatformVariant.only(TargetPlatform.android);
+  test(
+    'one pending cancellation refreshes the same page and blocks a repeated tap',
+    () async {
+      final reply = Completer<LibraryWriteResult>();
+      var listReads = 0;
+      final reader = FakeLibrarySeatReader()
+        ..onCancelBooking = ((_) => reply.future)
+        ..onBookings = ((_, _, page) async => LibraryBookingPage(
+          listReads++ == 0 ? [cancellationFixture] : [],
+          false,
+          page: page,
+        ));
+      final queries = LibrarySeatQueries(reader);
+      addTearDown(queries.dispose);
+      final day = DateTime(2099, 10, 10);
+      await queries.loadBookings(day, day, 1);
+      final running = queries.cancelBooking(cancellationFixture, day, day, 1);
+      await queries.cancelBooking(cancellationFixture, day, day, 1);
+      reply.complete(const LibraryWriteResult(LibraryWriteStatus.ok));
+      await running;
+      expect(reader.cancelCalls, 1);
+      expect(listReads, 2);
+      expect(queries.cancellation?.removed, true);
+      expect(queries.bookings?.rows, isEmpty);
+    },
+  );
+
+  test(
+    'lost cancellation response remains uncertain after a refresh and does not re-send',
+    () async {
+      final reader = FakeLibrarySeatReader()
+        ..onCancelBooking = ((_) async => throw StateError('synthetic timeout'))
+        ..onBookings = ((_, _, page) async =>
+            LibraryBookingPage([cancellationFixture], false, page: page));
+      final queries = LibrarySeatQueries(reader);
+      addTearDown(queries.dispose);
+      final day = DateTime(2099, 10, 10);
+      await queries.loadBookings(day, day, 1);
+      await queries.cancelBooking(cancellationFixture, day, day, 1);
+      await queries.cancelBooking(cancellationFixture, day, day, 1);
+      expect(reader.cancelCalls, 1);
+      expect(queries.cancellation?.status, LibraryWriteStatus.uncertain);
+      expect(queries.cancellation?.removed, false);
+      expect(queries.bookings?.rows, [cancellationFixture]);
+    },
+  );
+
+  test(
+    'a started reservation never reaches the cancellation transport',
+    () async {
+      const expired = LibraryBooking(
+        '8003',
+        '合成区域',
+        'N003',
+        '2000-10-10 09:00',
+        '2000-10-10 12:00',
+        2,
+      );
+      final reader = FakeLibrarySeatReader()
+        ..onBookings = ((_, _, page) async =>
+            LibraryBookingPage([expired], false, page: page));
+      final queries = LibrarySeatQueries(reader);
+      addTearDown(queries.dispose);
+      final day = DateTime(2000, 10, 10);
+      await queries.loadBookings(day, day, 1);
+      await queries.cancelBooking(expired, day, day, 1);
+      expect(reader.cancelCalls, 0);
+    },
+  );
+
+  testWidgets(
+    'cancel confirmation shows the target and keeps the booking when dismissed',
+    variant: androidOnly,
+    (tester) async {
+      final reader = FakeLibrarySeatReader()
+        ..onSeats = ((_, _) async => [seat()])
+        ..onBookings = ((_, _, page) async => LibraryBookingPage(
+          [cancellationFixture],
+          false,
+          page: page,
+          totalCount: 1,
+        ));
+      await tester.pumpWidget(
+        wrapLibraryPage(reader, now: () => DateTime(2099, 10, 10)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('我的预约'));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('取消预约'));
+      await tester.tap(find.text('取消预约'));
+      await tester.pumpAndSettle();
+      expect(find.text('确认取消预约'), findsOneWidget);
+      expect(find.textContaining('预约编号 8002').last, findsOneWidget);
+      await tester.tap(find.text('保留预约'));
+      await tester.pumpAndSettle();
+      expect(reader.cancelCalls, 0);
+      expect(find.text('确认取消预约'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  final day = DateTime(2026, 10, 10);
   DateTime at(int hour, [int minute = 0]) =>
       DateTime.utc(2026, 10, 10, hour - 8, minute);
 

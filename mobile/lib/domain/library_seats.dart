@@ -244,6 +244,19 @@ class LibraryBooking {
   final String id, room, seat, begin, end;
   final int? status;
 
+  bool canRequestCancellation(DateTime now) {
+    final flags = status;
+    final timestamp = begin.replaceFirst(' ', 'T');
+    final start = DateTime.tryParse('$timestamp:00+08:00');
+    const pending = 2 | 256 | 1024;
+    const ineligible = 4 | 16 | 64 | 128 | 512 | 2048 | 4096;
+    return flags != null &&
+        (flags & pending) != 0 &&
+        (flags & ineligible) == 0 &&
+        start != null &&
+        start.isAfter(now);
+  }
+
   factory LibraryBooking.fromJson(Map<String, dynamic> json) => LibraryBooking(
     json['id'] as String,
     json['room'] as String,

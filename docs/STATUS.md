@@ -14,6 +14,13 @@
 | 工程优化E | 旧Flutter/Java原型与关联清理，运行时资产迁移，文档按职责归并；分项检查通过 | 697de30、fdbbe82、d025f08及状态6c37980已推送；用户继续确认通过，进入F，未新增构建/设备/学校验证 |
 | 工程优化F | 分层CI、精确双包构建/核验、五条复用调试场景已实现；本地及分项远端证据见F节 | e2b39fd、0c35317、d756fed、f0c449c已推送；2026-11-16用户明确审核通过，A–F全部完成审核；主线集成见下节，main保护模板未应用，未发布/安装或新增学校验证 |
 
+## 2026-11-20 图书馆座位预约原生取消
+
+- 基线 `550fa77`。核对官网公开发布的个人预约列表脚本和请求模块。取消控件检查预约归属及生效、结束状态，确认后调用 `POST /ic-web/reserve/delete`，参数为记录的学校 UUID。提前结束与签离走独立操作。
+- 原生确认显示区域、座位、预约编号、起止时间和释放影响。确认后在同源 WebView 重新读取当前账号和原筛选页，匹配编号、归属、座位和时段，应用对已到起始时间或不具备已知可取消状态的记录停在预检。UUID 留在 WebView 内。收到学校接受响应后刷新预约列表，仅在完整筛选结果内确认原单已移除。响应丢失时提示查单，并抑制同会话重复操作。
+- 静态分析通过，Flutter 定向 35 项及图书馆读写脚本 14 项均通过。合成用例覆盖取消确认、归属和时段变化、重复点击、超过可取消时间、认证失效和响应丢失。真实学校的有单、写入和取消样本仍待本人确认。
+- 从 `550fa77` 和本阶段工作区构建普通包名 debug APK（0.3/code12），验签通过，SHA-256 为 `EB2CE7EF7C435A12FF71989C8AAC959E272E41D39F348094A896DD3A337CF7D9`。核对 APK 包内写入脚本与源码一致。Pixel 8 API 36 启动时 ADB 一度断开，恢复后重新安装并核对设备 APK 摘要。设置入口和原生「我的预约」可打开，未认证时显示登录提示。取消确认对话框的证据来自合成组件测试。
+
 ## 2026-11-20 图书馆座位预约原生预约确认与结果核对
 
 - 基于公开 `kjyy.bucm.edu.cn` 前端脚本与公开配置接口核实提交流程：移动版选座图（`chunk-a8895e30`）点击座位仅选中并跳转，不触发锁座，`freeUseSeatLockTime` 公开配置为 `'0'`；移动提交页（`chunk-2ddf8094`）确认后发出单次 `POST /ic-web/reserve` JSON（`sysKind: 8`、`memberKind: 1`、`resvProperty: 0`、`resvDev: [devId]`，`appAccNo` 与 `resvMember` 取自同源 `/ic-web/auth/userInfo`），并由 `ResearchInfo` 展示 `openTimes`、`minResvTime`/`maxResvTime`、`earliestResvTime`/`latestResvTime`、`cancelTime` 与 `limit` 规则。公开接口 `/ic-web/sysConfig/public` 返回 `resvCode: '0'`、`needToKnow: ''`、`resvTheme: '1'`、`resvthememust: null`、`classKindMemoRequired: '0'`、`resvTimeUnit: '10'`，规则中文文案对照 `/ic-web/Language/getLanList` 核实。
