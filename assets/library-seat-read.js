@@ -20,6 +20,9 @@ const timestamp = value => {
   }
   if (typeof value === 'string') {
     const trimmed = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)$/.test(trimmed)) {
+      return timestamp(Date.parse(trimmed));
+    }
     if (/^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])[ T](?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?$/.test(trimmed)) {
       return trimmed.slice(0, 16).replace('T', ' ');
     }

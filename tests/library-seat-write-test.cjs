@@ -86,8 +86,26 @@ test('cancellation resolves the owner and the unchanged booking in the session b
   assert.equal(calls[2].options.method, 'POST');
   assert.equal(calls[2].options.redirect, 'manual');
   assert.equal(calls[2].url.pathname, '/ic-web/reserve/delete');
-  assert.deepEqual([...calls[2].url.searchParams], [['uuid', cancellationRow.uuid]]);
+  assert.equal(calls[2].url.search, '');
+  assert.equal(calls[2].options.headers['Content-Type'], 'application/json;charset=UTF-8');
+  assert.deepEqual(JSON.parse(calls[2].options.body), {uuid: cancellationRow.uuid});
   assert.deepEqual(data, {status: 'ok', bookingId: '5566', message: '', reason: ''});
+});
+
+test('cancellation compares offset timestamps by instant with the school-time selection', async () => {
+  const zonedRow = {
+    ...cancellationRow,
+    resvBeginTime: '2099-08-18T01:00:00.000+00:00',
+    resvEndTime: '2099-08-18T04:00:00.000Z',
+  };
+  const matched = await runWrite(cancellation, cancellationResponse([zonedRow]));
+  assert.equal(matched.data.status, 'ok');
+  assert.equal(matched.calls.filter(call => call.options.method === 'POST').length, 1);
+
+  const moved = {...zonedRow, resvEndTime: '2099-08-18T04:00:00.000+01:00'};
+  const mismatched = await runWrite(cancellation, cancellationResponse([moved]));
+  assert.equal(mismatched.data.status, 'not_eligible');
+  assert.equal(mismatched.calls.filter(call => call.options.method === 'POST').length, 0);
 });
 
 test('cancellation sends no POST if ownership, time, status or the selected record changed', async () => {

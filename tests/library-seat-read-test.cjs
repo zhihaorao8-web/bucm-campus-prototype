@@ -190,6 +190,27 @@ test('bookings accept null empty data and stay scoped to seat records while keep
   assert.doesNotMatch(JSON.stringify(data), /合成账户|10086|resvDevInfoList/);
 });
 
+test('booking timestamps with explicit offsets display in school time across midnight', async () => {
+  const { data } = await read(
+    { action: 'bookings', begin: '2027-06-07', end: '2027-06-13', page: 1 },
+    {
+      code: 0, count: 1,
+      data: [{
+        classKind: 8, resvId: 14, resvStatus: 2,
+        resvBeginTime: '2027-06-08T23:30:00.000Z',
+        resvEndTime: '2027-06-09T02:00:00.000+02:00',
+        resvDevInfoList: [{ devName: '合成座位', roomName: '合成区域' }],
+      }],
+    },
+  );
+  assert.deepEqual(data, {
+    status: 'ok', count: 1, rows: [{
+      id: '14', room: '合成区域', seat: '合成座位', status: 2,
+      begin: '2027-06-09 07:30', end: '2027-06-09 08:00',
+    }],
+  });
+});
+
 test('authentication failure differs from an empty list and a network error', async () => {
   const job = { action: 'areas' };
   assert.equal((await read(job, { code: 300, data: null })).data.status, 'login');

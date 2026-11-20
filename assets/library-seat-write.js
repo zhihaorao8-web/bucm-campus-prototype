@@ -19,6 +19,9 @@ const instant = value => {
   if (Number.isSafeInteger(value)) return value;
   if (typeof value !== 'string') return NaN;
   const stamp = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)$/.test(stamp)) {
+    return Date.parse(stamp);
+  }
   if (!/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(stamp)) return NaN;
   return Date.parse(stamp.replace(' ', 'T') + '+08:00');
 };
@@ -202,10 +205,10 @@ try {
       ? row.uuid : '';
     if (!uuid) return result('web_required', {reason: 'cancellation'});
     const cancelUrl = new URL('/ic-web/reserve/delete', settings.origin);
-    cancelUrl.searchParams.set('uuid', uuid);
     posted = true;
     const cancelResp = await fetch(cancelUrl, {
       method: 'POST', headers, credentials: 'same-origin',
+      body: JSON.stringify({uuid}),
       cache: 'no-store', redirect: 'manual', signal: stop.signal,
     });
     if (cancelResp.type === 'opaqueredirect' || [401, 403].includes(cancelResp.status)) {
