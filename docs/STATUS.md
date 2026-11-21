@@ -4,7 +4,7 @@
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
-| 校园账号登录（阶段 2） | 设置独立登录页及课表认证恢复已实现，静态分析与 136 项受影响合成测试通过。Android API 37 真机完成本人 WebVPN 扫码并回到课表导入。手动重开 WebVPN 后复用会话，完成真实官方 XLS 导出与本地保存。[真机记录](#2026-11-21-校园账号登录阶段-2-真机验证) | 真机返回课表后，备用页面读取未恢复，最终提示学校页面暂未恢复。设置门户直连和教务独立登录页出现加载超时 |
+| 校园账号登录（阶段 2） | 基于 `acc5120` 修复 Android WebView 控制器判等与 `onLoadStop` 恢复时序；宿主 `--changed` 通过（`flutter-analyze` 0 问题、`flutter-default` 260 通过 / 6 条件跳过、`flutter-direct` 23 通过）；0.4/code13 debug 包（`3557f4f3`）已保留数据安装至 `Pixel_8_API_36` 模拟器与 USB 真机 `8560efd2`（`base.apk` SHA-256 一致）；模拟器登录前核对门户、教务直连 CAS 三标签/切签及超 25s 不超时、WebVPN 扫码及取消返回均通过。[修复与复核记录](#2026-11-21-校园账号登录阶段-2-webview-回调判等修复与登录前复核) · [848bd68 真机记录](#2026-11-21-校园账号登录阶段-2-真机验证) | 基于 `acc5120` 修复包完成本人真实登录后 `tp_nup/` 的就绪回跳与真机端到端自动恢复尚待本人实测复核 |
 | 校园账号登录（阶段 1，已审核通过） | 2026-11-21 在 `Pixel_8_API_36` 模拟器（0.4/code13 release 包 `e6256285`）完成官方认证流程验证与公开协议核查：图书馆直连实测账号密码、手机短信与企业微信扫码三种方式均完成本人登录、官方页回跳与原生只读恢复（`0` 写入）；同 CAS 会话免密复用进入教务系统（`jw.bucm.edu.cn`）；WebVPN 扫码登录与直连会话隔离并进入 `WebVPN - 资源站点`；真实「退出学校会话」验证保留离线课表且清除学校会话 | 轻新课堂 `/cc/` 在 SSO 跳过登录后停滞于空白 `#app`；门户根路径 `https://i.bucm.edu.cn/` 明文 301 重定向受阻（`https://i.bucm.edu.cn/tp_nup/` 可直达 200）；物理真机、门户登录回跳及 WebVPN 子业务恢复留待阶段 2/3 |
 | 0.4/code13 发布 | 源码 `7a73decf` 全量 `--all` 检查、精确 `main` CI `44750357261` 成功、隔离 R8 XLS `1/1`、双包签名与 release 模拟器抽查通过。`v0.4` 已预发布，四份附件的大小和 SHA-256 已核对。同一 release 包的真实退出学校会话已在上方校园账号登录阶段 1 验证。[0.4 发布说明](releases/0.4.md) | 物理真机性能/功耗与提交/取消、完整 TalkBack、预测返回及完整学期准确性仍待验 |
 | 0.3/code12发布 | 729663f本地合成/静态检查、隔离R8 XLS 1/1、同源双包签名/摘要、最终release模拟器抽查及4份远端附件核对 | 精确提交的Actions因当时账户计费限制未运行；用户仅就该次发布授权例外，不作为未来跳过CI规则 |
@@ -30,6 +30,18 @@
 - 使用源码 `ef39da2` 的 debug APK（SHA-256 `96eb4c89f13f7b05118fd5c743926b324c6d844aadf4c5be7011aa798eef292a`）确认备用页面读取能打开官方扫码页，但页面已可见时仍可能触发初始加载超时。补充 Android 页面可见回调，页面可见时即检查认证与目标状态。`python scripts/check.py --changed --base ef39da2` 的静态分析和 136 项合成测试通过，报告 `report-876d4da4111c4eab918544cc50e57a80.json`。
 - 源码 `e68e332` 的模拟器样本仍出现扫码页已显示而加载回调迟到。到达超时时限时，增加一次有界检查。官方扫码页已可见则保留，页面不可用则提示重试。`python scripts/check.py --changed --base e68e332` 的静态分析和 136 项合成测试通过，报告 `report-e229705325d346cc9e60b275904c6aa0.json`。
 - 用干净源码 `848bd68be63b08b1c2b0f0ce479736e9228b93ca` 构建正常包名 0.4/code13 debug APK，验签通过，保留数据安装后设备端 SHA-256 与本地一致（`89f004e2d68644fdf598d161fd875cd7651f5cbaca3b86914ac1c5505ff57516`）。从设置进入课表导入，点「页面读取（备用）」显示官方 WebVPN 扫码页，28 秒后扫码区仍可见。样本覆盖登录前路径，本人认证后的回跳、真实课表导出和物理真机仍待验。
+
+## 2026-11-21 校园账号登录阶段 2 WebView 回调判等修复与登录前复核
+
+- 根因定位：`flutter_inappwebview_android` 为 `onWebViewCreated` 与后续回调（`onLoadStart`、`onPageCommitVisible`、`onLoadStop`、`onReceivedError` 等）创建同一底层平台控制器的不同 Dart 包装实例；此前直接使用 `==` / `!=` 比较控制器，导致真实 Android 上回调全部被丢弃，表现为设置门户直连与教务独立登录页 25 秒超时、课表页返回后未感知学校页加载完成。
+- 修复范围（提交 `acc5120c09faf248b0eaec2fe2bb73bbd3d0cbd7`）：新增 [webview_identity.dart](../mobile/lib/platform/webview_identity.dart)（`sameWebViewController` 比对 `identical(a.platform, b.platform)`）并在 `CampusLoginPage`、`ImportPage`、`LibrarySeatPage` 统一复用；`campus_login_navigation.dart` 兼容 `/cas//login` 路径并校验 `.active` 类；`CampusLoginPage` 区分 `onPageCommitVisible` / `onLoadStop` 并支持 `onLoadStop` 补选默认账号密码；`ImportPage` 仅在 `onLoadStop` 消费 `_waitingForSchool` 恢复原操作；测试替身 `CampusLoginTestPlatform` 同步改为 `onWebViewCreated` 传入独立包装对象并新增 2 项回归用例。
+- 宿主检查：`python scripts/check.py --changed` 通过，报告 `build/checks/report-aff9e77f4b2547b998e03cc0ea9b472e.json`（`docs` 266 项本地目标、`flutter-analyze` 0 问题、`flutter-default` 260 通过 / 6 条件跳过、`flutter-direct` 23 通过）。
+- 构建与设备安装：在干净树 `acc5120` 执行 `python scripts/prepare_flutter.py` 后构建正常包名 0.4/code13 debug APK（SHA-256 `3557f4f32a5ea1db441ab76210d52054b664c7176c8bd99cf563a557f54c9fbd`），保留用户数据安装至 `Pixel_8_API_36` 模拟器（`emulator-5554`）与 USB 物理真机（`8560efd2`），两台设备端 `base.apk` SHA-256 均核对一致。
+- 模拟器登录前实测（`emulator-5554`，未输入凭据或清除会话）：
+  - `设置 → 登录校园账号`（`CampusLoginTarget.portal`）：`https://i.bucm.edu.cn/tp_nup/` 自动跳至 CAS 并渲染三枚原生 `ChoiceChip`，自动选中「账号密码」且网页展示账号/密码表单及「记住账号密码」「忘记密码」「立即登录」，静置超过 35 秒未超时；切换「手机号」显示图形/短信验证码控件，切换「企业微信扫码」显示扫码区与提示。
+  - `课表导入 → 学校 WebVPN → 页面读取（备用）`：`ImportPage` 自动识别 WebVPN 根路径需登录；独立登录页即刻显示 WebVPN 扫码区，系统返回退回课表页并提示「已取消登录，离线课表保留。」。
+  - `课表导入 → 教务系统（校内） → 自动导入`：`ImportPage` 自动识别教务 CAS；独立登录页显示 `学校官方页面 · 教务系统`、选中「账号密码」并展示「新教务系统」表单，静置超过 28 秒未超时，系统返回退回课表页并提示「已取消登录，离线课表保留。」。
+- 尚未验证边界：基于 `acc5120` 包在本人完成真实登录后门户 `tp_nup/` 的就绪回跳、课表与 WebVPN 端到端自动恢复及物理真机复测仍需用户本人操作核对。
 
 ## 2026-11-21 校园账号登录阶段 2 真机验证
 
