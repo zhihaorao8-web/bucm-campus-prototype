@@ -50,6 +50,13 @@ void main() {
   test('campus login permits only HTTPS CAS and the selected service', () {
     const target = CampusLoginTarget.portal;
     expect(target.allows('https://cas.bucm.edu.cn/cas/login'), isTrue);
+    expect(
+      campusCasForm(
+        'https://cas.bucm.edu.cn/cas//login?service=https%3A%2F%2Fi.bucm.edu.cn%2Ftp_up%2F',
+      ),
+      isTrue,
+    );
+    expect(campusCasForm('https://cas.bucm.edu.cn/cas/logout'), isFalse);
     expect(target.isDestination('https://i.bucm.edu.cn/tp_nup/'), isTrue);
     expect(target.isDestination('https://cas.bucm.edu.cn/cas/login'), isFalse);
     expect(target.isDestination('https://i.bucm.edu.cn/'), isFalse);
@@ -273,6 +280,121 @@ void main() {
     expect(view.controller.scripts, [campusVpnLoginScript]);
     await tester.pumpWidget(const SizedBox());
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+  testWidgets(
+    'campus login retries default password tab on loadStop and ignores stale WebView',
+    (tester) async {
+      final platform = CampusLoginTestPlatform();
+      final previous = InAppWebViewPlatform.instance;
+      InAppWebViewPlatform.instance = platform;
+      if (previous != null) {
+        addTearDown(() => InAppWebViewPlatform.instance = previous);
+      }
+      final outcomes = <bool>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async => outcomes.add(
+                await openCampusLogin(
+                  context,
+                  target: CampusLoginTarget.portal,
+                  reason: '登录后返回设置',
+                ),
+              ),
+              child: const Text('打开'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('打开'));
+      await tester.pump();
+      final first = platform.views.single;
+      const cas =
+          'https://cas.bucm.edu.cn/cas//login'
+          '?service=https%3A%2F%2Fi.bucm.edu.cn%2Ftp_up%2F';
+      var calls = 0;
+      first.controller.execute = (_) => ++calls > 1;
+      first.visit(cas, loaded: false);
+      first.params.onLoadStop?.call(first.web, WebUri(cas));
+      await tester.pumpAndSettle();
+      expect(first.controller.scripts, hasLength(2));
+      expect(find.widgetWithText(ChoiceChip, '账号密码'), findsOneWidget);
+
+      first.failLoad(cas);
+      await tester.pumpAndSettle();
+      expect(find.text('重试'), findsOneWidget);
+      await tester.tap(find.text('重试'));
+      await tester.pump();
+      expect(platform.views, hasLength(2));
+      final second = platform.views.last;
+
+      first.controller.ready = true;
+      first.visit(CampusLoginTarget.portal.entry);
+      await tester.pump(const Duration(seconds: 1));
+      expect(outcomes, isEmpty);
+      expect(find.byType(CampusLoginPage), findsOneWidget);
+
+      second.controller.ready = true;
+      second.visit(CampusLoginTarget.portal.entry);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(outcomes, [true]);
+      expect(find.byType(CampusLoginPage), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+  testWidgets(
+    'course import waits for loadStop before resuming pending action after login',
+    (tester) async {
+      final platform = CampusLoginTestPlatform();
+      final previous = InAppWebViewPlatform.instance;
+      InAppWebViewPlatform.instance = platform;
+      if (previous != null) {
+        addTearDown(() => InAppWebViewPlatform.instance = previous);
+      }
+      await tester.pumpWidget(app(MemoryRepository(const ScheduleData())));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('从学校导入课表'));
+      await tester.pumpAndSettle();
+      final importer = platform.views.single;
+      final controller = importer.controller;
+      await tester.tap(find.byTooltip('学校入口'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('教务系统（校内）'));
+      await tester.pumpAndSettle();
+      const teaching = CampusLoginTarget.teaching;
+      importer.visit('https://cas.bucm.edu.cn/cas/login');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('页面读取（备用）'));
+      await tester.pump();
+      final login = platform.views.last;
+      login.controller.ready = true;
+      login.visit(teaching.entry);
+      await tester.pumpAndSettle();
+      expect(find.byType(CampusLoginPage), findsNothing);
+      expect(find.text('正在返回教务系统。'), findsOneWidget);
+
+      importer.visit(teaching.entry, loaded: false);
+      await tester.pump();
+      expect(controller.scripts, isEmpty);
+      expect(find.text('正在返回教务系统。'), findsOneWidget);
+
+      await tester.runAsync(() async {
+        final operation = Completer<void>();
+        controller.execute = (_) {
+          if (!operation.isCompleted) operation.complete();
+          return {'full': false};
+        };
+        importer.params.onLoadStop?.call(importer.web, WebUri(teaching.entry));
+        await operation.future.timeout(const Duration(seconds: 5));
+      });
+      await tester.pumpAndSettle();
+      expect(controller.scripts, hasLength(1));
+      await tester.pumpWidget(const SizedBox());
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
   for (final scale in [1.0, 1.5]) {
     testWidgets('settings reverse keyboard focus clears the header: $scale', (
       tester,

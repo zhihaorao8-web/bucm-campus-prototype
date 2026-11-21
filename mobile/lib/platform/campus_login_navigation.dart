@@ -82,13 +82,13 @@ enum CampusLoginMethod {
       '''
 (() => {
   if (location.origin !== 'https://${SchoolEndpoints.casHost}' ||
-      location.pathname !== '${CampusLoginPolicy.casPath}') return false;
+      !/^\\/+cas\\/+login\\/?\$/.test(location.pathname)) return false;
   if (![${values.map((method) => "'a#${method._tab}'").join(', ')}]
       .every(selector => document.querySelector(selector)?.getClientRects().length)) {
     return false;
   }
   document.querySelector('a#$_tab').click();
-  return true;
+  return document.querySelector('a#$_tab')?.classList?.contains('active') === true;
 })()
 ''';
 }
@@ -96,7 +96,7 @@ enum CampusLoginMethod {
 bool campusCasForm(String? address) {
   final uri = _schoolHttps(address);
   return uri?.host == SchoolEndpoints.casHost &&
-      uri?.path == CampusLoginPolicy.casPath;
+      RegExp(r'^/+cas/+login/?$').hasMatch(uri!.path);
 }
 
 bool campusLoginDocument(String? address) {

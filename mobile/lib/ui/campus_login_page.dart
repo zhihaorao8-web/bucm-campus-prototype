@@ -8,6 +8,7 @@ import '../config/network_policy.dart';
 import '../design/app_tokens.dart';
 import '../platform/campus_login_navigation.dart';
 import '../platform/school_adapter.dart';
+import '../platform/webview_identity.dart';
 import 'app_controls.dart';
 import 'app_icons.dart';
 
@@ -46,12 +47,16 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
   int _document = 0;
   bool _loading = true;
   bool _switching = false;
+  bool _retryDefaultSelect = false;
   bool _completed = false;
   CampusLoginMethod? _method;
   String? _error;
 
   bool _current(InAppWebViewController web, int document) =>
-      mounted && !_completed && web == _web && document == _document;
+      mounted &&
+      !_completed &&
+      sameWebViewController(web, _web) &&
+      document == _document;
 
   @override
   void initState() {
@@ -77,7 +82,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
   }
 
   void _fail(InAppWebViewController web, String message) {
-    if (!mounted || web != _web || _completed) return;
+    if (!mounted || !sameWebViewController(web, _web) || _completed) return;
     _cancelTimers();
     setState(() {
       _web = null;
@@ -85,6 +90,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
       _loading = false;
       _method = null;
       _switching = false;
+      _retryDefaultSelect = false;
       _error = message;
     });
   }
@@ -103,7 +109,9 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
   }
 
   bool _checkDocument(InAppWebViewController web, WebUri? url) {
-    if (!mounted || web != _web || _completed) return false;
+    if (!mounted || !sameWebViewController(web, _web) || _completed) {
+      return false;
+    }
     if (url == null) return false;
     if (widget.target.allows(url.toString())) return true;
     _fail(web, '已停止打开非当前学校服务或统一身份认证的页面。');
@@ -170,19 +178,37 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
       selected = false;
     }
     if (!_current(web, document)) return;
+    final shouldRetry =
+        !selected &&
+        _retryDefaultSelect &&
+        method == CampusLoginMethod.password;
     setState(() {
       _method = selected ? method : null;
       _switching = false;
+      _retryDefaultSelect = false;
     });
+    if (shouldRetry) {
+      unawaited(_select(CampusLoginMethod.password));
+    }
   }
 
-  void _loaded(InAppWebViewController web, WebUri? url) {
+  void _loaded(
+    InAppWebViewController web,
+    WebUri? url, {
+    required bool complete,
+  }) {
     if (!_checkDocument(web, url)) return;
     _cancelTimers();
     setState(() => _loading = false);
     final address = url.toString();
     if (widget.target != CampusLoginTarget.vpn && campusCasForm(address)) {
-      if (_method == null) unawaited(_select(CampusLoginMethod.password));
+      if (_method == null) {
+        if (_switching && complete) {
+          _retryDefaultSelect = true;
+        } else {
+          unawaited(_select(CampusLoginMethod.password));
+        }
+      }
     } else if (widget.target.isDestination(address)) {
       final document = ++_document;
       _waitForPage(web, '学校服务暂未就绪，请检查网络后重试。');
@@ -233,11 +259,12 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
         _loading = true;
         _method = null;
         _switching = false;
+        _retryDefaultSelect = false;
       });
     },
     // Android can paint the official form while a subresource is still loading.
-    onPageCommitVisible: _loaded,
-    onLoadStop: _loaded,
+    onPageCommitVisible: (web, url) => _loaded(web, url, complete: false),
+    onLoadStop: (web, url) => _loaded(web, url, complete: true),
     onReceivedError: (web, request, _) {
       if (request.isForMainFrame == true) {
         _fail(web, '学校页面无法加载，请检查网络后重试。');
@@ -326,6 +353,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
                                   onPressed: () => setState(() {
                                     _error = null;
                                     _loading = true;
+                                    _retryDefaultSelect = false;
                                   }),
                                 ),
                               ],

@@ -14,6 +14,7 @@ import '../domain/schedule.dart';
 import '../platform/campus_login_navigation.dart';
 import '../platform/school_adapter.dart';
 import '../platform/classroom_session_cache.dart';
+import '../platform/webview_identity.dart';
 import 'app_controls.dart';
 import 'campus_login_page.dart';
 
@@ -168,12 +169,20 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     }
   }
 
-  Future<void> _pageLoaded(InAppWebViewController web, WebUri? url) async {
-    if (!mounted || web != controller) return;
+  Future<void> _pageLoaded(
+    InAppWebViewController web,
+    WebUri? url, {
+    required bool complete,
+  }) async {
+    if (!mounted || !sameWebViewController(web, controller)) return;
     final document = ++_document;
     final address = url?.toString();
     final authentication = await _isAuthentication(web, address);
-    if (!mounted || web != controller || document != _document) return;
+    if (!mounted ||
+        !sameWebViewController(web, controller) ||
+        document != _document) {
+      return;
+    }
     final queued = _waitingForSchool;
     if (queued != null) {
       if (authentication) {
@@ -181,7 +190,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         _waitingForSchool = null;
         _authTarget = campusLoginTargetFor(address, _entry);
         update('学校页面仍需登录，请重试。离线课表保留。');
-      } else if (queued.$1.isDestination(address)) {
+      } else if (complete && queued.$1.isDestination(address)) {
         timer?.cancel();
         _waitingForSchool = null;
         _authTarget = null;
@@ -202,7 +211,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         !authentication) {
       setState(() => _authTarget = null);
     }
-    if (!authentication) unawaited(resizeWeb(web, report: false));
+    if (!authentication && complete) {
+      unawaited(resizeWeb(web, report: false));
+    }
   }
 
   void _pageFailed(String message) {
@@ -771,8 +782,10 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                     initialSettings: settings(),
                     onWebViewCreated: (value) => controller = value,
                     onLoadStart: (_, _) => _document++,
-                    onPageCommitVisible: _pageLoaded,
-                    onLoadStop: _pageLoaded,
+                    onPageCommitVisible: (web, url) =>
+                        _pageLoaded(web, url, complete: false),
+                    onLoadStop: (web, url) =>
+                        _pageLoaded(web, url, complete: true),
                     shouldOverrideUrlLoading: (_, action) async {
                       if (authenticationUrl(
                         action.request.url?.toString() ?? '',

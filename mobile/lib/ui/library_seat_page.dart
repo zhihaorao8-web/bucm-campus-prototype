@@ -7,6 +7,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../config/network_policy.dart';
 import '../design/app_tokens.dart';
 import '../platform/library_seat_navigation.dart';
+import '../platform/webview_identity.dart';
 import 'app_controls.dart';
 import 'app_icons.dart';
 
@@ -26,7 +27,7 @@ class _LibrarySeatPageState extends State<LibrarySeatPage> {
   String? _error;
 
   void _showError(InAppWebViewController web, String message) {
-    if (!mounted || web != _web) return;
+    if (!mounted || !sameWebViewController(web, _web)) return;
     setState(() {
       _historyRevision++;
       _web = null;
@@ -37,7 +38,7 @@ class _LibrarySeatPageState extends State<LibrarySeatPage> {
   }
 
   bool _checkDocument(InAppWebViewController web, WebUri? url) {
-    if (!mounted || web != _web) return false;
+    if (!mounted || !sameWebViewController(web, _web)) return false;
     if (url == null || librarySeatNavigation(url.toString())) return true;
     _showError(web, '已停止加载非预约平台或学校认证页面。');
     return false;
@@ -46,7 +47,11 @@ class _LibrarySeatPageState extends State<LibrarySeatPage> {
   Future<void> _updateHistory(InAppWebViewController web) async {
     final revision = ++_historyRevision;
     final history = await web.getCopyBackForwardList();
-    if (!mounted || web != _web || revision != _historyRevision) return;
+    if (!mounted ||
+        !sameWebViewController(web, _web) ||
+        revision != _historyRevision) {
+      return;
+    }
     final entries = history?.list;
     final index = history?.currentIndex ?? -1;
     // Follow in-site history without resubmitting an earlier login form.
@@ -154,7 +159,9 @@ class _LibrarySeatPageState extends State<LibrarySeatPage> {
       if (librarySeatNavigation(action.request.url?.toString())) {
         return NavigationActionPolicy.ALLOW;
       }
-      if (mounted && web == _web && action.hasGesture == true) {
+      if (mounted &&
+          sameWebViewController(web, _web) &&
+          action.hasGesture == true) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('仅在此页面打开官方预约和统一身份认证。')));

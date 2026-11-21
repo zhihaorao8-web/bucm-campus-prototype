@@ -54,6 +54,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 | 页面脚本桥接 | `platform/classroom_page_scripts.dart`统一资产加载、命令编码、响应容量与直取超时；不读取凭据、请求头或WebView存储 | `classroom_direct_import_test.dart`、`classroom_name_merge_test.dart`、`classroom_recovery_page_test.dart` |
 | 原生播放准备 | `application/classroom_playback_preparation.dart`封装begin/play/prepare与错误文案；未handoff由准备器dispose，移交后由播放器拥有会话 | `classroom_preparation_test.dart`、`classroom_player_test.dart` |
 | 页面缓存 | `platform/classroom_session_cache.dart`：独占转移WebView句柄，最多2门/5分钟，clear递增revision | `classroom_session_cache_test.dart` |
+| WebView 控制器判等 | `platform/webview_identity.dart`：`sameWebViewController`（比对 `.platform` 底层实例，兼容 Android 回调与创建阶段的不同包装器） | `settings_test.dart` |
 | 本机续播 | `data/classroom_playback_progress.dart`校验身份/位置；`application/classroom_playback_progress_session.dart`协调选择、周期保存与清理 | `classroom_playback_progress_test.dart` |
 | 相邻错色/冲突布局 | `ui/course_colors.dart`分配色索引；`ui/week_grid.dart`按真实时间分片和层叠 | `course_colors_test.dart`、`week_stack_test.dart` |
 | 视觉策略/控件 | `design/app_palette.dart`、`design/app_tokens.dart`；`ui/visual_policy.dart`降级、`ui/app_controls.dart`维护按钮/分段指示器 | `quiet_design_test.dart`、`classroom_ui_polish_test.dart`、`appearance_test.dart` |

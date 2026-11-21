@@ -31,6 +31,17 @@ class CampusLoginTestView extends PlatformInAppWebViewWidget {
     }
   }
 
+  void failLoad(String address, {bool mainFrame = true}) {
+    params.onReceivedError?.call(
+      web,
+      WebResourceRequest(url: WebUri(address), isForMainFrame: mainFrame),
+      WebResourceError(
+        type: WebResourceErrorType.TIMEOUT,
+        description: 'timeout',
+      ),
+    );
+  }
+
   @override
   T controllerFromPlatform<T>(PlatformInAppWebViewController controller) =>
       params.controllerFromPlatform!(controller) as T;
@@ -59,7 +70,11 @@ class _CampusLoginSurfaceState extends State<_CampusLoginSurface> {
         view.controller,
       );
       view.platform.views.add(view);
-      view.params.onWebViewCreated?.call(view.web);
+      // Mirror flutter_inappwebview_android, which creates a separate wrapper
+      // for onWebViewCreated than for subsequent callbacks.
+      view.params.onWebViewCreated?.call(
+        view.controllerFromPlatform<InAppWebViewController>(view.controller),
+      );
     });
   }
 
