@@ -152,7 +152,7 @@ void main() {
     expect(platform.views.last.controller.scripts, isEmpty);
     final vpn = platform.views.last;
     vpn.controller.execute = (source) => source == campusVpnLoginScript;
-    vpn.visit(CampusLoginTarget.vpn.entry);
+    vpn.visit(CampusLoginTarget.vpn.entry, loaded: false);
     await tester.pump();
     await tester.pump(const Duration(seconds: 26));
     expect(find.text('重试'), findsNothing);
@@ -253,7 +253,7 @@ void main() {
     await tester.pumpAndSettle();
     final view = platform.views.single;
     view.controller.execute = (source) => source == campusVpnLoginScript;
-    view.visit(CampusLoginTarget.vpn.entry);
+    view.visit(CampusLoginTarget.vpn.entry, loaded: false);
     await tester.pumpAndSettle();
     expect(find.text('需要登录校园账号后继续。'), findsOneWidget);
     await tester.tap(find.text('页面读取（备用）'));

@@ -20,11 +20,15 @@ class CampusLoginTestView extends PlatformInAppWebViewWidget {
   @override
   Widget build(BuildContext context) => _CampusLoginSurface(view: this);
 
-  void visit(String address) {
+  void visit(String address, {bool loaded = true}) {
     final url = WebUri(address);
     controller.address = url;
     params.onLoadStart?.call(web, url);
-    params.onLoadStop?.call(web, url);
+    if (loaded) {
+      params.onLoadStop?.call(web, url);
+    } else {
+      params.onPageCommitVisible?.call(web, url);
+    }
   }
 
   @override

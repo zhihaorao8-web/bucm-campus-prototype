@@ -158,10 +158,11 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
     setState(() => _loading = false);
     final address = url.toString();
     if (widget.target != CampusLoginTarget.vpn && campusCasForm(address)) {
-      unawaited(_select(_method ?? CampusLoginMethod.password));
+      if (_method == null) unawaited(_select(CampusLoginMethod.password));
     } else if (widget.target.isDestination(address)) {
+      final document = ++_document;
       _waitForPage(web, '学校服务暂未就绪，请检查网络后重试。');
-      unawaited(_inspectPage(web, _document));
+      unawaited(_inspectPage(web, document));
     }
   }
 
@@ -210,6 +211,8 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
         _switching = false;
       });
     },
+    // Android can paint the official form while a subresource is still loading.
+    onPageCommitVisible: _loaded,
     onLoadStop: _loaded,
     onReceivedError: (web, request, _) {
       if (request.isForMainFrame == true) {

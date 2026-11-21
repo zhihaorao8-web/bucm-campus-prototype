@@ -771,6 +771,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                     initialSettings: settings(),
                     onWebViewCreated: (value) => controller = value,
                     onLoadStart: (_, _) => _document++,
+                    onPageCommitVisible: _pageLoaded,
                     onLoadStop: _pageLoaded,
                     shouldOverrideUrlLoading: (_, action) async {
                       if (authenticationUrl(
