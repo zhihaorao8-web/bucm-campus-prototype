@@ -42,6 +42,7 @@ class NameImportController extends fake.RecoveryController {
   String phase = 'catalog', selectedId = 'a';
   String? pendingState;
   String? firstPlayState;
+  bool vpnLoginShell = false;
   int prematureRoutes = 0;
   bool failSecond = true;
   final visited = <String>[];
@@ -49,10 +50,13 @@ class NameImportController extends fake.RecoveryController {
   @override
   dynamic getViewId() => 'synthetic-view';
   @override
+  Future<WebUri?> getUrl() async => vpnLoginShell ? WebUri(vpnEntry) : null;
+  @override
   Future<dynamic> evaluateJavascript({
     required String source,
     ContentWorld? contentWorld,
   }) async {
+    if (source == campusVpnLoginScript) return vpnLoginShell;
     if (pendingState != null) {
       if (source.contains('var command =')) {
         final command =
@@ -175,6 +179,7 @@ void main() {
     ('authentication', classroomProbe, 'switch-account'),
     ('authentication', classroomProbe, 'forbidden'),
     ('play-command', classroomProbe, 'resume'),
+    ('vpn-root', vpnEntry, 'resume'),
   ]) {
     testWidgets('录播任务恢复 $pending $route $outcome', (tester) async {
       final cache = ClassroomSessionCache.shared;
@@ -188,10 +193,16 @@ void main() {
         ),
         revision: cache.revision,
       );
+      final duringPreparation = pending == 'play-command' || pending == 'vpn-root';
       final controller = NameImportController()
         ..failSecond = false
-        ..pendingState = pending == 'play-command' ? null : pending
-        ..firstPlayState = pending == 'play-command' ? 'authentication' : null;
+        ..pendingState = duringPreparation ? null : pending
+        ..firstPlayState = switch (pending) {
+          'play-command' => 'authentication',
+          'vpn-root' => 'navigate',
+          _ => null,
+        }
+        ..vpnLoginShell = pending == 'vpn-root';
       final platform = PlaybackLoginPlatform(controller);
       InAppWebViewPlatform.instance = platform;
       const channel = MethodChannel('cn.bucm.campus/playback');
@@ -242,14 +253,14 @@ void main() {
       expect(controller.prematureRoutes, 0);
       expect(controller.played, isEmpty);
       expect(find.text('学校数据已变化，请刷新列表后重试。'), findsNothing);
-      if (pending == 'authentication' || pending == 'play-command') {
+      if (pending == 'authentication' || duringPreparation) {
         final login = platform.login.views.single;
         final target = route == vpnEntry
             ? CampusLoginTarget.vpn
             : CampusLoginTarget.classroom;
         expect(login.params.initialUrlRequest?.url.toString(), target.loginEntry);
         expect(nativeCalls.where((action) => action == 'begin'),
-            hasLength(pending == 'play-command' ? 1 : 0));
+            hasLength(duringPreparation ? 1 : 0));
         if (outcome == 'switch-account') {
           final messenger = tester.binding.defaultBinaryMessenger;
           final folder = await tester.runAsync(
@@ -276,6 +287,7 @@ void main() {
             expect(nativeCalls, isNot(contains('prepare')));
           }
           controller.phase = 'catalog';
+          controller.vpnLoginShell = false;
           login.controller.execute = (script) => target == CampusLoginTarget.vpn
               ? true
               : jsonEncode({'state': 'catalog'});
@@ -285,7 +297,7 @@ void main() {
       controller.pendingState = outcome == 'forbidden' ? 'forbidden' : null;
       await ticks(10);
       expect(controller.visited, outcome == 'resume'
-          ? ['a', if (pending == 'play-command') 'a']
+          ? ['a', if (duringPreparation) 'a']
           : isEmpty);
       expect(controller.played, outcome == 'resume' ? ['a'] : isEmpty);
       expect(nativeCalls.where((action) => action == 'prepare'),

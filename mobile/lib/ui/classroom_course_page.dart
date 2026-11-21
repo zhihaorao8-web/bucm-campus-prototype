@@ -1663,10 +1663,18 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
             const {'UNTRUSTED_PAGE', 'PREPARE', 'POLICY'}.contains(error.code))) {
       return false;
     }
+    final web = tab.controller;
+    if (web == null) return false;
     try {
-      final address = await tab.controller?.getUrl()
-          .timeout(ClassroomLimits.readyTimeout);
+      final address = await web.getUrl().timeout(ClassroomLimits.readyTimeout);
       if (campusLoginDocument(address?.toString())) return true;
+      if (address?.host == SchoolEndpoints.vpnHost &&
+          (address?.path == '/' || address?.path == '')) {
+        final vpnLogin = await web
+            .evaluateJavascript(source: campusVpnLoginScript)
+            .timeout(ClassroomLimits.readyTimeout);
+        if (vpnLogin == true) return true;
+      }
       final snapshot = await script(tab, {'action': 'snapshot'})
           .timeout(ClassroomLimits.readyTimeout);
       return snapshot['state'] == 'authentication';
