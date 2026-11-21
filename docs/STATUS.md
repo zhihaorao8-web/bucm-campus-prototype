@@ -4,11 +4,45 @@
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
+| 校园账号登录（阶段 1） | 2026-11-21 在 `Pixel_8_API_36` 模拟器（0.4/code13 release 包 `e6256285`）完成官方认证流程验证与公开协议核查：图书馆直连实测账号密码、手机短信与企业微信扫码三种方式均完成本人登录、官方页回跳与原生只读恢复（`0` 写入）；同 CAS 会话免密复用进入教务系统（`jw.bucm.edu.cn`）；WebVPN 扫码登录与直连会话隔离并进入 `WebVPN - 资源站点`；真实「退出学校会话」验证保留离线课表且清除学校会话 | 轻新课堂 `/cc/` 在 SSO 跳过登录后停滞于空白 `#app`；门户根路径 `https://i.bucm.edu.cn/` 明文 301 重定向受阻（`https://i.bucm.edu.cn/tp_nup/` 可直达 200）；物理真机、门户登录回跳及 WebVPN 子业务恢复留待阶段 2/3 |
 | 0.4/code13 发布 | 源码 `7a73decf` 全量 `--all` 检查、精确 `main` CI `44750357261` 成功、隔离 R8 XLS `1/1`、双包签名与 release 模拟器抽查通过。`v0.4` 已预发布，四份附件的大小和 SHA-256 已核对。[0.4 发布说明](releases/0.4.md) | 物理真机性能/功耗与提交/取消、真实退出学校会话、完整 TalkBack、预测返回及完整学期准确性仍待验 |
 | 0.3/code12发布 | 729663f本地合成/静态检查、隔离R8 XLS 1/1、同源双包签名/摘要、最终release模拟器抽查及4份远端附件核对 | 精确提交的Actions因当时账户计费限制未运行；用户仅就该次发布授权例外，不作为未来跳过CI规则 |
 | 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
 | 学校链路 | 历史分项XLS导入、直连目录、短时播放和续播样本 | 全学期独立准确性、完整课时、水印组合、WebVPN恢复、真实认证失效及7天会话待验 |
-| 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）、7B（`9d5d2bd`）与 7C（`b4227e5`）已全部获用户审核通过；三级渐进空间选座及顶栏 B1 统一阶段 8A（`cf0189b`）、8B（`bf2e2e2`）、8C（`6c47522`）与 8D（`ff716b2`）已全部获用户审核通过，通过主机变更检查（`report-fb07fac86c6944828ac2fa41d4fb9608.json`）与 Pixel 8 API 36 真实校园会话深/浅色只读验收（0 POST 写入） | 真实退出会话与真机提交/取消另行验收 |
+| 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）、7B（`9d5d2bd`）与 7C（`b4227e5`）已全部获用户审核通过；三级渐进空间选座及顶栏 B1 统一阶段 8A（`cf0189b`）、8B（`bf2e2e2`）、8C（`6c47522`）与 8D（`ff716b2`）已全部获用户审核通过，通过主机变更检查（`report-fb07fac86c6944828ac2fa41d4fb9608.json`）与 Pixel 8 API 36 真实校园会话深/浅色只读验收（0 POST 写入） | 真实退出会话已在模拟器验证，物理真机提交/取消另行验收 |
+
+## 2026-11-21 校园账号登录阶段 1 官方认证流程验证
+
+- 日期：2026-11-21
+- 被测环境与包身份：工作分支 `codex/campus-account-login`（基线 `945d9b1`）；被测安装包为已安装于 **Android 模拟器 `Pixel_8_API_36`**（`emulator-5554`，`1080×2400`，浅色模式）的 0.4（`versionCode=13`）release 包（发布源码 `7a73decf7f887af4fb296ce84ed8107ec1448269`，设备端 `base.apk` SHA-256 `e6256285158bd8a215843c37168573cddce4199fb1e380786907db2aae17c4a1`，与 `dist/release-0.4/` 一致）。全程不忽略 TLS 校验、不记录任何凭据或个人数据，图书馆保持 `0` 次预约/取消写操作；尚未在物理真机验证。
+
+### 三种直连方式与 WebVPN 分项结果
+
+| 方式 / 入口 | 入口可见 | 本人登录 | 返回目标服务与复用结果 | 测试设备与边界 |
+|---|---|---|---|---|
+| 账号密码登录<br>（直连 CAS `login10.js`） | 通过（`#password_login`、`#un`、`#pd`、`#rememberName`、`#pwd_url`、`#index_login_btn` 均可见） | 通过（本人在 `LibrarySeatPage` 账号登录页提交完成） | 图书馆回跳官方首页并「返回应用」自动只读恢复 `共 4 层 · 16 个区域`；同会话下 `ImportPage → 教务系统（校内）`（`jw.bucm.edu.cn`）免密 SSO 复用直接进入教务桌面；轻新课堂（`qhz.bucm.edu.cn/cc/`）已跳过 CAS 登录表单但停滞于空白 `#app`（未自动推进到 `coursePlatform`，单列缺口） | `Pixel_8_API_36` 模拟器；`0` 次写入；未测门户 `tp_nup/` 回跳 |
+| 手机号登录<br>（直连 CAS `login10.js`） | 通过（`#loginByMobile`、`#loginMobile`、`#sendConfirm`、`#codeImage`、`#phoneCode`、`#getMobileVerifyCode`、`#finishloginbymobile` 可见，软键盘弹起无重叠遮挡） | 通过（本人填写手机号、图形验证码与短信验证码并送达提交） | 回跳 `北京中医药大学图书馆预约服务平台`，点击「返回应用」后原生图书馆自动恢复 `共 4 层 · 16 个区域` | `Pixel_8_API_36` 模拟器；`0` 次写入 |
+| 企业微信扫码<br>（直连 CAS `login10.js`） | 通过（默认激活 `#qrcode_login`，`#qrcode` 约 `402×415 px`；`login-qrcode.js` 本地生成并同源轮询 `/checkQRCodeScan`，不嵌入微信第三方 iframe） | 通过（本人使用绑定企业微信扫码确认） | 回跳 `北京中医药大学图书馆预约服务平台`，点击「返回应用」后原生图书馆自动恢复 `共 4 层 · 16 个区域` | `Pixel_8_API_36` 模拟器；`0` 次写入 |
+| WebVPN 扫码<br>（`webvpn.bucm.edu.cn/login` 及 WebVPN CAS `login4.js`） | 通过（仅开放 `wrd_qrcode` 统一认证扫码；桌面宽视口下 `#bucm-qrcode` 约 `100×114 px` 需缩放方便扫码；且直连 CAS 已登录时 WebVPN 仍未登录，实证会话隔离） | 通过（本人扫码确认登录） | 回跳 `WebVPN - 资源站点` 门户，可见「最近访问」「本科教务系统（`jw.bucm.edu.cn`）」「智慧教学平台（`qhz.bucm.edu.cn/cc/`）」「办公系统」「业务系统」「其他资源」 | `Pixel_8_API_36` 模拟器；WebVPN 下进入教务/录播子系统待阶段 2/3 端到端验证 |
+
+### 取消、返回与真实退出会话
+
+- `LibrarySeatPage` 与 `ImportPage` 在未登录认证页按 Android 系统返回（`KEYCODE_BACK`）均干净退回原页面，无自动写操作或意外重发。
+- 经用户授权两次在「设置 → 退出学校会话」（`SchoolAdapter.clearSession`）执行真实会话清理，核对设置页离线课表（`2026-2027-1 学期`）继续保留，切换至「图书馆」页恢复未登录提示（`学校会话已清除`），确认 WebView 会话与图书馆状态已被真实清除。
+
+### 公开协议核查与已发现缺口
+
+1. **门户根路径明文重定向**：公开只读请求及 `ImportPage → 数字北中医`（`https://i.bucm.edu.cn/`）实测均先返回 `301 Location: http://i.bucm.edu.cn/tp_nup`，在 Android WebView 严格禁止明文 HTTP 下直接报错 `net::ERR_CLEARTEXT_NOT_PERMITTED`；直接请求 `https://i.bucm.edu.cn/tp_nup/` 可跳过明文跳直接返回 HTTPS 200，留待阶段 2 调整并验证。
+2. **轻新课堂 `/cc/` 首页初始化停滞**：在已登录 CAS 会话下打开 `统一导入录播`（`qhz.bucm.edu.cn/cc/`），虽跳过 CAS 登录页但停留在标题为 `智慧教学平台` 的空白 `#app` 页（进度条持续、`继续导入` 按钮禁用）；手动切换「数字北中医（直接访问）」除受 `i.bucm.edu.cn` 明文重定向影响外，[classroom-entry.js](../assets/classroom-entry.js) 也未将 `i.bucm.edu.cn` 识别为合法入口宿主，留待阶段 3 衔接修复。
+3. **WebVPN 服务端仅开放扫码**：校方 `webvpn.bucm.edu.cn/login` 及 `cas.bucm.edu.cn/cas/login?service=https%3A%2F%2Fwebvpn.bucm.edu.cn%2Flogin%3Fcas_login%3Dtrue`（`login4.js`）均未提供账号密码与手机短信标签，仅开放统一认证扫码。
+4. **教务直连 TLS 链**：Python 默认信任库对 `jw.bucm.edu.cn:443` 报 `unable to get local issuer certificate`（颁发者为 `GeoTrust G2 TLS CN RSA4096 SHA256 2022 CA1`），但 Android WebView 在正常 TLS 校验下可直接通过并跳转到三标签 CAS 页。
+
+### 阶段 1 设计选择依据（供审核）
+
+- **直连四业务合并与 WebVPN 独立**：门户、教务、录播、图书馆四项直连均指向同一 `cas.bucm.edu.cn` 三标签页面（`login10.js`）且共享 Android WebView `CookieManager` 会话，可合并共用统一「校园账号登录」页实现一次认证多业务免密复用，各业务保留各自回跳目标与独立恢复校验；WebVPN 因会域隔离且仅支持扫码，保留为校外独立通道。
+- **方式选择器 vs 完整官方页**：`login10.js` 不支持 URL 参数直达指定标签；基于用户已授权在 CAS 加载后执行受限脚本仅 `.click()` 切换标签，直连场景下**采用原生方式选择器并默认切至「账号密码」**；检测到 WebVPN 或目标页面缺少对应标签时自动回落直接展示官方页，不呈现不可用选项。
+- **白名单保持不变**：直连与 WebVPN 二维码均在页面本地绘制并轮询同源 `/checkQRCodeScan`，不嵌入微信第三方 iframe，[library_seat_navigation.dart](../mobile/lib/platform/library_seat_navigation.dart) 无需放宽域名白名单。
+- **尚未验证项**：物理真机、门户 `https://i.bucm.edu.cn/tp_nup/` 实际登录回跳、WebVPN 进入教务/录播子系统的端到端恢复、独立登录页在 320px/2.0x/无障碍下的适配（留待阶段 2/3）。
 
 ## 2026-11-20 0.4（code 13）版本核验与标签发布
 
