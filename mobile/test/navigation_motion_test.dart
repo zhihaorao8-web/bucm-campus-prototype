@@ -66,7 +66,7 @@ void main() {
             const PageStorageKey('settings-page'),
             skipOffstage: false,
           ),
-          matching: find.text('教务同步', skipOffstage: false),
+          matching: find.text('登录校园账号', skipOffstage: false),
         );
         final settingsY = tester.getTopLeft(settingsTitle).dy;
         await tester.tap(find.byKey(const ValueKey('tab-0')));

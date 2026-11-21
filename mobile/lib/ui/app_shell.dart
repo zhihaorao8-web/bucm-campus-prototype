@@ -866,6 +866,7 @@ class _AppShellState extends ConsumerState<AppShell>
   }
 
   Widget settings(ScheduleData data, EdgeInsets insets) {
+    final colors = Theme.of(context).colorScheme;
     final semester = data.semesters.contains(selectedSemester)
         ? selectedSemester
         : data.semesters.firstOrNull;
@@ -880,7 +881,47 @@ class _AppShellState extends ConsumerState<AppShell>
             padding: pagePadding(insets.copyWith(top: 0)),
             sliver: SliverList.list(
               children: [
-                sectionLabel('教务同步'),
+                QuietCard(
+                  key: const ValueKey('campus-account-card'),
+                  cornerRadius: AppRadius.card,
+                  insideMargin: EdgeInsets.zero,
+                  child: AppArrowPreference(
+                    key: const ValueKey('settings-campus-login'),
+                    title: '登录校园账号',
+                    summary: demo
+                        ? '退出示例后可通过学校官方页面登录'
+                        : '北京中医药大学统一身份认证 · 官方页面登录',
+                    enabled: !busy && !demo,
+                    startAction: Container(
+                      width: 36,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(AppRadius.small),
+                      ),
+                      child: AppIcon(
+                        AppIcons.globe,
+                        size: 20,
+                        color: (!busy && !demo)
+                            ? colors.primary
+                            : colors.onSurfaceVariant,
+                      ),
+                    ),
+                    onClick: () => runAction(() async {
+                      final opened = await openCampusLogin(
+                        context,
+                        target: CampusLoginTarget.teaching,
+                        reason: '登录后返回设置',
+                      );
+                      if (mounted && opened) {
+                        message('校园账号登录成功，教务系统已可访问', success: true);
+                      }
+                    }),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.xl),
+                sectionLabel('课表与录播'),
                 ScheduleSyncCard(
                   semester: semester,
                   updated: semester == null
@@ -888,11 +929,22 @@ class _AppShellState extends ConsumerState<AppShell>
                       : data.lastImportFor(semester),
                   demo: demo,
                   onImport: busy ? null : openImport,
+                  footer: AppArrowPreference(
+                    key: const ValueKey('settings-import-recordings'),
+                    title: '导入本学期录播',
+                    summary: demo
+                        ? '退出示例后可导入本学期录播'
+                        : data.courses.isEmpty
+                        ? '请先导入本学期课表'
+                        : '汇总当前学期课程的轻新课堂录播',
+                    startAction: const AppIcon(AppIcons.mediaLibrary),
+                    enabled: !busy && !demo && data.courses.isNotEmpty,
+                    onClick: importClassroom,
+                  ),
                 ),
-                const SizedBox(height: 24),
-                sectionLabel('外观'),
+                const SizedBox(height: AppSpace.xl),
                 QuietCard(
-                  cornerRadius: 24,
+                  cornerRadius: AppRadius.card,
                   insideMargin: EdgeInsets.zero,
                   child: AppArrowPreference(
                     title: '外观设置',
@@ -905,20 +957,7 @@ class _AppShellState extends ConsumerState<AppShell>
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                sectionLabel('轻新课堂'),
-                QuietCard(
-                  cornerRadius: 24,
-                  insideMargin: EdgeInsets.zero,
-                  child: AppArrowPreference(
-                    title: '统一导入录播',
-                    summary: '当前学期课表课程 · 导入后直接查看列表',
-                    startAction: const AppIcon(AppIcons.mediaLibrary),
-                    enabled: !busy && !demo && data.courses.isNotEmpty,
-                    onClick: importClassroom,
-                  ),
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.xl),
                 sectionLabel('校园服务'),
                 QuietCard(
                   cornerRadius: AppRadius.card,
@@ -934,7 +973,7 @@ class _AppShellState extends ConsumerState<AppShell>
                 const SizedBox(height: AppSpace.xl),
                 sectionLabel('登录与隐私'),
                 QuietCard(
-                  cornerRadius: 24,
+                  cornerRadius: AppRadius.card,
                   insideMargin: EdgeInsets.zero,
                   child: Column(
                     children: [
@@ -944,22 +983,6 @@ class _AppShellState extends ConsumerState<AppShell>
                           '密码只在学校官方页面输入。应用不保存密码，不上传课表。学校会话失效后，需要你重新登录。',
                           style: TextStyle(fontSize: AppType.body, height: 1.5),
                         ),
-                      ),
-                      AppArrowPreference(
-                        title: '登录校园账号',
-                        summary: '打开北京中医药大学统一身份认证',
-                        enabled: !busy && !demo,
-                        startAction: const AppIcon(AppIcons.globe),
-                        onClick: () => runAction(() async {
-                          final opened = await openCampusLogin(
-                            context,
-                            target: CampusLoginTarget.teaching,
-                            reason: '登录后返回设置',
-                          );
-                          if (mounted && opened) {
-                            message('校园账号登录成功，教务系统已可访问', success: true);
-                          }
-                        }),
                       ),
                       AppArrowPreference(
                         title: '退出学校会话',
@@ -1003,9 +1026,9 @@ class _AppShellState extends ConsumerState<AppShell>
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.xl),
                 QuietCard(
-                  cornerRadius: 24,
+                  cornerRadius: AppRadius.card,
                   insideMargin: EdgeInsets.zero,
                   child: AppArrowPreference(
                     key: const ValueKey('project-info-entry'),

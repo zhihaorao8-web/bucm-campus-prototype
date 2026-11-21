@@ -894,6 +894,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
+      await reveal(tester, find.text('外观设置'));
       await tester.tap(find.text('外观设置'));
       await tester.pumpAndSettle();
       await reveal(
@@ -1003,4 +1004,154 @@ void main() {
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );
+  testWidgets(
+    'settings stage 1 orders account, combined schedule/recordings and appearance and handles empty, populated, demo, busy and canceled login states',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      bool rowEnabled(String key) => tester
+          .widget<MiuixBasicComponent>(
+            find.descendant(
+              of: find.byKey(ValueKey(key)),
+              matching: find.byType(MiuixBasicComponent),
+            ),
+          )
+          .enabled;
+
+      // 1. Empty schedule state
+      await tester.pumpWidget(app(MemoryRepository(const ScheduleData())));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
+      await tester.pumpAndSettle();
+
+      final accountCard = find.byKey(const ValueKey('campus-account-card'));
+      final syncCard = find.byKey(const ValueKey('schedule-sync-card'));
+      final loginRow = find.byKey(const ValueKey('settings-campus-login'));
+      final scheduleCta = find.byKey(const ValueKey('settings-import-schedule'));
+      final recordingsRow = find.byKey(
+        const ValueKey('settings-import-recordings'),
+      );
+      final appearanceText = find.text('外观设置');
+
+      expect(accountCard, findsOneWidget);
+      expect(syncCard, findsOneWidget);
+      expect(find.text('课表与录播'), findsOneWidget);
+      expect(find.text('北京中医药大学统一身份认证 · 官方页面登录'), findsOneWidget);
+      expect(find.text('尚未导入课表'), findsOneWidget);
+      expect(find.text('从学校导入课表'), findsOneWidget);
+      expect(find.text('请先导入本学期课表'), findsOneWidget);
+      expect(
+        find.descendant(of: syncCard, matching: recordingsRow),
+        findsOneWidget,
+      );
+      expect(
+        tester.getTopLeft(loginRow).dy,
+        lessThan(tester.getTopLeft(syncCard).dy),
+      );
+      expect(
+        tester.getBottomLeft(scheduleCta).dy,
+        lessThan(tester.getTopLeft(recordingsRow).dy),
+      );
+      expect(
+        tester.getTopLeft(appearanceText).dy,
+        greaterThan(tester.getBottomLeft(syncCard).dy),
+      );
+      expect(rowEnabled('settings-campus-login'), isTrue);
+      expect(tester.widget<FilledButton>(scheduleCta).onPressed, isNotNull);
+      expect(rowEnabled('settings-import-recordings'), isFalse);
+
+      // 2. Demo state disables account, schedule and recordings entries
+      await tester.tap(find.byKey(const ValueKey('tab-0')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('先体验合成示例'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
+      await tester.pumpAndSettle();
+      expect(find.text('退出示例后可通过学校官方页面登录'), findsOneWidget);
+      expect(find.text('退出示例后导入本人课表'), findsOneWidget);
+      expect(find.text('退出示例后可导入本学期录播'), findsOneWidget);
+      expect(rowEnabled('settings-campus-login'), isFalse);
+      expect(tester.widget<FilledButton>(scheduleCta).onPressed, isNull);
+      expect(rowEnabled('settings-import-recordings'), isFalse);
+      await tester.pumpWidget(const SizedBox());
+
+      // 3. Populated schedule + canceled login + busy state
+      final platform = CampusLoginTestPlatform();
+      final previous = InAppWebViewPlatform.instance;
+      InAppWebViewPlatform.instance = platform;
+      if (previous != null) {
+        addTearDown(() => InAppWebViewPlatform.instance = previous);
+      }
+
+      final repo = _PendingRepository(ScheduleData(courses: [sample()]));
+      await tester.pumpWidget(app(repo));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('2026-2027-1 学期'), findsOneWidget);
+      expect(find.text('导入或刷新课表'), findsOneWidget);
+      expect(find.text('汇总当前学期课程的轻新课堂录播'), findsOneWidget);
+      expect(rowEnabled('settings-campus-login'), isTrue);
+      expect(tester.widget<FilledButton>(scheduleCta).onPressed, isNotNull);
+      expect(rowEnabled('settings-import-recordings'), isTrue);
+
+      // Cancel campus login and verify return to Settings with no success toast
+      await tester.tap(loginRow);
+      await tester.pump();
+      expect(
+        platform.views.single.params.initialUrlRequest?.url.toString(),
+        SchoolEndpoints.teachingCasLogin,
+      );
+      platform.views.single.visit('https://cas.bucm.edu.cn/cas/login');
+      await tester.pumpAndSettle();
+      expect(find.byType(CampusLoginPage), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(CampusLoginPage), findsNothing);
+      expect(find.text('校园账号登录成功，教务系统已可访问'), findsNothing);
+      expect(rowEnabled('settings-campus-login'), isTrue);
+
+      // Busy state disables account, schedule CTA and recordings row until completion
+      repo.gate = Completer<void>();
+      repo.fail = true;
+      await reveal(tester, find.text('清空本地课表'));
+      await tester.tap(find.text('清空本地课表'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('确认'));
+      await tester.pump();
+      tester
+          .widget<CustomScrollView>(
+            find.byKey(const PageStorageKey('settings-page')),
+          )
+          .controller!
+          .jumpTo(0);
+      await tester.pump();
+      expect(rowEnabled('settings-campus-login'), isFalse);
+      expect(tester.widget<FilledButton>(scheduleCta).onPressed, isNull);
+      expect(rowEnabled('settings-import-recordings'), isFalse);
+
+      repo.gate!.complete();
+      await tester.pumpAndSettle();
+      expect(rowEnabled('settings-campus-login'), isTrue);
+      expect(tester.widget<FilledButton>(scheduleCta).onPressed, isNotNull);
+      expect(rowEnabled('settings-import-recordings'), isTrue);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+}
+
+class _PendingRepository extends MemoryRepository {
+  _PendingRepository(super.value);
+  Completer<void>? gate;
+  @override
+  Future<void> save(ScheduleData next) async {
+    await gate?.future;
+    await super.save(next);
+  }
 }
