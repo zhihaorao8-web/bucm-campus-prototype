@@ -16,6 +16,8 @@ import 'package:campus_schedule/data/classroom_playback_progress.dart';
 import 'package:campus_schedule/platform/app_platform.dart';
 import 'package:campus_schedule/platform/campus_login_navigation.dart';
 import 'package:campus_schedule/platform/school_adapter.dart';
+import 'package:campus_schedule/ui/app_icon_controls.dart';
+import 'package:campus_schedule/ui/app_icons.dart';
 import 'package:campus_schedule/ui/campus_login_page.dart';
 import 'package:campus_schedule/ui/project_info_page.dart';
 import 'package:campus_schedule/ui/settings_scaffold.dart';
@@ -696,23 +698,41 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
       expect(find.text('外观设置'), findsOneWidget);
-      expect(find.text('登录与隐私'), findsOneWidget);
+      expect(find.text('隐私与数据'), findsOneWidget);
+      expect(find.text('退出学校会话、管理本地课表'), findsOneWidget);
+      expect(find.text('登录与隐私'), findsNothing);
+      expect(find.text('退出学校会话'), findsNothing);
+      expect(find.text('清空本地课表'), findsNothing);
       expect(find.byKey(const ValueKey('schedule-sync-card')), findsOneWidget);
       expect(find.text('导入或刷新课表'), findsOneWidget);
       expect(find.text('本学期更新时间未知，已保存的课表可离线查看'), findsOneWidget);
       for (final removed in ['体验合成示例', '导入结果', '合成导入摘要']) {
         expect(find.text(removed), findsNothing);
       }
+      await reveal(tester, find.byKey(const ValueKey('privacy-data-entry')));
+      await tester.tap(find.byKey(const ValueKey('privacy-data-entry')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('settings-route-隐私与数据')), findsOneWidget);
+      expect(
+        find.text('密码只在学校官方页面输入。应用不保存密码，不上传课表。学校会话失效后，需要你重新登录。'),
+        findsOneWidget,
+      );
+      expect(find.text('学校会话'), findsOneWidget);
+      expect(find.text('本地数据'), findsOneWidget);
+
       await reveal(tester, find.text('退出学校会话'));
       await tester.tap(find.text('退出学校会话'));
       await tester.pumpAndSettle();
+      expect(find.text('退出学校会话？'), findsOneWidget);
+      expect(find.textContaining('离线课表继续保留'), findsOneWidget);
       await tester.tap(find.text('取消'));
       await tester.pumpAndSettle();
       expect(sessionClears, 0);
+      expect(repo.value.courses.length, 1);
       await tester.tap(find.text('退出学校会话'));
       await tester.pumpAndSettle();
       await tester.runAsync(() async {
-        await tester.tap(find.text('确认'));
+        await tester.tap(find.text('确认退出'));
         await Future<void>.delayed(const Duration(milliseconds: 80));
       });
       await tester.pumpAndSettle();
@@ -737,6 +757,7 @@ void main() {
       );
       expect(sessionClears, 1);
       expect(repo.value.courses.length, 1);
+
       await reveal(tester, find.text('清空本地课表'));
       final clearControl = find.ancestor(
         of: find.text('清空本地课表'),
@@ -745,15 +766,24 @@ void main() {
       expect(tester.widget<MiuixBasicComponent>(clearControl).enabled, isTrue);
       await tester.tap(find.text('清空本地课表'));
       await tester.pumpAndSettle();
+      expect(find.text('清空本地课表？'), findsOneWidget);
+      expect(find.textContaining('不会退出学校会话'), findsOneWidget);
       await tester.tap(find.text('取消'));
       await tester.pumpAndSettle();
       expect(repo.value.courses.length, 1);
+      expect(sessionClears, 1);
       await tester.tap(find.text('清空本地课表'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('确认'));
+      await tester.tap(find.text('确认清空'));
       await tester.pumpAndSettle();
       expect(repo.value.courses, isEmpty);
       expect(sessionClears, 1);
+      expect(tester.widget<MiuixBasicComponent>(clearControl).enabled, isFalse);
+      expect(find.text('当前没有已保存的本地课表'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('settings-route-隐私与数据')), findsNothing);
       await reveal(tester, find.byKey(const ValueKey('project-info-entry')));
       expect(find.text('项目信息'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -1012,12 +1042,9 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      bool rowEnabled(String key) => tester
-          .widget<MiuixBasicComponent>(
-            find.descendant(
-              of: find.byKey(ValueKey(key)),
-              matching: find.byType(MiuixBasicComponent),
-            ),
+      bool rowEnabled(String key, {bool skipOffstage = true}) => tester
+          .widget<AppArrowPreference>(
+            find.byKey(ValueKey(key), skipOffstage: skipOffstage),
           )
           .enabled;
 
@@ -1099,9 +1126,25 @@ void main() {
       expect(tester.widget<FilledButton>(scheduleCta).onPressed, isNotNull);
       expect(rowEnabled('settings-import-recordings'), isTrue);
 
-      // Cancel campus login and verify return to Settings with no success toast
+      // Cancel campus login and verify busy state while CampusLoginPage is open
       await tester.tap(loginRow);
       await tester.pump();
+      expect(rowEnabled('settings-campus-login', skipOffstage: false), isFalse);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.byKey(
+                const ValueKey('settings-import-schedule'),
+                skipOffstage: false,
+              ),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(
+        rowEnabled('settings-import-recordings', skipOffstage: false),
+        isFalse,
+      );
       expect(
         platform.views.single.params.initialUrlRequest?.url.toString(),
         SchoolEndpoints.teachingCasLogin,
@@ -1114,35 +1157,103 @@ void main() {
       expect(find.byType(CampusLoginPage), findsNothing);
       expect(find.text('校园账号登录成功，教务系统已可访问'), findsNothing);
       expect(rowEnabled('settings-campus-login'), isTrue);
-
-      // Busy state disables account, schedule CTA and recordings row until completion
-      repo.gate = Completer<void>();
-      repo.fail = true;
-      await reveal(tester, find.text('清空本地课表'));
-      await tester.tap(find.text('清空本地课表'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('确认'));
-      await tester.pump();
-      tester
-          .widget<CustomScrollView>(
-            find.byKey(const PageStorageKey('settings-page')),
-          )
-          .controller!
-          .jumpTo(0);
-      await tester.pump();
-      expect(rowEnabled('settings-campus-login'), isFalse);
-      expect(tester.widget<FilledButton>(scheduleCta).onPressed, isNull);
-      expect(rowEnabled('settings-import-recordings'), isFalse);
-
-      repo.gate!.complete();
-      await tester.pumpAndSettle();
-      expect(rowEnabled('settings-campus-login'), isTrue);
       expect(tester.widget<FilledButton>(scheduleCta).onPressed, isNotNull);
       expect(rowEnabled('settings-import-recordings'), isTrue);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+  testWidgets(
+    'privacy and data subpage distinguishes destructive action and handles demo, busy and failure states',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // 1. Demo mode enables session exit and disables schedule deletion
+      await tester.pumpWidget(app(MemoryRepository(const ScheduleData())));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('先体验合成示例'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.byKey(const ValueKey('privacy-data-entry')));
+      await tester.tap(find.byKey(const ValueKey('privacy-data-entry')));
+      await tester.pumpAndSettle();
+
+      final sessionRow = find.byKey(const ValueKey('privacy-clear-session'));
+      final scheduleRow = find.byKey(const ValueKey('privacy-clear-schedule'));
+      expect(tester.widget<AppArrowPreference>(sessionRow).enabled, isTrue);
+      expect(tester.widget<AppArrowPreference>(scheduleRow).enabled, isFalse);
+      expect(find.text('退出示例后可管理本人本地课表'), findsOneWidget);
+
+      final sessionMiuix = tester.widget<MiuixBasicComponent>(
+        find.descendant(
+          of: sessionRow,
+          matching: find.byType(MiuixBasicComponent),
+        ),
+      );
+      final scheduleMiuix = tester.widget<MiuixBasicComponent>(
+        find.descendant(
+          of: scheduleRow,
+          matching: find.byType(MiuixBasicComponent),
+        ),
+      );
+      final errorColor =
+          Theme.of(tester.element(scheduleRow)).colorScheme.error;
+      expect(sessionMiuix.titleColor, isNull);
+      expect(scheduleMiuix.titleColor?.color, errorColor);
+      await tester.pumpWidget(const SizedBox());
+
+      // 2. Busy state and failure recovery keep courses and re-enable controls
+      final repo = _PendingRepository(ScheduleData(courses: [sample()]))
+        ..gate = Completer<void>()
+        ..fail = true;
+      await tester.pumpWidget(app(repo));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.byKey(const ValueKey('privacy-data-entry')));
+      await tester.tap(find.byKey(const ValueKey('privacy-data-entry')));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<AppArrowPreference>(sessionRow).enabled, isTrue);
+      expect(tester.widget<AppArrowPreference>(scheduleRow).enabled, isTrue);
+      final activeError =
+          Theme.of(tester.element(scheduleRow)).colorScheme.error;
+      expect(
+        tester
+            .widget<AppIcon>(
+              find.descendant(
+                of: scheduleRow,
+                matching: find.byWidgetPredicate(
+                  (w) => w is AppIcon && w.icon == AppIcons.trash,
+                ),
+              ),
+            )
+            .color,
+        activeError,
+      );
+
+      await reveal(tester, scheduleRow);
+      await tester.tap(scheduleRow);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('确认清空'));
+      await tester.pump();
+      expect(tester.widget<AppArrowPreference>(sessionRow).enabled, isFalse);
+      expect(tester.widget<AppArrowPreference>(scheduleRow).enabled, isFalse);
+
+      repo.gate!.complete();
+      await tester.pumpAndSettle();
+      expect(repo.value.courses.length, 1);
+      expect(find.text('操作未完成，原有数据保留，请重试'), findsOneWidget);
+      expect(tester.widget<AppArrowPreference>(sessionRow).enabled, isTrue);
+      expect(tester.widget<AppArrowPreference>(scheduleRow).enabled, isTrue);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
   );
 }
 

@@ -16,7 +16,6 @@ import '../data/classroom_library.dart';
 import '../domain/schedule.dart';
 import '../platform/library_seat_reader.dart';
 import '../platform/campus_login_navigation.dart';
-import '../platform/school_adapter.dart';
 import 'campus_login_page.dart';
 import 'course_widgets.dart';
 import 'course_surface.dart';
@@ -26,6 +25,7 @@ import 'week_grid.dart';
 import 'weekday_tabs.dart';
 import 'glass_navigation.dart';
 import 'appearance_page.dart';
+import 'privacy_data_page.dart';
 import 'project_info_page.dart';
 import 'classroom_import_page.dart';
 import 'quiet_backdrop.dart';
@@ -946,15 +946,40 @@ class _AppShellState extends ConsumerState<AppShell>
                 QuietCard(
                   cornerRadius: AppRadius.card,
                   insideMargin: EdgeInsets.zero,
-                  child: AppArrowPreference(
-                    title: '外观设置',
-                    summary: '主题、颜色、底栏与界面缩放',
-                    startAction: const AppIcon(AppIcons.palette),
-                    onClick: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const AppearancePage(),
+                  child: Column(
+                    children: [
+                      AppArrowPreference(
+                        title: '外观设置',
+                        summary: '主题、颜色、底栏与界面缩放',
+                        startAction: const AppIcon(AppIcons.palette),
+                        onClick: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const AppearancePage(),
+                          ),
+                        ),
                       ),
-                    ),
+                      Divider(
+                        height: 1,
+                        thickness: 0.5,
+                        indent: AppSpace.comfortable,
+                        endIndent: AppSpace.comfortable,
+                        color: colors.outlineVariant,
+                      ),
+                      AppArrowPreference(
+                        key: const ValueKey('privacy-data-entry'),
+                        title: '隐私与数据',
+                        summary: '退出学校会话、管理本地课表',
+                        startAction: const AppIcon(AppIcons.sliders),
+                        onClick: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => PrivacyDataPage(
+                              demo: demo,
+                              onScheduleCleared: () => selectTerm(null),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: AppSpace.xl),
@@ -968,62 +993,6 @@ class _AppShellState extends ConsumerState<AppShell>
                     startAction: const AppIcon(AppIcons.book),
                     enabled: !busy && !demo,
                     onClick: () => selectTab(_libraryTab),
-                  ),
-                ),
-                const SizedBox(height: AppSpace.xl),
-                sectionLabel('登录与隐私'),
-                QuietCard(
-                  cornerRadius: AppRadius.card,
-                  insideMargin: EdgeInsets.zero,
-                  child: Column(
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.all(AppSpace.comfortable),
-                        child: Text(
-                          '密码只在学校官方页面输入。应用不保存密码，不上传课表。学校会话失效后，需要你重新登录。',
-                          style: TextStyle(fontSize: AppType.body, height: 1.5),
-                        ),
-                      ),
-                      AppArrowPreference(
-                        title: '退出学校会话',
-                        summary: '保留离线课表，清除录播目录与本机观看进度',
-                        enabled: !busy,
-                        startAction: const AppIcon(AppIcons.logOut),
-                        onClick: () async {
-                          if (!await confirm(
-                            '退出学校会话？',
-                            '将清除学校网页会话、已导入的录播目录和本机观看进度，离线课表继续保留。',
-                          )) {
-                            return;
-                          }
-                          await runAction(() async {
-                            await SchoolAdapter().clearSession();
-                            if (mounted) message('已清除本机学校会话');
-                          });
-                        },
-                      ),
-                      AppArrowPreference(
-                        title: '清空本地课表',
-                        summary: '删除所有学期的本地课程',
-                        startAction: const AppIcon(AppIcons.trash),
-                        enabled: !busy && !demo && data.courses.isNotEmpty,
-                        onClick: () async {
-                          if (!await confirm(
-                            '清空本地课表？',
-                            '将删除所有学期的本地课程。之后可以重新从学校导入。',
-                          )) {
-                            return;
-                          }
-                          await runAction(() async {
-                            await ref.read(scheduleProvider.notifier).clear();
-                            if (mounted) {
-                              selectTerm(null);
-                              message('已清空本地课表');
-                            }
-                          });
-                        },
-                      ),
-                    ],
                   ),
                 ),
                 const SizedBox(height: AppSpace.xl),

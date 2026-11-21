@@ -12,18 +12,27 @@ class AppArrowPreference extends StatelessWidget {
     this.startAction,
     this.onClick,
     this.enabled = true,
+    this.destructive = false,
   });
   final String title;
   final String? summary;
   final Widget? startAction;
   final VoidCallback? onClick;
   final bool enabled;
+  final bool destructive;
 
   @override
   Widget build(BuildContext context) {
     final colors = MiuixTheme.of(context).colors;
+    final error = Theme.of(context).colorScheme.error;
     return MiuixBasicComponent(
       title: title,
+      titleColor: destructive
+          ? MiuixBasicComponentColors(
+              color: error,
+              disabledColor: colors.disabledOnSecondaryVariant,
+            )
+          : null,
       summary: summary,
       startAction: startAction,
       onClick: onClick,
@@ -33,7 +42,7 @@ class AppArrowPreference extends StatelessWidget {
           AppIcons.chevronRight,
           size: 20,
           color: enabled
-              ? colors.onSurfaceVariantActions
+              ? (destructive ? error : colors.onSurfaceVariantActions)
               : colors.disabledOnSecondaryVariant,
         ),
       ],
