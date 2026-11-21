@@ -11,6 +11,11 @@ enum CampusLoginTarget {
   final String host;
   final String label;
 
+  String get loginEntry => switch (this) {
+    teaching => SchoolEndpoints.teachingCasLogin,
+    _ => entry,
+  };
+
   bool allows(String? address) {
     final uri = _schoolHttps(address);
     return uri != null &&

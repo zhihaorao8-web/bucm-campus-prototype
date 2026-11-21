@@ -217,7 +217,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
   }
 
   Widget _buildWeb() => InAppWebView(
-    initialUrlRequest: URLRequest(url: WebUri(widget.target.entry)),
+    initialUrlRequest: URLRequest(url: WebUri(widget.target.loginEntry)),
     initialSettings: InAppWebViewSettings(
       useWideViewPort: true,
       loadWithOverviewMode: true,
@@ -276,8 +276,12 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
       }
     },
     onCreateWindow: (_, _) async => false,
-    onReceivedServerTrustAuthRequest: (_, _) async =>
-        ServerTrustAuthResponse(action: ServerTrustAuthResponseAction.CANCEL),
+    onReceivedServerTrustAuthRequest: (web, _) async {
+      _fail(web, '学校连接的证书未通过校验，已停止加载。');
+      return ServerTrustAuthResponse(
+        action: ServerTrustAuthResponseAction.CANCEL,
+      );
+    },
     onPermissionRequest: (_, request) async => PermissionResponse(
       resources: request.resources,
       action: PermissionResponseAction.DENY,

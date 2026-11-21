@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:campus_schedule/main.dart';
 import 'package:campus_schedule/application/appearance_controller.dart';
+import 'package:campus_schedule/config/network_policy.dart';
 import 'package:campus_schedule/application/schedule_controller.dart';
 import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/data/classroom_library.dart';
@@ -61,6 +62,9 @@ void main() {
     expect(target.isDestination('https://cas.bucm.edu.cn/cas/login'), isFalse);
     expect(target.isDestination('https://i.bucm.edu.cn/'), isFalse);
     const teaching = CampusLoginTarget.teaching;
+    expect(teaching.loginEntry, SchoolEndpoints.teachingCasLogin);
+    expect(teaching.allows(teaching.loginEntry), isTrue);
+    expect(target.loginEntry, target.entry);
     expect(teaching.allows('https://cas.bucm.edu.cn/cas/login'), isTrue);
     expect(teaching.isDestination('https://jw.bucm.edu.cn/'), isTrue);
     expect(teaching.isDestination('https://cas.bucm.edu.cn/cas/login'), isFalse);
@@ -102,6 +106,10 @@ void main() {
     await tester.tap(login);
     await tester.pump();
     final view = platform.views.single;
+    expect(
+      view.params.initialUrlRequest?.url.toString(),
+      SchoolEndpoints.teachingCasLogin,
+    );
     const cas = 'https://cas.bucm.edu.cn/cas/login';
     view.visit(cas);
     await tester.pumpAndSettle();

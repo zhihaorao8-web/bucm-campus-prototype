@@ -9,6 +9,8 @@ abstract final class SchoolEndpoints {
   static const vpn = 'https://webvpn.bucm.edu.cn/';
   static const classroom = 'https://qhz.bucm.edu.cn/cc/';
   static const teaching = 'https://jw.bucm.edu.cn/';
+  static const teachingCasLogin =
+      'https://cas.bucm.edu.cn/cas/login?service=https%3A%2F%2Fjw.bucm.edu.cn%2F';
   static const librarySeatHost = 'kjyy.bucm.edu.cn';
   static const librarySeatHome = 'https://$librarySeatHost/#/ic/home';
   static const classroomVpnPrefix =
