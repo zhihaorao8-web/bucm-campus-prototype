@@ -1177,10 +1177,13 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('认证完成返回'));
       await tester.pumpAndSettle();
-      expect(find.text('校园账号登录成功，正在获取座位状态'), findsOneWidget);
+      expect(find.text('校园账号登录成功，正在核对预约记录'), findsOneWidget);
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
       expect(reader.reserveCalls, 3);
+      expect(find.text('待生效 · 预约编号 8001'), findsOneWidget);
+      await tester.tap(find.text('选座'));
+      await tester.pumpAndSettle();
       expect(find.text('N001'), findsOneWidget);
 
       // 5. Timeout / uncertain -> no auto-retry, prompts user to verify in My Bookings.
@@ -2831,7 +2834,7 @@ void main() {
       expect(reader.reuseCalls, 1);
       expect(areaCalls, 1);
       expect(find.text('校园账号登录成功，正在获取座位状态'), findsNothing);
-      expect(find.text('学校会话已清除'), findsOneWidget);
+      expect(find.text('需要登录学校账号'), findsOneWidget);
       expect(reader.reserveCalls, 0);
       expect(reader.cancelCalls, 0);
       await tester.pumpWidget(const SizedBox());
@@ -2839,17 +2842,23 @@ void main() {
   );
 
   testWidgets(
-    'authInterrupted recovery via silent reuse refreshes seats without retrying write',
+    'interrupted reservation checks bookings first after login without retrying the write',
     variant: androidOnly,
     (tester) async {
       var loggedIn = true;
       var reserveCount = 0;
       var openerCalls = 0;
+      final recoveryReads = <String>[];
       final reader = FakeLibrarySeatReader()
         ..onAreas = (() async => const [LibraryArea('32', '二层北区', '二层')])
         ..onSeats = ((_, _) async {
           if (!loggedIn) throw LibraryReadFailure.login;
+          if (reserveCount != 0) recoveryReads.add('seats');
           return [seat(id: '100', label: 'N001')];
+        })
+        ..onBookings = ((begin, end, page) async {
+          recoveryReads.add('bookings:${isoDate(begin)}:${isoDate(end)}:$page');
+          return LibraryBookingPage(const [], false, page: page);
         })
         ..onReuseSession = (() async {
           loggedIn = true;
@@ -2891,8 +2900,51 @@ void main() {
       expect(openerCalls, 0);
       expect(reserveCount, 1);
       expect(reader.cancelCalls, 0);
-      expect(find.text('校园账号登录成功，正在获取座位状态'), findsOneWidget);
-      expect(find.text('N001'), findsOneWidget);
+      expect(recoveryReads, ['bookings:2026-10-05:2026-10-11:1']);
+      expect(find.text('校园账号登录成功，正在核对预约记录'), findsOneWidget);
+      expect(find.text('登录状态已中断，已停止本次提交'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'interrupted cancellation reloads bookings after login without repeating the write',
+    variant: androidOnly,
+    (tester) async {
+      final reads = <(DateTime, DateTime, int)>[];
+      final reader = FakeLibrarySeatReader()
+        ..onBookings = ((begin, end, page) async {
+          reads.add((begin, end, page));
+          return LibraryBookingPage([cancellationFixture], false, page: page);
+        })
+        ..onCancelBooking = ((_) async =>
+            const LibraryWriteResult(LibraryWriteStatus.login));
+      await tester.pumpWidget(
+        wrapLibraryPage(reader, loginOpener: (_, _) async => true),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('我的预约'));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('取消预约'));
+      await tester.tap(find.text('取消预约'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('确认取消'));
+      await tester.pumpAndSettle();
+      expect(reader.cancelCalls, 1);
+      expect(reads, hasLength(1));
+      await reveal(tester, find.text('登录校园账号'));
+      await tester.tap(find.text('登录校园账号'));
+      await tester.pumpAndSettle();
+      expect(reads, [reads.first, reads.first]);
+      expect(reader.cancelCalls, 1);
+      expect(reader.reserveCalls, 0);
+      expect(find.text('校园账号登录成功，正在核对预约记录'), findsOneWidget);
+      expect(find.text('学校会话已失效'), findsNothing);
+      await reveal(tester, find.text('取消预约'));
+      await tester.tap(find.text('取消预约'));
+      await tester.pumpAndSettle();
+      expect(find.text('确认取消'), findsOneWidget);
+      expect(reader.cancelCalls, 1);
       await tester.pumpWidget(const SizedBox());
     },
   );

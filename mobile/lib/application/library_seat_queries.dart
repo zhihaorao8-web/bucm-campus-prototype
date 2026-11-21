@@ -411,6 +411,27 @@ class LibrarySeatQueries extends ChangeNotifier {
     }
   }
 
+  /// Drop the reader's WebView before the visible authentication flow while
+  /// preserving the interrupted read or write result for follow-up.
+  Future<void> resetReaderForAuthentication() => _reader.reset();
+
+  void finishCancellationAuthentication() {
+    final previous = cancellation;
+    final refreshed = bookings;
+    if (_disposed ||
+        previous == null ||
+        refreshed == null ||
+        previous.status != LibraryWriteStatus.login) {
+      return;
+    }
+    // Only a fresh record still eligible for cancellation can be confirmed again.
+    if (refreshed.rows.any((row) => row.id == previous.booking.id)) {
+      _cancelledOrUncertain.remove(previous.booking.id);
+    }
+    cancellation = null;
+    notifyListeners();
+  }
+
   Future<void> clearSession() async {
     _revision++;
     areas = null;

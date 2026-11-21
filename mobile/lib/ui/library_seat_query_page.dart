@@ -403,14 +403,14 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   }
 
   Future<void> _authenticate({String reason = '登录后自动获取座位状态'}) async {
-    if (_busy) return;
+    if (_busy || _queries.loading) return;
     final revision = SchoolAdapter.sessionChanges.value;
+    final interrupted = _queries.needsLogin ? _queries.submission : null;
     setState(() {
       _openingOfficial = true;
       _selected = null;
-      _start = _end = null;
     });
-    await _queries.clearSession();
+    await _queries.resetReaderForAuthentication();
     if (!mounted || revision != SchoolAdapter.sessionChanges.value) {
       if (mounted) setState(() => _openingOfficial = false);
       return;
@@ -440,15 +440,31 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     if (!signedIn) return;
     showAppNotice(
       context,
-      '校园账号登录成功，正在获取座位状态',
+      interrupted != null || _showBookings
+          ? '校园账号登录成功，正在核对预约记录'
+          : '校园账号登录成功，正在获取座位状态',
       success: true,
       bottomInset: _noticeBottomInset,
     );
-    await (_showBookings
-        ? _loadBookings(_bookingPage)
-        : (_level == LibrarySelectionLevel.areaSeats && _area != null
-              ? _loadSeats()
-              : _loadAreas()));
+    if (interrupted != null) {
+      await _openBookingsFor(interrupted.request.date);
+      if (mounted &&
+          revision == SchoolAdapter.sessionChanges.value &&
+          _queries.bookings != null) {
+        _queries.clearSubmission();
+      }
+      return;
+    }
+    if (_showBookings) {
+      await _loadBookings(_bookingPage);
+      if (mounted && revision == SchoolAdapter.sessionChanges.value) {
+        _queries.finishCancellationAuthentication();
+      }
+      return;
+    }
+    await (_level == LibrarySelectionLevel.areaSeats && _area != null
+        ? _loadSeats()
+        : _loadAreas());
   }
 
   Future<void> _official() async {
@@ -2299,7 +2315,9 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
             AppActionButton(
               label: '登录校园账号',
               icon: AppIcons.chevronRight,
-              onPressed: _busy ? null : _authenticate,
+              onPressed: _busy
+                  ? null
+                  : () => _authenticate(reason: '登录后核对本次预约记录'),
             ),
           ],
         );
