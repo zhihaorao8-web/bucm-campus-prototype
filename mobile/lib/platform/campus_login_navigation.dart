@@ -40,14 +40,28 @@ enum CampusLoginTarget {
       portal => r'/我的首页|应用中心|个人中心/.test(text)',
       teaching => r'/个人课表信息|学期理论课表/.test(text)',
       vpn =>
-        r'/^WebVPN\b/i.test(document.title) && '
+        r'/^WebVPN\b/i.test(page.title) && '
             r'/最近访问/.test(text) && /办公系统|业务系统|其他资源/.test(text)',
     };
+    final teachingFrames = this == teaching
+        ? '''
+  for (let i = 0; i < pages.length && pages.length < 16; i++) {
+    for (const frame of pages[i].querySelectorAll('frame, iframe')) {
+      const child = frame.contentDocument;
+      if (child?.location?.origin === location.origin) pages.push(child);
+      if (pages.length === 16) break;
+    }
+  }
+'''
+        : '';
     return '''
 (() => {
-  if (location.origin !== 'https://$host' || !document.body) return false;
-  const text = document.body.innerText;
-  return $marker;
+  if (location.origin !== 'https://$host') return false;
+  const pages = [document];$teachingFrames
+  return pages.some(page => {
+    const text = page.body?.innerText ?? '';
+    return $marker;
+  });
 })()
 ''';
   }
@@ -91,6 +105,23 @@ bool campusLoginDocument(String? address) {
   return campusCasForm(address) ||
       (uri.host == SchoolEndpoints.vpnHost &&
           (uri.path == '/login' || uri.path == '/login/'));
+}
+
+/// A portal can lead into the teaching CAS flow. Resume that service directly
+/// while preserving the selected access mode. Only the known hosts are used.
+CampusLoginTarget campusLoginTargetFor(
+  String? address,
+  CampusLoginTarget selected,
+) {
+  if (selected == CampusLoginTarget.vpn || !campusCasForm(address)) {
+    return selected;
+  }
+  final service = _schoolHttps(Uri.parse(address!).queryParameters['service']);
+  return switch (service?.host) {
+    SchoolEndpoints.teachingHost => CampusLoginTarget.teaching,
+    SchoolEndpoints.vpnHost => CampusLoginTarget.vpn,
+    _ => selected,
+  };
 }
 
 Uri? _schoolHttps(String? address) {

@@ -1,4 +1,5 @@
 import 'package:campus_schedule/ui/quiet_backdrop.dart';
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -153,6 +154,83 @@ void main() {
     await tester.pumpAndSettle();
     expect(outcomes, [false]);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+  for (final pageRead in [false, true]) {
+    testWidgets(
+      'course import resumes once after login (page read: $pageRead)',
+      (tester) async {
+        final platform = CampusLoginTestPlatform();
+        final previous = InAppWebViewPlatform.instance;
+        InAppWebViewPlatform.instance = platform;
+        if (previous != null) {
+          addTearDown(() => InAppWebViewPlatform.instance = previous);
+        }
+        final course = sample();
+        final repo = MemoryRepository(ScheduleData(courses: [course]));
+        await tester.pumpWidget(app(repo));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('tab-3')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('导入或刷新课表'));
+        await tester.pumpAndSettle();
+        final importer = platform.views.single;
+        final controller = importer.controller;
+        await tester.tap(find.byTooltip('学校入口'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('教务系统（校内）'));
+        await tester.pumpAndSettle();
+        const teaching = CampusLoginTarget.teaching;
+        const cas =
+            'https://cas.bucm.edu.cn/cas/login'
+            '?service=https%3A%2F%2Fjw.bucm.edu.cn%2F';
+        expect(controller.loads, [teaching.entry]);
+        importer.visit(cas);
+        await tester.pumpAndSettle();
+        final action = find.text(pageRead ? '页面读取（备用）' : '自动导入');
+        await tester.tap(action);
+        await tester.pump();
+        platform.views.last.visit(cas);
+        await tester.pumpAndSettle();
+        expect(find.byType(CampusLoginPage), findsOneWidget);
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.text('已取消登录，离线课表保留。'), findsOneWidget);
+        expect(controller.loads, [teaching.entry]);
+        expect(controller.scripts, isEmpty);
+
+        await tester.tap(action);
+        await tester.pump();
+        final login = platform.views.last;
+        login.controller.ready = true;
+        login.visit(teaching.entry);
+        await tester.pumpAndSettle();
+        expect(find.byType(CampusLoginPage), findsNothing);
+        expect(login.controller.scripts, hasLength(1));
+        expect(controller.loads, [teaching.entry, teaching.entry]);
+        expect(controller.scripts, isEmpty);
+        await tester.runAsync(() async {
+          final operation = Completer<void>();
+          controller.execute = (_) {
+            if (!operation.isCompleted) operation.complete();
+            return pageRead ? {'full': false} : {'state': 'waiting'};
+          };
+          importer.visit(teaching.entry);
+          importer.visit(teaching.entry);
+          await operation.future.timeout(const Duration(seconds: 5));
+        });
+        await tester.pump();
+        expect(controller.scripts.length, 1);
+        expect(repo.value.courses, [course]);
+        if (!pageRead) {
+          importer.visit(cas);
+          await tester.pumpAndSettle();
+          expect(find.byType(CampusLoginPage), findsNothing);
+          expect(find.textContaining('学校页面仍需登录'), findsOneWidget);
+        }
+        await tester.pumpWidget(const SizedBox());
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+    );
+  }
   for (final scale in [1.0, 1.5]) {
     testWidgets('settings reverse keyboard focus clears the header: $scale', (
       tester,

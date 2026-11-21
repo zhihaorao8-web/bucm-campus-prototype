@@ -72,7 +72,21 @@ class CampusLoginTestController extends PlatformInAppWebViewController {
   bool hasTabs = true;
   bool ready = false;
   WebUri? address;
+  Object? Function(String source)? execute;
   final scripts = <String>[];
+  final loads = <String>[];
+
+  @override
+  Future<void> setSettings({required InAppWebViewSettings settings}) async {}
+
+  @override
+  Future<void> loadUrl({
+    required URLRequest urlRequest,
+    Uri? iosAllowingReadAccessTo,
+    WebUri? allowingReadAccessTo,
+  }) async {
+    loads.add(urlRequest.url.toString());
+  }
 
   @override
   Future<WebUri?> getUrl() async => address;
@@ -83,6 +97,7 @@ class CampusLoginTestController extends PlatformInAppWebViewController {
     ContentWorld? contentWorld,
   }) async {
     scripts.add(source);
-    return source.contains('.click()') ? hasTabs : ready;
+    return execute?.call(source) ??
+        (source.contains('.click()') ? hasTabs : ready);
   }
 }

@@ -11,8 +11,13 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/schedule_controller.dart';
 import '../domain/schedule.dart';
+import '../platform/campus_login_navigation.dart';
 import '../platform/school_adapter.dart';
 import '../platform/classroom_session_cache.dart';
+import 'app_controls.dart';
+import 'campus_login_page.dart';
+
+enum _ImportAction { automatic, pageRead }
 
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key, this.recoverUnreadable = false});
@@ -24,19 +29,29 @@ class ImportPage extends ConsumerStatefulWidget {
 class _ImportPageState extends ConsumerState<ImportPage> {
   InAppWebViewController? controller;
   final adapter = SchoolAdapter();
-  String status = '请本人在学校官方页面完成登录，然后点击自动导入。';
+  String status = '请选择学校入口，打开学期理论课表后可自动导入。';
   String semester = '';
   bool running = false, busy = false, waitingFile = false;
   int steps = 0, generation = 0;
   Timer? timer;
+  CampusLoginTarget _entry = CampusLoginTarget.vpn;
+  CampusLoginTarget? _authTarget;
+  (CampusLoginTarget, _ImportAction?)? _waitingForSchool;
+  bool _loginOpen = false;
+  bool _resumedImport = false;
+
+  bool get _connecting => _loginOpen || _waitingForSchool != null;
+
   @override
   void initState() {
     super.initState();
     ClassroomSessionCache.shared.clear();
+    SchoolAdapter.sessionChanges.addListener(_sessionCleared);
   }
 
   @override
   void dispose() {
+    SchoolAdapter.sessionChanges.removeListener(_sessionCleared);
     timer?.cancel();
     generation++;
     super.dispose();
@@ -51,12 +66,135 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     generation++;
     running = false;
     waitingFile = false;
+    _waitingForSchool = null;
     await controller?.setSettings(
       settings: InAppWebViewSettings(
         javaScriptCanOpenWindowsAutomatically: false,
       ),
     );
     if (mounted) setState(() {});
+  }
+
+  void _sessionCleared() {
+    unawaited(stop());
+    update('学校会话已清除，离线课表保留。');
+  }
+
+  Future<void> _selectEntry(CampusLoginTarget entry) async {
+    _entry = entry;
+    _authTarget = null;
+    await stop();
+    if (!mounted) return;
+    update('正在打开${entry.label}。');
+    await controller?.loadUrl(urlRequest: URLRequest(url: WebUri(entry.entry)));
+  }
+
+  Future<void> _authenticate(
+    CampusLoginTarget target, [
+    _ImportAction? action,
+  ]) async {
+    if (!mounted ||
+        busy ||
+        _connecting ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    _authTarget = target;
+    _loginOpen = true;
+    final revision = SchoolAdapter.sessionChanges.value;
+    try {
+      await stop();
+      final loginGeneration = generation;
+      if (!mounted || revision != SchoolAdapter.sessionChanges.value) return;
+      final available = await openCampusLogin(
+        context,
+        target: target,
+        reason: switch (action) {
+          _ImportAction.automatic => '登录后继续自动导入课表',
+          _ImportAction.pageRead => '登录后继续读取课表页面',
+          null => '登录后返回课表导入',
+        },
+      );
+      if (!mounted ||
+          revision != SchoolAdapter.sessionChanges.value ||
+          loginGeneration != generation) {
+        return;
+      }
+      if (!available) {
+        update('已取消登录，离线课表保留。');
+        return;
+      }
+      _waitingForSchool = (target, action);
+      update('正在返回${target.label}。');
+      timer = Timer(CampusLoginPolicy.pageTimeout, () {
+        _waitingForSchool = null;
+        update('学校页面暂未恢复，请先打开学期理论课表，再重试导入。');
+      });
+      await controller?.loadUrl(
+        urlRequest: URLRequest(url: WebUri(target.entry)),
+      );
+    } catch (_) {
+      timer?.cancel();
+      _waitingForSchool = null;
+      update('学校登录暂未完成，请重试。离线课表保留。');
+    } finally {
+      if (mounted) setState(() => _loginOpen = false);
+    }
+  }
+
+  void _authenticationNeeded(CampusLoginTarget target) {
+    _authTarget = target;
+    if (!running || waitingFile) {
+      update('需要登录校园账号后继续。');
+    } else if (_resumedImport) {
+      unawaited(stop());
+      update('学校页面仍需登录，请重新选择入口或重试。离线课表保留。');
+    } else {
+      unawaited(_authenticate(target, _ImportAction.automatic));
+    }
+  }
+
+  void _pageLoaded(InAppWebViewController web, WebUri? url) {
+    if (!mounted || web != controller) return;
+    final address = url?.toString();
+    final authentication = campusLoginDocument(address);
+    final queued = _waitingForSchool;
+    if (queued != null) {
+      if (authentication) {
+        timer?.cancel();
+        _waitingForSchool = null;
+        _authTarget = campusLoginTargetFor(address, _entry);
+        update('学校页面仍需登录，请重试。离线课表保留。');
+      } else if (queued.$1.isDestination(address)) {
+        timer?.cancel();
+        _waitingForSchool = null;
+        _authTarget = null;
+        update('已返回学校页面。');
+        switch (queued.$2) {
+          case _ImportAction.automatic:
+            unawaited(start(resumed: true));
+          case _ImportAction.pageRead:
+            unawaited(extract());
+          case null:
+            break;
+        }
+      }
+    } else if (authentication && !_loginOpen) {
+      _authenticationNeeded(campusLoginTargetFor(address, _entry));
+    } else if (_authTarget != null &&
+        schoolUrl(address ?? '') &&
+        !authentication) {
+      setState(() => _authTarget = null);
+    }
+    if (!authentication) unawaited(resizeWeb(web, report: false));
+  }
+
+  void _pageFailed(String message) {
+    if (_waitingForSchool != null) {
+      timer?.cancel();
+      _waitingForSchool = null;
+    }
+    update(message);
   }
 
   Future<Map<String, dynamic>> script(String asset) async {
@@ -66,10 +204,19 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     return Map<String, dynamic>.from(result as Map);
   }
 
-  Future<void> start() async {
+  Future<void> start({bool resumed = false}) async {
     if (busy || controller == null) return;
-    await stop();
+    final target = _authTarget;
+    if (!resumed && target != null) {
+      await _authenticate(target, _ImportAction.automatic);
+      return;
+    }
+    final stopped = stop();
+    final session = generation;
+    await stopped;
+    if (!mounted || session != generation) return;
     running = true;
+    _resumedImport = resumed;
     steps = 0;
     semester = '';
     await controller!.setSettings(
@@ -77,9 +224,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         javaScriptCanOpenWindowsAutomatically: true,
       ),
     );
-    if (!mounted) return;
+    if (!mounted || session != generation) return;
     setState(() {});
-    await step(generation);
+    await step(session);
   }
 
   Future<void> step(int session) async {
@@ -93,6 +240,11 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     }
     try {
       final url = (await controller!.getUrl())?.toString() ?? '';
+      if (!mounted || session != generation || !running) return;
+      if (campusLoginDocument(url)) {
+        _authenticationNeeded(campusLoginTargetFor(url, _entry));
+        return;
+      }
       if (!schoolUrl(url)) {
         update('请在学校官方认证页面完成登录，返回学校后继续。');
       } else {
@@ -117,13 +269,15 @@ class _ImportPageState extends ConsumerState<ImportPage> {
             update('无法唯一确认全部周次或导出入口。请手动打开学期理论课表，选择全部周次后重试。');
             return;
           case 'login':
-            update('请本人完成学校登录，完成后将继续导入。');
+            _authenticationNeeded(_entry);
+            return;
           default:
             update('正在打开学期理论课表并选择全部周次。');
         }
       }
       timer = Timer(ImportPolicy.navigationPoll, () => step(session));
     } catch (_) {
+      if (!mounted || session != generation || !running) return;
       await stop();
       update('自动导航未完成。请进入学期理论课表后重试，或使用页面读取。');
     }
@@ -133,7 +287,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     InAppWebViewController web,
     DownloadStartRequest request,
   ) async {
-    if (busy) return;
+    if (!mounted || busy || _connecting) return;
     final url = request.url.toString();
     if (!schoolUrl(url)) {
       update('已阻止非学校 HTTPS 地址的导出。');
@@ -143,14 +297,18 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     timer?.cancel();
     update('正在本机读取并校验官方 Excel，原有课表暂不改动。');
     final sourceSemester = semester;
-    await stop();
+    final revision = SchoolAdapter.sessionChanges.value;
     try {
+      await stop();
+      if (!mounted || revision != SchoolAdapter.sessionChanges.value) return;
       final batch = await adapter.download(
         url,
         request.userAgent ?? '',
         sourceSemester,
       );
-      if (mounted) await finishBatch(batch, '官方 Excel');
+      if (mounted && revision == SchoolAdapter.sessionChanges.value) {
+        await finishBatch(batch, '官方 Excel', revision);
+      }
     } catch (_) {
       update('官方 Excel 未能完整读取。请确认已登录并重新导出；旧课表未改动。');
     } finally {
@@ -161,11 +319,27 @@ class _ImportPageState extends ConsumerState<ImportPage> {
 
   Future<void> extract() async {
     if (busy || controller == null) return;
-    await stop();
+    final target = _authTarget;
+    if (target != null) {
+      await _authenticate(target, _ImportAction.pageRead);
+      return;
+    }
     busy = true;
+    final revision = SchoolAdapter.sessionChanges.value;
     update('正在读取当前课表页面。');
     try {
-      if (!schoolUrl((await controller!.getUrl())?.toString() ?? '')) {
+      await stop();
+      final url = (await controller!.getUrl())?.toString() ?? '';
+      if (!mounted || revision != SchoolAdapter.sessionChanges.value) return;
+      if (campusLoginDocument(url)) {
+        busy = false;
+        await _authenticate(
+          campusLoginTargetFor(url, _entry),
+          _ImportAction.pageRead,
+        );
+        return;
+      }
+      if (!schoolUrl(url)) {
         throw const FormatException();
       }
       final coverage = await script(AppAssets.coverage);
@@ -174,6 +348,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         return;
       }
       final result = await script(AppAssets.extract);
+      if (!mounted || revision != SchoolAdapter.sessionChanges.value) return;
       final tables = (result['tables'] as List).cast<Map>();
       if (tables.isEmpty) throw const FormatException();
       int? selected = 0;
@@ -198,12 +373,15 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         update('已取消页面读取。');
         return;
       }
+      if (!mounted || revision != SchoolAdapter.sessionChanges.value) return;
       final batch = await adapter.parseDom(
         Map<String, dynamic>.from(tables[selected]),
         result['semester'] as String? ?? '',
       );
       batch.payload['hasUnscheduled'] = coverage['hasUnscheduled'] == true;
-      if (mounted) await finishBatch(batch, '页面读取');
+      if (mounted && revision == SchoolAdapter.sessionChanges.value) {
+        await finishBatch(batch, '页面读取', revision);
+      }
     } catch (_) {
       update('没有完整读取课表。请打开学期理论课表并选择全部周次后重试，旧课表未改动。');
     } finally {
@@ -212,7 +390,11 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     }
   }
 
-  Future<void> finishBatch(ParsedBatch batch, String source) async {
+  Future<void> finishBatch(
+    ParsedBatch batch,
+    String source,
+    int revision,
+  ) async {
     final saved = ref
         .read(scheduleProvider.notifier)
         .importBaseline(recoverUnreadable: widget.recoverUnreadable);
@@ -225,7 +407,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         (term == '2026-2027-1' ? DateTime(2026, 9, 7) : null);
     if (term.isEmpty || monday == null) {
       final config = await configureTerm(term);
-      if (!mounted || config == null) {
+      if (!mounted || revision != SchoolAdapter.sessionChanges.value) return;
+      if (config == null) {
         update('已取消导入，旧课表未改动。');
         return;
       }
@@ -233,7 +416,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       monday = config.$2;
     }
     final courses = await adapter.validate(batch, term, monday);
-    if (!mounted) return;
+    if (!mounted || revision != SchoolAdapter.sessionChanges.value) return;
     final duplicate = batch.count - courses.length;
     final summary =
         '$source导入 ${courses.length} 条排课规则，${batch.count} 段来源，合并 $duplicate 项完全重复。\n学期 $term，第1周周一 ${isoDate(monday)}。'
@@ -384,8 +567,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
 
   Future<void> popup(int id) async {
     InAppWebViewController? popupController;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
+    final target = await Navigator.of(context).push<CampusLoginTarget>(
+      MaterialPageRoute<CampusLoginTarget>(
         builder: (context) => Scaffold(
           appBar: AppBar(
             title: const Text('学校页面'),
@@ -399,7 +582,16 @@ class _ImportPageState extends ConsumerState<ImportPage> {
               windowId: id,
               initialSettings: settings(),
               onWebViewCreated: (web) => popupController = web,
-              onLoadStop: (web, _) => resizeWeb(web, report: false),
+              onLoadStop: (web, url) {
+                final address = url?.toString();
+                if (campusLoginDocument(address) &&
+                    context.mounted &&
+                    ModalRoute.of(context)?.isCurrent == true) {
+                  Navigator.pop(context, campusLoginTargetFor(address, _entry));
+                } else {
+                  unawaited(resizeWeb(web, report: false));
+                }
+              },
               shouldOverrideUrlLoading: (_, action) async =>
                   authenticationUrl(action.request.url?.toString() ?? '')
                   ? NavigationActionPolicy.ALLOW
@@ -421,6 +613,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         ),
       ),
     );
+    if (mounted && target != null) _authenticationNeeded(target);
   }
 
   InAppWebViewSettings settings() => InAppWebViewSettings(
@@ -458,32 +651,29 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('学校官方页面'),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(48),
-            child: webTools(() => controller),
-          ),
+          bottom: _authTarget == null
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(48),
+                  child: webTools(() => controller),
+                )
+              : null,
           actions: [
-            PopupMenuButton<String>(
+            PopupMenuButton<CampusLoginTarget>(
               icon: const AppIcon(AppIcons.moreVertical),
               tooltip: '学校入口',
-              enabled: !busy,
-              onSelected: (url) async {
-                await stop();
-                await controller?.loadUrl(
-                  urlRequest: URLRequest(url: WebUri(url)),
-                );
-              },
+              enabled: !busy && !_connecting,
+              onSelected: _selectEntry,
               itemBuilder: (_) => const [
                 PopupMenuItem(
-                  value: SchoolEndpoints.vpn,
+                  value: CampusLoginTarget.vpn,
                   child: Text('学校 WebVPN'),
                 ),
                 PopupMenuItem(
-                  value: SchoolEndpoints.portal,
+                  value: CampusLoginTarget.portal,
                   child: Text('数字北中医'),
                 ),
                 PopupMenuItem(
-                  value: SchoolEndpoints.teaching,
+                  value: CampusLoginTarget.teaching,
                   child: Text('教务系统（校内）'),
                 ),
               ],
@@ -509,7 +699,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                   runSpacing: 8,
                   children: [
                     FilledButton.icon(
-                      onPressed: busy
+                      onPressed: busy || _connecting
                           ? null
                           : running
                           ? () {
@@ -535,49 +725,71 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                       ),
                     ),
                     OutlinedButton(
-                      onPressed: busy ? null : extract,
+                      onPressed: busy || _connecting ? null : extract,
                       child: const Text('页面读取（备用）'),
                     ),
                   ],
                 ),
               ),
               Expanded(
-                child: InAppWebView(
-                  initialUrlRequest: URLRequest(
-                    url: WebUri(SchoolEndpoints.vpn),
+                child: Visibility(
+                  visible: _authTarget == null,
+                  maintainState: true,
+                  replacement: Center(
+                    child: AppActionButton(
+                      label: '登录校园账号',
+                      icon: AppIcons.globe,
+                      onPressed:
+                          _authTarget == null || busy || _connecting || running
+                          ? null
+                          : () => _authenticate(_authTarget!),
+                    ),
                   ),
-                  initialSettings: settings(),
-                  onWebViewCreated: (value) => controller = value,
-                  onLoadStop: (web, _) => resizeWeb(web, report: false),
-                  shouldOverrideUrlLoading: (_, action) async {
-                    if (authenticationUrl(
-                      action.request.url?.toString() ?? '',
-                    )) {
-                      return NavigationActionPolicy.ALLOW;
-                    }
-                    update('已阻止学校及指定认证域名以外的跳转。');
-                    return NavigationActionPolicy.CANCEL;
-                  },
-                  onCreateWindow: (_, action) async {
-                    if (!running && action.hasGesture != true) return false;
-                    unawaited(popup(action.windowId));
-                    return true;
-                  },
-                  onDownloadStartRequest: download,
-                  onReceivedServerTrustAuthRequest: (web, challenge) async {
-                    update('学校连接的证书未通过校验，已停止加载。');
-                    return ServerTrustAuthResponse(
-                      action: ServerTrustAuthResponseAction.CANCEL,
-                    );
-                  },
-                  onReceivedError: (web, request, error) {
-                    if (request.isForMainFrame == true) {
-                      update('网页未能加载，请检查网络或切换学校入口。旧课表不受影响。');
-                    }
-                  },
-                  onPermissionRequest: (_, request) async => PermissionResponse(
-                    resources: request.resources,
-                    action: PermissionResponseAction.DENY,
+                  child: InAppWebView(
+                    initialUrlRequest: URLRequest(url: WebUri(_entry.entry)),
+                    initialSettings: settings(),
+                    onWebViewCreated: (value) => controller = value,
+                    onLoadStop: _pageLoaded,
+                    shouldOverrideUrlLoading: (_, action) async {
+                      if (authenticationUrl(
+                        action.request.url?.toString() ?? '',
+                      )) {
+                        return NavigationActionPolicy.ALLOW;
+                      }
+                      update('已阻止学校及指定认证域名以外的跳转。');
+                      return NavigationActionPolicy.CANCEL;
+                    },
+                    onCreateWindow: (_, action) async {
+                      if (busy ||
+                          _connecting ||
+                          (!running && action.hasGesture != true)) {
+                        return false;
+                      }
+                      unawaited(popup(action.windowId));
+                      return true;
+                    },
+                    onDownloadStartRequest: download,
+                    onReceivedServerTrustAuthRequest: (web, challenge) async {
+                      _pageFailed('学校连接的证书未通过校验，已停止加载。');
+                      return ServerTrustAuthResponse(
+                        action: ServerTrustAuthResponseAction.CANCEL,
+                      );
+                    },
+                    onReceivedError: (web, request, error) {
+                      if (request.isForMainFrame == true) {
+                        _pageFailed('网页未能加载，请检查网络或切换学校入口。旧课表不受影响。');
+                      }
+                    },
+                    onReceivedHttpError: (web, request, _) {
+                      if (request.isForMainFrame == true) {
+                        _pageFailed('学校服务暂时无法打开，请稍后重试。离线课表保留。');
+                      }
+                    },
+                    onPermissionRequest: (_, request) async =>
+                        PermissionResponse(
+                          resources: request.resources,
+                          action: PermissionResponseAction.DENY,
+                        ),
                   ),
                 ),
               ),
