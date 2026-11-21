@@ -44,6 +44,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
   InAppWebViewController? _web;
   Timer? _timeout;
   Timer? _poll;
+  final _requestedHttpsUpgrades = <Uri>{};
   int _document = 0;
   int _httpsUpgrades = 0;
   bool _loading = true;
@@ -89,6 +90,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
       _web = null;
       _document++;
       _httpsUpgrades = 0;
+      _requestedHttpsUpgrades.clear();
       _loading = false;
       _method = null;
       _switching = false;
@@ -110,12 +112,19 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
     });
   }
 
+  bool _isReplacedHttpNavigation(String? address) => _requestedHttpsUpgrades
+      .contains(widget.target.upgradeSameHostHttps(address));
+
   bool _checkDocument(InAppWebViewController web, WebUri? url) {
     if (!mounted || !sameWebViewController(web, _web) || _completed) {
       return false;
     }
     if (url == null) return false;
-    if (widget.target.allows(url.toString())) return true;
+    final address = url.toString();
+    if (widget.target.allows(address)) return true;
+    // Android can deliver a page callback for the canceled HTTP request while
+    // the replacement HTTPS document is loading.
+    if (_isReplacedHttpNavigation(address)) return false;
     _fail(web, '已停止打开非当前学校服务或统一身份认证的页面。');
     return false;
   }
@@ -251,6 +260,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
       _waitForPage(web, '学校页面加载超时，请检查网络后重试。');
     },
     shouldOverrideUrlLoading: (web, action) async {
+      if (!_current(web, _document)) return NavigationActionPolicy.CANCEL;
       final raw = action.request.url?.toString();
       if (widget.target.allows(raw)) {
         return NavigationActionPolicy.ALLOW;
@@ -260,6 +270,10 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
         if (upgraded != null &&
             _httpsUpgrades < CampusLoginPolicy.maxHttpsUpgrades) {
           _httpsUpgrades++;
+          _requestedHttpsUpgrades.add(upgraded);
+          _document++;
+          _poll?.cancel();
+          _waitForPage(web, '学校页面加载超时，请检查网络后重试。');
           unawaited(
             web.loadUrl(urlRequest: URLRequest(url: WebUri.uri(upgraded))),
           );
@@ -285,7 +299,8 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
     onPageCommitVisible: (web, url) => _loaded(web, url, complete: false),
     onLoadStop: (web, url) => _loaded(web, url, complete: true),
     onReceivedError: (web, request, _) {
-      if (request.isForMainFrame == true) {
+      if (request.isForMainFrame == true &&
+          !_isReplacedHttpNavigation(request.url.toString())) {
         _fail(web, '学校页面无法加载，请检查网络后重试。');
       }
     },

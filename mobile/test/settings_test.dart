@@ -171,7 +171,19 @@ void main() {
       view.controller.scripts.last,
       contains("querySelector('a#loginByMobile').click()"),
     );
-    view.visit(CampusLoginTarget.teaching.entry);
+    const redirected = 'http://jw.bucm.edu.cn/jsxsd/';
+    const upgraded = 'https://jw.bucm.edu.cn/jsxsd/';
+    expect(await view.navigate(redirected), NavigationActionPolicy.CANCEL);
+    expect(view.controller.loads, [upgraded]);
+    final scriptsBeforeRedirect = view.controller.scripts.length;
+    view.params.onLoadStart?.call(view.web, WebUri(redirected));
+    view.failLoad(redirected);
+    view.params.onLoadStop?.call(view.web, WebUri(redirected));
+    await tester.pumpAndSettle();
+    expect(find.text('重试'), findsNothing);
+    expect(view.controller.scripts, hasLength(scriptsBeforeRedirect));
+
+    view.visit(upgraded);
     await tester.pumpAndSettle();
     expect(find.text('校园账号登录'), findsOneWidget);
     view.controller.ready = true;
