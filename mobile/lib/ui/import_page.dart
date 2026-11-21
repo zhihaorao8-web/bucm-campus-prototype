@@ -39,6 +39,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   (CampusLoginTarget, _ImportAction?)? _waitingForSchool;
   bool _loginOpen = false;
   bool _resumedImport = false;
+  int _document = 0;
 
   bool get _connecting => _loginOpen || _waitingForSchool != null;
 
@@ -154,10 +155,25 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     }
   }
 
-  void _pageLoaded(InAppWebViewController web, WebUri? url) {
+  Future<bool> _isAuthentication(
+    InAppWebViewController web,
+    String? address,
+  ) async {
+    if (campusLoginDocument(address)) return true;
+    if (!CampusLoginTarget.vpn.isDestination(address)) return false;
+    try {
+      return await web.evaluateJavascript(source: campusVpnLoginScript) == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _pageLoaded(InAppWebViewController web, WebUri? url) async {
     if (!mounted || web != controller) return;
+    final document = ++_document;
     final address = url?.toString();
-    final authentication = campusLoginDocument(address);
+    final authentication = await _isAuthentication(web, address);
+    if (!mounted || web != controller || document != _document) return;
     final queued = _waitingForSchool;
     if (queued != null) {
       if (authentication) {
@@ -239,9 +255,12 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       return;
     }
     try {
-      final url = (await controller!.getUrl())?.toString() ?? '';
+      final web = controller!;
+      final url = (await web.getUrl())?.toString() ?? '';
       if (!mounted || session != generation || !running) return;
-      if (campusLoginDocument(url)) {
+      final authentication = await _isAuthentication(web, url);
+      if (!mounted || session != generation || !running) return;
+      if (authentication) {
         _authenticationNeeded(campusLoginTargetFor(url, _entry));
         return;
       }
@@ -329,9 +348,11 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     update('正在读取当前课表页面。');
     try {
       await stop();
-      final url = (await controller!.getUrl())?.toString() ?? '';
+      final web = controller!;
+      final url = (await web.getUrl())?.toString() ?? '';
+      final authentication = await _isAuthentication(web, url);
       if (!mounted || revision != SchoolAdapter.sessionChanges.value) return;
-      if (campusLoginDocument(url)) {
+      if (authentication) {
         busy = false;
         await _authenticate(
           campusLoginTargetFor(url, _entry),
@@ -749,6 +770,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                     initialUrlRequest: URLRequest(url: WebUri(_entry.entry)),
                     initialSettings: settings(),
                     onWebViewCreated: (value) => controller = value,
+                    onLoadStart: (_, _) => _document++,
                     onLoadStop: _pageLoaded,
                     shouldOverrideUrlLoading: (_, action) async {
                       if (authenticationUrl(

@@ -107,6 +107,15 @@ bool campusLoginDocument(String? address) {
           (uri.path == '/login' || uri.path == '/login/'));
 }
 
+/// WebVPN can show the public authentication shell without changing from /.
+const campusVpnLoginScript =
+    '''
+(() => {
+  if (location.origin !== 'https://${SchoolEndpoints.vpnHost}') return false;
+  return /统一认证扫码|CAS统一身份认证登录/.test(document.body?.innerText ?? '');
+})()
+''';
+
 /// A portal can lead into the teaching CAS flow. Resume that service directly
 /// while preserving the selected access mode. Only the known hosts are used.
 CampusLoginTarget campusLoginTargetFor(

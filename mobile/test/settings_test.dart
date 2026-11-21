@@ -150,6 +150,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('用另一台设备的企业微信扫描官方页面二维码。'), findsOneWidget);
     expect(platform.views.last.controller.scripts, isEmpty);
+    final vpn = platform.views.last;
+    vpn.controller.execute = (source) => source == campusVpnLoginScript;
+    vpn.visit(CampusLoginTarget.vpn.entry);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 26));
+    expect(find.text('重试'), findsNothing);
+    expect(find.byType(CampusLoginPage), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(outcomes, [false]);
@@ -231,6 +238,32 @@ void main() {
       variant: TargetPlatformVariant.only(TargetPlatform.android),
     );
   }
+  testWidgets('WebVPN sign-in at its root is recognized before page reading', (
+    tester,
+  ) async {
+    final platform = CampusLoginTestPlatform();
+    final previous = InAppWebViewPlatform.instance;
+    InAppWebViewPlatform.instance = platform;
+    if (previous != null) {
+      addTearDown(() => InAppWebViewPlatform.instance = previous);
+    }
+    await tester.pumpWidget(app(MemoryRepository(const ScheduleData())));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('从学校导入课表'));
+    await tester.pumpAndSettle();
+    final view = platform.views.single;
+    view.controller.execute = (source) => source == campusVpnLoginScript;
+    view.visit(CampusLoginTarget.vpn.entry);
+    await tester.pumpAndSettle();
+    expect(find.text('需要登录校园账号后继续。'), findsOneWidget);
+    await tester.tap(find.text('页面读取（备用）'));
+    await tester.pump();
+    platform.views.last.visit('https://webvpn.bucm.edu.cn/login');
+    await tester.pumpAndSettle();
+    expect(find.text('登录后继续读取课表页面'), findsOneWidget);
+    expect(view.controller.scripts, [campusVpnLoginScript]);
+    await tester.pumpWidget(const SizedBox());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
   for (final scale in [1.0, 1.5]) {
     testWidgets('settings reverse keyboard focus clears the header: $scale', (
       tester,

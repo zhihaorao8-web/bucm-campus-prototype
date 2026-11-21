@@ -105,14 +105,22 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
   Future<void> _inspectPage(InAppWebViewController web, int document) async {
     if (!_current(web, document)) return;
     bool ready;
+    bool vpnLogin = false;
     try {
       ready =
           await web.evaluateJavascript(source: widget.target.readinessScript) ==
           true;
+      if (!ready &&
+          widget.target == CampusLoginTarget.vpn &&
+          _current(web, document)) {
+        vpnLogin =
+            await web.evaluateJavascript(source: campusVpnLoginScript) == true;
+      }
     } catch (_) {
       ready = false;
     }
     if (!mounted || !_current(web, document)) return;
+    if (vpnLogin) _timeout?.cancel();
     if (ready && ModalRoute.of(context)?.isCurrent == true) {
       _completed = true;
       _cancelTimers();
