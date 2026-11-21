@@ -1363,6 +1363,11 @@ void main() {
             )
             .first,
       );
+      await Scrollable.ensureVisible(
+        tester.element(find.text('图书馆座位预约')),
+        alignment: .5,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.text('图书馆座位预约'));
       await tester.pumpAndSettle();
 
