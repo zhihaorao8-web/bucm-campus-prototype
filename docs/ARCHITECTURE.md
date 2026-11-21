@@ -1,6 +1,6 @@
 # 架构与公共能力索引
 
-更新：2026-11-20，按当前分支与0.3主线源码核对。需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，交互见[DESIGN](../DESIGN.md)，验证见[STATUS](STATUS.md)。本页描述已有实现；拟拆分与删除见[工程优化计划](MAINTENANCE_PLAN.md)。
+更新：2026-11-22，按当前分支源码核对。需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，交互见[DESIGN](../DESIGN.md)，验证见[STATUS](STATUS.md)。本页描述已有实现；拟拆分与删除见[工程优化计划](MAINTENANCE_PLAN.md)。
 
 课堂连接/目录协议与排查见[CLASSROOM](CLASSROOM.md)，播放所有权/媒体边界与公开来源见[PLAYER](PLAYER.md)；不要从已删除的旧专项计划重新实现功能。
 
@@ -29,8 +29,8 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 | 校园账号登录 | 设置或课表导入或图书馆 → `openCampusLogin` → `CampusLoginPage` → 固定官方服务入口；`platform/campus_login_navigation.dart` 管理各入口的 HTTPS 主文档域名、CAS 标签、同域 `upgradeSameHostHttps`（教务 `:80` 跳回有界升级 HTTPS/:443，不放开明文 HTTP）与同步/异步就绪判定（含 `CampusLoginTarget.library` 同源 `/ic-web/seatMenu` 检查）；完成后经 `ui/app_controls.dart` `showAppNotice` 显式提示登录成功 | 已有有效会话可直接验证目标服务；认证凭据由本人在校方页面输入。发起方只接收目标可用或取消，自己保留待恢复的业务操作 |
 | 录播导入 | `classroom_import_page.dart` / `ClassroomCoursePage` → 官方上下文 → `ClassroomImportCoordinator`协调API或DOM收集结果 | `ClassroomArchive`校验所有来源完整分页，协调器按捕获的revision调用`ClassroomLibrary`整组保存；目录可读不代表认证有效 |
 | 播放 | 时间线保留来源课程ID、录播ID及原分页 → `ClassroomPlaybackPreparation` → 原生`ClassroomPlayback` / `ClassroomPlayerGroup`。需要重新认证时，`ClassroomCoursePage` 复用 `openCampusLogin`，直连用轻新课堂固定课程入口与 `ClassroomPageScripts` 目录就绪判定，WebVPN 用其独立门户扫码。 | 每次点播最多恢复一次。认证完成后重新读取原来源与分页，播放脚本校验学期、来源、页码、公开状态与唯一录播 ID，原生准备仍执行当次访问检查。取消或切换账号即丢弃请求，准备器负责移交前的原生会话释放。 |
-| 退出会话 | `SchoolAdapter.clearSession`清除诊断、页面缓存、目录、续播及原生WebView会话 | 缓存/存储revision和任务generation阻止旧回调写回；离线课表保留 |
-| 图书馆座位预约 | 底部“图书馆”一级页或设置校园服务入口跳至 `ui/library_seat_query_page.dart`（一级页切入后惰性加载，合成示例模式下隔离）；三级空间选座视图与转场在 `ui/library_floor_overview.dart`（`LibraryFloorListView`、`LibraryFloorSchematicView`、楼层分组、`2F` 专绘与 `3F–5F` 区域方位模型、`LibrarySpatialLevelTransition`、`LibrarySeatViewModeTransition`）；具体区域选座双视图与骨架在 `ui/library_seat_map.dart`，区域/时段轴/预约与取消确认 `QuietSheet` 在 `ui/library_seat_sheets.dart`，“我的预约”焦点票卡与历史分层在 `ui/library_seat_bookings.dart`；`LibrarySeatQueries` 协调查询、预约确认和取消 | L1/L2 仅通过 `/ic-web/seatMenu` 拉取楼层与区域目录，进入 L3 具体区域后才按需拉取座位清单。需要认证时「登录校园账号」先调用 `LibrarySeatReader.tryReuseCampusSession`（无界面受限 WebView 检查是否可复用有效 CAS 会话并在 `/ic-web/seatMenu` 就绪后无弹窗返回，见 `CampusLoginTarget.library`），需要本人认证时进入自动关闭的 `CampusLoginPage`，完成后均由 `showAppNotice` 提示登录成功并仅作只读刷新（0 次自动写重试）；`LibrarySeatPage` 继续作为显式「打开学校预约网页」手动回退。退出会话或离页丢弃迟到响应与个人数据 |
+| 退出会话 | `ui/privacy_data_page.dart`（`PrivacyDataPage`）承载「隐私与数据」独立子页；经各自确认后分别调用 `SchoolAdapter.clearSession`（清除诊断、页面缓存、目录、续播及原生WebView会话，保留离线课表）或 `scheduleProvider.notifier.clear()`（清空全部学期本地课程，不影响学校会话） | 缓存/存储revision和任务generation阻止旧回调写回；两项操作相互独立确认 |
+| 图书馆座位预约 | 底部“图书馆”一级页直接进入 `ui/library_seat_query_page.dart`（一级页切入后惰性加载，合成示例模式下隔离）；三级空间选座视图与转场在 `ui/library_floor_overview.dart`（`LibraryFloorListView`、`LibraryFloorSchematicView`、楼层分组、`2F` 专绘与 `3F–5F` 区域方位模型、`LibrarySpatialLevelTransition`、`LibrarySeatViewModeTransition`）；具体区域选座双视图与骨架在 `ui/library_seat_map.dart`，区域/时段轴/预约与取消确认 `QuietSheet` 在 `ui/library_seat_sheets.dart`，“我的预约”焦点票卡与历史分层在 `ui/library_seat_bookings.dart`；`LibrarySeatQueries` 协调查询、预约确认和取消 | L1/L2 仅通过 `/ic-web/seatMenu` 拉取楼层与区域目录，进入 L3 具体区域后才按需拉取座位清单。需要认证时「登录校园账号」先调用 `LibrarySeatReader.tryReuseCampusSession`（无界面受限 WebView 检查是否可复用有效 CAS 会话并在 `/ic-web/seatMenu` 就绪后无弹窗返回，见 `CampusLoginTarget.library`），需要本人认证时进入自动关闭的 `CampusLoginPage`，完成后均由 `showAppNotice` 提示登录成功并仅作只读刷新（0 次自动写重试）；`LibrarySeatPage` 继续作为显式「打开学校预约网页」手动回退。退出会话或离页丢弃迟到响应与个人数据 |
 | 外观与语录 | `AppearanceController`、`QuoteService` → 主题及今日展示 | 外观独立存储；在线语录默认关闭，失败回退本地 |
 
 认证由用户在可见官方页面完成，App不额外保存凭据。下载Cookie仅在原生内存中按验证后的目标使用，不返回Dart。学校导出、主文档、认证和媒体分别校验用途/域名/端口/路径，不能合并为宽泛白名单。真实数据不进入测试或Git。
@@ -57,7 +57,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 | WebView 控制器判等 | `platform/webview_identity.dart`：`sameWebViewController`（比对 `.platform` 底层实例，兼容 Android 回调与创建阶段的不同包装器） | `settings_test.dart` |
 | 本机续播 | `data/classroom_playback_progress.dart`校验身份/位置；`application/classroom_playback_progress_session.dart`协调选择、周期保存与清理 | `classroom_playback_progress_test.dart` |
 | 相邻错色/冲突布局 | `ui/course_colors.dart`分配色索引；`ui/week_grid.dart`按真实时间分片和层叠 | `course_colors_test.dart`、`week_stack_test.dart` |
-| 视觉策略/控件 | `design/app_palette.dart`、`design/app_tokens.dart`；`ui/visual_policy.dart`降级、`ui/app_controls.dart`维护按钮/分段指示器/`showAppNotice` | `quiet_design_test.dart`、`classroom_ui_polish_test.dart`、`appearance_test.dart`、`settings_test.dart` |
+| 视觉策略/控件 | `design/app_palette.dart`、`design/app_tokens.dart`；`ui/visual_policy.dart`降级、`ui/app_controls.dart`维护按钮/分段指示器/`showAppNotice`、`ui/app_icon_controls.dart` `AppArrowPreference`（含 `destructive` 语义红变体）、`ui/schedule_sync_card.dart`（支持 `footer` 槽位合卡） | `quiet_design_test.dart`、`classroom_ui_polish_test.dart`、`appearance_test.dart`、`settings_test.dart` |
 | 校园登录导航 | `platform/campus_login_navigation.dart`：`CampusLoginTarget`（含 `library`）、`upgradeSameHostHttps`、`campusCasForm` | `settings_test.dart` |
 | 主题/材质/交互 | `app_theme.dart`、`AcrylicSurface`、`CourseSurface/QuietCard/QuietSheet`、`CoursePressable/CourseCardLink`、`navigation_motion.dart` | `quiet_design_test.dart`、`course_interaction_test.dart`、`navigation_motion_test.dart` |
 

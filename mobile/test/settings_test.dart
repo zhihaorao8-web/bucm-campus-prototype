@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -18,7 +19,9 @@ import 'package:campus_schedule/platform/campus_login_navigation.dart';
 import 'package:campus_schedule/platform/school_adapter.dart';
 import 'package:campus_schedule/ui/app_icon_controls.dart';
 import 'package:campus_schedule/ui/app_icons.dart';
+import 'package:campus_schedule/ui/app_shell.dart';
 import 'package:campus_schedule/ui/campus_login_page.dart';
+import 'package:campus_schedule/ui/glass_navigation.dart';
 import 'package:campus_schedule/ui/project_info_page.dart';
 import 'package:campus_schedule/ui/settings_scaffold.dart';
 import 'package:campus_schedule/ui/course_surface.dart';
@@ -1255,6 +1258,172 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets(
+    'settings stage 3 finalizes five-module order, omits library shortcut and round-trips all subpages',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(app(MemoryRepository(ScheduleData(courses: [sample()]))));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
+      await tester.pumpAndSettle();
+
+      for (final removed in [
+        '校园服务',
+        '图书馆座位预约',
+        '也可从底部“图书馆”栏直接进入',
+        '登录与隐私',
+        '外观',
+      ]) {
+        expect(find.text(removed), findsNothing);
+      }
+
+      final accountTop = tester
+          .getTopLeft(find.byKey(const ValueKey('campus-account-card')))
+          .dy;
+      final syncCard = find.byKey(const ValueKey('schedule-sync-card'));
+      final syncTop = tester.getTopLeft(syncCard).dy;
+      final scheduleBottom = tester
+          .getBottomLeft(find.byKey(const ValueKey('settings-import-schedule')))
+          .dy;
+      final recordingsTop = tester
+          .getTopLeft(find.byKey(const ValueKey('settings-import-recordings')))
+          .dy;
+      final appearanceTop = tester.getTopLeft(find.text('外观设置')).dy;
+      final privacyTop = tester
+          .getTopLeft(find.byKey(const ValueKey('privacy-data-entry')))
+          .dy;
+      final projectEntry = find.byKey(const ValueKey('project-info-entry'));
+      final projectTop = tester.getTopLeft(projectEntry).dy;
+
+      expect(accountTop, lessThan(syncTop));
+      expect(scheduleBottom, lessThan(recordingsTop));
+      expect(tester.getBottomLeft(syncCard).dy, lessThan(appearanceTop));
+      expect(appearanceTop, lessThan(privacyTop));
+      expect(privacyTop, lessThan(projectTop));
+
+      for (final (trigger, routeKey) in [
+        (find.text('外观设置'), 'settings-route-外观设置'),
+        (find.byKey(const ValueKey('privacy-data-entry')), 'settings-route-隐私与数据'),
+        (projectEntry, 'settings-route-项目信息'),
+      ]) {
+        await tester.tap(trigger);
+        await tester.pumpAndSettle();
+        expect(find.byKey(ValueKey(routeKey)), findsOneWidget);
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.byKey(ValueKey(routeKey)), findsNothing);
+      }
+
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  for (final scenario in [
+    (name: 'light-1.5x-glass', dark: false, scale: 1.5, blur: true, hc: false),
+    (name: 'dark-2.0x-glass', dark: true, scale: 2.0, blur: true, hc: false),
+    (name: 'light-1.5x-no-blur', dark: false, scale: 1.5, blur: false, hc: false),
+    (name: 'dark-2.0x-high-contrast', dark: true, scale: 2.0, blur: true, hc: true),
+  ]) {
+    testWidgets(
+      'settings stage 3 narrow 320dp responsive, reachability and degradation: ${scenario.name}',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 720);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final settings = AppearanceSettings(
+          blur: scenario.blur,
+          glass: scenario.blur,
+          contrast: scenario.hc ? 1 : 0,
+        );
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              ambientMotionEnabledProvider.overrideWithValue(false),
+              repositoryProvider.overrideWithValue(
+                MemoryRepository(ScheduleData(courses: [sample()])),
+              ),
+              currentAppearanceProvider.overrideWithValue(settings),
+              appInfoProvider.overrideWith(
+                (ref) async => const AppPlatformInfo(
+                  version: 'test',
+                  build: '7',
+                  sdk: 36,
+                ),
+              ),
+            ],
+            child: MaterialApp(
+              theme: appTheme(
+                scenario.dark ? Brightness.dark : Brightness.light,
+                settings: settings,
+              ),
+              locale: const Locale('zh', 'CN'),
+              supportedLocales: const [Locale('zh', 'CN')],
+              localizationsDelegates: GlobalMaterialLocalizations.delegates,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  padding: const EdgeInsets.only(top: 24, bottom: 20),
+                  textScaler: TextScaler.linear(scenario.scale),
+                  highContrast: scenario.hc,
+                ),
+                child: MiuixThemeBridge(child: child!),
+              ),
+              home: const AppShell(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('tab-3')));
+        await tester.pumpAndSettle();
+
+        final expectedTranslucent = scenario.blur && !scenario.hc;
+        final topBar = tester.widget<MiuixTopAppBar>(
+          find.byKey(const ValueKey('topbar-3')),
+        );
+        expect(topBar.blurred, expectedTranslucent);
+
+        final surface = find
+            .descendant(
+              of: find.byKey(const PageStorageKey('settings-page')),
+              matching: find.byType(CourseSurface),
+            )
+            .first;
+        final box =
+            tester
+                    .widget<DecoratedBox>(
+                      find
+                          .descendant(
+                            of: surface,
+                            matching: find.byType(DecoratedBox),
+                          )
+                          .first,
+                    )
+                    .decoration
+                as BoxDecoration;
+        expect(box.gradient != null, expectedTranslucent);
+        expect(box.color != null, !expectedTranslucent);
+
+        final projectEntry = find.byKey(const ValueKey('project-info-entry'));
+        await reveal(tester, projectEntry);
+        final headerRect = tester.getRect(find.byKey(const ValueKey('topbar-3')));
+        final dockRect = tester.getRect(find.byType(GlassNavigation));
+        final projectRect = tester.getRect(projectEntry);
+        expect(projectRect.top, greaterThanOrEqualTo(headerRect.bottom - .5));
+        expect(projectRect.bottom, lessThanOrEqualTo(dockRect.top + .5));
+
+        await tester.tap(projectEntry);
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('settings-route-项目信息')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
 }
 
 class _PendingRepository extends MemoryRepository {

@@ -1,6 +1,6 @@
 # 界面与交互开发规范
 
-更新：2026-11-20。适用当前Flutter Android课表与录播，保留0.3已验收的MIUIX结构、柔光亚克力和B1标题。本文是当前组件规范；需求见[PROJECT_BRIEF](docs/PROJECT_BRIEF.md)，公共计算见[ARCHITECTURE](docs/ARCHITECTURE.md)，验证证据见[STATUS](docs/STATUS.md)，独有模拟器采样见[UI验证](docs/research/UI_VALIDATION.md)。旧UI计划已精简，不覆盖本文。
+更新：2026-11-22。适用当前Flutter Android课表、录播与图书馆座位预约，保留0.3已验收的MIUIX结构、柔光亚克力和B1标题。本文是当前组件规范；需求见[PROJECT_BRIEF](docs/PROJECT_BRIEF.md)，公共计算见[ARCHITECTURE](docs/ARCHITECTURE.md)，验证证据见[STATUS](docs/STATUS.md)，独有模拟器采样见[UI验证](docs/research/UI_VALIDATION.md)。旧UI计划已精简，不覆盖本文。
 
 ## 开发顺序与参数来源
 
@@ -25,7 +25,7 @@
 | 场景 | 必须复用的入口 | 交互/布局要求 | 代表验收 |
 |---|---|---|---|
 | 主页面/背景 | AppShell、QuietBackdrop、GlassNavigation | 今日/课表/图书馆/设置四个目的地；同一分页时钟，独立滚动/折叠状态，非当前页隔离触控/焦点/语义/ticker；B1用于今日/课表/图书馆展开标题，折叠标题及设置用系统字体；图书馆切入后惰性加载 | navigation_motion、atmosphere、ui |
-| 设置子页 | SettingsScaffold、settingsGroup、AppArrowPreference | 顶栏遮挡登记到滚动视口，末项可滚出底栏；保留返回和大字换行 | settings、appearance |
+| 设置子页 | SettingsScaffold、settingsGroup、AppArrowPreference | 顶栏遮挡登记到滚动视口，末项可滚出底栏；保留返回和大字换行；`PrivacyDataPage` 复用 `AppArrowPreference(destructive: true)` 区分危险本地删除与中性会话清理 | settings、appearance |
 | 课程阅读顶栏 | QuietSliverAppBar | 与主/设置顶栏共享AppHeader计算，不覆盖可见内容或系统栏前景 | atmosphere、settings |
 | 焦点大卡 | AcrylicSurface、FocusCourseCard | 仅局部裁剪模糊；优先显示此刻/下一节、开始/结束及授课分段进度 | today_focus、quiet_design |
 | 普通/课程卡 | QuietCard、CourseSurface、CourseRow | 普通列表与dense周表分别选材质，不逐格加BackdropFilter；完整信息有详情入口 | week_grid、week_stack、course_interaction |
@@ -35,7 +35,7 @@
 | 校园账号登录 | 设置分组、AppArrowPreference、AppActionButton、官方 WebView | 登录页显示发起原因和学校来源。官方直连 CAS 的三个标签可用时显示原生方式选择器，默认账号密码；WebVPN 沿用官方扫码。教务同域 HTTP 跳转仅在宿主安全层 `upgradeSameHostHttps` 改写为 HTTPS；返回取消，网络失败可重试，目标服务可用后自动关闭并通过 `showAppNotice` 明确提示登录成功 | 设置合成测试覆盖 320 窄屏、大字、方式切换、同域 HTTPS 改写、取消和成功提示；Android 单独核对网页输入与回跳 |
 | 图书馆认证后查单 | 图书馆查询页、`showAppNotice`、“我的预约” | 普通查询沿用当时页面。预约中断后认证成功，打开请求日期所在周的“我的预约”；取消中断后刷新原预约列表。用户关闭登录时保留中断提示，恢复过程只读。 | `library_seat_queries` 核对查询范围及预约和取消请求次数 |
 | 录播认证后恢复 | `CampusLoginPage`、`ClassroomConnectionCard`、录播时间线 | 用户点播遇到认证时保留原课时并说明登录后继续观看。直连按轻新课堂目录就绪返回，WebVPN 沿用校方扫码。返回后重新读取原来源和课时。取消或权限失效时回到课程并显示原因。 | `classroom_name_merge`、`classroom_preparation` 与 `auth-recovery` |
-| 图书馆官方认证与回退入口（已实现） | 设置分组、AppArrowPreference、`LibrarySeatReader.tryReuseCampusSession`、`CampusLoginTarget.library`、`LibrarySeatPage` | 需要认证时点击「登录校园账号」先无弹窗静默复用 CAS 会话并立即拉取座位状态；仍需本人认证时打开自动关闭型 `CampusLoginPage`（`CampusLoginTarget.library` 在 `/ic-web/seatMenu` 就绪后立即返回），成功后通过 `showAppNotice` 明确提醒并只读刷新（0 次自动写重试）。顶栏及异常卡继续保留显式「打开学校预约网页」进入 `LibrarySeatPage` 回退 | 合成测试覆盖静默复用、官方页自动关闭、取消及中断零重发；Android 真机与模拟器核对 |
+| 图书馆官方认证与回退入口（已实现） | 底部「图书馆」一级页、`LibrarySeatReader.tryReuseCampusSession`、`CampusLoginTarget.library`、`LibrarySeatPage` | 需要认证时点击「登录校园账号」先无弹窗静默复用 CAS 会话并立即拉取座位状态；仍需本人认证时打开自动关闭型 `CampusLoginPage`（`CampusLoginTarget.library` 在 `/ic-web/seatMenu` 就绪后立即返回），成功后通过 `showAppNotice` 明确提醒并只读刷新（0 次自动写重试）。顶栏及异常卡继续保留显式「打开学校预约网页」进入 `LibrarySeatPage` 回退 | 合成测试覆盖静默复用、官方页自动关闭、取消及中断零重发；Android 真机与模拟器核对 |
 | 图书馆原生预约界面 | 内嵌一级页与今日/课表共用 `MiuixTopAppBar` 高度（`AppType.artisticHeader`）、B1艺术标题（`MacintoshHelloHeaderOverlay`，折叠后回退系统字体）及 `AppShell` 惰性加载；三级渐进空间选座组件（`ui/library_floor_overview.dart`：`LibraryFloorListView`、`LibraryFloorListSkeleton`、`LibraryFloorMiniPreview`、`LibraryFloorSchematicView`、`LibrarySpatialBreadcrumbBar`、`LibrarySpatialLocatorPill`、`LibrarySpatialLevelTransition`、`LibrarySeatViewModeTransition`）；第三级选座双视图（`LibrarySeatFloorMap`、`LibrarySeatGridRow`、`LibrarySeatPalette`、`LibrarySeatLoadingSkeleton`、`ClassroomSectionSwitch`）、三分组紧凑筛选卡与可点状态图例、选区/时段/确认与取消 `QuietSheet`（`showLibraryAreaSheet`、`showLibraryTimeSlotSheet`、`showLibraryConfirmReservationSheet`、`showLibraryConfirmCancelSheet`）、悬浮选中胶囊与“我的预约”焦点票卡（`AcrylicSurface`、`LibraryBookingFocusTicket`、`LibraryBookingHistoryRow`、`LibraryBookingsControlsCard`） | L1（楼层）仅先拉取 `/ic-web/seatMenu` 分层展示可用楼层与方位缩略图；L2（楼层平面示意图）按二层独立绘出与 3–5 层同东北方位的 `北区`（`libraryNorthZoneRect`）及周边未标明非选座轮廓，3–5 层绘出 `西A`/`西B`/连续 L 形 `西C`（双触控区 `library-zone-westC-east` 与 `library-zone-westC-south`）/`北区`/`南区` 与 `中庭`、`↑ 北` 及北侧未标明非选座轮廓；L3（区域具体座位）进入后按需拉取座位清单并采用等比映射（`schoolCanvasAspect = 1.72` 与 `computeLibraryFloorMapLayout` 保真呈现长条及混合圆桌布局、无挤压方席与统一居中缩放显号、切区复位 `1.0x`），无坐标回落可搜分段网格；顶栏 `LibrarySpatialBreadcrumbBar` 三段与分隔符统一垂直居中对齐；控制区按“空间定位与视图 / 预约日期与时段（统一 `AppRadius.small` 与 `38dp` 高度）/ 席位统计与`仅看空闲`筛选”三组以细分隔线清晰分区；`LibrarySpatialLocatorPill`、`BreadcrumbBar` 与 `PopScope` 支持逐级返回（L3→L2→L1）；`QuietSheet` 承担规则提示与防连点确认，合成示例模式下不发起学校请求 | 按[开发计划](docs/DEVELOPMENT_PLAN.md#图书馆座位预约)分别验收查询、提交、取消及阶段7A–8D |
 | 周/日、录播/直播 | ScheduleModeSwitch、ClassroomSectionSwitch、AppSegmentIndicator | 共用滑动指示器；父组件保留自身标签、语义、焦点和尺寸，不复写动画坐标算法 | schedule_motion、classroom_ui_polish |
 | 星期切换 | WeekdayTabs | 按文字和系统字号测量，七天可达，至少48高；窄屏横滚，禁止固定宽截断汉字 | weekday_tabs |
@@ -82,7 +82,7 @@ AppActionButton的busy/权限决定仍由调用方传onPressed。等待时禁用
 - 课堂：同学期完整名称匹配全部同名来源，教师只作标签。日期展示排序不改来源/原分页身份；统一导入任务区分未匹配、失败、取消与认证等待。录播默认、直播明确未开放。
 - 播放：默认PPT主画面、教师小窗，按实际来源切换；关闭/恢复小窗独立。横屏控件闲置隐藏，右侧画面抽屉≤半屏；暂停/缓冲/错误/无障碍时保持必要操作。预览取消、后台、时长变化时不提交旧拖动值。小窗避让水印/控件，空间不足时暂不绘制，保留原生画面生命周期。
 - 续播：先核对当次权限，再由本人选择继续或从头；仅本机元数据，不代表学校观看记录。具体阈值/保存生命周期由已有业务模块负责，UI不重写。
-- 设置/品牌：教务同步卡、外观、录播导入、登录隐私、项目信息。启动图标使用design/branding/app-icon.png，离线开发者头像保留；项目信息显示实际包版本/模式/源码，外链失败可复制地址。
+- 设置/品牌：首页按「校园账号（首行无状态 `登录校园账号` 卡）→ 课表与录播合卡（`ScheduleSyncCard` tonal 主按钮 + 同卡 `导入本学期录播`）→ 外观设置与隐私与数据合卡 → 页尾项目信息」五模块排列；图书馆座位预约统一由悬浮底栏「图书馆」直达，不在设置页重复放置快捷卡。启动图标使用design/branding/app-icon.png，离线开发者头像保留；项目信息显示实际包版本/模式/源码，外链失败可复制地址。
 
 ## 图标资源与开发使用
 

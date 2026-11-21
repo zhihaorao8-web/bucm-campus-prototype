@@ -1322,7 +1322,7 @@ void main() {
   );
 
   testWidgets(
-    'AppShell four-tab dock switches to 图书馆 lazily and Settings entry jumps to 图书馆 tab',
+    'AppShell four-tab dock switches to 图书馆 lazily and Settings omits library shortcut',
     variant: androidOnly,
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
@@ -1345,30 +1345,17 @@ void main() {
       expect(GlassNavigation.labels, ['今日', '课表', '图书馆', '设置']);
       expect(seatCalls, 0);
 
-      // Going straight from 今日 (0) to 设置 (3) must not wake the library reader.
+      // Going straight from 今日 (0) to 设置 (3) must not wake the library reader
+      // and no longer shows the retired Settings library shortcut.
       await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
       expect(seatCalls, 0);
-      expect(find.text('图书馆座位预约'), findsOneWidget);
-      expect(find.text('也可从底部“图书馆”栏直接进入'), findsOneWidget);
+      expect(find.text('校园服务'), findsNothing);
+      expect(find.text('图书馆座位预约'), findsNothing);
+      expect(find.text('也可从底部“图书馆”栏直接进入'), findsNothing);
 
-      // Tapping Settings -> 图书馆座位预约 jumps to the 图书馆 tab and loads seats.
-      await tester.scrollUntilVisible(
-        find.text('图书馆座位预约'),
-        180,
-        scrollable: find
-            .descendant(
-              of: find.byKey(const PageStorageKey('settings-page')),
-              matching: find.byType(Scrollable),
-            )
-            .first,
-      );
-      await Scrollable.ensureVisible(
-        tester.element(find.text('图书馆座位预约')),
-        alignment: .5,
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('图书馆座位预约'));
+      // Switching via bottom dock 图书馆 tab reaches the library page lazily.
+      await tester.tap(find.byKey(const ValueKey('tab-2')));
       await tester.pumpAndSettle();
 
       expect(

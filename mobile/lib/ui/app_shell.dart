@@ -983,19 +983,6 @@ class _AppShellState extends ConsumerState<AppShell>
                   ),
                 ),
                 const SizedBox(height: AppSpace.xl),
-                sectionLabel('校园服务'),
-                QuietCard(
-                  cornerRadius: AppRadius.card,
-                  insideMargin: EdgeInsets.zero,
-                  child: AppArrowPreference(
-                    title: '图书馆座位预约',
-                    summary: '也可从底部“图书馆”栏直接进入',
-                    startAction: const AppIcon(AppIcons.book),
-                    enabled: !busy && !demo,
-                    onClick: () => selectTab(_libraryTab),
-                  ),
-                ),
-                const SizedBox(height: AppSpace.xl),
                 QuietCard(
                   cornerRadius: AppRadius.card,
                   insideMargin: EdgeInsets.zero,
