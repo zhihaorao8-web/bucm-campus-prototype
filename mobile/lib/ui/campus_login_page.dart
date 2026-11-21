@@ -91,7 +91,15 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
 
   void _waitForPage(InAppWebViewController web, String message) {
     _timeout?.cancel();
-    _timeout = Timer(CampusLoginPolicy.pageTimeout, () => _fail(web, message));
+    final document = _document;
+    _timeout = Timer(CampusLoginPolicy.pageTimeout, () {
+      if (widget.target == CampusLoginTarget.vpn) {
+        // A visible WebVPN form can precede both Android page callbacks.
+        unawaited(_inspectPage(web, document, timeoutError: message));
+      } else {
+        _fail(web, message);
+      }
+    });
   }
 
   bool _checkDocument(InAppWebViewController web, WebUri? url) {
@@ -102,31 +110,47 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
     return false;
   }
 
-  Future<void> _inspectPage(InAppWebViewController web, int document) async {
+  Future<void> _inspectPage(
+    InAppWebViewController web,
+    int document, {
+    String? timeoutError,
+  }) async {
     if (!_current(web, document)) return;
     bool ready;
     bool vpnLogin = false;
     try {
       ready =
-          await web.evaluateJavascript(source: widget.target.readinessScript) ==
+          await web
+              .evaluateJavascript(source: widget.target.readinessScript)
+              .timeout(CampusLoginPolicy.readinessPoll) ==
           true;
       if (!ready &&
           widget.target == CampusLoginTarget.vpn &&
           _current(web, document)) {
         vpnLogin =
-            await web.evaluateJavascript(source: campusVpnLoginScript) == true;
+            await web
+                .evaluateJavascript(source: campusVpnLoginScript)
+                .timeout(CampusLoginPolicy.readinessPoll) ==
+            true;
       }
     } catch (_) {
       ready = false;
     }
     if (!mounted || !_current(web, document)) return;
-    if (vpnLogin) _timeout?.cancel();
+    if (vpnLogin) {
+      _timeout?.cancel();
+      if (_loading) setState(() => _loading = false);
+    } else if (!ready && timeoutError != null) {
+      _fail(web, timeoutError);
+      return;
+    }
     if (ready && ModalRoute.of(context)?.isCurrent == true) {
       _completed = true;
       _cancelTimers();
       Navigator.of(context).pop(true);
       return;
     }
+    _poll?.cancel();
     _poll = Timer(
       CampusLoginPolicy.readinessPoll,
       () => _inspectPage(web, document),

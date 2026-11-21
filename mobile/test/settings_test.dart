@@ -160,6 +160,15 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(outcomes, [false]);
+    await tester.tap(find.text('打开'));
+    await tester.pump();
+    platform.views.last.controller.execute = (source) =>
+        source == campusVpnLoginScript;
+    await tester.pump(const Duration(seconds: 26));
+    await tester.pumpAndSettle();
+    expect(find.text('重试'), findsNothing);
+    expect(find.byType(CampusLoginPage), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
   for (final pageRead in [false, true]) {
     testWidgets(
