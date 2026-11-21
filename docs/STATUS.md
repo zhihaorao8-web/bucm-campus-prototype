@@ -1,9 +1,10 @@
 # 当前验证概览
 
-更新：2026-11-21。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
+更新：2026-11-22。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
+| 设置页重排（阶段 1，待用户审核） | 干净提交 `d685d9e` 按方案 A 完成设置首页上半部重排（账号卡 + 课表与录播合卡 + 外观设置）；干净工作树 `flutter analyze --no-pub` 0 问题、4 套受影响测试 87/87 通过；`Pixel_8_API_36` 模拟器安装 `0.4`/code13 debug APK（`9691b30e`）完成默认字号 `1.0` 浅色目检。[阶段 1 记录](#2026-11-22-设置页重排阶段-1账号课表与录播) | 阶段 2（隐私与数据子页）、阶段 3（移除图书馆快捷卡、320dp/1.5x–2.0x/深浅色/材质降级复核及规范同步）及物理真机仍待推进；工作区另保留未提交调试改动 `campus_login_page.dart`（未入提交） |
 | 校园账号登录（阶段 3，已获用户验收） | `bdcc287` debug 包中的录播原课时恢复与图书馆认证后只读恢复通过宿主检查。模拟器与真机保留数据安装，模拟器冷启动通过。用户确认阶段验收通过。[用户验收](#2026-11-21-校园账号登录阶段-3-用户验收) · [测试包安装](#2026-11-21-校园账号登录阶段-3-测试包安装) | 用户反馈为阶段汇总结果，设备、网络、是否触发重新认证及分项样本未单列。 |
 | 校园账号登录（阶段 2，已获用户验收） | `f8f4125` 通过宿主合成回归及模拟器会话复用回跳复验。用户确认该修复包的重新认证、真机回跳、课表恢复和图书馆登录均通过。[用户验收](#2026-11-21-校园账号登录阶段-2-用户验收) · [回跳修复与复验](#2026-11-21-校园账号登录阶段-2-教务回跳误拦截修复) | 课表恢复为用户汇总反馈，完整学期逐项准确性单独验收。 |
 | 校园账号登录（阶段 1，已审核通过） | 2026-11-21 在 `Pixel_8_API_36` 模拟器（0.4/code13 release 包 `e6256285`）完成官方认证流程验证与公开协议核查：图书馆直连实测账号密码、手机短信与企业微信扫码三种方式均完成本人登录、官方页回跳与原生只读恢复（`0` 写入）；同 CAS 会话免密复用进入教务系统（`jw.bucm.edu.cn`）；WebVPN 扫码登录与直连会话隔离并进入 `WebVPN - 资源站点`；真实「退出学校会话」验证保留离线课表且清除学校会话 | 轻新课堂 `/cc/` 在 SSO 跳过登录后停滞于空白 `#app`；门户根路径 `https://i.bucm.edu.cn/` 明文 301 重定向受阻（`https://i.bucm.edu.cn/tp_nup/` 可直达 200）；物理真机、门户登录回跳及 WebVPN 子业务恢复留待阶段 2/3 |
@@ -12,6 +13,16 @@
 | 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
 | 学校链路 | 历史分项XLS导入、直连目录、短时播放和续播样本 | 全学期独立准确性、完整课时、水印组合、WebVPN恢复、真实认证失效及7天会话待验 |
 | 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）、7B（`9d5d2bd`）与 7C（`b4227e5`）已全部获用户审核通过；三级渐进空间选座及顶栏 B1 统一阶段 8A（`cf0189b`）、8B（`bf2e2e2`）、8C（`6c47522`）与 8D（`ff716b2`）已全部获用户审核通过，通过主机变更检查（`report-fb07fac86c6944828ac2fa41d4fb9608.json`）与 Pixel 8 API 36 真实校园会话深/浅色只读验收（0 POST 写入） | 真实退出会话已在模拟器验证，物理真机提交/取消另行验收 |
+
+## 2026-11-22 设置页重排阶段 1：账号、课表与录播
+
+- **源码与方案**：工作分支 `codex/campus-account-login` 提交 `d685d9ee3afc9c4d8baf5865d0cd3ea45eff8176`（`d685d9e`）按用户选定的 **方案 A** 完成设置页重排阶段 1，涉及 [schedule_sync_card.dart](../mobile/lib/ui/schedule_sync_card.dart)、[app_shell.dart](../mobile/lib/ui/app_shell.dart)、[settings_test.dart](../mobile/test/settings_test.dart) 与 [navigation_motion_test.dart](../mobile/test/navigation_motion_test.dart)。工作区另存在用户预先保留的未提交调试改动 [campus_login_page.dart](../mobile/lib/ui/campus_login_page.dart)，未修改、未暂存，亦未纳入本次提交与验证包。
+- **改动要点**：设置首页首行放置紧凑 `campus-account-card`（「登录校园账号 · 北京中医药大学统一身份认证 · 官方页面登录」），移除原「登录与隐私」内重复账号行；「课表与录播」分组下的 `ScheduleSyncCard` 升级为 `FilledButton.tonalIcon` 主操作并在同卡底部以细分隔线接入「导入本学期录播」（无课表提示「请先导入本学期课表」）；「外观设置」移至学习功能之后且取消重复「外观」分组标题；阶段 2–3 的「校园服务」「登录与隐私」与「项目信息」暂保留。
+- **干净工作树宿主检查**：在基于 `d685d9e` 的独立干净工作树执行 `python scripts/prepare_flutter.py`（`Android 0.4, pubspec 0.4.0+13`）及 `flutter pub get --offline --enforce-lockfile`（使用 `PUB_HOSTED_URL=https://pub.flutter-io.cn`、`PUB_CACHE=C:\studentsAPP\build\pub-cache`）：
+  - `flutter analyze --no-pub`：通过（`No issues found!`）。
+  - `flutter test --no-pub test/settings_test.dart test/navigation_motion_test.dart test/ui_test.dart test/library_seat_queries_test.dart`：**87/87 全部通过**，覆盖阶段 1 五项布局顺序、无课表/已有课表/合成示例/忙碌状态及登录取消返回设置，以及既有导航与图书馆回归。（注：在主工作区带未提交 `campus_login_page.dart` 调试文案的环境下，`teaching campus login` 用例会因 `kDebugMode` 附加诊断字符串而与原文案断言不一致，属该未提交改动所致。）
+- **模拟器默认字号目检**：从上述干净工作树 `d685d9e` 构建 `0.4`（`versionCode 13`）debug APK（SHA-256 `9691b30e5357ad03e929e3260de25f6f15340130043cd8da170b27d57ff78458`），以 `adb install -r` 保留数据安装至 `Pixel_8_API_36`（`emulator-5554`，设备 `base.apk` 摘要一致）。在默认字号 `font_scale=1.0`、浅色模式（`Night mode: no`）冷启动并进入「设置」页目检截图与 UI 节点：首屏账号卡、tonal 课表主操作按钮、合卡内录播入口及下方「外观设置」间距均匀，无文字截断、重叠或遮挡；已停止应用并清理设备 `/data/local/tmp` 临时截图与 XML。
+- **未验证边界**：阶段 2（「隐私与数据」独立子页与确认流）、阶段 3（移除「图书馆座位预约」快捷入口及 320dp/1.5x–2.0x/深浅色/材质降级整页复核）、真机端到端人工认证回跳仍待后续阶段与独立实测验证。
 
 ## 2026-11-21 校园账号登录阶段 3 用户验收
 
