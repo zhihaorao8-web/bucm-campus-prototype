@@ -944,10 +944,10 @@ class _AppShellState extends ConsumerState<AppShell>
                         onClick: () => runAction(() async {
                           final opened = await openCampusLogin(
                             context,
-                            target: CampusLoginTarget.portal,
+                            target: CampusLoginTarget.teaching,
                             reason: '登录后返回设置',
                           );
-                          if (mounted && opened) message('数字北中医已可访问');
+                          if (mounted && opened) message('教务系统已可访问');
                         }),
                       ),
                       AppArrowPreference(

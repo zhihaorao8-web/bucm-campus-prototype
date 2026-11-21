@@ -60,6 +60,12 @@ void main() {
     expect(target.isDestination('https://i.bucm.edu.cn/tp_nup/'), isTrue);
     expect(target.isDestination('https://cas.bucm.edu.cn/cas/login'), isFalse);
     expect(target.isDestination('https://i.bucm.edu.cn/'), isFalse);
+    const teaching = CampusLoginTarget.teaching;
+    expect(teaching.allows('https://cas.bucm.edu.cn/cas/login'), isTrue);
+    expect(teaching.isDestination('https://jw.bucm.edu.cn/'), isTrue);
+    expect(teaching.isDestination('https://cas.bucm.edu.cn/cas/login'), isFalse);
+    expect(teaching.allows('http://jw.bucm.edu.cn/'), isFalse);
+    expect(teaching.allows('https://i.bucm.edu.cn/tp_nup/'), isFalse);
     for (final address in [
       'http://i.bucm.edu.cn/tp_nup/',
       'https://@cas.bucm.edu.cn/cas/login',
@@ -72,9 +78,9 @@ void main() {
     }
   });
 
-  testWidgets('settings login keeps the official page until portal is ready', (
-    tester,
-  ) async {
+  testWidgets(
+    'settings login keeps the official page until teaching service is ready',
+    (tester) async {
     final platform = CampusLoginTestPlatform();
     final previous = InAppWebViewPlatform.instance;
     InAppWebViewPlatform.instance = platform;
@@ -108,13 +114,13 @@ void main() {
       view.controller.scripts.last,
       contains("querySelector('a#loginByMobile').click()"),
     );
-    view.visit(CampusLoginTarget.portal.entry);
+    view.visit(CampusLoginTarget.teaching.entry);
     await tester.pumpAndSettle();
     expect(find.text('校园账号登录'), findsOneWidget);
     view.controller.ready = true;
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
-    expect(find.text('数字北中医已可访问'), findsOneWidget);
+    expect(find.text('教务系统已可访问'), findsOneWidget);
     expect(find.byType(CampusLoginPage), findsNothing);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
