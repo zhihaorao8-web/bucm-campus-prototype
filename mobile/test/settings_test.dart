@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:campus_schedule/main.dart';
 import 'package:campus_schedule/application/appearance_controller.dart';
 import 'package:campus_schedule/application/schedule_controller.dart';
@@ -11,13 +12,16 @@ import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/data/classroom_library.dart';
 import 'package:campus_schedule/data/classroom_playback_progress.dart';
 import 'package:campus_schedule/platform/app_platform.dart';
+import 'package:campus_schedule/platform/campus_login_navigation.dart';
 import 'package:campus_schedule/platform/school_adapter.dart';
+import 'package:campus_schedule/ui/campus_login_page.dart';
 import 'package:campus_schedule/ui/project_info_page.dart';
 import 'package:campus_schedule/ui/settings_scaffold.dart';
 import 'package:campus_schedule/ui/course_surface.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'schedule_test.dart' show MemoryRepository, sample;
+import 'support/campus_login_webview.dart';
 import 'support/memory_appearance.dart';
 import 'ui_test.dart' show app;
 
@@ -42,6 +46,113 @@ void main() {
     expect(ClassroomLibrary.shared.revision, 0);
     expect(ClassroomPlaybackProgressStore.shared.revision, 0);
   });
+  test('campus login permits only HTTPS CAS and the selected service', () {
+    const target = CampusLoginTarget.portal;
+    expect(target.allows('https://cas.bucm.edu.cn/cas/login'), isTrue);
+    expect(target.isDestination('https://i.bucm.edu.cn/tp_nup/'), isTrue);
+    expect(target.isDestination('https://cas.bucm.edu.cn/cas/login'), isFalse);
+    expect(target.isDestination('https://i.bucm.edu.cn/'), isFalse);
+    for (final address in [
+      'http://i.bucm.edu.cn/tp_nup/',
+      'https://@cas.bucm.edu.cn/cas/login',
+      'https://cas.bucm.edu.cn:444/cas/login',
+      'https://cas.bucm.edu.cn.example/cas/login',
+      'https://jw.bucm.edu.cn/',
+      'wxwork://login',
+    ]) {
+      expect(target.allows(address), isFalse, reason: address);
+    }
+  });
+
+  testWidgets('settings login keeps the official page until portal is ready', (
+    tester,
+  ) async {
+    final platform = CampusLoginTestPlatform();
+    final previous = InAppWebViewPlatform.instance;
+    InAppWebViewPlatform.instance = platform;
+    if (previous != null) {
+      addTearDown(() => InAppWebViewPlatform.instance = previous);
+    }
+    tester.view.physicalSize = const Size(320, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      app(MemoryRepository(const ScheduleData()), dark: true, scale: 2),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tab-3')));
+    await tester.pumpAndSettle();
+    final login = find.text('登录校园账号');
+    await reveal(tester, login);
+    await tester.tap(login);
+    await tester.pump();
+    final view = platform.views.single;
+    const cas = 'https://cas.bucm.edu.cn/cas/login';
+    view.visit(cas);
+    await tester.pumpAndSettle();
+    expect(find.text('校园账号登录'), findsOneWidget);
+    expect(find.text('账号密码'), findsOneWidget);
+    expect(view.controller.scripts.single, contains('a#password_login'));
+    await tester.tap(find.widgetWithText(ChoiceChip, '手机号'));
+    await tester.pumpAndSettle();
+    expect(
+      view.controller.scripts.last,
+      contains("querySelector('a#loginByMobile').click()"),
+    );
+    view.visit(CampusLoginTarget.portal.entry);
+    await tester.pumpAndSettle();
+    expect(find.text('校园账号登录'), findsOneWidget);
+    view.controller.ready = true;
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.text('数字北中医已可访问'), findsOneWidget);
+    expect(find.byType(CampusLoginPage), findsNothing);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+  testWidgets('campus login retries a timeout and exits on cancellation', (
+    tester,
+  ) async {
+    final platform = CampusLoginTestPlatform();
+    final previous = InAppWebViewPlatform.instance;
+    InAppWebViewPlatform.instance = platform;
+    if (previous != null) {
+      addTearDown(() => InAppWebViewPlatform.instance = previous);
+    }
+    final outcomes = <bool>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async => outcomes.add(
+              await openCampusLogin(
+                context,
+                target: CampusLoginTarget.vpn,
+                reason: '继续访问教务系统',
+              ),
+            ),
+            child: const Text('打开'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('打开'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 26));
+    await tester.pumpAndSettle();
+    expect(find.text('重试'), findsOneWidget);
+    await tester.tap(find.text('重试'));
+    await tester.pump();
+    expect(platform.views, hasLength(2));
+    platform.views.last.visit('https://cas.bucm.edu.cn/cas/login');
+    await tester.pumpAndSettle();
+    expect(find.text('用另一台设备的企业微信扫描官方页面二维码。'), findsOneWidget);
+    expect(platform.views.last.controller.scripts, isEmpty);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(outcomes, [false]);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
   for (final scale in [1.0, 1.5]) {
     testWidgets('settings reverse keyboard focus clears the header: $scale', (
       tester,

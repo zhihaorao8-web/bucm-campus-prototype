@@ -14,7 +14,9 @@ import '../data/demo_schedule.dart';
 import '../data/classroom_library.dart';
 import '../domain/schedule.dart';
 import '../platform/library_seat_reader.dart';
+import '../platform/campus_login_navigation.dart';
 import '../platform/school_adapter.dart';
+import 'campus_login_page.dart';
 import 'course_widgets.dart';
 import 'course_surface.dart';
 import 'import_page.dart';
@@ -933,6 +935,20 @@ class _AppShellState extends ConsumerState<AppShell>
                           '密码只在学校官方页面输入。应用不保存密码，不上传课表。学校会话失效后，需要你重新登录。',
                           style: TextStyle(fontSize: AppType.body, height: 1.5),
                         ),
+                      ),
+                      AppArrowPreference(
+                        title: '登录校园账号',
+                        summary: '打开北京中医药大学统一身份认证',
+                        enabled: !busy && !demo,
+                        startAction: const AppIcon(AppIcons.globe),
+                        onClick: () => runAction(() async {
+                          final opened = await openCampusLogin(
+                            context,
+                            target: CampusLoginTarget.portal,
+                            reason: '登录后返回设置',
+                          );
+                          if (mounted && opened) message('数字北中医已可访问');
+                        }),
                       ),
                       AppArrowPreference(
                         title: '退出学校会话',

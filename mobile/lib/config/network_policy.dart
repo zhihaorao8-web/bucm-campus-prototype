@@ -1,7 +1,11 @@
 /// Fixed public entries are separate from navigation/download/media allowlists.
 /// Keep the purpose-specific TLS, host, port and path checks at each boundary.
 abstract final class SchoolEndpoints {
-  static const portal = 'https://i.bucm.edu.cn/';
+  static const portal = 'https://i.bucm.edu.cn/tp_nup/';
+  static const portalHost = 'i.bucm.edu.cn';
+  static const casHost = 'cas.bucm.edu.cn';
+  static const vpnHost = 'webvpn.bucm.edu.cn';
+  static const teachingHost = 'jw.bucm.edu.cn';
   static const vpn = 'https://webvpn.bucm.edu.cn/';
   static const classroom = 'https://qhz.bucm.edu.cn/cc/';
   static const teaching = 'https://jw.bucm.edu.cn/';
@@ -11,6 +15,12 @@ abstract final class SchoolEndpoints {
       '/https/77726476706e69737468656265737421e1ff5bd225256b5d300d8db9d6562d/';
   static const courseRoute =
       'coursePlatform/#/courseCenter/index?firstMenuId=11';
+}
+
+abstract final class CampusLoginPolicy {
+  static const casPath = '/cas/login';
+  static const pageTimeout = Duration(seconds: 25);
+  static const readinessPoll = Duration(milliseconds: 750);
 }
 
 abstract final class ProbePolicy {
