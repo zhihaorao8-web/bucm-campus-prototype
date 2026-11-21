@@ -3,6 +3,11 @@ import '../config/network_policy.dart';
 enum CampusLoginTarget {
   portal(SchoolEndpoints.portal, SchoolEndpoints.portalHost, '数字北中医'),
   teaching(SchoolEndpoints.teaching, SchoolEndpoints.teachingHost, '教务系统'),
+  classroom(
+    SchoolEndpoints.classroomCourses,
+    SchoolEndpoints.classroomHost,
+    '轻新课堂',
+  ),
   library(
     SchoolEndpoints.librarySeatHome,
     SchoolEndpoints.librarySeatHost,
@@ -54,6 +59,7 @@ enum CampusLoginTarget {
     }
     return switch (this) {
       portal => uri.path == '/tp_nup' || uri.path.startsWith('/tp_nup/'),
+      classroom => uri.path.startsWith('/coursePlatform/'),
       teaching || library => true,
       vpn =>
         uri.path == '/' ||
@@ -96,7 +102,7 @@ try {
     final marker = switch (this) {
       portal => r'/我的首页|应用中心|个人中心/.test(text)',
       teaching => r'/个人课表信息|学期理论课表/.test(text)',
-      library => 'false',
+      classroom || library => 'false',
       vpn =>
         r'/^WebVPN\b/i.test(page.title) && '
             r'/最近访问/.test(text) && /办公系统|业务系统|其他资源/.test(text)',

@@ -27,9 +27,14 @@ const published={rpId:'synthetic-video',rpName:'2030-09-02 08:30–10:00',date_t
 const videos={paramsData:row,tableData:[published,{...published,rpId:'private',shareType:2}],page:1,pageSize:10,total:20,handleCurrentChange(n){this.page=n;},seeDetail(i,v){this.played=v.rpId;}};
 videos.$router={push(route){videos.played=route.query.rpId;assert.equal(route.path,'/videoDetailInNewWindowXS');}};
 assert.equal(run(videos).records[1].published,false);
-assert.equal(run(videos,{action:'play',id:'private'}).state,'missing');
+const play = {action:'play',id:'synthetic-video',courseId:row.id,semester:'2030-2031-1',page:1};
+assert.equal(run(videos,{...play,id:'private'}).state,'missing');
+assert.equal(run(videos,{...play,courseId:'same-name-other-source'}).state,'missing');
+assert.equal(run(videos,{...play,semester:'2030-2031-2'}).state,'missing');
+assert.equal(run(videos,{...play,page:2}).state,'missing');
+assert.equal(run(videos,play,{window:{__campusClassroomPending:{ref:videos.tableData}}}).state,'missing');
 assert.equal(videos.played,undefined);
-run(videos,{action:'play',id:'synthetic-video'});
+run(videos,play);
 assert.equal(videos.played,'synthetic-video');
 assert.equal(run(videos,{action:'page',page:3}).state,'missing');
 const pending={ref:videos.tableData};

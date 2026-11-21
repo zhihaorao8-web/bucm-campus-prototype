@@ -35,9 +35,9 @@ String? dedicatedClassroomEntry(String address) {
     return null;
   }
   const prefix = SchoolEndpoints.classroomVpnPrefix;
-  if (uri.host == 'qhz.bucm.edu.cn' &&
+  if (uri.host == SchoolEndpoints.classroomHost &&
       const ['/cc', '/cc/'].contains(uri.path)) {
-    return 'https://qhz.bucm.edu.cn/${SchoolEndpoints.courseRoute}';
+    return SchoolEndpoints.classroomCourses;
   }
   if (uri.host == 'webvpn.bucm.edu.cn' &&
       ['${prefix}cc', '${prefix}cc/'].contains(uri.path)) {

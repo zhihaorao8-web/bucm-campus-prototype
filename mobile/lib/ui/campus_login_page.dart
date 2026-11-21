@@ -7,6 +7,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../config/network_policy.dart';
 import '../design/app_tokens.dart';
 import '../platform/campus_login_navigation.dart';
+import '../platform/classroom_page_scripts.dart';
 import '../platform/school_adapter.dart';
 import '../platform/webview_identity.dart';
 import 'app_controls.dart';
@@ -45,6 +46,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
   Timer? _timeout;
   Timer? _poll;
   final _requestedHttpsUpgrades = <Uri>{};
+  final _classroomScripts = ClassroomPageScripts();
   int _document = 0;
   int _httpsUpgrades = 0;
   bool _loading = true;
@@ -138,7 +140,12 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
     bool ready;
     bool vpnLogin = false;
     try {
-      if (widget.target.asyncReadiness) {
+      if (widget.target == CampusLoginTarget.classroom) {
+        final result = await _classroomScripts
+            .command(web, {'action': 'snapshot'})
+            .timeout(CampusLoginPolicy.readinessPoll);
+        ready = result['state'] == 'catalog';
+      } else if (widget.target.asyncReadiness) {
         final result = await web
             .callAsyncJavaScript(functionBody: widget.target.readinessScript)
             .timeout(CampusLoginPolicy.asyncReadinessTimeout);

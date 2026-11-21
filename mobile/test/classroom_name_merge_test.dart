@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:campus_schedule/platform/campus_login_navigation.dart';
 import 'package:campus_schedule/platform/classroom_access.dart';
 import 'package:campus_schedule/platform/classroom_session_cache.dart';
+import 'package:campus_schedule/platform/school_adapter.dart';
 import 'package:campus_schedule/data/classroom_library.dart';
 import 'package:campus_schedule/domain/classroom.dart';
 import 'package:campus_schedule/domain/schedule.dart';
@@ -13,11 +15,33 @@ import 'package:campus_schedule/ui/classroom_course_page.dart';
 import 'schedule_test.dart' show sample;
 import 'support/memory_classroom_library.dart';
 import 'support/memory_appearance.dart';
+import 'support/campus_login_webview.dart';
 import 'classroom_recovery_page_test.dart' as fake;
+
+class PlaybackLoginPlatform extends fake.RecoveryPlatform {
+  PlaybackLoginPlatform(super.controller);
+  final login = CampusLoginTestPlatform();
+  InAppWebViewKeepAlive? previous;
+
+  @override
+  PlatformInAppWebViewWidget createPlatformInAppWebViewWidget(
+    PlatformInAppWebViewWidgetCreationParams params,
+  ) {
+    if (params.keepAlive == null) {
+      return login.createPlatformInAppWebViewWidget(params);
+    }
+    if (previous != params.keepAlive) {
+      previous = params.keepAlive;
+      controller.created = false;
+    }
+    return super.createPlatformInAppWebViewWidget(params);
+  }
+}
 
 class NameImportController extends fake.RecoveryController {
   String phase = 'catalog', selectedId = 'a';
   String? pendingState;
+  String? firstPlayState;
   int prematureRoutes = 0;
   bool failSecond = true;
   final visited = <String>[];
@@ -39,7 +63,9 @@ class NameImportController extends fake.RecoveryController {
         if (command['action'] == 'catalogRoute') prematureRoutes++;
         return jsonEncode({'state': pendingState});
       }
-      return jsonEncode({'state': 'authentication'});
+      return jsonEncode({
+        'state': pendingState == 'authentication' ? 'authentication' : 'waiting',
+      });
     }
     if (!source.contains('var command =')) {
       return jsonEncode({'state': 'waiting'});
@@ -57,6 +83,10 @@ class NameImportController extends fake.RecoveryController {
         phase = 'records';
         return jsonEncode({'state': 'opening'});
       case 'play':
+        if (firstPlayState case final state?) {
+          firstPlayState = null;
+          return jsonEncode({'state': state});
+        }
         played.add(selectedId);
         return jsonEncode({'state': 'opening'});
       case 'returnRecords':
@@ -136,27 +166,40 @@ void main() {
     await rootBundle.loadString('assets/classroom.js');
     await rootBundle.loadString('assets/classroom-entry.js');
   });
-  for (final pending in ['loading', 'navigate', 'authentication']) {
-    testWidgets('复用工作页先识别$pending，认证恢复后核对原来源再播放', (tester) async {
+  for (final (pending, route, outcome) in [
+    ('loading', vpnEntry, 'resume'),
+    ('navigate', vpnEntry, 'resume'),
+    ('authentication', vpnEntry, 'resume'),
+    ('authentication', classroomProbe, 'resume'),
+    ('authentication', classroomProbe, 'cancel'),
+    ('authentication', classroomProbe, 'switch-account'),
+    ('authentication', classroomProbe, 'forbidden'),
+    ('play-command', classroomProbe, 'resume'),
+  ]) {
+    testWidgets('录播任务恢复 $pending $route $outcome', (tester) async {
       final cache = ClassroomSessionCache.shared;
       cache.clear();
       cache.putWorkspace(
         ClassroomSession(
           view: InAppWebViewKeepAlive(),
           records: single('b').pages.single,
-          entry: vpnEntry,
+          entry: route,
           fetchedAt: DateTime.now(),
         ),
         revision: cache.revision,
       );
       final controller = NameImportController()
         ..failSecond = false
-        ..pendingState = pending;
-      InAppWebViewPlatform.instance = fake.RecoveryPlatform(controller);
+        ..pendingState = pending == 'play-command' ? null : pending
+        ..firstPlayState = pending == 'play-command' ? 'authentication' : null;
+      final platform = PlaybackLoginPlatform(controller);
+      InAppWebViewPlatform.instance = platform;
       const channel = MethodChannel('cn.bucm.campus/playback');
+      final nativeCalls = <String>[];
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
         call,
       ) async {
+        nativeCalls.add(call.method);
         if (call.method == 'prepare') {
           throw PlatformException(code: 'SYNTHETIC_STOP');
         }
@@ -199,10 +242,54 @@ void main() {
       expect(controller.prematureRoutes, 0);
       expect(controller.played, isEmpty);
       expect(find.text('学校数据已变化，请刷新列表后重试。'), findsNothing);
-      controller.pendingState = null;
+      if (pending == 'authentication' || pending == 'play-command') {
+        final login = platform.login.views.single;
+        final target = route == vpnEntry
+            ? CampusLoginTarget.vpn
+            : CampusLoginTarget.classroom;
+        expect(login.params.initialUrlRequest?.url.toString(), target.loginEntry);
+        expect(nativeCalls.where((action) => action == 'begin'),
+            hasLength(pending == 'play-command' ? 1 : 0));
+        if (outcome == 'switch-account') {
+          final messenger = tester.binding.defaultBinaryMessenger;
+          final folder = await tester.runAsync(
+            () => Directory.systemTemp.createTemp('synthetic-classroom-logout-'),
+          );
+          const paths = MethodChannel('plugins.flutter.io/path_provider');
+          messenger.setMockMethodCallHandler(paths, (_) async => folder!.path);
+          messenger.setMockMethodCallHandler(SchoolAdapter.channel, (_) async => null);
+          addTearDown(() async {
+            messenger.setMockMethodCallHandler(paths, null);
+            messenger.setMockMethodCallHandler(SchoolAdapter.channel, null);
+            await folder!.delete(recursive: true);
+          });
+          await tester.runAsync(() => SchoolAdapter().clearSession());
+        }
+        if (outcome == 'cancel' || outcome == 'switch-account') {
+          await tester.pageBack();
+        } else {
+          if (target == CampusLoginTarget.classroom) {
+            login.controller.execute = (_) => jsonEncode({'state': 'loading'});
+            login.visit(target.entry);
+            await ticks(1);
+            expect(find.text('校园账号登录'), findsOneWidget);
+            expect(nativeCalls, isNot(contains('prepare')));
+          }
+          controller.phase = 'catalog';
+          login.controller.execute = (script) => target == CampusLoginTarget.vpn
+              ? true
+              : jsonEncode({'state': 'catalog'});
+          login.visit(target.entry);
+        }
+      }
+      controller.pendingState = outcome == 'forbidden' ? 'forbidden' : null;
       await ticks(10);
-      expect(controller.visited, ['a']);
-      expect(controller.played, ['a']);
+      expect(controller.visited, outcome == 'resume'
+          ? ['a', if (pending == 'play-command') 'a']
+          : isEmpty);
+      expect(controller.played, outcome == 'resume' ? ['a'] : isEmpty);
+      expect(nativeCalls.where((action) => action == 'prepare'),
+          hasLength(outcome == 'resume' ? 1 : 0));
       await tester.pumpWidget(const SizedBox());
       await tester.pump();
       cache.clear();

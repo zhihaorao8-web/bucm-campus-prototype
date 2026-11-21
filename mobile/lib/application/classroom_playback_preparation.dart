@@ -4,6 +4,11 @@ import '../config/playback_policy.dart';
 import '../platform/classroom_player.dart';
 import '../platform/test_diagnostics.dart';
 
+enum ClassroomPlaybackAccessFailure implements Exception {
+  authentication,
+  forbidden,
+}
+
 /// A per-operation preparation lease. Until handoff, this object owns cleanup
 /// of an acquired native session. Navigation/visible authentication stay in UI.
 class ClassroomPlaybackPreparation {
@@ -28,6 +33,13 @@ class ClassroomPlaybackPreparation {
     });
     if (!active()) return null;
     final response = await command({'action': 'play', 'id': recordId});
+    if (!active()) return null;
+    switch (response['state']) {
+      case 'authentication':
+        throw ClassroomPlaybackAccessFailure.authentication;
+      case 'forbidden':
+        throw ClassroomPlaybackAccessFailure.forbidden;
+    }
     if (response['state'] != 'opening') throw const FormatException();
     final data = await channel
         .invokeMapMethod<Object?, Object?>('prepare')

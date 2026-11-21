@@ -1,5 +1,6 @@
 import '../config/runtime_config.dart';
 import '../config/classroom_limits.dart';
+import '../config/network_policy.dart';
 import '../design/app_tokens.dart';
 import 'course_interaction.dart';
 import 'course_surface.dart';
@@ -20,6 +21,7 @@ import '../data/classroom_library.dart';
 import '../data/classroom_playback_progress.dart';
 import '../domain/classroom.dart';
 import '../domain/schedule.dart';
+import '../platform/campus_login_navigation.dart';
 import '../platform/classroom_access.dart';
 import '../platform/classroom_api_reader.dart';
 import '../platform/classroom_page_scripts.dart';
@@ -28,6 +30,8 @@ import '../platform/classroom_read_progress.dart';
 import '../platform/classroom_policy.dart';
 import '../platform/classroom_player.dart';
 import '../platform/classroom_session_cache.dart';
+import '../platform/school_adapter.dart';
+import 'campus_login_page.dart';
 import 'classroom_player_page.dart';
 import 'classroom_player_route.dart';
 import 'classroom_connection_card.dart';
@@ -115,6 +119,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   int get libraryRevision => importCoordinator.revision;
   ClassroomArchive? archive;
   ClassroomRecording? queuedPlayback;
+  bool playbackLoginAttempted = false, playbackLoginOpen = false;
+  int playbackSession = 0;
   GlobalKey? playbackButton;
   bool playbackReducedMotion = false;
   String? queuedCourseId;
@@ -184,6 +190,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       if (scroll.hasClients) lastOffset = scroll.offset;
     });
     importCoordinator = ClassroomImportCoordinator(library: library);
+    if (!bulk) SchoolAdapter.sessionChanges.addListener(schoolSessionCleared);
     if (bulk) {
       importProgress.update(0, ImportTaskStatus.running);
       final workspace = cache.takeWorkspace();
@@ -229,13 +236,14 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   }
 
   Future<void> loadArchive({bool keepLive = false}) async {
+    final session = SchoolAdapter.sessionChanges.value;
     ClassroomArchive? saved;
     try {
       saved = await library.lookup(localCourse);
     } catch (_) {
       /* Official fetch remains available. */
     }
-    if (!mounted) return;
+    if (!mounted || session != SchoolAdapter.sessionChanges.value) return;
     if (saved != null &&
         (!keepLive || saved.courses.any((c) => c.id == selected?.id))) {
       setState(() {
@@ -541,6 +549,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    SchoolAdapter.sessionChanges.removeListener(schoolSessionCleared);
     for (final tab in tabs) {
       tab.loadTimer?.cancel();
     }
@@ -621,6 +630,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     livePage = null;
     liveCourse = null;
     freshReadPending = true;
+    needsCatalog = false;
     restored = false;
     authVisible = false;
     automaticEntry = true;
@@ -657,11 +667,13 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       automaticPath =
           mode == ClassroomAccess.automatic &&
           decision.mode == ClassroomAccess.direct;
-      entry =
-          mode == ClassroomAccess.automatic &&
-              decision.mode == ClassroomAccess.direct
-          ? classroomProbe
-          : decision.url;
+      entry = switch ((mode, decision.mode)) {
+        (ClassroomAccess.automatic, ClassroomAccess.direct) => classroomProbe,
+        (ClassroomAccess.direct, _) when
+            playbackLoginAttempted && queuedPlayback != null =>
+          SchoolEndpoints.classroomCourses,
+        _ => decision.url,
+      };
       message = decision.message;
       showWeb = entry != null;
       // WebVPN may present its sign-in inside an iframe without reporting the
@@ -687,6 +699,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   }
 
   void requireAuthentication(_SchoolTab tab) {
+    if (queuedPlayback != null) {
+      unawaited(recoverQueuedPlayback());
+      return;
+    }
     if (connectionPhase != ClassroomConnectionPhase.authentication) {
       // Login completing quickly must not reactivate a pre-login read.
       connection.advance();
@@ -713,6 +729,84 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     });
     readProgress.advance(ClassroomReadStage.authentication);
     scheduleRead(tab);
+  }
+
+  void stopPlaybackRecovery(ClassroomConnectionPhase phase, String detail) {
+    playbackGeneration++;
+    connection.advance();
+    connection.cancelPoll();
+    setState(() {
+      queuedPlayback = null;
+      queuedCourseId = null;
+      playbackButton = null;
+      clearTabs();
+      active = recordTab = catalogTab = 0;
+      recordings = archive?.pages.first ?? recordings;
+      selected = recordings?.course;
+      catalog = null;
+      fetchedAt = null;
+      loading = busy = showWeb = authVisible = false;
+      connectionPhase = phase;
+      message = detail;
+    });
+  }
+
+  void schoolSessionCleared() {
+    archive = null;
+    recordings = null;
+    stopPlaybackRecovery(
+      ClassroomConnectionPhase.paused,
+      '学校会话已清除，请重新连接录播。',
+    );
+  }
+
+  Future<void> recoverQueuedPlayback() async {
+    final record = queuedPlayback;
+    if (record == null || playbackLoginOpen) return;
+    if (playbackLoginAttempted) {
+      stopPlaybackRecovery(
+        ClassroomConnectionPhase.authentication,
+        '学校会话仍不可用，请重新选择回放后再试。',
+      );
+      return;
+    }
+    final route = Uri.tryParse(entry ?? '')?.host == SchoolEndpoints.vpnHost
+        ? ClassroomAccess.vpn
+        : ClassroomAccess.direct;
+    playbackLoginAttempted = playbackLoginOpen = true;
+    connection.advance();
+    connection.cancelPoll();
+    TestDiagnostics.shared.record(TestEvent.authenticationNeeded);
+    setState(() {
+      clearTabs();
+      active = recordTab = catalogTab = 0;
+      showWeb = loading = false;
+      busy = true;
+      fetchedAt = null;
+      connectionPhase = ClassroomConnectionPhase.authentication;
+      message = '登录后继续观看当前回放。';
+    });
+    final available = await openCampusLogin(
+      context,
+      target: route == ClassroomAccess.vpn
+          ? CampusLoginTarget.vpn
+          : CampusLoginTarget.classroom,
+      reason: '重新认证后继续观看当前回放',
+    );
+    playbackLoginOpen = false;
+    if (!mounted ||
+        !identical(queuedPlayback, record) ||
+        playbackSession != SchoolAdapter.sessionChanges.value) {
+      return;
+    }
+    if (!available) {
+      stopPlaybackRecovery(
+        ClassroomConnectionPhase.paused,
+        '已取消登录，可以继续查看本地回放目录。',
+      );
+      return;
+    }
+    await connect(route);
   }
 
   Future<Map<String, dynamic>> advanceEntry(_SchoolTab tab) async {
@@ -753,6 +847,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     }
     if (!mounted ||
         !foreground ||
+        playbackLoginOpen ||
         tab.loadTimedOut ||
         tab.purpose == _Purpose.playback) {
       return;
@@ -994,6 +1089,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
   Future<void> inspect(_SchoolTab tab, {Map<String, dynamic>? snapshot}) async {
     if (!mounted ||
         !foreground ||
+        playbackLoginOpen ||
         !tabs.contains(tab) ||
         tabs[active] != tab ||
         tab.controller == null) {
@@ -1024,6 +1120,17 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       }
       if (data['state'] == 'forbidden' || data['state'] == 'error') {
         TestDiagnostics.shared.failure(data['state'] as String?);
+        if (queuedPlayback != null) {
+          stopPlaybackRecovery(
+            data['state'] == 'forbidden'
+                ? ClassroomConnectionPhase.forbidden
+                : ClassroomConnectionPhase.failed,
+            data['state'] == 'forbidden'
+                ? '学校提示当前账号没有查看权限。'
+                : '学校请求失败，请检查官方页面或稍后重试。',
+          );
+          return;
+        }
         fetchedAt = null;
         freshReadPending = false;
         if (bulk) {
@@ -1179,7 +1286,11 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           queuedPlayback = null;
           if (candidates.length == 1) {
             unawaited(
-              playNative(candidates.single, sourceCourseId: page.course.id),
+              playNative(
+                candidates.single,
+                sourceCourseId: page.course.id,
+                resumeRequest: true,
+              ),
             );
           } else {
             setState(() => message = '录播列表已变化，请刷新后重新选择。');
@@ -1379,8 +1490,15 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     ClassroomRecording record, {
     String? sourceCourseId,
     GlobalKey? button,
+    bool resumeRequest = false,
   }) async {
     if (busy || !record.published) return;
+    if (!resumeRequest) {
+      playbackLoginAttempted = false;
+      playbackSession = SchoolAdapter.sessionChanges.value;
+    } else if (playbackSession != SchoolAdapter.sessionChanges.value) {
+      return;
+    }
     if (button != null) {
       playbackButton = button;
       playbackReducedMotion =
@@ -1389,9 +1507,8 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     }
     final targetCourse =
         sourceCourseId ?? recordings?.course.id ?? selected?.id;
-    final sourcePage = targetCourse == null
-        ? null
-        : archive?.sourcePage(targetCourse, record.id);
+    if (targetCourse == null) return;
+    final sourcePage = archive?.sourcePage(targetCourse, record.id);
     final targetPage = sourcePage?.page ?? recordings?.page ?? 1;
     if (archive != null &&
         tabs.isNotEmpty &&
@@ -1429,10 +1546,17 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     final operation = ++playbackGeneration;
     connection.cancelPoll();
     final preparation = ClassroomPlaybackPreparation(
-      command: (command) => script(tab, command),
-      active: () => mounted && operation == playbackGeneration,
+      command: (command) => script(tab, {
+        ...command,
+        'courseId': targetCourse,
+        'semester': localCourse.semester,
+        'page': targetPage,
+      }),
+      active: () => mounted && operation == playbackGeneration &&
+          playbackSession == SchoolAdapter.sessionChanges.value,
     );
     var handedToPlayer = false;
+    var requiresLogin = false;
     tab.purpose = _Purpose.playback;
     setState(() {
       busy = true;
@@ -1474,7 +1598,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
             controller: controller,
             identity: ClassroomPlaybackIdentity(
               semester: localCourse.semester,
-              courseId: selected!.id,
+              courseId: targetCourse,
               recordId: record.id,
             ),
             progressStore: widget.progressStore,
@@ -1491,16 +1615,24 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       fetchedAt = null;
       freshReadPending = false;
       if (mounted && operation == playbackGeneration) {
-        final detail = ClassroomPlaybackPreparation.failureMessage(error);
-        setState(() {
-          busy = false;
-          connectionPhase = ClassroomConnectionPhase.failed;
-          message = detail;
-        });
+        requiresLogin = error == ClassroomPlaybackAccessFailure.authentication ||
+            await playbackOnLoginPage(tab, error);
+        if (mounted && operation == playbackGeneration && !requiresLogin) {
+          final denied = error == ClassroomPlaybackAccessFailure.forbidden;
+          setState(() {
+            connectionPhase = denied
+                ? ClassroomConnectionPhase.forbidden
+                : ClassroomConnectionPhase.failed;
+            message = denied
+                ? '学校提示当前账号没有查看权限。'
+                : ClassroomPlaybackPreparation.failureMessage(error);
+          });
+        }
       }
     } finally {
       await preparation.release();
-      if (mounted && operation == playbackGeneration && tabs.contains(tab)) {
+      if (!requiresLogin && mounted &&
+          operation == playbackGeneration && tabs.contains(tab)) {
         if (tab.purpose == _Purpose.playback) {
           try {
             await script(tab, {'action': 'returnRecords'});
@@ -1509,7 +1641,7 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           }
           tab.purpose = _Purpose.records;
         }
-        if (mounted) {
+        if (mounted && operation == playbackGeneration) {
           setState(() => busy = false);
           if (handedToPlayer && fetchedAt != null) {
             scheduleRead(tab, restart: true);
@@ -1517,9 +1649,36 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
         }
       }
     }
+    if (requiresLogin && mounted && operation == playbackGeneration) {
+      queuedPlayback = record;
+      queuedCourseId = targetCourse;
+      queuedPage = targetPage;
+      await recoverQueuedPlayback();
+    }
+  }
+
+  Future<bool> playbackOnLoginPage(_SchoolTab tab, Object error) async {
+    if (error is! FormatException &&
+        !(error is PlatformException &&
+            const {'UNTRUSTED_PAGE', 'PREPARE', 'POLICY'}.contains(error.code))) {
+      return false;
+    }
+    try {
+      final address = await tab.controller?.getUrl()
+          .timeout(ClassroomLimits.readyTimeout);
+      if (campusLoginDocument(address?.toString())) return true;
+      final snapshot = await script(tab, {'action': 'snapshot'})
+          .timeout(ClassroomLimits.readyTimeout);
+      return snapshot['state'] == 'authentication';
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> closeWeb() async {
+    queuedPlayback = null;
+    queuedCourseId = null;
+    playbackButton = null;
     connection.advance();
     automaticEntry = false;
     automaticPath = false;
@@ -1788,7 +1947,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                           }
                         },
                         onCreateWindow: (_, action) async {
-                          if (tabs.length >= 9 || action.hasGesture != true) {
+                          if (!mounted || !tabs.contains(tab) ||
+                              tabs[active] != tab || tabs.length >= 9 ||
+                              action.hasGesture != true) {
                             return false;
                           }
                           setState(() {
@@ -1805,10 +1966,10 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
                           return true;
                         },
                         onCloseWindow: (_) {
-                          if (mounted) closeWeb();
+                          if (mounted && tabs.contains(tab)) closeWeb();
                         },
                         onReceivedServerTrustAuthRequest: (_, _) async {
-                          if (mounted) {
+                          if (mounted && tabs.contains(tab) && tabs[active] == tab) {
                             setState(() {
                               loading = false;
                               busy = false;

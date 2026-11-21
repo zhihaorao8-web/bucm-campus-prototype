@@ -69,6 +69,12 @@
     return JSON.stringify({state: 'opening'});
   }
   if (command.action === 'play' && videos) {
+    if (text(videos.paramsData.id) !== command.courseId ||
+        term(videos.paramsData.xq_code) !== command.semester ||
+        Number(videos.page) !== command.page ||
+        (window.__campusClassroomPending && window.__campusClassroomPending.ref === videos.tableData)) {
+      return JSON.stringify({state: 'missing'});
+    }
     var rows = videos.tableData.filter(function (v) { return text(v.rpId) === command.id && String(v.shareType) === '1'; });
     if (rows.length !== 1) return JSON.stringify({state: 'missing'});
     var record = rows[0];

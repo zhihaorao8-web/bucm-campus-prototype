@@ -37,7 +37,8 @@ DEBUG_FLOWS = {
     },
     'auth-recovery': {
         'host': ('classroom',), 'tests': ('classroom_access', 'classroom_read_progress',
-            'classroom_connection', 'classroom_recovery_page', 'classroom_coordinator', 'classroom_api_reader'),
+            'classroom_connection', 'classroom_recovery_page', 'classroom_coordinator', 'classroom_api_reader',
+            'classroom_name_merge', 'classroom_preparation'),
         'direct': True,
     },
     'playback-resume': {

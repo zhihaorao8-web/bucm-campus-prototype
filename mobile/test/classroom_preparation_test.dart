@@ -64,8 +64,23 @@ void main() {
     );
     await expectLater(
       preparation.prepare('synthetic-view', 'synthetic-record'),
-      throwsFormatException,
+      throwsA(ClassroomPlaybackAccessFailure.authentication),
     );
+    await preparation.release();
+    expect(actions, ['begin', 'cancel']);
+  });
+
+  test('expired operation after page command cannot prepare media', () async {
+    var active = true;
+    final preparation = ClassroomPlaybackPreparation(
+      channel: channel,
+      active: () => active,
+      command: (_) async {
+        active = false;
+        return {'state': 'opening'};
+      },
+    );
+    expect(await preparation.prepare('synthetic-view', 'synthetic-record'), isNull);
     await preparation.release();
     expect(actions, ['begin', 'cancel']);
   });

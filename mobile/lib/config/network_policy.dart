@@ -7,7 +7,8 @@ abstract final class SchoolEndpoints {
   static const vpnHost = 'webvpn.bucm.edu.cn';
   static const teachingHost = 'jw.bucm.edu.cn';
   static const vpn = 'https://webvpn.bucm.edu.cn/';
-  static const classroom = 'https://qhz.bucm.edu.cn/cc/';
+  static const classroomHost = 'qhz.bucm.edu.cn';
+  static const classroom = 'https://$classroomHost/cc/';
   static const teaching = 'https://jw.bucm.edu.cn/';
   static const teachingCasLogin =
       'https://cas.bucm.edu.cn/cas/login?service=https%3A%2F%2Fjw.bucm.edu.cn%2F';
@@ -17,6 +18,7 @@ abstract final class SchoolEndpoints {
       '/https/77726476706e69737468656265737421e1ff5bd225256b5d300d8db9d6562d/';
   static const courseRoute =
       'coursePlatform/#/courseCenter/index?firstMenuId=11';
+  static const classroomCourses = 'https://$classroomHost/$courseRoute';
 }
 
 abstract final class CampusLoginPolicy {
