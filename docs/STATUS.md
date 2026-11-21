@@ -4,7 +4,7 @@
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
-| 校园账号登录（阶段 2） | 基于 `acc5120` 修复 Android WebView 控制器判等与 `onLoadStop` 恢复时序；宿主 `--changed` 通过（`flutter-analyze` 0 问题、`flutter-default` 260 通过 / 6 条件跳过、`flutter-direct` 23 通过）；0.4/code13 debug 包（`3557f4f3`）已保留数据安装至 `Pixel_8_API_36` 模拟器与 USB 真机 `8560efd2`（`base.apk` SHA-256 一致）；模拟器登录前核对门户、教务直连 CAS 三标签/切签及超 25s 不超时、WebVPN 扫码及取消返回均通过。[修复与复核记录](#2026-11-21-校园账号登录阶段-2-webview-回调判等修复与登录前复核) · [848bd68 真机记录](#2026-11-21-校园账号登录阶段-2-真机验证) | 基于 `acc5120` 修复包完成本人真实登录后 `tp_nup/` 的就绪回跳与真机端到端自动恢复尚待本人实测复核 |
+| 校园账号登录（阶段 2） | 已先后修复 Android WebView 控制器判等（`acc5120`）、设置公网可达教务入口（`1bf9096`）及校内冷启动完整证书链 CAS 入口（`6ac24f7`）；宿主 `--changed` 通过（`flutter-analyze` 0 问题、`flutter-default` 260 通过 / 6 条件跳过、`flutter-direct` 23 通过）；0.4/code13 debug 包（`fee51d27`）已保留数据安装至 `Pixel_8_API_36` 模拟器与 5G 物理真机 `8560efd2`（`base.apk` SHA-256 一致）；冷启动 `设置 → 登录校园账号` 在校内网模拟器与 5G 物理真机均无 TLS/网络报错打开三标签 CAS 并选中「账号密码」。[5G 与校内网复核记录](#2026-11-21-校园账号登录阶段-2-设置公网入口与完整证书链-cas-复核) · [判等修复记录](#2026-11-21-校园账号登录阶段-2-webview-回调判等修复与登录前复核) | 基于 `6ac24f7` 包完成本人真实登录后的教务就绪回跳与真机端到端自动恢复尚待本人实测复核 |
 | 校园账号登录（阶段 1，已审核通过） | 2026-11-21 在 `Pixel_8_API_36` 模拟器（0.4/code13 release 包 `e6256285`）完成官方认证流程验证与公开协议核查：图书馆直连实测账号密码、手机短信与企业微信扫码三种方式均完成本人登录、官方页回跳与原生只读恢复（`0` 写入）；同 CAS 会话免密复用进入教务系统（`jw.bucm.edu.cn`）；WebVPN 扫码登录与直连会话隔离并进入 `WebVPN - 资源站点`；真实「退出学校会话」验证保留离线课表且清除学校会话 | 轻新课堂 `/cc/` 在 SSO 跳过登录后停滞于空白 `#app`；门户根路径 `https://i.bucm.edu.cn/` 明文 301 重定向受阻（`https://i.bucm.edu.cn/tp_nup/` 可直达 200）；物理真机、门户登录回跳及 WebVPN 子业务恢复留待阶段 2/3 |
 | 0.4/code13 发布 | 源码 `7a73decf` 全量 `--all` 检查、精确 `main` CI `44750357261` 成功、隔离 R8 XLS `1/1`、双包签名与 release 模拟器抽查通过。`v0.4` 已预发布，四份附件的大小和 SHA-256 已核对。同一 release 包的真实退出学校会话已在上方校园账号登录阶段 1 验证。[0.4 发布说明](releases/0.4.md) | 物理真机性能/功耗与提交/取消、完整 TalkBack、预测返回及完整学期准确性仍待验 |
 | 0.3/code12发布 | 729663f本地合成/静态检查、隔离R8 XLS 1/1、同源双包签名/摘要、最终release模拟器抽查及4份远端附件核对 | 精确提交的Actions因当时账户计费限制未运行；用户仅就该次发布授权例外，不作为未来跳过CI规则 |
@@ -30,6 +30,21 @@
 - 使用源码 `ef39da2` 的 debug APK（SHA-256 `96eb4c89f13f7b05118fd5c743926b324c6d844aadf4c5be7011aa798eef292a`）确认备用页面读取能打开官方扫码页，但页面已可见时仍可能触发初始加载超时。补充 Android 页面可见回调，页面可见时即检查认证与目标状态。`python scripts/check.py --changed --base ef39da2` 的静态分析和 136 项合成测试通过，报告 `report-876d4da4111c4eab918544cc50e57a80.json`。
 - 源码 `e68e332` 的模拟器样本仍出现扫码页已显示而加载回调迟到。到达超时时限时，增加一次有界检查。官方扫码页已可见则保留，页面不可用则提示重试。`python scripts/check.py --changed --base e68e332` 的静态分析和 136 项合成测试通过，报告 `report-e229705325d346cc9e60b275904c6aa0.json`。
 - 用干净源码 `848bd68be63b08b1c2b0f0ce479736e9228b93ca` 构建正常包名 0.4/code13 debug APK，验签通过，保留数据安装后设备端 SHA-256 与本地一致（`89f004e2d68644fdf598d161fd875cd7651f5cbaca3b86914ac1c5505ff57516`）。从设置进入课表导入，点「页面读取（备用）」显示官方 WebVPN 扫码页，28 秒后扫码区仍可见。样本覆盖登录前路径，本人认证后的回跳、真实课表导出和物理真机仍待验。
+
+## 2026-11-21 校园账号登录阶段 2 设置公网入口与完整证书链 CAS 复核
+
+- **5G 手机与校内网模拟器差异实测**：
+  - 在 5G 蜂窝网络（`8560efd2`，DNS `43.239.172.1`）直接测得：`i.bucm.edu.cn` 无公网解析（`No address associated with hostname`），解释了真机打不开 `tp_nup/` 而校园网模拟器可打开；`kjyy.bucm.edu.cn` 校外 TCP 443 超时；`jw.bucm.edu.cn`（`183.162.226.231`）、`cas.bucm.edu.cn`（`150.138.231.68`）、`qhz.bucm.edu.cn`（`202.204.46.42`）与 `webvpn.bucm.edu.cn`（`123.117.56.23`）均公网可达。
+  - 在校内网使用 Java `SSLSocket` 实测服务器发送的 TLS 证书链：`jw.bucm.edu.cn`（`10.64.128.31`）仅发送 **1 张叶子证书**（缺少中级 CA `GeoTrust G2 TLS CN RSA4096 SHA256 2022 CA1`），导致冷启动 WebView 进程在未缓存该中级 CA 前报 `net_error -202`（`ERR_CERT_AUTHORITY_INVALID`）；`cas.bucm.edu.cn`、`qhz.bucm.edu.cn` 与 `webvpn.bucm.edu.cn` 均发送完整 **3 张证书链**。
+- **修复范围（`1bf9096`、`6ac24f7`）**：
+  - 将「设置 → 登录校园账号」目标改为 `CampusLoginTarget.teaching`（`1bf9096`），同时保留 `ImportPage` 中的 `数字北中医` 入口供校内网络使用。
+  - 在 [network_policy.dart](../mobile/lib/config/network_policy.dart) 与 [campus_login_navigation.dart](../mobile/lib/platform/campus_login_navigation.dart) 新增 `SchoolEndpoints.teachingCasLogin` 与 `CampusLoginTarget.loginEntry`，使 `CampusLoginPage` 直接从公网可达且发送完整 3 证书链的 `https://cas.bucm.edu.cn/cas/login?service=https%3A%2F%2Fjw.bucm.edu.cn%2F` 进入，并在 `onReceivedServerTrustAuthRequest` 证书拒绝时立即提示失败、保持严格 TLS 校验（`6ac24f7`）。
+- **宿主检查**：`python scripts/check.py --changed` 通过，报告 `build/checks/report-9cc20c31de3e47de922468357a0a56f7.json`（`docs` 268 项本地目标、`flutter-analyze` 0 问题、`flutter-default` 260 通过 / 6 条件跳过、`flutter-direct` 23 通过）。
+- **构建与双端冷启动实测（未输入凭据或清除会话）**：
+  - 在干净树 `6ac24f7` 执行 `python scripts/prepare_flutter.py` 并构建正常包名 0.4/code13 debug APK（SHA-256 `fee51d276cd7967d07770a50c4ce3fca4369194da719e9350db9a6402257d62e`），保留数据安装至 `emulator-5554` 与 `8560efd2`，两台设备端 `base.apk` SHA-256 核对一致。
+  - **校内网模拟器冷启动（`emulator-5554`，`am start -W -S`）**：打开 `设置 → 登录校园账号`，无 TLS/网络报错，自动显示 `学校官方页面 · 教务系统` 与「账号密码（已选）/ 手机号 / 企业微信扫码」。
+  - **5G 物理真机冷启动（`8560efd2`，`am start -W -S`）**：打开 `设置 → 登录校园账号`，在 5G 蜂窝网络下加载 `学校官方页面 · 教务系统`，显示三枚原生方式标签并自动选中「账号密码」，网页呈现「新教务系统」「记住账号密码」「忘记密码」「立即登录」。
+- **尚未验证边界**：基于 `6ac24f7` 构建包完成本人真实登录后的教务服务就绪回跳与真机端到端自动恢复尚待本人实测核对。
 
 ## 2026-11-21 校园账号登录阶段 2 WebView 回调判等修复与登录前复核
 
