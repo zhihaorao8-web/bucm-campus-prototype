@@ -7,12 +7,14 @@ import '../application/library_seat_queries.dart';
 import '../design/app_tokens.dart';
 import '../domain/library_seats.dart';
 import '../domain/schedule.dart';
+import '../platform/campus_login_navigation.dart';
 import '../platform/library_seat_reader.dart';
 import '../platform/school_adapter.dart';
 import 'acrylic_surface.dart';
 import 'app_controls.dart';
 import 'app_icons.dart';
 import 'app_theme.dart';
+import 'campus_login_page.dart';
 import 'classroom_section_switch.dart';
 import 'course_surface.dart';
 import 'library_floor_overview.dart';
@@ -54,6 +56,7 @@ class LibrarySeatQueryPage extends StatefulWidget {
     super.key,
     this.reader,
     this.now,
+    this.loginOpener,
     this.officialPageBuilder,
     this.embedded = false,
     this.active = true,
@@ -66,6 +69,7 @@ class LibrarySeatQueryPage extends StatefulWidget {
 
   final LibrarySeatReader? reader;
   final DateTime Function()? now;
+  final Future<bool> Function(BuildContext context, String reason)? loginOpener;
   final WidgetBuilder? officialPageBuilder;
   final bool embedded, active, demo;
   final VoidCallback? onExitDemo;
@@ -107,6 +111,11 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
       !_showBookings &&
       !_busy &&
       _level != LibrarySelectionLevel.floors;
+  double get _noticeBottomInset => widget.embedded
+      ? ((widget.contentInsets?.bottom ?? 0) -
+                MediaQuery.paddingOf(context).bottom)
+            .clamp(0.0, 200.0)
+      : 0.0;
 
   late final VoidCallback _tabRefreshCallback = _handleTabRefresh;
   late final VoidCallback _tabOfficialCallback = _handleTabOfficial;
@@ -393,6 +402,55 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     }
   }
 
+  Future<void> _authenticate({String reason = '登录后自动获取座位状态'}) async {
+    if (_busy) return;
+    final revision = SchoolAdapter.sessionChanges.value;
+    setState(() {
+      _openingOfficial = true;
+      _selected = null;
+      _start = _end = null;
+    });
+    await _queries.clearSession();
+    if (!mounted || revision != SchoolAdapter.sessionChanges.value) {
+      if (mounted) setState(() => _openingOfficial = false);
+      return;
+    }
+    var signedIn = await _queries.tryReuseCampusSession();
+    if (!mounted || revision != SchoolAdapter.sessionChanges.value) {
+      if (mounted) setState(() => _openingOfficial = false);
+      return;
+    }
+    if (!signedIn) {
+      signedIn =
+          await (widget.loginOpener?.call(context, reason) ??
+              openCampusLogin(
+                context,
+                target: CampusLoginTarget.library,
+                reason: reason,
+              ));
+    }
+    if (!mounted || revision != SchoolAdapter.sessionChanges.value) {
+      if (mounted) setState(() => _openingOfficial = false);
+      return;
+    }
+    setState(() {
+      _openingOfficial = false;
+      if (signedIn) _started = true;
+    });
+    if (!signedIn) return;
+    showAppNotice(
+      context,
+      '校园账号登录成功，正在获取座位状态',
+      success: true,
+      bottomInset: _noticeBottomInset,
+    );
+    await (_showBookings
+        ? _loadBookings(_bookingPage)
+        : (_level == LibrarySelectionLevel.areaSeats && _area != null
+              ? _loadSeats()
+              : _loadAreas()));
+  }
+
   Future<void> _official() async {
     if (_busy) return;
     setState(() {
@@ -550,9 +608,11 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
   void _handleUnavailableTap(LibrarySeat seat, LibrarySeatStatus status) {
     if (_busy) return;
     final label = LibrarySeatPalette.statusLabel(status);
-    ScaffoldMessenger.maybeOf(context)
-      ?..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('${seat.label} 当前时段$label')));
+    showAppNotice(
+      context,
+      '${seat.label} 当前时段$label',
+      bottomInset: _noticeBottomInset,
+    );
   }
 
   Future<void> _chooseBookingDates() async {
@@ -1232,7 +1292,9 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                   ),
                 ),
               ),
-              if (_queries.loading || _queries.submitting) ...[
+              if (_queries.loading ||
+                  _queries.submitting ||
+                  _openingOfficial) ...[
                 const SizedBox(height: AppSpace.sm),
                 const ClipRRect(
                   borderRadius: BorderRadius.all(Radius.circular(4)),
@@ -1260,12 +1322,12 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                 _statusCard(
                   context,
                   title: '学校会话已清除',
-                  detail: '请打开学校页面登录，或刷新后重新查询。',
+                  detail: '点击后优先复用校园登录状态并自动获取座位；如需验证，将在学校官方页面完成后自动返回。',
                   actions: [
                     AppActionButton(
-                      label: '打开学校页面登录',
+                      label: '登录校园账号',
                       icon: AppIcons.chevronRight,
-                      onPressed: _busy ? null : _official,
+                      onPressed: _busy ? null : _authenticate,
                     ),
                     AppActionButton(
                       label: '刷新',
@@ -1288,13 +1350,13 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                 _statusCard(
                   context,
                   title: '需要登录学校账号',
-                  detail: '请在学校官方页面完成认证，返回应用后将自动重新查询。',
+                  detail: '点击后优先复用校园登录状态并自动获取座位；如需验证，将在学校官方页面完成后自动返回。',
                   isError: false,
                   actions: [
                     AppActionButton(
-                      label: '打开学校页面登录',
+                      label: '登录校园账号',
                       icon: AppIcons.chevronRight,
-                      onPressed: _busy ? null : _official,
+                      onPressed: _busy ? null : _authenticate,
                     ),
                   ],
                 ),
@@ -2235,9 +2297,9 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
           detail: '学校认证已过期或中断，已清空当前数据。请重新登录后先核对“我的预约”与座位状态；系统不会自动重发写请求。',
           actions: [
             AppActionButton(
-              label: '打开学校页面登录',
+              label: '登录校园账号',
               icon: AppIcons.chevronRight,
-              onPressed: _busy ? null : _official,
+              onPressed: _busy ? null : _authenticate,
             ),
           ],
         );
@@ -2404,10 +2466,12 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                 : () => _loadBookings(_bookingPage),
           ),
         AppActionButton(
-          label: _queries.needsLogin ? '打开学校页面登录' : '打开学校预约网页',
+          label: _queries.needsLogin ? '登录校园账号' : '打开学校预约网页',
           icon: AppIcons.chevronRight,
           outlined: true,
-          onPressed: _busy ? null : _official,
+          onPressed: _busy
+              ? null
+              : (_queries.needsLogin ? _authenticate : _official),
         ),
       ],
     );

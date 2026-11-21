@@ -3,6 +3,11 @@ import '../config/network_policy.dart';
 enum CampusLoginTarget {
   portal(SchoolEndpoints.portal, SchoolEndpoints.portalHost, '数字北中医'),
   teaching(SchoolEndpoints.teaching, SchoolEndpoints.teachingHost, '教务系统'),
+  library(
+    SchoolEndpoints.librarySeatHome,
+    SchoolEndpoints.librarySeatHost,
+    '图书馆座位预约',
+  ),
   vpn(SchoolEndpoints.vpn, SchoolEndpoints.vpnHost, '学校 WebVPN');
 
   const CampusLoginTarget(this.entry, this.host, this.label);
@@ -16,10 +21,30 @@ enum CampusLoginTarget {
     _ => entry,
   };
 
+  bool get asyncReadiness => this == library;
+
   bool allows(String? address) {
     final uri = _schoolHttps(address);
     return uri != null &&
         (uri.host == host || uri.host == SchoolEndpoints.casHost);
+  }
+
+  /// Upgrade only an observed same-host HTTP/80 redirect on the teaching service.
+  Uri? upgradeSameHostHttps(String? address) {
+    if (this != teaching || address == null) return null;
+    final uri = Uri.tryParse(address);
+    if (uri == null ||
+        uri.scheme != 'http' ||
+        uri.port != 80 ||
+        uri.host != host) {
+      return null;
+    }
+    final authority = RegExp(
+      r'^http://([^/?#]+)',
+      caseSensitive: false,
+    ).firstMatch(address)?.group(1)?.toLowerCase();
+    if (authority != host && authority != '$host:80') return null;
+    return uri.replace(scheme: 'https', port: 443);
   }
 
   bool isDestination(String? address) {
@@ -29,7 +54,7 @@ enum CampusLoginTarget {
     }
     return switch (this) {
       portal => uri.path == '/tp_nup' || uri.path.startsWith('/tp_nup/'),
-      teaching => true,
+      teaching || library => true,
       vpn =>
         uri.path == '/' ||
             RegExp(
@@ -41,9 +66,37 @@ enum CampusLoginTarget {
 
   /// Positive markers from the target service, never a CAS form or a URL alone.
   String get readinessScript {
+    if (this == library) {
+      return '''
+if (location.origin !== '${LibrarySeatPolicy.origin}' || window !== window.top) {
+  return false;
+}
+const stop = new AbortController();
+const timer = setTimeout(() => stop.abort(), 3000);
+try {
+  const response = await fetch('${LibrarySeatPolicy.origin}/ic-web/seatMenu', {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    redirect: 'manual',
+    signal: stop.signal,
+  });
+  if (!response.ok || !(response.headers.get('content-type') ?? '').includes('json')) {
+    return false;
+  }
+  const body = await response.json();
+  return body?.code === 0 && Array.isArray(body.data);
+} catch (_) {
+  return false;
+} finally {
+  clearTimeout(timer);
+}
+''';
+    }
     final marker = switch (this) {
       portal => r'/我的首页|应用中心|个人中心/.test(text)',
       teaching => r'/个人课表信息|学期理论课表/.test(text)',
+      library => 'false',
       vpn =>
         r'/^WebVPN\b/i.test(page.title) && '
             r'/最近访问/.test(text) && /办公系统|业务系统|其他资源/.test(text)',
@@ -133,6 +186,7 @@ CampusLoginTarget campusLoginTargetFor(
   final service = _schoolHttps(Uri.parse(address!).queryParameters['service']);
   return switch (service?.host) {
     SchoolEndpoints.teachingHost => CampusLoginTarget.teaching,
+    SchoolEndpoints.librarySeatHost => CampusLoginTarget.library,
     SchoolEndpoints.vpnHost => CampusLoginTarget.vpn,
     _ => selected,
   };

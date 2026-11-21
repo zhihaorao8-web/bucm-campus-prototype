@@ -45,6 +45,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
   Timer? _timeout;
   Timer? _poll;
   int _document = 0;
+  int _httpsUpgrades = 0;
   bool _loading = true;
   bool _switching = false;
   bool _retryDefaultSelect = false;
@@ -87,6 +88,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
     setState(() {
       _web = null;
       _document++;
+      _httpsUpgrades = 0;
       _loading = false;
       _method = null;
       _switching = false;
@@ -127,11 +129,18 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
     bool ready;
     bool vpnLogin = false;
     try {
-      ready =
-          await web
-              .evaluateJavascript(source: widget.target.readinessScript)
-              .timeout(CampusLoginPolicy.readinessPoll) ==
-          true;
+      if (widget.target.asyncReadiness) {
+        final result = await web
+            .callAsyncJavaScript(functionBody: widget.target.readinessScript)
+            .timeout(CampusLoginPolicy.asyncReadinessTimeout);
+        ready = result?.error == null && result?.value == true;
+      } else {
+        ready =
+            await web
+                .evaluateJavascript(source: widget.target.readinessScript)
+                .timeout(CampusLoginPolicy.readinessPoll) ==
+            true;
+      }
       if (!ready &&
           widget.target == CampusLoginTarget.vpn &&
           _current(web, document)) {
@@ -242,11 +251,21 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
       _waitForPage(web, '学校页面加载超时，请检查网络后重试。');
     },
     shouldOverrideUrlLoading: (web, action) async {
-      if (widget.target.allows(action.request.url?.toString())) {
+      final raw = action.request.url?.toString();
+      if (widget.target.allows(raw)) {
         return NavigationActionPolicy.ALLOW;
       }
       if (action.isForMainFrame && action.hasGesture != true) {
-        _fail(web, '已停止打开非当前学校服务或统一身份认证的页面。');
+        final upgraded = widget.target.upgradeSameHostHttps(raw);
+        if (upgraded != null &&
+            _httpsUpgrades < CampusLoginPolicy.maxHttpsUpgrades) {
+          _httpsUpgrades++;
+          unawaited(
+            web.loadUrl(urlRequest: URLRequest(url: WebUri.uri(upgraded))),
+          );
+        } else {
+          _fail(web, '已停止打开非当前学校服务或统一身份认证的页面。');
+        }
       }
       return NavigationActionPolicy.CANCEL;
     },
@@ -357,6 +376,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
                                   onPressed: () => setState(() {
                                     _error = null;
                                     _loading = true;
+                                    _httpsUpgrades = 0;
                                     _retryDefaultSelect = false;
                                   }),
                                 ),

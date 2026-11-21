@@ -2,6 +2,60 @@ import 'package:flutter/material.dart';
 import '../design/app_tokens.dart';
 import 'app_icons.dart';
 
+void showAppNotice(
+  BuildContext context,
+  String text, {
+  bool success = false,
+  double bottomInset = 0,
+}) {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  if (messenger == null) return;
+  final theme = Theme.of(context);
+  final colors = theme.colorScheme;
+  final foreground =
+      success ? colors.onPrimaryContainer : colors.onInverseSurface;
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: success ? 4 : 3),
+        backgroundColor:
+            success ? colors.primaryContainer : colors.inverseSurface,
+        elevation: 0,
+        margin: EdgeInsets.fromLTRB(
+          AppSpace.lg,
+          0,
+          AppSpace.lg,
+          AppSpace.md + bottomInset,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.button),
+          side: success
+              ? BorderSide(color: colors.primary.withValues(alpha: .28))
+              : BorderSide.none,
+        ),
+        content: Row(
+          children: [
+            if (success) ...[
+              AppIcon(AppIcons.check, size: AppControl.icon, color: foreground),
+              const SizedBox(width: AppSpace.sm),
+            ],
+            Expanded(
+              child: Text(
+                text,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: foreground,
+                  fontWeight: success ? FontWeight.w600 : null,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+}
+
 /// Shared maintenance/recovery action. Busy/permission decisions stay with the
 /// caller, so "open school page" can remain available while a task waits.
 class AppActionButton extends StatelessWidget {

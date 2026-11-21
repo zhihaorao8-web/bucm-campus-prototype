@@ -402,6 +402,15 @@ class LibrarySeatQueries extends ChangeNotifier {
     }
   }
 
+  Future<bool> tryReuseCampusSession() async {
+    if (_disposed || submitting) return false;
+    try {
+      return await _reader.tryReuseCampusSession();
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> clearSession() async {
     _revision++;
     areas = null;

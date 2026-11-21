@@ -70,6 +70,55 @@ void main() {
     expect(teaching.isDestination('https://cas.bucm.edu.cn/cas/login'), isFalse);
     expect(teaching.allows('http://jw.bucm.edu.cn/'), isFalse);
     expect(teaching.allows('https://i.bucm.edu.cn/tp_nup/'), isFalse);
+    expect(
+      teaching.upgradeSameHostHttps('http://jw.bucm.edu.cn/jsxsd/').toString(),
+      'https://jw.bucm.edu.cn/jsxsd/',
+    );
+    expect(
+      teaching.upgradeSameHostHttps('http://jw.bucm.edu.cn:80/a?x=1').toString(),
+      'https://jw.bucm.edu.cn/a?x=1',
+    );
+    for (final blockedUpgrade in [
+      'https://jw.bucm.edu.cn/',
+      'http://@jw.bucm.edu.cn/',
+      'http://jw.bucm.edu.cn:8080/',
+      'http://i.bucm.edu.cn/',
+    ]) {
+      expect(
+        teaching.upgradeSameHostHttps(blockedUpgrade),
+        isNull,
+        reason: blockedUpgrade,
+      );
+    }
+    expect(
+      CampusLoginTarget.portal.upgradeSameHostHttps('http://i.bucm.edu.cn/'),
+      isNull,
+    );
+    expect(
+      CampusLoginTarget.library.upgradeSameHostHttps('http://kjyy.bucm.edu.cn/'),
+      isNull,
+    );
+    expect(
+      CampusLoginTarget.vpn.upgradeSameHostHttps('http://webvpn.bucm.edu.cn/'),
+      isNull,
+    );
+    const library = CampusLoginTarget.library;
+    expect(library.allows('https://kjyy.bucm.edu.cn/#/ic/home'), isTrue);
+    expect(library.allows('https://cas.bucm.edu.cn/cas/login'), isTrue);
+    expect(library.allows('http://kjyy.bucm.edu.cn/'), isFalse);
+    expect(library.allows('https://kjyy.bucm.edu.cn:444/'), isFalse);
+    expect(library.allows('https://jw.bucm.edu.cn/'), isFalse);
+    expect(library.isDestination('https://kjyy.bucm.edu.cn/#/ic/home'), isTrue);
+    expect(library.isDestination('https://cas.bucm.edu.cn/cas/login'), isFalse);
+    expect(library.asyncReadiness, isTrue);
+    expect(library.readinessScript, contains('/ic-web/seatMenu'));
+    expect(
+      campusLoginTargetFor(
+        'https://cas.bucm.edu.cn/cas/login?service=https%3A%2F%2Fkjyy.bucm.edu.cn%2F',
+        CampusLoginTarget.portal,
+      ),
+      CampusLoginTarget.library,
+    );
     for (final address in [
       'http://i.bucm.edu.cn/tp_nup/',
       'https://@cas.bucm.edu.cn/cas/login',
@@ -128,7 +177,11 @@ void main() {
     view.controller.ready = true;
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
-    expect(find.text('教务系统已可访问'), findsOneWidget);
+    expect(find.text('校园账号登录成功，教务系统已可访问'), findsOneWidget);
+    expect(
+      tester.widget<SnackBar>(find.byType(SnackBar)).behavior,
+      SnackBarBehavior.floating,
+    );
     expect(find.byType(CampusLoginPage), findsNothing);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
@@ -387,12 +440,13 @@ void main() {
       login.visit(teaching.entry);
       await tester.pumpAndSettle();
       expect(find.byType(CampusLoginPage), findsNothing);
-      expect(find.text('正在返回教务系统。'), findsOneWidget);
+      expect(find.text('校园账号登录成功，正在返回教务系统'), findsOneWidget);
+      expect(find.text('校园账号登录成功，正在返回教务系统。'), findsOneWidget);
 
       importer.visit(teaching.entry, loaded: false);
       await tester.pump();
       expect(controller.scripts, isEmpty);
-      expect(find.text('正在返回教务系统。'), findsOneWidget);
+      expect(find.text('校园账号登录成功，正在返回教务系统。'), findsOneWidget);
 
       await tester.runAsync(() async {
         final operation = Completer<void>();
@@ -844,5 +898,97 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
+  );
+  testWidgets(
+    'teaching campus login upgrades same-host HTTP redirects to HTTPS within bound',
+    (tester) async {
+      final platform = CampusLoginTestPlatform();
+      final previous = InAppWebViewPlatform.instance;
+      InAppWebViewPlatform.instance = platform;
+      if (previous != null) {
+        addTearDown(() => InAppWebViewPlatform.instance = previous);
+      }
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => openCampusLogin(
+                context,
+                target: CampusLoginTarget.teaching,
+                reason: '登录后返回设置',
+              ),
+              child: const Text('打开'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('打开'));
+      await tester.pump();
+      final view = platform.views.single;
+      final policy = await view.navigate('http://jw.bucm.edu.cn/jsxsd/');
+      await tester.pump();
+      expect(policy, NavigationActionPolicy.CANCEL);
+      expect(view.controller.loads, ['https://jw.bucm.edu.cn/jsxsd/']);
+      expect(find.text('已停止打开非当前学校服务或统一身份认证的页面。'), findsNothing);
+
+      for (var i = 1; i < CampusLoginPolicy.maxHttpsUpgrades; i++) {
+        await view.navigate('http://jw.bucm.edu.cn/jsxsd/');
+      }
+      expect(
+        view.controller.loads,
+        hasLength(CampusLoginPolicy.maxHttpsUpgrades),
+      );
+      await view.navigate('http://jw.bucm.edu.cn/jsxsd/');
+      await tester.pumpAndSettle();
+      expect(find.text('已停止打开非当前学校服务或统一身份认证的页面。'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+  testWidgets(
+    'library campus login auto-closes once async seatMenu readiness succeeds',
+    (tester) async {
+      final platform = CampusLoginTestPlatform();
+      final previous = InAppWebViewPlatform.instance;
+      InAppWebViewPlatform.instance = platform;
+      if (previous != null) {
+        addTearDown(() => InAppWebViewPlatform.instance = previous);
+      }
+      final outcomes = <bool>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async => outcomes.add(
+                await openCampusLogin(
+                  context,
+                  target: CampusLoginTarget.library,
+                  reason: '登录后自动获取座位状态',
+                ),
+              ),
+              child: const Text('打开'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('打开'));
+      await tester.pump();
+      final view = platform.views.single;
+      view.visit('https://cas.bucm.edu.cn/cas/login');
+      await tester.pumpAndSettle();
+      expect(find.text('学校官方页面 · 图书馆座位预约'), findsOneWidget);
+      view.visit(SchoolEndpoints.librarySeatHome);
+      await tester.pump();
+      expect(find.byType(CampusLoginPage), findsOneWidget);
+      expect(view.controller.scripts.last, contains('/ic-web/seatMenu'));
+
+      view.controller.ready = true;
+      await tester.pump(CampusLoginPolicy.readinessPoll);
+      await tester.pumpAndSettle();
+      expect(outcomes, [true]);
+      expect(find.byType(CampusLoginPage), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
   );
 }

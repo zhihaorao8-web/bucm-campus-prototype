@@ -1,6 +1,7 @@
 import '../design/app_tokens.dart';
 import 'visual_policy.dart';
 import 'navigation_motion.dart';
+import 'app_controls.dart';
 import 'app_icon_controls.dart';
 import 'app_icons.dart';
 import 'dart:async';
@@ -56,7 +57,7 @@ class _AppShellState extends ConsumerState<AppShell>
   int tab = 0, week = 0, day = schoolNow().weekday;
   int? _targetTab;
   bool daily = false, demo = false, busy = false;
-  double tabDrag = 0;
+  double tabDrag = 0, _dockBottomInset = 0;
   final navigation = PageController();
   final dayController = ScrollController();
   final _libraryTabController = LibrarySeatTabController();
@@ -149,8 +150,13 @@ class _AppShellState extends ConsumerState<AppShell>
     }
   }
 
-  void message(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  void message(String text, {bool success = false}) => showAppNotice(
+    context,
+    text,
+    success: success,
+    bottomInset: (_dockBottomInset - MediaQuery.paddingOf(context).bottom)
+        .clamp(0.0, 200.0),
+  );
   void selectTerm(String? value) => setState(() {
     selectedSemester = value;
     week = 0;
@@ -237,7 +243,9 @@ class _AppShellState extends ConsumerState<AppShell>
     return Scaffold(
       body: MiuixScaffold(
         containerColor: Colors.transparent,
-        content: (dockInsets) => GestureDetector(
+        content: (dockInsets) {
+          _dockBottomInset = dockInsets.bottom;
+          return GestureDetector(
           onHorizontalDragStart:
               appearance.swipePages && MediaQuery.disableAnimationsOf(context)
               ? (_) => tabDrag = 0
@@ -300,7 +308,8 @@ class _AppShellState extends ConsumerState<AppShell>
                 ),
             ],
           ),
-        ),
+        );
+        },
         bottomBar: AnimatedBuilder(
           animation: navigation,
           builder: (context, _) => GlassNavigation(
@@ -947,7 +956,9 @@ class _AppShellState extends ConsumerState<AppShell>
                             target: CampusLoginTarget.teaching,
                             reason: '登录后返回设置',
                           );
-                          if (mounted && opened) message('教务系统已可访问');
+                          if (mounted && opened) {
+                            message('校园账号登录成功，教务系统已可访问', success: true);
+                          }
                         }),
                       ),
                       AppArrowPreference(

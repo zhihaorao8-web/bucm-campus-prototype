@@ -7,6 +7,9 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../config/network_policy.dart';
 import '../domain/library_seats.dart';
 import '../domain/schedule.dart';
+import 'campus_login_navigation.dart';
+import 'library_seat_navigation.dart';
+import 'school_adapter.dart';
 
 enum LibraryReadFailure { login, unavailable }
 
@@ -37,6 +40,8 @@ class LibraryWriteResult {
 class LibrarySeatReader {
   HeadlessInAppWebView? _view;
   Future<InAppWebViewController?>? _opening;
+  HeadlessInAppWebView? _reuseView;
+  Completer<bool>? _reuseDone;
   static const _document = '$_origin$_path';
   static const _origin = LibrarySeatPolicy.origin;
   static const _path = LibrarySeatPolicy.document;
@@ -89,11 +94,175 @@ class LibrarySeatReader {
     return identical(_view, view) ? web : null;
   }
 
+  Future<bool> tryReuseCampusSession() async {
+    await reset();
+    final revision = SchoolAdapter.sessionChanges.value;
+    final done = Completer<bool>();
+    Timer? poll;
+    var document = 0;
+    HeadlessInAppWebView? view;
+
+    void finish(bool value) {
+      poll?.cancel();
+      if (!done.isCompleted) done.complete(value);
+    }
+
+    void sessionChanged() {
+      if (identical(_reuseDone, done)) finish(false);
+    }
+
+    Future<void> inspectSeatMenu(
+      InAppWebViewController web,
+      HeadlessInAppWebView owner,
+      int doc,
+    ) async {
+      if (!identical(_reuseView, owner) ||
+          done.isCompleted ||
+          doc != document ||
+          revision != SchoolAdapter.sessionChanges.value) {
+        return;
+      }
+      var ready = false;
+      try {
+        final response = await web
+            .callAsyncJavaScript(
+              functionBody: CampusLoginTarget.library.readinessScript,
+            )
+            .timeout(CampusLoginPolicy.asyncReadinessTimeout);
+        ready = response?.error == null && response?.value == true;
+      } catch (_) {
+        ready = false;
+      }
+      if (!identical(_reuseView, owner) ||
+          done.isCompleted ||
+          doc != document ||
+          revision != SchoolAdapter.sessionChanges.value) {
+        return;
+      }
+      if (ready) {
+        finish(true);
+        return;
+      }
+      poll?.cancel();
+      poll = Timer(
+        const Duration(milliseconds: 500),
+        () => unawaited(inspectSeatMenu(web, owner, doc)),
+      );
+    }
+
+    void handleLoaded(
+      InAppWebViewController web,
+      WebUri? url,
+      HeadlessInAppWebView owner,
+    ) {
+      if (!identical(_reuseView, owner) || done.isCompleted) return;
+      final address = url?.toString();
+      // Only treat committed CAS form documents as unauthenticated, never 302 redirects.
+      if (campusCasForm(address)) {
+        finish(false);
+        return;
+      }
+      if (librarySeatPage(address)) {
+        final doc = ++document;
+        unawaited(inspectSeatMenu(web, owner, doc));
+      }
+    }
+
+    SchoolAdapter.sessionChanges.addListener(sessionChanged);
+    _reuseDone = done;
+    try {
+      view = HeadlessInAppWebView(
+        initialUrlRequest: URLRequest(
+          url: WebUri(SchoolEndpoints.librarySeatHome),
+        ),
+        initialSettings: InAppWebViewSettings(
+          javaScriptEnabled: true,
+          domStorageEnabled: true,
+          useShouldOverrideUrlLoading: true,
+          supportMultipleWindows: true,
+          allowFileAccess: false,
+          allowContentAccess: false,
+          thirdPartyCookiesEnabled: false,
+          cacheEnabled: false,
+          saveFormData: false,
+          isInspectable: false,
+          mixedContentMode: MixedContentMode.MIXED_CONTENT_NEVER_ALLOW,
+        ),
+        shouldOverrideUrlLoading: (_, action) async {
+          if (librarySeatNavigation(action.request.url?.toString())) {
+            return NavigationActionPolicy.ALLOW;
+          }
+          if (action.isForMainFrame) finish(false);
+          return NavigationActionPolicy.CANCEL;
+        },
+        onCreateWindow: (_, _) async => false,
+        onReceivedServerTrustAuthRequest: (_, _) async {
+          finish(false);
+          return ServerTrustAuthResponse(
+            action: ServerTrustAuthResponseAction.CANCEL,
+          );
+        },
+        onPermissionRequest: (_, request) async => PermissionResponse(
+          resources: request.resources,
+          action: PermissionResponseAction.DENY,
+        ),
+        onLoadStart: (_, url) {
+          if (!librarySeatNavigation(url?.toString())) {
+            finish(false);
+            return;
+          }
+          document++;
+          poll?.cancel();
+        },
+        onPageCommitVisible: (web, url) => handleLoaded(web, url, view!),
+        onLoadStop: (web, url) => handleLoaded(web, url, view!),
+        onReceivedError: (_, request, _) {
+          if (request.isForMainFrame == true) finish(false);
+        },
+        onReceivedHttpError: (_, request, _) {
+          if (request.isForMainFrame == true) finish(false);
+        },
+      );
+      _reuseView = view;
+      if (revision != SchoolAdapter.sessionChanges.value) return false;
+      await view.run();
+      if (!identical(_reuseView, view) ||
+          revision != SchoolAdapter.sessionChanges.value) {
+        return false;
+      }
+      return await done.future.timeout(
+        LibrarySeatPolicy.sessionReuseTimeout,
+        onTimeout: () => false,
+      );
+    } catch (_) {
+      return false;
+    } finally {
+      SchoolAdapter.sessionChanges.removeListener(sessionChanged);
+      poll?.cancel();
+      if (!done.isCompleted) done.complete(false);
+      if (identical(_reuseDone, done)) _reuseDone = null;
+      if (identical(_reuseView, view)) _reuseView = null;
+      try {
+        await view?.dispose();
+      } catch (_) {}
+    }
+  }
+
   Future<void> reset() async {
     final view = _view;
+    final reuseView = _reuseView;
+    final reuseDone = _reuseDone;
     _view = null;
     _opening = null;
-    await view?.dispose();
+    _reuseView = null;
+    _reuseDone = null;
+    if (reuseDone != null && !reuseDone.isCompleted) {
+      reuseDone.complete(false);
+    }
+    await Future.wait<void>([
+      if (view != null) view.dispose(),
+      if (reuseView != null) reuseView.dispose(),
+    ]);
   }
 
   Future<Map<String, dynamic>> _read(Map<String, Object> job) async {

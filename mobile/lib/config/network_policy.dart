@@ -23,6 +23,8 @@ abstract final class CampusLoginPolicy {
   static const casPath = '/cas/login';
   static const pageTimeout = Duration(seconds: 25);
   static const readinessPoll = Duration(milliseconds: 750);
+  static const asyncReadinessTimeout = Duration(seconds: 4);
+  static const maxHttpsUpgrades = 4;
 }
 
 abstract final class ProbePolicy {
@@ -47,6 +49,7 @@ abstract final class LibrarySeatPolicy {
   static const bookingPageSize = 10;
   static const bookingStatusFilter = '8582';
   static const timeout = Duration(seconds: 12);
+  static const sessionReuseTimeout = Duration(seconds: 6);
   static const maxRows = 2048;
   static const maxBodyBytes = 4 * 1024 * 1024;
 }

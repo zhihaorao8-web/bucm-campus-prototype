@@ -42,6 +42,23 @@ class CampusLoginTestView extends PlatformInAppWebViewWidget {
     );
   }
 
+  Future<NavigationActionPolicy?> navigate(
+    String address, {
+    bool mainFrame = true,
+    bool hasGesture = false,
+  }) async {
+    final callback = params.shouldOverrideUrlLoading;
+    if (callback == null) return null;
+    return callback(
+      web,
+      NavigationAction(
+        request: URLRequest(url: WebUri(address)),
+        isForMainFrame: mainFrame,
+        hasGesture: hasGesture,
+      ),
+    );
+  }
+
   @override
   T controllerFromPlatform<T>(PlatformInAppWebViewController controller) =>
       params.controllerFromPlatform!(controller) as T;
@@ -118,5 +135,18 @@ class CampusLoginTestController extends PlatformInAppWebViewController {
     scripts.add(source);
     return execute?.call(source) ??
         (source.contains('.click()') ? hasTabs : ready);
+  }
+
+  @override
+  Future<CallAsyncJavaScriptResult?> callAsyncJavaScript({
+    required String functionBody,
+    Map<String, dynamic> arguments = const {},
+    ContentWorld? contentWorld,
+  }) async {
+    if (functionBody.contains('visualViewport')) return null;
+    scripts.add(functionBody);
+    return CallAsyncJavaScriptResult(
+      value: execute?.call(functionBody) ?? ready,
+    );
   }
 }

@@ -127,7 +127,12 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         return;
       }
       _waitingForSchool = (target, action);
-      update('正在返回${target.label}。');
+      showAppNotice(
+        context,
+        '校园账号登录成功，正在返回${target.label}',
+        success: true,
+      );
+      update('校园账号登录成功，正在返回${target.label}。');
       timer = Timer(CampusLoginPolicy.pageTimeout, () {
         _waitingForSchool = null;
         update('学校页面暂未恢复，请先打开学期理论课表，再重试导入。');

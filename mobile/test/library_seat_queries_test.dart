@@ -3,12 +3,14 @@ import 'dart:io';
 
 import 'package:campus_schedule/application/appearance_controller.dart';
 import 'package:campus_schedule/application/library_seat_queries.dart';
+import 'package:campus_schedule/config/network_policy.dart';
 import 'package:campus_schedule/domain/library_seats.dart';
 import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/platform/library_seat_reader.dart';
 import 'package:campus_schedule/platform/school_adapter.dart';
 import 'package:campus_schedule/ui/acrylic_surface.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
+import 'package:campus_schedule/ui/campus_login_page.dart';
 import 'package:campus_schedule/ui/course_surface.dart';
 import 'package:campus_schedule/ui/glass_navigation.dart';
 import 'package:campus_schedule/ui/library_floor_overview.dart';
@@ -18,11 +20,13 @@ import 'package:campus_schedule/ui/library_seat_query_page.dart';
 import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'schedule_test.dart' show MemoryRepository;
+import 'support/campus_login_webview.dart';
 import 'support/memory_appearance.dart';
 import 'ui_test.dart' show app;
 
@@ -69,7 +73,16 @@ class FakeLibrarySeatReader extends LibrarySeatReader {
   int reserveCalls = 0;
   Future<LibraryWriteResult> Function(LibraryBooking)? onCancelBooking;
   int cancelCalls = 0;
+  Future<bool> Function()? onReuseSession;
+  int reuseCalls = 0;
   int resetCount = 0;
+
+  @override
+  Future<bool> tryReuseCampusSession() {
+    reuseCalls++;
+    if (onReuseSession != null) return onReuseSession!();
+    return Future.value(false);
+  }
 
   @override
   Future<List<LibraryArea>> areas() {
@@ -135,6 +148,7 @@ Widget wrapLibraryPage(
   LibrarySeatReader reader, {
   Key? pageKey,
   DateTime Function()? now,
+  Future<bool> Function(BuildContext context, String reason)? loginOpener,
   WidgetBuilder? officialPageBuilder,
   bool dark = false,
   double scale = 1.0,
@@ -166,6 +180,7 @@ Widget wrapLibraryPage(
       key: pageKey,
       reader: reader,
       now: now,
+      loginOpener: loginOpener,
       officialPageBuilder: officialPageBuilder,
     ),
   ),
@@ -694,25 +709,31 @@ void main() {
         wrapLibraryPage(
           reader,
           now: () => DateTime(2026, 10, 10, 9),
-          officialPageBuilder: (context) => Scaffold(
-            body: Center(
-              child: TextButton(
-                onPressed: () {
-                  phase = 1;
-                  Navigator.of(context).pop();
-                },
-                child: const Text('模拟登录完成返回'),
-              ),
-            ),
-          ),
+          loginOpener: (context, _) async =>
+              await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (context) => Scaffold(
+                    body: Center(
+                      child: TextButton(
+                        onPressed: () {
+                          phase = 1;
+                          Navigator.of(context).pop(true);
+                        },
+                        child: const Text('模拟登录完成返回'),
+                      ),
+                    ),
+                  ),
+                ),
+              ) ??
+              false,
         ),
       );
       await tester.pumpAndSettle();
       await enterLibraryArea(tester);
 
-      // Step 1: needsLogin prompts user to open official page.
+      // Step 1: needsLogin prompts user to authenticate.
       expect(find.text('需要登录学校账号'), findsOneWidget);
-      await tester.tap(find.text('打开学校页面登录').last);
+      await tester.tap(find.text('登录校园账号').last);
       await tester.pumpAndSettle();
       expect(find.text('模拟登录完成返回'), findsOneWidget);
 
@@ -1082,17 +1103,23 @@ void main() {
         wrapLibraryPage(
           reader,
           now: () => DateTime(2026, 10, 10, 8, 0),
-          officialPageBuilder: (context) => Scaffold(
-            body: Center(
-              child: TextButton(
-                onPressed: () {
-                  seatsResult = [seat(id: '100', label: 'N001')];
-                  Navigator.of(context).pop();
-                },
-                child: const Text('认证完成返回'),
-              ),
-            ),
-          ),
+          loginOpener: (context, _) async =>
+              await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (context) => Scaffold(
+                    body: Center(
+                      child: TextButton(
+                        onPressed: () {
+                          seatsResult = [seat(id: '100', label: 'N001')];
+                          Navigator.of(context).pop(true);
+                        },
+                        child: const Text('认证完成返回'),
+                      ),
+                    ),
+                  ),
+                ),
+              ) ??
+              false,
         ),
       );
       await tester.pumpAndSettle();
@@ -1146,9 +1173,12 @@ void main() {
       expect(find.text('登录状态已中断，已停止本次提交'), findsOneWidget);
       expect(find.text('需要登录学校账号'), findsNothing);
       expect(find.text('N001'), findsNothing);
-      await tester.tap(find.text('打开学校页面登录').last);
+      await tester.tap(find.text('登录校园账号').last);
       await tester.pumpAndSettle();
       await tester.tap(find.text('认证完成返回'));
+      await tester.pumpAndSettle();
+      expect(find.text('校园账号登录成功，正在获取座位状态'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
       expect(reader.reserveCalls, 3);
       expect(find.text('N001'), findsOneWidget);
@@ -2678,6 +2708,249 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('5WA001'), findsOneWidget);
       expect(find.text('5WA048'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'library login silently reuses active CAS session without opening webpage',
+    variant: androidOnly,
+    (tester) async {
+      var loggedIn = false;
+      var openerCalls = 0;
+      final reader = FakeLibrarySeatReader()
+        ..onAreas = (() async {
+          if (!loggedIn) throw LibraryReadFailure.login;
+          return const [LibraryArea('32', '二层北区', '二层')];
+        })
+        ..onReuseSession = (() async {
+          loggedIn = true;
+          return true;
+        })
+        ..onSeats = ((_, _) async => [seat(id: '10', label: '2N010')]);
+
+      await tester.pumpWidget(
+        wrapLibraryPage(
+          reader,
+          now: () => DateTime(2026, 10, 10, 9),
+          loginOpener: (_, _) async {
+            openerCalls++;
+            return false;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('需要登录学校账号'), findsOneWidget);
+
+      await tester.tap(find.text('登录校园账号'));
+      await tester.pumpAndSettle();
+      expect(reader.reuseCalls, 1);
+      expect(openerCalls, 0);
+      expect(find.text('校园账号登录成功，正在获取座位状态'), findsOneWidget);
+      expect(
+        tester.widget<SnackBar>(find.byType(SnackBar)).behavior,
+        SnackBarBehavior.floating,
+      );
+      expect(find.text('二层'), findsOneWidget);
+      expect(reader.reserveCalls, 0);
+      expect(reader.cancelCalls, 0);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'library official login auto-closes after seatMenu succeeds and loads seat status',
+    variant: androidOnly,
+    (tester) async {
+      final platform = CampusLoginTestPlatform();
+      final previous = InAppWebViewPlatform.instance;
+      InAppWebViewPlatform.instance = platform;
+      if (previous != null) {
+        addTearDown(() => InAppWebViewPlatform.instance = previous);
+      }
+      var loggedIn = false;
+      final reader = FakeLibrarySeatReader()
+        ..onAreas = (() async {
+          if (!loggedIn) throw LibraryReadFailure.login;
+          return const [LibraryArea('32', '二层北区', '二层')];
+        })
+        ..onSeats = ((_, _) async => [seat(id: '11', label: '2N011')]);
+
+      await tester.pumpWidget(
+        wrapLibraryPage(
+          reader,
+          now: () => DateTime(2026, 10, 10, 9),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('需要登录学校账号'), findsOneWidget);
+
+      await tester.tap(find.text('登录校园账号'));
+      await tester.pump();
+      await tester.pump();
+      expect(reader.reuseCalls, 1);
+      expect(find.byType(CampusLoginPage), findsOneWidget);
+      expect(find.text('学校官方页面 · 图书馆座位预约'), findsOneWidget);
+
+      final view = platform.views.single;
+      loggedIn = true;
+      view.controller.ready = true;
+      view.visit(SchoolEndpoints.librarySeatHome);
+      await tester.pumpAndSettle();
+      expect(find.byType(CampusLoginPage), findsNothing);
+      expect(find.text('校园账号登录成功，正在获取座位状态'), findsOneWidget);
+      expect(find.text('二层'), findsOneWidget);
+      expect(reader.reserveCalls, 0);
+      expect(reader.cancelCalls, 0);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'library login cancellation leaves state clean with zero writes or notice',
+    variant: androidOnly,
+    (tester) async {
+      var areaCalls = 0;
+      final reader = FakeLibrarySeatReader()
+        ..onAreas = (() async {
+          areaCalls++;
+          throw LibraryReadFailure.login;
+        });
+
+      await tester.pumpWidget(
+        wrapLibraryPage(
+          reader,
+          now: () => DateTime(2026, 10, 10, 9),
+          loginOpener: (_, _) async => false,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(areaCalls, 1);
+      await tester.tap(find.text('登录校园账号'));
+      await tester.pumpAndSettle();
+      expect(reader.reuseCalls, 1);
+      expect(areaCalls, 1);
+      expect(find.text('校园账号登录成功，正在获取座位状态'), findsNothing);
+      expect(find.text('学校会话已清除'), findsOneWidget);
+      expect(reader.reserveCalls, 0);
+      expect(reader.cancelCalls, 0);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'authInterrupted recovery via silent reuse refreshes seats without retrying write',
+    variant: androidOnly,
+    (tester) async {
+      var loggedIn = true;
+      var reserveCount = 0;
+      var openerCalls = 0;
+      final reader = FakeLibrarySeatReader()
+        ..onAreas = (() async => const [LibraryArea('32', '二层北区', '二层')])
+        ..onSeats = ((_, _) async {
+          if (!loggedIn) throw LibraryReadFailure.login;
+          return [seat(id: '100', label: 'N001')];
+        })
+        ..onReuseSession = (() async {
+          loggedIn = true;
+          return true;
+        })
+        ..onReserve = ((_, _, _, _) async {
+          reserveCount++;
+          loggedIn = false;
+          return const LibraryWriteResult(LibraryWriteStatus.login);
+        });
+
+      await tester.pumpWidget(
+        wrapLibraryPage(
+          reader,
+          now: () => DateTime(2026, 10, 10, 8, 0),
+          loginOpener: (_, _) async {
+            openerCalls++;
+            return false;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
+      await reveal(tester, find.text('N001'));
+      await tester.tap(find.text('N001'));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('确认预约'));
+      await tester.tap(find.text('确认预约'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('确认提交预约'));
+      await tester.pumpAndSettle();
+
+      expect(reserveCount, 1);
+      expect(find.text('登录状态已中断，已停止本次提交'), findsOneWidget);
+      await tester.tap(find.text('登录校园账号').last);
+      await tester.pumpAndSettle();
+
+      expect(reader.reuseCalls, 1);
+      expect(openerCalls, 0);
+      expect(reserveCount, 1);
+      expect(reader.cancelCalls, 0);
+      expect(find.text('校园账号登录成功，正在获取座位状态'), findsOneWidget);
+      expect(find.text('N001'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'clearSession mid-authentication discards stale reuse and login result',
+    variant: androidOnly,
+    (tester) async {
+      final folder = await tester.runAsync(
+        () => Directory.systemTemp.createTemp('synthetic-lib-auth-race-'),
+      );
+      const paths = MethodChannel('plugins.flutter.io/path_provider');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(paths, (_) async => folder!.path);
+      messenger.setMockMethodCallHandler(
+        SchoolAdapter.channel,
+        (call) async => null,
+      );
+      addTearDown(() async {
+        messenger.setMockMethodCallHandler(paths, null);
+        messenger.setMockMethodCallHandler(SchoolAdapter.channel, null);
+        await folder!.delete(recursive: true);
+      });
+
+      final reuseCompleter = Completer<bool>();
+      var areaCalls = 0;
+      var openerCalls = 0;
+      final reader = FakeLibrarySeatReader()
+        ..onAreas = (() async {
+          areaCalls++;
+          throw LibraryReadFailure.login;
+        })
+        ..onReuseSession = (() => reuseCompleter.future);
+
+      await tester.pumpWidget(
+        wrapLibraryPage(
+          reader,
+          now: () => DateTime(2026, 10, 10, 9),
+          loginOpener: (_, _) async {
+            openerCalls++;
+            return true;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(areaCalls, 1);
+
+      await tester.tap(find.text('登录校园账号'));
+      await tester.pump();
+
+      await tester.runAsync(() => SchoolAdapter().clearSession());
+      reuseCompleter.complete(true);
+      await tester.pumpAndSettle();
+
+      expect(openerCalls, 0);
+      expect(areaCalls, 1);
+      expect(find.text('校园账号登录成功，正在获取座位状态'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     },
   );
