@@ -14,6 +14,12 @@
 | 学校链路 | 历史分项XLS导入、直连目录、短时播放和续播样本 | 全学期独立准确性、完整课时、水印组合、WebVPN恢复、真实认证失效及7天会话待验 |
 | 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）、7B（`9d5d2bd`）与 7C（`b4227e5`）已全部获用户审核通过；三级渐进空间选座及顶栏 B1 统一阶段 8A（`cf0189b`）、8B（`bf2e2e2`）、8C（`6c47522`）与 8D（`ff716b2`）已全部获用户审核通过，通过主机变更检查（`report-fb07fac86c6944828ac2fa41d4fb9608.json`）与 Pixel 8 API 36 真实校园会话深/浅色只读验收（0 POST 写入） | 真实退出会话已在模拟器验证，物理真机提交/取消另行验收 |
 
+## T3 Code 协作准备
+
+2026-11-22，基于 `main@76f5bca`，Codex 通过 T3 Code 核对 Antigravity 可用，并用 `delegate_task` 完成一次只读设计交接。Antigravity 回传了 `AppSpace`、`AppActionButton`、`AppVisualPolicy` 的源文件，并指出校园认证导航归 Codex；Codex 已逐项对照源码。此次只验证派单、读取规范和回传，尚无双 agent 实现页面的验收记录。
+
+`python scripts/check.py --module docs` 检查 306 个本地文件链接目标通过，`git diff --check` 通过。本阶段仅修改 Markdown，未运行 Flutter 或设备测试。
+
 ## 2026-11-22 设置页重排阶段 3：导航收尾与整页验收
 
 - **源码与文档同步**：工作分支 `codex/campus-account-login` 提交 `40983d66e618e32f3662a6ad98780ff81f4ae436`（`40983d6`）完成设置页重排阶段 3，涉及 [app_shell.dart](../mobile/lib/ui/app_shell.dart)、[library_seat_queries_test.dart](../mobile/test/library_seat_queries_test.dart)、[settings_test.dart](../mobile/test/settings_test.dart)、[DESIGN.md](../DESIGN.md) 与 [ARCHITECTURE.md](../docs/ARCHITECTURE.md)。工作区原有未提交调试改动 [campus_login_page.dart](../mobile/lib/ui/campus_login_page.dart) 继续保留未动、未暂存且未进入本次提交与构建。
