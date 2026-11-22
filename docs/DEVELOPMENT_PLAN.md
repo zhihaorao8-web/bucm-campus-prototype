@@ -11,9 +11,9 @@
 
 ## T3 Code 协作准备
 
-已补充新对话开场确认两位 agent 模型的规则，具体流程见[开场选模](PROJECT_MANAGEMENT.md#t3-code-多-agent-协作)。
+**已获用户审核通过。** 新对话开场确认两位 agent 模型的规则已随 `1b833af` 推送。具体流程见[开场选模](PROJECT_MANAGEMENT.md#t3-code-多-agent-协作)。
 
-仓库级[角色约定及派单模板](PROJECT_MANAGEMENT.md#t3-code-多-agent-协作)已在 `codex/t3-agent-collaboration` 提交并推送（`3834d0d`），变更范围 CI 通过。已核对提供方能力并完成只读设计交接，当前停在用户审核；首次实际页面协作随已确认的页面阶段验证。[验证记录](STATUS.md#t3-code-协作准备)
+仓库级[角色约定及派单模板](PROJECT_MANAGEMENT.md#t3-code-多-agent-协作)已在 `codex/t3-agent-collaboration` 提交并推送（`3834d0d`），变更范围 CI 通过。已核对提供方能力并完成只读设计交接。首次实际页面协作随已确认的页面阶段验证。[验证记录](STATUS.md#t3-code-协作准备)
 
 ## 统一登录后的设置页重排
 
