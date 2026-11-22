@@ -12,6 +12,8 @@
 
 ## 需求与开发进度协调
 
+- 每个新 T3 Code 对话开始时，先询问本对话要使用的 Codex 主模型和 Antigravity 设计模型。用户在首条消息中已指定的模型直接采用，只询问缺失项。选模和主线程模型核对按[多 agent 协作](docs/PROJECT_MANAGEMENT.md#t3-code-多-agent-协作)执行。
+
 - 在 T3 Code 中，Codex 是主 agent，负责拆解任务、业务与平台实现、集成和最终技术审核。已确认阶段涉及 Flutter 页面设计时，由 Codex 委派 Antigravity 子 agent；仅在任务单明确包含 UI 实现时才写页面代码。具体分工、派单模板和交付顺序见[多 agent 协作](docs/PROJECT_MANAGEMENT.md#t3-code-多-agent-协作)。
 - 所有后续开发必须遵守`docs/PROJECT_MANAGEMENT.md`的长期流程，不限于本轮工程优化。开工先读该规范及`docs/PROJECT_BRIEF.md`（生效需求）、`docs/DEVELOPMENT_PLAN.md`（当前进度）、`docs/STATUS.md`（实际证据）；修改UI同时读`DESIGN.md`，实现前检索`docs/ARCHITECTURE.md`及已有代码。
 - UI修改遵循DESIGN.md的组件/状态/验收表；固定配色及公共尺寸、动效从mobile/lib/design读取，材质降级复用AppVisualPolicy，不在页面复制主题或交互算法。新增变体先扩展公共组件并更新规范。

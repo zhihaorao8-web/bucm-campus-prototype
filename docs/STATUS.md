@@ -22,6 +22,8 @@
 
 ## T3 Code 协作准备
 
+按用户要求补充新对话选模规则。文档检查及 Git 差异检查通过。新对话首次执行该规则时可核对询问流程。
+
 2026-11-22，基于 `main@76f5bca`，Codex 通过 T3 Code 核对 Antigravity 可用，并用 `delegate_task` 完成一次只读设计交接。Antigravity 回传了 `AppSpace`、`AppActionButton`、`AppVisualPolicy` 的源文件，并指出校园认证导航归 Codex；Codex 已逐项对照源码。此次只验证派单、读取规范和回传，尚无双 agent 实现页面的验收记录。
 
 `python scripts/check.py --module docs` 检查 306 个本地文件链接目标通过，`git diff --check` 通过。本阶段仅修改 Markdown，未运行 Flutter 或设备测试。
