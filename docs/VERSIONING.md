@@ -1,6 +1,6 @@
 # 版本与协作规范
 
-更新：2026-11-20。当前版本为0.4/code13，pubspec为0.4.0+13；唯一版本来源为根AndroidManifest.xml。历史发布证据见[0.4](releases/0.4.md)、[0.3](releases/0.3.md)、[0.27](releases/0.27.md)与[STATUS](STATUS.md)。
+更新：2026-11-22。当前版本为0.4/code13，pubspec为0.4.0+13；唯一版本来源为根AndroidManifest.xml。历史发布证据见[0.4](releases/0.4.md)、[0.3](releases/0.3.md)、[0.27](releases/0.27.md)与[STATUS](STATUS.md)。
 
 ## 当前协作规则
 
@@ -23,7 +23,7 @@
 
 quality固定为唯一质量任务名；先保存source/base精确SHA及测试计划，再安装所需工具，避免CI锁文件源地址归一化使测试选择误扩大。纯文档无需Flutter/JDK；未知共享配置保守全量。分流不跳过必要L3设备或发布验证；检查/详细构建日志在失败时仍上传，工作流仅contents:read，无自动发布权限。
 
-2026-11-16公开API核对：main仍580eac9、protected=false，规则集为空。[main保护模板](../.github/main-protection.json)可复核：要求PR、最新quality、讨论解决，禁止强推/删除并约束管理员；当前单人协作不强制另一账号批准（review count=0），用户审核/合入授权仍必须遵守。**模板未应用，远端保护未开启**；需有仓库管理权限的操作者在确认后应用，不能将文件存在写成服务端已保护。模板结构依据[GitHub保护API](https://docs.github.com/en/rest/branches/branch-protection)。
+2026-11-22 通过 GitHub API 复核，`main` 的 `protected=false`，分支适用规则列表为空。**远端保护待授权应用。** 仓库模板要求 PR、最新 `quality` 和讨论解决，禁止强推与删除，并约束管理员。模板设置的必需批准数为 0，用户审核和合入授权仍按项目流程执行。[main 保护模板](../.github/main-protection.json) · [GitHub 保护 API](https://docs.github.com/en/rest/branches/branch-protection)
 
 ## 版本与包身份
 
