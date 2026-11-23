@@ -13,7 +13,7 @@
 
 2026-11-24 用户授权检查两方技能及 MCP 并完善协作。本轮为单一文档阶段，基线 `codex/schedule-acceptance@c8dd92a`。范围为协作能力选择、派单与交接、执行归属及验证证据，交付更新后的 PROJECT_MANAGEMENT、进度和 STATUS。最小检查为 `python scripts/check.py --module docs` 与 `git diff --check`，完成提交推送后等待阶段审核。
 
-规范完善及本地文档检查已完成，随本项提交同步，待用户阶段审核。本轮模型由用户选定为 Codex `gpt-6.1-sol` / high 与 Antigravity `gemini-pro-orchestrator-neon` / 高思考程度。首次页面实现协作与 Dart MCP 运行时连接随对应页面阶段验证。[核对记录](STATUS.md#2026-11-24-协作技能与-mcp-核对)
+**2026-11-24 已获用户审核通过。** 规范完善与文档检查已随 `8fc4efe` 推送至当前工作分支，本阶段关闭。本轮模型由用户选定为 Codex `gpt-6.1-sol` / high 与 Antigravity `gemini-pro-orchestrator-neon` / 高思考程度。首次页面实现协作与 Dart MCP 运行时连接随对应页面阶段验证。[核对记录](STATUS.md#2026-11-24-协作技能与-mcp-核对)
 
 ## T3 Code 协作准备
 

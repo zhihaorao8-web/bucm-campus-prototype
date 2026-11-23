@@ -61,6 +61,8 @@
 
 ## 2026-11-24 协作技能与 MCP 核对
 
+用户于 2026-11-24 确认本阶段审核通过。规范提交 `8fc4efebcbe9e84c51226d9062511a567eb61889` 已推送至 `codex/schedule-acceptance`，远端分支 SHA 与本地一致。下述子会话及运行时验证缺口继续按对应页面阶段核对。
+
 - 对象为 `c8dd92a` 上的协作流程及本机两方工具。Codex 核对其会话技能目录与 MCP 工具，并读取 Antigravity `~/.gemini/config/skills`、`config/plugins/flutter`、`config/plugins/stitch-*` 和 CLI 的 MCP 定义。检查配置时仅提取服务名及启用标志。相关目录中的安装与定义已确认，Antigravity 当前子会话加载和运行时执行仍待具体任务验证。
 - Antigravity Flutter 插件包含响应式布局、约束异常诊断、widget 测试、静态分析和 widget 预览技能。Dart MCP 定义包括 `analyze_files`、`widget_inspector`、`get_runtime_errors` 和热重载，widget inspector 要求活动 DTD 连接。组件预览技能说明其 Web 环境对原生 API 的限制。以上内容已用于完善派单和证据要求，本次未启动应用或连接 Dart 运行时。
 - 两方均有 frontend-stack 等设计技能和 Stitch 技能。已读取按阶段选择技能及现有设计优先的规则，并核对 Stitch 生成设计技能的适用范围。Codex 本会话暴露 IconMCP、Stitch、REA、Scrapling 等工具，实际只读调用 IconMCP `search_icons` 成功返回 `calendar`。Antigravity 配置列有 context-mode、REA、Stitch，CLI 缓存含 Flutter Dart MCP 定义。Stitch 生成、REA 和抓取服务本轮未执行，配置及缓存的存在仅作为能力盘点证据。
