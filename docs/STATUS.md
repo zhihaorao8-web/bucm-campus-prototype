@@ -32,6 +32,7 @@
 - 本人在原任务 WebView 内完成教学平台 CAS 认证后，应用自动回跳至 WebVPN 代理下的 `/coursePlatform/#/courseCenter/courseVideo/videoListXS` 并重定位同一录播条目、校验访问与 WebVPN 媒体边界；原生 `ClassroomPlayerGroup` 完成 2 路视频（`1280×720` H.264）与 48kHz 双声道 AAC 解码准备并进入播放页。点按播放后 `AudioTrack` 激活无欠载运行，屏幕保持 `KEEP_SCREEN_ON`，`AudioFlinger` 累计播放 `36.376834` 秒；`classroom-progress-v1.json` 仅为该原课时唯一匹配记录写入本机续播位置（播放中 `20432` ms，返回前更新为 `36082` / `10498015` ms）。按系统返回退出播放页后，音频焦点释放、`AudioTrack` 停止并移除、`KEEP_SCREEN_ON` 清除，界面回到无报错的课程录播列表页。
 - 同进程 `TestDiagnostics`（`test-recording-directory`，`dropped: 0`）按序记录 `accessAutomatic` → `selectedDirect` → `accessWebVpn` → `selectedWebVpn` → `authenticationNeeded` → `mediaPrepare` → `mediaReady`，未记录任何失败事件。本项模拟器实测覆盖 WebVPN 认证回跳、原课时重验与短时实际开播；水印组合、真实会话失效及真机 WebVPN 回跳未在本次模拟器样本覆盖。
 - **真机听音与完整课时用户验收（2026-11-23）**：用户明确确认「人工实际听音质量、完整课时播放在真机上验证通过，无需再次验证」，据此关闭这两项待验；反馈为真机汇总确认，未单列具体构建号、网络路径、时长或水印参数。
+- 2026-11-23 用户明确回复「审核通过」，第三阶段用户审核通过。审核对应工作分支的验收记录 `f0b12ef`、`b45aa79` 与被测源码 `69c83f6`。
 
 ## 2026-11-23 课表读取修复
 
