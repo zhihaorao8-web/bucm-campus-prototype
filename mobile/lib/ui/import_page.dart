@@ -229,8 +229,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     update(message);
   }
 
-  Future<Map<String, dynamic>> script(String asset) async {
-    final source = await rootBundle.loadString(asset);
+  Future<Map<String, dynamic>> script(String source) async {
     final result = await controller!.evaluateJavascript(source: source);
     if (result is String) return jsonDecode(result) as Map<String, dynamic>;
     return Map<String, dynamic>.from(result as Map);
@@ -283,7 +282,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       if (!schoolUrl(url)) {
         update('请在学校官方认证页面完成登录，返回学校后继续。');
       } else {
-        final result = await script(AppAssets.exportNavigation);
+        final result = await script(
+          await rootBundle.loadString(AppAssets.exportNavigation),
+        );
         if (!mounted || session != generation || !running) return;
         switch (result['state']) {
           case 'exportClicked':
@@ -379,13 +380,18 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       if (!schoolUrl(url)) {
         throw const FormatException();
       }
-      final coverage = await script(AppAssets.coverage);
-      if (coverage['full'] != true) {
-        update('页面读取暂未确认“学期理论课表 / 全部周次”。请先选择全部周次，避免用一周课表覆盖整学期。');
+      final coverage = await rootBundle.loadString(AppAssets.coverage);
+      final extraction = await rootBundle.loadString(AppAssets.extract);
+      final result = await script('($coverage)($extraction)');
+      if (!mounted || revision != SchoolAdapter.sessionChanges.value) return;
+      if (result['full'] != true) {
+        update(
+          result['refreshing'] == true
+              ? '学校课表仍在刷新。请等页面更新后重试，旧课表未改动。'
+              : '页面读取暂未确认“学期理论课表 / 全部周次”。请先选择全部周次，避免用一周课表覆盖整学期。',
+        );
         return;
       }
-      final result = await script(AppAssets.extract);
-      if (!mounted || revision != SchoolAdapter.sessionChanges.value) return;
       final tables = (result['tables'] as List).cast<Map>();
       if (tables.isEmpty) throw const FormatException();
       int? selected = 0;
@@ -415,7 +421,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         Map<String, dynamic>.from(tables[selected]),
         result['semester'] as String? ?? '',
       );
-      batch.payload['hasUnscheduled'] = coverage['hasUnscheduled'] == true;
+      batch.payload['hasUnscheduled'] = result['hasUnscheduled'] == true;
       if (mounted && revision == SchoolAdapter.sessionChanges.value) {
         await finishBatch(batch, '页面读取', revision);
       }

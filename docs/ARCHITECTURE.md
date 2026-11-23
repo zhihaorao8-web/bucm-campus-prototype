@@ -25,7 +25,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 
 | 链路 | 入口与处理 | 提交/失败边界 |
 |---|---|---|
-| 课表导入 | `ui/import_page.dart` → 官方页面导航/导出 → `SchoolAdapter` → Android `MainActivity` → Java XLS/作息核心。遇到学校认证时保留所选入口和操作，统一登录返回后由导入页恢复自动导入或备用页面读取 | 当前页面加载到对应学校服务后消费待恢复操作一次。取消、再遇认证、会话清除或超时停止恢复。`ScheduleController`先保存再发布状态；整批有效才替换同学期，失败保留旧数据 |
+| 课表导入 | `ui/import_page.dart` → 官方页面导航/导出 → `SchoolAdapter` → Android `MainActivity` → Java XLS/作息核心。DOM 备用由 `assets/coverage-check.js` 校验已加载的官方筛选文档，再于同一脚本调用 `assets/extract.js` 提取该文档。认证往返保留所选入口和操作 | 当前页面加载到对应学校服务后消费待恢复操作一次。取消、再遇认证、会话清除或超时停止恢复。DOM 选项变化尚未对应到新文档时保留旧课表。`ScheduleController` 先保存再发布状态；整批有效才替换同学期 |
 | 校园账号登录 | 设置或课表导入或图书馆 → `openCampusLogin` → `CampusLoginPage` → 固定官方服务入口；`platform/campus_login_navigation.dart` 管理各入口的 HTTPS 主文档域名、CAS 标签、同域 `upgradeSameHostHttps`（教务 `:80` 跳回有界升级 HTTPS/:443，不放开明文 HTTP）与同步/异步就绪判定（含 `CampusLoginTarget.library` 同源 `/ic-web/seatMenu` 检查）；完成后经 `ui/app_controls.dart` `showAppNotice` 显式提示登录成功 | 已有有效会话可直接验证目标服务；认证凭据由本人在校方页面输入。发起方只接收目标可用或取消，自己保留待恢复的业务操作 |
 | 录播导入 | `classroom_import_page.dart` / `ClassroomCoursePage` → 官方上下文 → `ClassroomImportCoordinator`协调API或DOM收集结果 | `ClassroomArchive`校验所有来源完整分页，协调器按捕获的revision调用`ClassroomLibrary`整组保存；目录可读不代表认证有效 |
 | 播放 | 时间线保留来源课程ID、录播ID及原分页 → `ClassroomPlaybackPreparation` → 原生`ClassroomPlayback` / `ClassroomPlayerGroup`。需要重新认证时，`ClassroomCoursePage` 复用 `openCampusLogin`，直连用轻新课堂固定课程入口与 `ClassroomPageScripts` 目录就绪判定，WebVPN 用其独立门户扫码。 | 每次点播最多恢复一次。认证完成后重新读取原来源与分页，播放脚本校验学期、来源、页码、公开状态与唯一录播 ID，原生准备仍执行当次访问检查。取消或切换账号即丢弃请求，准备器负责移交前的原生会话释放。 |
