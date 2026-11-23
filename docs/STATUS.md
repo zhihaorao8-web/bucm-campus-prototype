@@ -1,6 +1,6 @@
 # 当前验证概览
 
-更新：2026-11-23。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
+更新：2026-11-24。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
@@ -58,6 +58,15 @@
 
 - 通过 Git 远端引用和 GitHub Actions API 核对 `main` 精确提交 `76f5bca32e20388eb2bde768f9e1b87baaf97df5`。`quality` 全量宿主检查与 `dual-preview`（顺序构建 debug/release 预览）均完成且成功。[主线 CI](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/44928859064)
 - 根 Manifest 仍为 `0.4` / `13`。GitHub 最新预发布 `v0.4` 仍指向 `7a73decf`，四份附件的 GitHub API 大小及 SHA-256 字段与发布记录一致。统一登录与设置页重排位于该标签之后，已有测试包和主线 CI 预览。[0.4 发布记录](releases/0.4.md) · [GitHub 预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.4)
+
+## 2026-11-24 协作技能与 MCP 核对
+
+- 对象为 `c8dd92a` 上的协作流程及本机两方工具。Codex 核对其会话技能目录与 MCP 工具，并读取 Antigravity `~/.gemini/config/skills`、`config/plugins/flutter`、`config/plugins/stitch-*` 和 CLI 的 MCP 定义。检查配置时仅提取服务名及启用标志。相关目录中的安装与定义已确认，Antigravity 当前子会话加载和运行时执行仍待具体任务验证。
+- Antigravity Flutter 插件包含响应式布局、约束异常诊断、widget 测试、静态分析和 widget 预览技能。Dart MCP 定义包括 `analyze_files`、`widget_inspector`、`get_runtime_errors` 和热重载，widget inspector 要求活动 DTD 连接。组件预览技能说明其 Web 环境对原生 API 的限制。以上内容已用于完善派单和证据要求，本次未启动应用或连接 Dart 运行时。
+- 两方均有 frontend-stack 等设计技能和 Stitch 技能。已读取按阶段选择技能及现有设计优先的规则，并核对 Stitch 生成设计技能的适用范围。Codex 本会话暴露 IconMCP、Stitch、REA、Scrapling 等工具，实际只读调用 IconMCP `search_icons` 成功返回 `calendar`。Antigravity 配置列有 context-mode、REA、Stitch，CLI 缓存含 Flutter Dart MCP 定义。Stitch 生成、REA 和抓取服务本轮未执行，配置及缓存的存在仅作为能力盘点证据。
+- T3 能力目录已列出 Codex 与 Antigravity 提供方和用户所选模型。用户指定 Codex `gpt-6.1-sol` / high、Antigravity `gemini-pro-orchestrator-neon` / 高思考程度。Codex 线程配置切换后回读一致，并由新模型接续本阶段。Antigravity 本轮未派单，其思考选项的传递与实际会话工具状态在下次委派时核对。
+- 本轮增加技能与工具选择表，补齐派单的模型、文件范围、执行归属、日志与视觉证据，明确共享目录和隔离工作树的基线、文件写入与设备操作交接。开工已有 `.gitignore`、AGENTS、DESIGN 和 PROJECT_MANAGEMENT 中的 Stitch 未提交改动，保留在工作区，本次仅暂存自身文档改动。
+- 工作区 `python scripts/check.py --module docs` 通过，核对 330 个本地文件目标，检查器未验证锚点和远端 URL。报告 `build/checks/report-c3cc8c62da954cb3b8ba5ff7d7054083.json`，`git diff --check` 通过。本记录随规范提交，推送结果在阶段交接时核对。页面协作、Android 设备和真实学校验证随各自已确认阶段执行。
 
 ## T3 Code 协作准备
 
