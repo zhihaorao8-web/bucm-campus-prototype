@@ -36,13 +36,8 @@
   if (!root && !cc) return result('untrusted', '', 'route');
   if (/^#\/?login(?:[/?]|$)/i.test(location.hash) || document.querySelector('input[type="password"]')) return result('authentication');
   if (Array.from(document.querySelectorAll('.el-dialog__wrapper,.el-message-box__wrapper')).some(function (node) { return node.getClientRects().length; })) return result('waiting', root ? 'portal' : 'platform', 'modal');
-  if (portalReady) {
-    // The generic cc front page can loop in its own portal initialization.
-    // This dedicated course entry and route were verified in the authorized
-    // Android session. The school still performs its normal authentication.
-    setTimeout(function () { location.assign(location.origin + prefix + 'coursePlatform/#/courseCenter/index?firstMenuId=11'); }, 0);
-    return result('opening', 'portal', 'verified-entry');
-  }
+  // Follow the portal's current resource entry, including its own query. The
+  // native timeout recovery can still open the dedicated page from a stuck cc.
   var element;
   if (root) {
     element = Array.from(document.querySelectorAll('a')).find(function (node) {
@@ -61,9 +56,9 @@
   function target(value) {
     try {
       var url = new URL(value, location.href);
-      if (url.protocol !== 'https:' || url.port || url.username || url.password) return null;
+      if (url.username || url.password) return null;
       var path = '/' + base;
-      if (url.hostname === 'qhz.bucm.edu.cn' && (url.pathname === path || url.pathname === path + '/')) {
+      if (url.origin === 'https://qhz.bucm.edu.cn' && (url.pathname === path || url.pathname === path + '/')) {
         if (vpn) {
           var mapped = new URL(prefix + url.pathname.slice(1), location.origin);
           mapped.search = url.search; mapped.hash = url.hash;
@@ -71,7 +66,7 @@
         }
         return url.href;
       }
-      if (vpn && url.hostname === 'webvpn.bucm.edu.cn' &&
+      if (vpn && url.origin === 'https://webvpn.bucm.edu.cn' &&
           (url.pathname === prefix + base || url.pathname === prefix + base + '/')) return url.href;
     } catch (_) { /* Never return exception payloads or the target. */ }
     return null;
