@@ -19,6 +19,14 @@
   var direct = location.hostname === 'qhz.bucm.edu.cn';
   if (location.hostname === 'cas.bucm.edu.cn') return result('authentication');
   if (!vpn && !direct) return result('untrusted', '', 'host');
+  // The teaching app can require a separate CAS step inside WebVPN. The
+  // portal session is already present, so keep the school's form in this view.
+  if (vpn && /^\/https\/[a-f0-9]+\/cas\/+login\/?$/i.test(location.pathname)) {
+    var services = new URL(location.href).searchParams.getAll('service');
+    if (services.length === 1 && services[0] === 'https://qhz.bucm.edu.cn/bd/auth/authLogin') {
+      return result('serviceAuthentication', 'platform');
+    }
+  }
   var root = vpn && (location.pathname === '/' ||
     /^\/portal\/?$/i.test(location.pathname) && /^WebVPN\b/i.test(document.title) ||
     /^\/[a-z0-9_-]+\/portal\/?$/i.test(location.pathname) &&

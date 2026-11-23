@@ -72,6 +72,17 @@ for (const options of [{body:'统一认证扫码'},{iframe:true},{password:true}
   assert.equal(login.result.state,'authentication');assert.equal(login.clicks,0);assert.deepEqual(login.assigned,[]);
 }
 assert.equal(run('https://webvpn.bucm.edu.cn/https/other/login',resource,{body:'统一认证扫码'}).result.state,'untrusted');
+const serviceLogin = 'https://webvpn.bucm.edu.cn/https/' + '1'.repeat(62) + '/cas/login?service=';
+const classroomService = encodeURIComponent('https://qhz.bucm.edu.cn/bd/auth/authLogin');
+const serviceResult = run(serviceLogin + classroomService, resource, {password: true});
+assert.equal(serviceResult.result.state, 'serviceAuthentication');
+assert.equal(serviceResult.clicks, 0);
+assert.deepEqual(serviceResult.assigned, []);
+for (const service of ['', encodeURIComponent('http://qhz.bucm.edu.cn/bd/auth/authLogin'),
+  encodeURIComponent('https://qhz.bucm.edu.cn.evil.test/bd/auth/authLogin'),
+  encodeURIComponent('https://qhz.bucm.edu.cn/bd/auth/other'), classroomService + '&service=' + classroomService]) {
+  assert.equal(run(serviceLogin + service, resource, {password: true}).result.state, 'untrusted');
+}
 assert.equal(run('https://webvpn.bucm.edu.cn/',resource,{label:'无关资源'}).result.reason,'no-entry');
 assert.equal(run('https://webvpn.bucm.edu.cn/portal',resource,{label:'数字北中医',body:'最近访问 办公系统',title:'Other platform'}).result.state,'untrusted');
 console.log('Classroom automatic entry checks passed; no credentials or school network used.');
