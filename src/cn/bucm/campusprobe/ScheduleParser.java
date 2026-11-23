@@ -5,6 +5,10 @@ import java.util.regex.*;
 
 /** Conservative parser: returns candidates, never invents period-to-clock mappings. */
 public final class ScheduleParser {
+    private static final Pattern SCHOOL_SCHEDULE_LINE = Pattern.compile(
+        "[0-9][0-9,、\\s-]*\\(周\\)(?:\\((?:单|双)(?:周)?\\))?\\[[0-9\\s,-]+节\\]"
+    );
+
     public static final class Candidate {
         public String name="", teacher="", place="", raw="", weeks="", periods="", time="";
         public int day;
@@ -49,7 +53,7 @@ public final class ScheduleParser {
             // School blocks place the unlabelled location after the schedule line.
             // Require one remaining line and location wording; do not guess from instructors or notes.
             for(int i=0;i<lines.length;i++) {
-                if(!lines[i].trim().matches("[0-9][0-9,、\\s-]*\\(周\\)(?:\\((?:单|双)(?:周)?\\))?\\[[0-9\\s,-]+节\\]"))continue;
+                if(!SCHOOL_SCHEDULE_LINE.matcher(lines[i].trim()).matches())continue;
                 String location="";int count=0;
                 for(int j=i+1;j<lines.length;j++)if(!lines[j].trim().isEmpty()){location=lines[j].trim();count++;}
                 boolean locationFormat=location.matches(".*(?:楼|室|馆|场|区|厅).*")||location.matches("[\\p{IsHan}]{1,4}[0-9]{2,4}教");
@@ -67,12 +71,25 @@ public final class ScheduleParser {
             c.teacher=line.trim().replaceFirst("^(?:教师|任课教师|授课教师)\\s*[:：]\\s*", "");
         if(c.teacher.isEmpty()) {
             List<String> before=new ArrayList<>();
+            boolean schoolScheduleLine = false;
             for(String line:lines) {
                 line=line.trim();
-                if(line.matches(".*[0-9].*(?:\\(周\\)|周次|教学周|周).*"))break;
+                if(line.matches(".*[0-9].*(?:\\(周\\)|周次|教学周|周).*")) {
+                    schoolScheduleLine = SCHOOL_SCHEDULE_LINE.matcher(line).matches();
+                    break;
+                }
                 if(!line.isEmpty())before.add(line);
             }
-            if(before.size()==2&&!before.get(1).matches(".*(?:地点|教室|备注|说明|学期|节次|第.*节).*"))c.teacher=before.get(1);
+            String teacher = before.size() == 2 ? before.get(1) : "";
+            // The school inserts a parenthesized course annotation before the teacher.
+            if (schoolScheduleLine && before.size() == 3
+                && before.get(1).matches("\\(\\p{IsHan}{2}[0-9]{2}\\)")
+                && before.get(2).matches("\\p{IsHan}{2,4}")
+                && !before.get(2).matches("无|暂无|教师|任课教师|授课教师")
+                && !before.get(2).equals(c.name)) {
+                teacher = before.get(2);
+            }
+            if (!teacher.matches(".*(?:地点|教室|备注|说明|学期|节次|第.*节).*")) c.teacher = teacher;
         }
         return c;
     }

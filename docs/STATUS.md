@@ -20,6 +20,7 @@
 - DOM 时序修复基于 `3762fbb`。真实教务文档证实「周次」是提交表单的选择控件，第 1 周由服务器标为默认选项。DOM 备用在同一次脚本内验证已加载文档、全周选项和同一表单的当前选项与 HTML 初始值一致，再提取唯一通过的文档。切换到全部而旧文档仍在时只显示刷新提示。合成回归另覆盖学期变化、加载状态、候选文档歧义和跨域 iframe。
 - 复用模拟器 Chrome 的本人官方教务会话，仅返回聚合结果，脚本在第 1 周返回 0 表，切换全部后仍处旧文档时返回 `refreshing` 与 0 表，新文档稳定后返回 1 表、25 个源单元格并识别学期及未排课区。此处验证的是学校页面和生产读取脚本，App 安装及保存链路另验。
 - `python scripts/check.py --flow schedule-import` 通过，含静态分析、4 组 Java、6 组 Node 和 17 项 Flutter（报告 `report-b04ffbd6dcda454780c40964f9aa01bb.json`）。`flutter test --no-pub test/settings_test.dart` 30/30 通过，含刷新中保留旧课表的认证回跳用例。
+- 教师字段修复基于 `66dbfa3`。用同一官方页面确认，附注后的文本确为校方 `title="教师"` 字段，两个重复来源均一致。共享 `ScheduleParser` 仅在括号附注、短姓名及标准排课行的顺序吻合时补识别，复用已有标注优先级和未标注歧义处理。合成教师候选与二进制 XLS 带附注回归通过；`python scripts/check.py --flow schedule-import` 报告 `report-8e98936ab4a6486b96bd78e664c597a1.json`。
 
 ## 2026-11-23 课表完整学期与 WebVPN 恢复验收
 
