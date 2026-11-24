@@ -35,7 +35,7 @@
 
 已有合成测试、Android 构建、模拟器UI/功能验收与早期版本分项实机反馈：官方 XLS 导入保存、自动选择直连后的目录取数、录播画面/声音与续播、滑动进度/横屏侧抽屉、柔光亚克力界面、B1 艺术标题动效，以及模拟器真实校园会话下的图书馆原生选座、单次预约、查单、取消、三级空间示意图与双视图体验。0.41 的精确检查、构建与发布证据见 [STATUS](docs/STATUS.md) 与 [0.41 发布说明](docs/releases/0.41.md)。
 
-仍待独立验证：完整学期逐项准确性、完整课时与长期会话、真实退出学校会话清理、开启水印的全部组合、真实认证失效恢复及更多真机与网络条件。学校 WebVPN 曾返回上游连接拒绝，当前没有恢复成功证据。**本机续播不等于学校观看记录。** 实际直播、学校观看记录上报、图书馆其他业务、提醒、社区、视频下载、后台播放及 iOS/Windows 交付均未开放。
+官方 XLS 与 DOM 各31条整学期逐项对照、WebVPN 原课时回跳与短时开播已有分项验收，真机听音与完整课时播放获用户确认，证据见 [STATUS](docs/STATUS.md)。仍待独立验证的项目包括水印全部组合、门户直连回跳、真实会话失效、7天会话、Vulkan、真机性能/功耗与完整 TalkBack。**本机续播不等于学校观看记录。** 实际直播、学校观看记录上报、图书馆其他业务、提醒、社区、视频下载、后台播放及 iOS/Windows 交付均未开放。
 
 ## 开发与构建
 
@@ -68,7 +68,7 @@ python scripts/check.py --module classroom --direct-catalog
 
 ## 分支与文档
 
-- `main`：当前 Flutter Android 主线，已随 `0.3` 合入 `codex/quiet-ui-refresh`，并于 `0.41` 合入 `codex/library-seat-booking` 接续完整开发历史。
+- `main`：当前 Flutter Android 主线，已随 `0.3` 合入 `codex/quiet-ui-refresh`、`0.4` 合入 `codex/library-seat-booking`，`0.41` 通过 PR #4 集成后续认证恢复、课表修复与液态玻璃改造。
 - [`codex/legacy-java-prototype`](https://github.com/zhihaorao8-web/bucm-campus-prototype/tree/codex/legacy-java-prototype)：早期 Java 测试原型，固定保留原主线 `611ec8e`；旧版本标签与附件继续保留。
 - 日常开发继续使用独立分支；阶段进展与验证边界见 [当前开发进度](docs/DEVELOPMENT_PLAN.md) 与 [STATUS](docs/STATUS.md)。
 
