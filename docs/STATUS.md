@@ -20,7 +20,11 @@
 - 今日焦点分项由 Antigravity Neon / high 实现，Codex 审阅与验证。`AcrylicSurface` 新增默认关闭的可选微折射，`FocusCourseCard` 显式开启，`LiquidGlassSurface.blurKey` 透传原滤镜键。非定位前景在列表内决定自然高度，背景 `Positioned.fill` 获取有限尺寸，仅一个有效背景滤镜，文字在之后绘制。公共边缘深8、折射1.5、原模糊10，材质开关及高对比度降级、减少动画静态材质复用现有策略。
 - `--changed --base HEAD --dry-run` 已核对；定向 `quiet_design`、`today_focus`、`atmosphere`、`course_interaction`、`classroom_ui_polish`、`weekday_tabs` 65通过、1个可选截图跳过，静态分析0问题。日志 `build/liquid-focus-host.log`、`build/liquid-focus-analyze.log`。
 - Pixel 8 API36、GLES、420dpi，320dp列表、浅深色、1x/2x字号，真实 `FocusCourseCard` 的 Shader 背景有限宽288dp、自然高度与前景一致，设备测试通过。合成截图目检课程长名自然换行，边框贴合，无黑块/裁切。日志 `build/liquid-focus-device.log`，截图 `mobile/build/liquid-focus-{light,dark}-{1.0,2.0}.png`。沿用临时离线测试依赖固定脚本，`flutter drive` 显式保留应用。该构建含工作区修改，Vulkan、真机与学校整页另验。
-- 今日焦点分项完成后提交推送，继续图书馆当前预约焦点票卡与选座胶囊，阶段3整体完成后停审。
+- 今日焦点分项 `e92dad5` 已推送。图书馆分项在当前预约焦点票卡与选座悬浮胶囊显式开启同一微折射变体，保留原圆角、滤镜键、按钮状态与回调。
+- 图书馆宿主 `library_seat_queries_test.dart` 48/48 通过，覆盖浅深色、大字、各类材质降级、减少动画、提交/取消忙碌态、普通历史行/座位节点的材质边界；最终静态分析0问题。日志 `build/liquid-library-host-final.log`、`build/liquid-library-analyze-final.log`。测试回调初始化的级联解析问题已修正，最终结果以这两份日志为准。
+- 图书馆设备合成场景复用 FakeLibrarySeatReader，320dp、浅深色、1x/2x字号下完成选区、选座、清除选择和切换预约票卡；预约与取消调用均为0。初次截图发现大字胶囊座位/时段被按钮挤占，Codex 补充超过1.3倍字号时的上下布局、完整换行及更强时段文字对比度，最终增加 RenderParagraph 未省略断言。定位滚动目标时显式区分主滚动容器，并按页面流程清除选择后切换控件。截图 `mobile/build/liquid-library-{capsule,ticket}-{light,dark}-{1.0,2.0}.png`，日志 `build/liquid-library-device-final.log`。2x 票卡自然增高，内容通过页面纵向滚动访问。
+- 本阶段设备构建继续使用忽略目录中的临时离线测试依赖固定脚本及 `flutter drive --keep-app-running`。合成工作区debug构建通过不等于学校整页、Vulkan或真机性能验收。图书馆分项提交推送后，阶段3整体停审。
+- 设备测试后覆盖安装 `lib/main.dart` 正常入口并启动成功，日志 `build/liquid-stage3-normal-build.log`。保留四个既有未提交文件，因此正常入口仍为标明含工作区修改的 debug 构建。此前测试卸载造成的模拟器课表/学校会话数据恢复仍未验证。
 
 ## 2026-11-24 液态玻璃阶段 2
 

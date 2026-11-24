@@ -420,6 +420,7 @@ class LibraryBookingFocusTicket extends StatelessWidget {
       child: AcrylicSurface(
         radius: AppRadius.focus,
         blurKey: ValueKey('library-booking-blur-${row.id}'),
+        liquidGlass: true,
         child: Padding(
           padding: const EdgeInsets.all(AppLayout.focusInset),
           child: Column(

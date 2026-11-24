@@ -90,6 +90,8 @@ python scripts/check.py --module docs --module tooling
 
 控件设备场景为 `integration_test/liquid_glass_controls_test.dart`，仅写合成截图至应用临时目录。使用预构建测试包配合 `flutter drive --use-application-binary` 时须显式添加 `--keep-app-running`，该命令默认结束会卸载应用，正常包名测试可能清除本机课表及学校会话。结束后覆盖安装正常入口。
 
+焦点列表与图书馆专项分别为 `integration_test/liquid_glass_focus_test.dart` 和 `integration_test/liquid_glass_library_test.dart`。前者验证内容自然高度下的有界滤镜，后者复用宿主 FakeLibrarySeatReader 进入选座与预约票卡，断言0预约/取消调用及大字胶囊文字未省略。截图均为合成数据，不提交仓库。
+
 ## 输出与失败定位
 
 每次执行在忽略的build/checks/report-<随机ID>.json保存独立报告，含计划、选择理由、已运行步骤、退出码、耗时与补验提示。报告scope固定为synthetic-host-checks；status=passed仅表示选定宿主检查通过，不能据此宣布设备补验通过。dry-run没有报告。

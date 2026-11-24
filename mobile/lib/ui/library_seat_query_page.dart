@@ -2353,6 +2353,58 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
     final colors = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
     final duration = formatLibraryDuration(_minutes(end) - _minutes(start));
+    final largeText =
+        MediaQuery.textScalerOf(context).scale(AppType.body) >
+        AppType.body * 1.3;
+    final details = Row(
+      children: [
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _area == null ? seat.label : '${_area!.name} · ${seat.label}',
+                maxLines: largeText ? null : 1,
+          overflow: largeText ? TextOverflow.visible : TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontFeatures: tabularTime,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${isoDate(_date)} ${_clockText(start)}–${_clockText(end)} · $duration',
+                maxLines: largeText ? null : 2,
+          overflow: largeText ? TextOverflow.visible : TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.onSurface,
+                  fontFeatures: tabularTime,
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: '清除选择',
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+          icon: const AppIcon(AppIcons.close, size: AppControl.icon),
+          onPressed: _busy ? null : () => setState(() => _selected = null),
+        ),
+      ],
+    );
+    final action = FilledButton(
+      style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.md,
+          vertical: AppSpace.sm,
+        ),
+        minimumSize: const Size(0, 42),
+      ),
+      onPressed: _busy ? null : () => _confirmReservation(seat, start, end),
+      child: const Text('确认预约'),
+    );
     return Align(
       alignment: Alignment.bottomCenter,
       child: ConstrainedBox(
@@ -2361,66 +2413,29 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
           key: const ValueKey('library-selected-capsule'),
           radius: AppRadius.card,
           blurKey: const ValueKey('library-selected-blur'),
+          liquidGlass: true,
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpace.md,
               vertical: AppSpace.sm,
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
+            child: largeText
+                ? Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        _area == null ? seat.label : '${_area!.name} · ${seat.label}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontFeatures: tabularTime,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${isoDate(_date)} ${_clockText(start)}–${_clockText(end)} · $duration',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colors.onSurfaceVariant,
-                          fontFeatures: tabularTime,
-                        ),
-                      ),
+                      details,
+                      const SizedBox(height: AppSpace.sm),
+                      Align(alignment: Alignment.centerRight, child: action),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(child: details),
+                      const SizedBox(width: AppSpace.xs),
+                      action,
                     ],
                   ),
-                ),
-                IconButton(
-                  tooltip: '清除选择',
-                  constraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 40,
-                  ),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  icon: const AppIcon(AppIcons.close, size: AppControl.icon),
-                  onPressed: _busy ? null : () => setState(() => _selected = null),
-                ),
-                const SizedBox(width: AppSpace.xs),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpace.md,
-                      vertical: AppSpace.sm,
-                    ),
-                    minimumSize: const Size(0, 42),
-                  ),
-                  onPressed: _busy
-                      ? null
-                      : () => _confirmReservation(seat, start, end),
-                  child: const Text('确认预约'),
-                ),
-              ],
-            ),
           ),
         ),
       ),

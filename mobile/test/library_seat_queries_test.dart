@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:campus_schedule/application/appearance_controller.dart';
 import 'package:campus_schedule/application/library_seat_queries.dart';
 import 'package:campus_schedule/config/network_policy.dart';
+import 'package:campus_schedule/design/app_tokens.dart';
 import 'package:campus_schedule/domain/library_seats.dart';
 import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/platform/library_seat_reader.dart';
@@ -17,6 +18,7 @@ import 'package:campus_schedule/ui/library_floor_overview.dart';
 import 'package:campus_schedule/ui/library_seat_bookings.dart';
 import 'package:campus_schedule/ui/library_seat_map.dart';
 import 'package:campus_schedule/ui/library_seat_query_page.dart';
+import 'package:campus_schedule/ui/liquid_glass_surface.dart';
 import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -186,9 +188,22 @@ Widget wrapLibraryPage(
   ),
 );
 
-Future<void> reveal(WidgetTester tester, Finder target) async {
+Future<void> reveal(
+  WidgetTester tester,
+  Finder target, {
+  double delta = 180,
+}) async {
   if (target.evaluate().isEmpty) {
-    await tester.scrollUntilVisible(target, 180);
+    await tester.scrollUntilVisible(
+      target,
+      delta,
+      scrollable: find
+          .descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
   }
   await Scrollable.ensureVisible(tester.element(target), alignment: 0.5);
   await tester.pumpAndSettle();
@@ -205,6 +220,117 @@ Future<void> enterLibraryArea(
   await reveal(tester, find.byKey(ValueKey(zoneKey)));
   await tester.tap(find.byKey(ValueKey(zoneKey)));
   await tester.pumpAndSettle();
+}
+
+void expectLibraryLiquidSurface(
+  WidgetTester tester, {
+  required Finder surfaceRoot,
+  required Key blurKey,
+  required double expectedRadius,
+  required bool expectedLiquid,
+  required List<Finder> foregroundFinders,
+  double? maxWidth,
+  double? expectedWidth,
+  String? reason,
+}) {
+  expect(surfaceRoot, findsOneWidget, reason: reason);
+  final rootWidget = surfaceRoot.evaluate().single.widget;
+  final acrylicFinder = rootWidget is AcrylicSurface
+      ? surfaceRoot
+      : find.descendant(of: surfaceRoot, matching: find.byType(AcrylicSurface));
+  expect(acrylicFinder, findsOneWidget, reason: reason);
+  final acrylic = tester.widget<AcrylicSurface>(acrylicFinder);
+  expect(acrylic.liquidGlass, isTrue, reason: reason);
+  expect(acrylic.radius, expectedRadius, reason: reason);
+  expect(acrylic.blurKey, blurKey, reason: reason);
+  expect(acrylic.edgeDepth, AppLiquidGlass.focusEdgeDepth, reason: reason);
+  expect(acrylic.refraction, AppLiquidGlass.focusRefraction, reason: reason);
+
+  final acrylicSize = tester.getSize(acrylicFinder);
+  expect(acrylicSize.width.isFinite, isTrue, reason: reason);
+  expect(acrylicSize.height.isFinite, isTrue, reason: reason);
+  expect(acrylicSize.width, greaterThan(0), reason: reason);
+  expect(acrylicSize.height, greaterThan(0), reason: reason);
+  if (maxWidth != null) {
+    expect(
+      acrylicSize.width,
+      lessThanOrEqualTo(maxWidth + 0.1),
+      reason: reason,
+    );
+  }
+  if (expectedWidth != null) {
+    expect(acrylicSize.width, closeTo(expectedWidth, 0.1), reason: reason);
+  }
+
+  final backdropFinder = find.descendant(
+    of: acrylicFinder,
+    matching: find.byType(BackdropFilter),
+  );
+  expect(backdropFinder, findsOneWidget, reason: reason);
+  final blurFinder = find.descendant(
+    of: acrylicFinder,
+    matching: find.byKey(blurKey),
+  );
+  expect(blurFinder, findsOneWidget, reason: reason);
+  expect(
+    tester.widget<BackdropFilter>(blurFinder).enabled,
+    expectedLiquid,
+    reason: reason,
+  );
+
+  final glassFinder = find.descendant(
+    of: acrylicFinder,
+    matching: find.byType(LiquidGlassSurface),
+  );
+  if (expectedLiquid) {
+    expect(glassFinder, findsOneWidget, reason: reason);
+    final glass = tester.widget<LiquidGlassSurface>(glassFinder);
+    expect(glass.radius, expectedRadius, reason: reason);
+    expect(glass.blur, AppSurface.focusBlur, reason: reason);
+    expect(glass.edgeDepth, AppLiquidGlass.focusEdgeDepth, reason: reason);
+    expect(glass.refraction, AppLiquidGlass.focusRefraction, reason: reason);
+    expect(glass.blurKey, blurKey, reason: reason);
+
+    final glassSize = tester.getSize(glassFinder);
+    expect(glassSize.width.isFinite, isTrue, reason: reason);
+    expect(glassSize.height.isFinite, isTrue, reason: reason);
+    expect(glassSize.width, closeTo(acrylicSize.width, 0.1), reason: reason);
+    expect(glassSize.height, closeTo(acrylicSize.height, 0.1), reason: reason);
+
+    final stack = tester.widget<Stack>(
+      find.ancestor(of: glassFinder, matching: find.byType(Stack)).first,
+    );
+    expect(stack.children.length, 2, reason: reason);
+    expect(stack.children.first, isA<Positioned>(), reason: reason);
+    expect(stack.children.last, isA<DecoratedBox>(), reason: reason);
+
+    for (final fg in foregroundFinders) {
+      expect(
+        find.descendant(of: acrylicFinder, matching: fg),
+        findsAtLeastNWidgets(1),
+        reason: reason,
+      );
+      expect(
+        find.descendant(of: glassFinder, matching: fg),
+        findsNothing,
+        reason: reason,
+      );
+      expect(
+        find.descendant(of: blurFinder, matching: fg),
+        findsNothing,
+        reason: reason,
+      );
+    }
+  } else {
+    expect(glassFinder, findsNothing, reason: reason);
+    for (final fg in foregroundFinders) {
+      expect(
+        find.descendant(of: acrylicFinder, matching: fg),
+        findsAtLeastNWidgets(1),
+        reason: reason,
+      );
+    }
+  }
 }
 
 void main() {
@@ -521,9 +647,26 @@ void main() {
       await reveal(tester, find.text('N001'));
       await tester.tap(find.text('N001'));
       await tester.pumpAndSettle();
+      expectLibraryLiquidSurface(
+        tester,
+        surfaceRoot: find.byKey(const ValueKey('library-selected-capsule')),
+        blurKey: const ValueKey('library-selected-blur'),
+        expectedRadius: AppRadius.card,
+        expectedLiquid: true,
+        maxWidth: 520,
+        expectedWidth: 520,
+        foregroundFinders: [
+          find.text('二层北区 · N001'),
+          find.text('确认预约'),
+          find.byTooltip('清除选择'),
+        ],
+      );
       expect(
-        find.byKey(const ValueKey('library-selected-capsule')),
-        findsOneWidget,
+        find.descendant(
+          of: find.byType(LibrarySeatGridRow),
+          matching: find.byType(LiquidGlassSurface),
+        ),
+        findsNothing,
       );
       expect(find.text('二层北区 · N001'), findsOneWidget);
       expect(find.textContaining('2026-10-10 08:30–22:00'), findsOneWidget);
@@ -832,63 +975,64 @@ void main() {
     expect(rule.durationViolation(540, 900), contains('最长 4 小时'));
     expect(rule.durationViolation(540, 660), isNull);
 
-    final req = LibraryBookingRequest(
-      areaId: '32',
-      areaName: '二层北区',
-      areaLabel: '二层 · 二层北区',
-      seatId: '100',
-      seatLabel: '2N001',
-      date: DateTime(2026, 10, 10),
-      startMinutes: 540,
-      endMinutes: 660,
-      rule: rule,
-    );
-    expect(req.beginTimestamp, '2026-10-10 09:00');
-    expect(req.endTimestamp, '2026-10-10 11:00');
-    expect(req.weekBegin, DateTime(2026, 10, 5));
-    expect(req.weekEnd, DateTime(2026, 10, 11));
-    expect(
-      req.matchesBooking(
-        const LibraryBooking(
-          '5566',
-          '二层北区',
-          '2N001',
-          '2026-10-10 09:00',
-          '2026-10-10 11:00',
-          2,
+      final req = LibraryBookingRequest(
+        areaId: '32',
+        areaName: '二层北区',
+        areaLabel: '二层 · 二层北区',
+        seatId: '100',
+        seatLabel: '2N001',
+        date: DateTime(2026, 10, 10),
+        startMinutes: 540,
+        endMinutes: 660,
+        rule: rule,
+      );
+      expect(req.beginTimestamp, '2026-10-10 09:00');
+      expect(req.endTimestamp, '2026-10-10 11:00');
+      expect(req.weekBegin, DateTime(2026, 10, 5));
+      expect(req.weekEnd, DateTime(2026, 10, 11));
+      expect(
+        req.matchesBooking(
+          const LibraryBooking(
+            '5566',
+            '二层北区',
+            '2N001',
+            '2026-10-10 09:00',
+            '2026-10-10 11:00',
+            2,
+          ),
+          bookingId: '5566',
         ),
-        bookingId: '5566',
-      ),
-      true,
-    );
-    expect(
-      req.matchesBooking(
-        const LibraryBooking(
-          '9999',
-          '二层北区',
-          '2N001',
-          '2026-10-10 09:00',
-          '2026-10-10 11:00',
-          128,
+        true,
+      );
+      expect(
+        req.matchesBooking(
+          const LibraryBooking(
+            '9999',
+            '二层北区',
+            '2N001',
+            '2026-10-10 09:00',
+            '2026-10-10 11:00',
+            128,
+          ),
+          bookingId: '5566',
         ),
-        bookingId: '5566',
-      ),
-      false,
-    );
-    expect(
-      req.matchesBooking(
-        const LibraryBooking(
-          '5566',
-          '二层北区',
-          '2N001',
-          '2026-10-10 09:00',
-          '2026-10-10 11:00',
-          2,
+        false,
+      );
+      expect(
+        req.matchesBooking(
+          const LibraryBooking(
+            '5566',
+            '二层北区',
+            '2N001',
+            '2026-10-10 09:00',
+            '2026-10-10 11:00',
+            2,
+          ),
         ),
-      ),
-      true,
-    );
-  });
+        true,
+      );
+    },
+  );
 
   test('duplicate submitReservation calls send only one write', () async {
     final writeCompleter = Completer<LibraryWriteResult>();
@@ -1645,15 +1789,40 @@ void main() {
         await reveal(tester, find.text('2N001'));
         await tester.tap(find.text('2N001'));
         await tester.pumpAndSettle();
+        expectLibraryLiquidSurface(
+          tester,
+          surfaceRoot: find.byKey(const ValueKey('library-selected-capsule')),
+          blurKey: const ValueKey('library-selected-blur'),
+          expectedRadius: AppRadius.card,
+          expectedLiquid: variant.glass && !variant.highContrast,
+          maxWidth: 520,
+          expectedWidth: 288,
+          foregroundFinders: [
+            find.text('二层北区 · 2N001'),
+            find.text('确认预约'),
+            find.byTooltip('清除选择'),
+          ],
+          reason: variant.name,
+        );
         expect(
-          find.byKey(const ValueKey('library-selected-capsule')),
-          findsOneWidget,
+          find.descendant(
+            of: find.byKey(const ValueKey('library-floor-map-viewport')),
+            matching: find.byType(LiquidGlassSurface),
+          ),
+          findsNothing,
+          reason: variant.name,
         );
 
+        await tester.tap(find.byTooltip('清除选择'));
+        await tester.pumpAndSettle();
         await reveal(tester, find.byKey(const ValueKey('library-view-grid')));
         await tester.tap(find.byKey(const ValueKey('library-view-grid')));
         await tester.pumpAndSettle();
-        expect(find.byKey(const ValueKey('library-seat-search')), findsOneWidget);
+        await reveal(tester, find.byKey(const ValueKey('library-seat-search')));
+        expect(
+          find.byKey(const ValueKey('library-seat-search')),
+          findsOneWidget,
+        );
 
         await reveal(tester, find.byKey(const ValueKey('library-time-picker')));
         await tester.tap(find.byKey(const ValueKey('library-time-picker')));
@@ -1932,12 +2101,26 @@ void main() {
       await tester.tap(find.text('我的预约'));
       await tester.pumpAndSettle();
 
-      final focusFinder = find.byKey(const ValueKey('library-booking-focus-7001'));
-      final historyFinder = find.byKey(const ValueKey('library-booking-history-7002'));
-      expect(focusFinder, findsOneWidget);
+      final focusFinder = find.byKey(
+        const ValueKey('library-booking-focus-7001'),
+      );
+      final historyFinder = find.byKey(
+        const ValueKey('library-booking-history-7002'),
+      );
+      expectLibraryLiquidSurface(
+        tester,
+        surfaceRoot: focusFinder,
+        blurKey: const ValueKey('library-booking-blur-7001'),
+        expectedRadius: AppRadius.focus,
+        expectedLiquid: true,
+        foregroundFinders: [find.text('二层北区 · 2N018'), find.text('官方预约页')],
+      );
       expect(
-        find.descendant(of: focusFinder, matching: find.byType(AcrylicSurface)),
-        findsOneWidget,
+        find.descendant(
+          of: find.byType(LibraryBookingsControlsCard),
+          matching: find.byType(LiquidGlassSurface),
+        ),
+        findsNothing,
       );
       expect(find.text('25 分钟后开始'), findsOneWidget);
       expect(find.text('08:30–12:00'), findsOneWidget);
@@ -1946,6 +2129,20 @@ void main() {
 
       await reveal(tester, historyFinder);
       expect(historyFinder, findsOneWidget);
+      expect(
+        find.descendant(
+          of: historyFinder,
+          matching: find.byType(LiquidGlassSurface),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: historyFinder,
+          matching: find.byType(AcrylicSurface),
+        ),
+        findsNothing,
+      );
       expect(
         tester.getTopLeft(focusFinder).dy < tester.getTopLeft(historyFinder).dy,
         true,
@@ -2042,6 +2239,21 @@ void main() {
         await reveal(tester, find.text('2N018'));
         await tester.tap(find.text('2N018'));
         await tester.pumpAndSettle();
+        expectLibraryLiquidSurface(
+          tester,
+          surfaceRoot: find.byKey(const ValueKey('library-selected-capsule')),
+          blurKey: const ValueKey('library-selected-blur'),
+          expectedRadius: AppRadius.card,
+          expectedLiquid: variant.glass && !variant.highContrast,
+          maxWidth: 520,
+          expectedWidth: 288,
+          foregroundFinders: [
+            find.text('二层北区 · 2N018'),
+            find.text('确认预约'),
+            find.byTooltip('清除选择'),
+          ],
+          reason: variant.name,
+        );
         await reveal(tester, find.text('确认预约'));
         await tester.tap(find.text('确认预约'));
         await tester.pumpAndSettle();
@@ -2052,17 +2264,31 @@ void main() {
         await tester.tap(find.text('取消'));
         await tester.pumpAndSettle();
 
-        await tester.drag(
-          find.byType(CustomScrollView),
-          const Offset(0, 600),
-        );
+        await tester.tap(find.byTooltip('清除选择'));
         await tester.pumpAndSettle();
-        await reveal(tester, find.text('我的预约'));
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, 600));
+        await tester.pumpAndSettle();
+        await reveal(tester, find.text('我的预约'), delta: -180);
         await tester.tap(find.text('我的预约'));
         await tester.pumpAndSettle();
-        expect(
-          find.byKey(const ValueKey('library-booking-focus-7010')),
-          findsOneWidget,
+        final focusFinder = find.byKey(
+          const ValueKey('library-booking-focus-7010'),
+        );
+        expect(focusFinder, findsOneWidget);
+        await reveal(tester, focusFinder);
+        expectLibraryLiquidSurface(
+          tester,
+          surfaceRoot: focusFinder,
+          blurKey: const ValueKey('library-booking-blur-7010'),
+          expectedRadius: AppRadius.focus,
+          expectedLiquid: variant.glass && !variant.highContrast,
+          expectedWidth: 288,
+          foregroundFinders: [
+            find.text('二层北区 · 2N018'),
+            find.text('取消预约'),
+            find.text('官方预约页'),
+          ],
+          reason: variant.name,
         );
         await reveal(tester, find.text('取消预约'));
         await tester.tap(find.text('取消预约'));
@@ -2995,6 +3221,404 @@ void main() {
       expect(openerCalls, 0);
       expect(areaCalls, 1);
       expect(find.text('校园账号登录成功，正在获取座位状态'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'Stage 3 library focus ticket and selected capsule honor liquid glass across light/dark 320dp 2.0x, degradation modes, reduced motion, and button states',
+    variant: androidOnly,
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final reserveCompleter = Completer<LibraryWriteResult>();
+      final cancelCompleter = Completer<LibraryWriteResult>();
+      var officialOpened = 0;
+      var officialPageCounted = false;
+
+      final reader = FakeLibrarySeatReader();
+      reader.onSeats = (_, _) async => [seat(id: '1', label: '2N001')];
+      reader.onBookings = (_, _, page) async => const LibraryBookingPage(
+        [
+          LibraryBooking(
+            '7101',
+            '二层北区',
+            '2N001',
+            '2099-10-10 09:00',
+            '2099-10-10 12:00',
+            2 | 1024,
+          ),
+          LibraryBooking(
+            '7102',
+            '二层北区',
+            '2N002',
+            '2026-10-10 07:30',
+            '2026-10-10 10:30',
+            4 | 64,
+          ),
+          LibraryBooking(
+            '7103',
+            '三层南区',
+            '3S001',
+            '2026-10-08 14:00',
+            '2026-10-08 18:00',
+            128,
+          ),
+        ],
+        false,
+        page: 1,
+        totalCount: 3,
+      );
+      reader.onReserve = (_, _, _, _) => reserveCompleter.future;
+      reader.onCancelBooking = (_) => cancelCompleter.future;
+
+      Future<void> pumpConfig({
+        bool dark = false,
+        double scale = 2.0,
+        bool highContrast = false,
+        bool disableAnimations = false,
+        AppearanceSettings settings = const AppearanceSettings(),
+      }) {
+        return tester.pumpWidget(
+          wrapLibraryPage(
+            reader,
+            now: () => DateTime(2026, 10, 10, 8, 0),
+            dark: dark,
+            scale: scale,
+            highContrast: highContrast,
+            disableAnimations: disableAnimations,
+            settings: settings,
+            officialPageBuilder: (context) {
+              if (!officialPageCounted) {
+                officialPageCounted = true;
+                officialOpened++;
+              }
+              return Scaffold(
+                body: Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('返回测试'),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      }
+
+      // 1. Selected seat capsule: light/dark 320dp 2.0x, degradation & reduced motion.
+      await pumpConfig(dark: false, scale: 2.0);
+      await tester.pumpAndSettle();
+      await enterLibraryArea(tester);
+      await reveal(tester, find.text('2N001'));
+      await tester.tap(find.text('2N001'));
+      await tester.pumpAndSettle();
+
+      final capsuleFinder = find.byKey(
+        const ValueKey('library-selected-capsule'),
+      );
+      void expectCapsule({
+        required bool expectedLiquid,
+        required String reason,
+      }) {
+        expectLibraryLiquidSurface(
+          tester,
+          surfaceRoot: capsuleFinder,
+          blurKey: const ValueKey('library-selected-blur'),
+          expectedRadius: AppRadius.card,
+          expectedLiquid: expectedLiquid,
+          maxWidth: 520,
+          expectedWidth: 288,
+          foregroundFinders: [
+            find.text('二层北区 · 2N001'),
+            find.text('确认预约'),
+            find.byTooltip('清除选择'),
+          ],
+          reason: reason,
+        );
+      }
+
+      expectCapsule(expectedLiquid: true, reason: 'capsule-light-2.0x');
+
+      await pumpConfig(dark: true, scale: 2.0);
+      await tester.pumpAndSettle();
+      expectCapsule(expectedLiquid: true, reason: 'capsule-dark-2.0x');
+
+      const modes = [
+        (
+          name: 'reduced',
+          highContrast: false,
+          disableAnimations: true,
+          settings: AppearanceSettings(),
+          liquid: true,
+        ),
+        (
+          name: 'blur-off',
+          highContrast: false,
+          disableAnimations: false,
+          settings: AppearanceSettings(blur: false),
+          liquid: false,
+        ),
+        (
+          name: 'glass-off',
+          highContrast: false,
+          disableAnimations: false,
+          settings: AppearanceSettings(glass: false),
+          liquid: false,
+        ),
+        (
+          name: 'app-contrast',
+          highContrast: false,
+          disableAnimations: false,
+          settings: AppearanceSettings(contrast: .5),
+          liquid: false,
+        ),
+        (
+          name: 'system-contrast',
+          highContrast: true,
+          disableAnimations: false,
+          settings: AppearanceSettings(),
+          liquid: false,
+        ),
+      ];
+
+      for (final mode in modes) {
+        await pumpConfig(
+          dark: true,
+          scale: 2.0,
+          highContrast: mode.highContrast,
+          disableAnimations: mode.disableAnimations,
+          settings: mode.settings,
+        );
+        await tester.pumpAndSettle();
+        expectCapsule(
+          expectedLiquid: mode.liquid,
+          reason: 'capsule-${mode.name}',
+        );
+      }
+
+      // 2. Capsule button enabled -> disabled during pending submit -> cleared after outcome.
+      await pumpConfig(dark: false, scale: 1.0);
+      await tester.pumpAndSettle();
+
+      IconButton capsuleClearButton() => tester.widget<IconButton>(
+        find.descendant(
+          of: capsuleFinder,
+          matching: find.byWidgetPredicate(
+            (w) => w is IconButton && w.tooltip == '清除选择',
+          ),
+        ),
+      );
+
+      FilledButton capsuleConfirmButton() => tester.widget<FilledButton>(
+        find.ancestor(
+          of: find.descendant(of: capsuleFinder, matching: find.text('确认预约')),
+          matching: find.byWidgetPredicate((w) => w is FilledButton),
+        ),
+      );
+
+      expect(capsuleClearButton().onPressed, isNotNull);
+      expect(capsuleConfirmButton().onPressed, isNotNull);
+
+      await tester.tap(
+        find.descendant(of: capsuleFinder, matching: find.text('确认预约')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('确认提交预约'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(reader.reserveCalls, 1);
+      expectCapsule(expectedLiquid: true, reason: 'capsule-submitting');
+      expect(capsuleClearButton().onPressed, isNull);
+      expect(capsuleConfirmButton().onPressed, isNull);
+
+      reserveCompleter.complete(
+        const LibraryWriteResult(LibraryWriteStatus.rejected, message: '合成拒绝'),
+      );
+      await tester.pumpAndSettle();
+      expect(capsuleFinder, findsNothing);
+
+      await tester.tap(find.text('关闭'));
+      await tester.pumpAndSettle();
+
+      // 3. Focus booking ticket: light/dark 320dp 2.0x, degradation & reduced motion.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 600));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('我的预约'));
+      await tester.tap(find.text('我的预约'));
+      await tester.pumpAndSettle();
+
+      final focus7101 = find.byKey(
+        const ValueKey('library-booking-focus-7101'),
+      );
+      final focus7102 = find.byKey(
+        const ValueKey('library-booking-focus-7102'),
+      );
+      final history7103 = find.byKey(
+        const ValueKey('library-booking-history-7103'),
+      );
+
+      void expectFocus7101({
+        required bool expectedLiquid,
+        required String reason,
+        bool includeButtons = true,
+      }) {
+        expectLibraryLiquidSurface(
+          tester,
+          surfaceRoot: focus7101,
+          blurKey: const ValueKey('library-booking-blur-7101'),
+          expectedRadius: AppRadius.focus,
+          expectedLiquid: expectedLiquid,
+          expectedWidth: 288,
+          foregroundFinders: [
+            find.text('二层北区 · 2N001'),
+            if (includeButtons) ...[find.text('取消预约'), find.text('官方预约页')],
+          ],
+          reason: reason,
+        );
+      }
+
+      await pumpConfig(dark: false, scale: 2.0);
+      await tester.pumpAndSettle();
+      await reveal(tester, focus7101);
+      expectFocus7101(expectedLiquid: true, reason: 'focus-light-2.0x');
+
+      await pumpConfig(dark: true, scale: 2.0);
+      await tester.pumpAndSettle();
+      await reveal(tester, focus7101);
+      expectFocus7101(expectedLiquid: true, reason: 'focus-dark-2.0x');
+
+      for (final mode in modes) {
+        await pumpConfig(
+          dark: true,
+          scale: 2.0,
+          highContrast: mode.highContrast,
+          disableAnimations: mode.disableAnimations,
+          settings: mode.settings,
+        );
+        await tester.pumpAndSettle();
+        await reveal(tester, focus7101);
+        expectFocus7101(
+          expectedLiquid: mode.liquid,
+          reason: 'focus-${mode.name}',
+        );
+      }
+
+      // 4. Focus ticket buttons, non-cancellable ticket, plain history row, and busy state.
+      await pumpConfig(dark: false, scale: 1.0);
+      await tester.pumpAndSettle();
+      await reveal(tester, focus7101);
+
+      OutlinedButton focusCancelButton() => tester.widget<OutlinedButton>(
+        find.ancestor(
+          of: find.descendant(of: focus7101, matching: find.text('取消预约')),
+          matching: find.byWidgetPredicate((w) => w is OutlinedButton),
+        ),
+      );
+
+      TextButton focusOfficialButton() => tester.widget<TextButton>(
+        find.ancestor(
+          of: find.descendant(of: focus7101, matching: find.text('官方预约页')),
+          matching: find.byWidgetPredicate((w) => w is TextButton),
+        ),
+      );
+
+      expect(focusCancelButton().onPressed, isNotNull);
+      expect(focusOfficialButton().onPressed, isNotNull);
+
+      await reveal(
+        tester,
+        find.descendant(of: focus7101, matching: find.text('官方预约页')),
+      );
+      await tester.tap(
+        find.descendant(of: focus7101, matching: find.text('官方预约页')),
+      );
+      await tester.pumpAndSettle();
+      expect(officialOpened, 1);
+      await tester.tap(find.text('返回测试'));
+      await tester.pumpAndSettle();
+
+      await reveal(tester, focus7102);
+      expectLibraryLiquidSurface(
+        tester,
+        surfaceRoot: focus7102,
+        blurKey: const ValueKey('library-booking-blur-7102'),
+        expectedRadius: AppRadius.focus,
+        expectedLiquid: true,
+        expectedWidth: 288,
+        foregroundFinders: [find.text('二层北区 · 2N002'), find.text('官方预约页')],
+        reason: 'focus-non-cancellable',
+      );
+      expect(
+        find.descendant(of: focus7102, matching: find.text('取消预约')),
+        findsNothing,
+      );
+
+      await reveal(tester, history7103);
+      expect(
+        find.descendant(
+          of: history7103,
+          matching: find.byType(LiquidGlassSurface),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: history7103, matching: find.byType(AcrylicSurface)),
+        findsNothing,
+      );
+
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 800));
+      await tester.pumpAndSettle();
+      await reveal(tester, focus7101);
+      await reveal(
+        tester,
+        find.descendant(of: focus7101, matching: find.text('取消预约')),
+      );
+      await tester.tap(
+        find.descendant(of: focus7101, matching: find.text('取消预约')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('确认取消'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(reader.cancelCalls, 1);
+      expectFocus7101(
+        expectedLiquid: true,
+        reason: 'focus-busy',
+        includeButtons: false,
+      );
+      expect(
+        find.descendant(of: focus7101, matching: find.text('取消预约')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: focus7101, matching: find.text('官方预约页')),
+        findsNothing,
+      );
+
+      cancelCompleter.complete(
+        const LibraryWriteResult(LibraryWriteStatus.rejected),
+      );
+      await tester.pumpAndSettle();
+
+      await reveal(tester, focus7101);
+      expect(
+        find.descendant(of: focus7101, matching: find.text('取消预约')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: focus7101, matching: find.text('官方预约页')),
+        findsOneWidget,
+      );
+      expect(focusCancelButton().onPressed, isNotNull);
+      expect(focusOfficialButton().onPressed, isNotNull);
+
+      expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
   );
