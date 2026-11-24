@@ -86,6 +86,8 @@ python scripts/check.py --module docs --module tooling
 
 方法通道：`flutter test integration_test/school_adapter_test.dart -d <指定模拟器>`。R8 XLS使用`connectedReleaseAndroidTest -PcampusReleaseParserTest=true`隔离目标；媒体继续复用`scripts/check_native_media.py`的6项检查。完整参数、设备限制、隔离后重建正常包名规则见FLUTTER，不用通用检查器复制第二套安装流程。
 
+液态玻璃底座：`flutter test --no-pub integration_test/liquid_glass_test.dart -d <指定模拟器>` 使用合成渐变背景，检查 Impeller 支持、两种尺寸/主题的采样方向与 Shader 相对普通滤镜的像素差异。测试应用直接构造公共组件，后续业务入口及物理真机性能另验。设备命令与宿主 Flutter 检查串行执行。
+
 ## 输出与失败定位
 
 每次执行在忽略的build/checks/report-<随机ID>.json保存独立报告，含计划、选择理由、已运行步骤、退出码、耗时与补验提示。报告scope固定为synthetic-host-checks；status=passed仅表示选定宿主检查通过，不能据此宣布设备补验通过。dry-run没有报告。

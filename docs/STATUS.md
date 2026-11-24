@@ -15,6 +15,15 @@
 | 学校链路 | 模拟器上的 WebVPN 扫码后恢复课表自动导入已通过；WebVPN 录播修复版（`69c83f6`）在模拟器通过原任务教学平台认证回跳、权限重验、原生双流短时播放及本机进度保存；用户确认真机上人工实际听音质量与完整课时播放均已验证通过（无需重验）。修复版 XLS 和 DOM 各 31 条均与独立官方导出吻合，并通过单周及切换时的旧课表保留测试。直连目录、短时播放和续播已有分项样本。[课表复验](#2026-11-23-课表读取修复) · [录播复验](#2026-11-23-录播-webvpn-回跳验收) | 水印组合、门户直连回跳、真实会话失效、其余物理真机项及 7 天会话待验。[录播复测记录](#2026-11-23-录播-webvpn-回跳验收) |
 | 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）、7B（`9d5d2bd`）与 7C（`b4227e5`）已全部获用户审核通过；三级渐进空间选座及顶栏 B1 统一阶段 8A（`cf0189b`）、8B（`bf2e2e2`）、8C（`6c47522`）与 8D（`ff716b2`）已全部获用户审核通过，通过主机变更检查（`report-fb07fac86c6944828ac2fa41d4fb9608.json`）与 Pixel 8 API 36 真实校园会话深/浅色只读验收（0 POST 写入） | 真实退出会话已在模拟器验证，物理真机提交、查单及取消另行验收 |
 
+## 2026-11-24 液态玻璃阶段 1
+
+- 从 `codex/schedule-acceptance@75e87b0` 接续，T3 本回合运行记录与运行时均为 Codex `gpt-6.1-sol` / high。既有 `.gitignore`、`AGENTS.md`、`DESIGN.md` 与 `PROJECT_MANAGEMENT.md` 修改保留，仅选择性提交本阶段新增设计规范行。
+- 实现 `LiquidGlassSurface`、共享 `FragmentProgram` provider、每实例 Shader 释放、`AppLiquidGlass` 参数、`AppVisualPolicy` 复用及 Shader 注册。支持能力不足、加载中/失败时普通模糊回退，关闭玻璃/模糊或提高对比度时不透明，减少动画保留静态材质。阶段 1 的调用入口为合成测试。MIT 原文由既有 prepare 随原生资产打包。
+- `--changed --dry-run` 已复核，其范围包含此前分支业务改动和共享配置而保守扩展。本阶段实际定向执行 `flutter analyze --no-pub` 0 问题，`liquid_glass`、`quiet_design`、`appearance` 三套测试 17/17 通过。文档与 tooling 37 项通过，报告 `report-df764a1b7bd041299a3fd7e01576ffad.json`。一次残留测试进程导致缓存复制冲突，结束残留后串行复跑通过。
+- Pixel 8 API 36，420dpi（DPR 2.625），Impeller OpenGLES，debug 合成测试在 220×100 与 300×100 逻辑像素、浅/深主题下检查顶部红色/底部蓝色采样方向，并要求 Shader 与普通模糊输出存在超过 100 个通道的显著像素差异，均通过。初版 GLES 额外 Y 翻转使背景颠倒，移除后在实际 `compose(outer: shader, inner: blur)` 下通过。证据为本地 `build/liquid-glass-drive-final.log` 与集成测试，不包含学校页面。
+- 常规 `flutter test integration_test/liquid_glass_test.dart` 构建因 Maven 动态依赖解析失败。离线直接 Gradle 构建进一步暴露 runner 严格版本边的解析错误。使用忽略目录内的临时 init 脚本固定已有缓存 runner 1.3.0、rules 1.2.0、espresso-core 3.3.0 后离线构建成功，再通过 `flutter drive --use-application-binary` 与临时 integration driver 执行同一测试通过。日志 `build/liquid-glass-build-final.log`。该临时条件未写入项目依赖配置，标准在线设备测试入口仍待依赖环境恢复。
+- 本次为有未提交修改的工作区测试构建。Vulkan、物理真机性能/功耗、业务底栏/分段入口与最终视觉目检仍待后续阶段验证。阶段 1 完成后停审，阶段 2 等待用户确认。
+
 ## 2026-11-23 录播 WebVPN 回跳验收
 
 - 用户确认本阶段仅验证录播 WebVPN 回跳，完整课时另排。Pixel 8 API 36 模拟器内仍为 `ea7b2307a5d7194e70ae98b179a9f0d0b699be64` 的 0.4/code13 debug APK，设备 APK SHA-256 为 `c7537fd23e85319511bf1590937d4ffaff40fe0117bed7a6a2d542ffb4da1138`。

@@ -78,3 +78,12 @@ abstract final class AppSurface {
     (dark ? focusDark : Colors.white).withValues(alpha: dark ? .16 : .26),
   ];
 }
+
+/// Static edge optics shared by the liquid glass consumers.
+abstract final class AppLiquidGlass {
+  static const shaderAsset = 'shaders/liquid_glass.frag';
+  static const blur = 10.0;
+  static const radius = 28.0;
+  static const edgeDepth = 14.0;
+  static const refraction = 5.0;
+}

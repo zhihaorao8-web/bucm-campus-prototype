@@ -20,7 +20,7 @@ FLUTTER_TESTS = {
     'player': ('classroom_preparation', 'classroom_player', 'classroom_player_route', 'classroom_controls',
                'classroom_fullscreen', 'classroom_seek_surface', 'classroom_slider_preview',
                'classroom_small_window', 'classroom_playback_progress'),
-    'ui': ('ui', 'settings', 'appearance', 'quiet_design', 'atmosphere', 'artistic_title',
+    'ui': ('ui', 'settings', 'appearance', 'quiet_design', 'liquid_glass', 'atmosphere', 'artistic_title',
            'app_icons', 'navigation_motion', 'schedule_motion', 'course_interaction',
            'classroom_ui_polish', 'quote_service', 'library_seat_queries'),
 }
