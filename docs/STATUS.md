@@ -17,6 +17,8 @@
 
 ## 2026-11-24 液态玻璃阶段 3
 
+- 2026-11-24 用户确认「审核通过」，对应今日焦点卡 `e92dad5` 与图书馆分项 `894985e`，阶段3用户验收关闭。阶段1–3均已获用户审核通过，现有设备、学校整页及数据恢复限制继续保留。
+
 - 今日焦点分项由 Antigravity Neon / high 实现，Codex 审阅与验证。`AcrylicSurface` 新增默认关闭的可选微折射，`FocusCourseCard` 显式开启，`LiquidGlassSurface.blurKey` 透传原滤镜键。非定位前景在列表内决定自然高度，背景 `Positioned.fill` 获取有限尺寸，仅一个有效背景滤镜，文字在之后绘制。公共边缘深8、折射1.5、原模糊10，材质开关及高对比度降级、减少动画静态材质复用现有策略。
 - `--changed --base HEAD --dry-run` 已核对；定向 `quiet_design`、`today_focus`、`atmosphere`、`course_interaction`、`classroom_ui_polish`、`weekday_tabs` 65通过、1个可选截图跳过，静态分析0问题。日志 `build/liquid-focus-host.log`、`build/liquid-focus-analyze.log`。
 - Pixel 8 API36、GLES、420dpi，320dp列表、浅深色、1x/2x字号，真实 `FocusCourseCard` 的 Shader 背景有限宽288dp、自然高度与前景一致，设备测试通过。合成截图目检课程长名自然换行，边框贴合，无黑块/裁切。日志 `build/liquid-focus-device.log`，截图 `mobile/build/liquid-focus-{light,dark}-{1.0,2.0}.png`。沿用临时离线测试依赖固定脚本，`flutter drive` 显式保留应用。该构建含工作区修改，Vulkan、真机与学校整页另验。
