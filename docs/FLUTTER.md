@@ -51,7 +51,7 @@ $env:JAVA_HOME='D:\AndroidStudio\jbr'
 
 `prepare_flutter.py`只同步公开JS、7个共享Java核心源文件、SHA-256验证过的HSSF依赖和第三方许可；生成文件不入Git。解析器唯一维护源仍在根`src/`。修改它们后先运行`python scripts/check.py`，再重新prepare。Flutter应用依赖锁文件、宿主和Gradle wrapper应提交，SDK、缓存、JAR、密钥和APK不提交。
 
-应用版本从根`AndroidManifest.xml`读取；prepare同步pubspec，Android构建也直接读取根版本。当前Android显示版本为`0.41`、code为14，pubspec规范化为`0.41.0+14`。版本及历史标签规则见[VERSIONING](VERSIONING.md)，实际发布证据见[0.4](releases/0.4.md)与[0.3](releases/0.3.md)。
+应用版本从根`AndroidManifest.xml`读取；prepare同步pubspec，Android构建也直接读取根版本。当前Android显示版本为`0.41.1`、code为15，pubspec为`0.41.1+15`。版本及历史标签规则见[VERSIONING](VERSIONING.md)，实际发布证据见[0.41.1](releases/0.41.1.md)、[0.41](releases/0.41.md)、[0.4](releases/0.4.md)与[0.3](releases/0.3.md)。
 
 正常APK使用`flutter build apk --release --dart-define=CAMPUS_DIRECT_CATALOG=true --dart-define=CAMPUS_TEST_DIAGNOSTICS=false`，debug改为`--debug`及诊断true；两包顺序构建且来源相同。构建时重新生成对应插件注册表。当前沿用本机兼容开发签名、标记预发布；其他机器的密钥不能保证覆盖安装，正式生产签名尚未建立。详见[双包规范](BUILD_VARIANTS.md)。
 
