@@ -2,16 +2,16 @@
 
 面向北京中医药大学的非官方 Flutter Android 课表与课程录播应用。本人在学校官方页面完成认证，应用在本机导入课表、整理录播目录并播放课程。
 
-**当前版本：0.4 预发布 · Android 8.0 及以上。** 主线工程位于 `mobile/`，默认分支为 `main`。更新内容见 [CHANGELOG](CHANGELOG.md)。
+**当前版本：0.41 预发布 · Android 8.0 及以上。** 主线工程位于 `mobile/`，默认分支为 `main`。更新内容见 [CHANGELOG](CHANGELOG.md)。
 
 ## 下载安装
 
 | 安装包 | 适用场景 | 下载 |
 |---|---|---|
-| 正常版 release | 日常使用，关闭测试诊断与测试入口 | [0.4 正常版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.4/campus-schedule-0.4-android-release.apk) |
-| 测试版 debug | 问题排查，内置可复制、可清空的白名单诊断 | [0.4 测试版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.4/campus-schedule-0.4-android-debug.apk) |
+| 正常版 release | 日常使用，关闭测试诊断与测试入口 | [0.41 正常版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.41/campus-schedule-0.41-android-release.apk) |
+| 测试版 debug | 问题排查，内置可复制、可清空的白名单诊断 | [0.41 测试版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.41/campus-schedule-0.41-android-debug.apk) |
 
-[发布说明与 SHA-256 校验文件](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.4) · [详细版本说明](docs/releases/0.4.md)
+[发布说明与 SHA-256 校验文件](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.41) · [详细版本说明](docs/releases/0.41.md)
 
 两个包来自同一源码，均启用本轮已确认的录播目录直取路径；包名、版本与本机开发签名一致，可以覆盖切换并保留数据。沿用既有 Flutter 预览版升级时无需清数据；与早期 Java 原型的包名不同。当前仍使用开发签名，正式生产签名方案尚未建立。仓库已公开，可通过发布页下载安装包。
 
@@ -33,7 +33,7 @@
 
 ## 验证范围
 
-已有合成测试、Android 构建、模拟器UI/功能验收与早期版本分项实机反馈：官方 XLS 导入保存、自动选择直连后的目录取数、录播画面/声音与续播、滑动进度/横屏侧抽屉、柔光亚克力界面、B1 艺术标题动效，以及模拟器真实校园会话下的图书馆原生选座、单次预约、查单、取消、三级空间示意图与双视图体验。0.4 的精确检查、构建与发布证据见 [STATUS](docs/STATUS.md) 与 [0.4 发布说明](docs/releases/0.4.md)。
+已有合成测试、Android 构建、模拟器UI/功能验收与早期版本分项实机反馈：官方 XLS 导入保存、自动选择直连后的目录取数、录播画面/声音与续播、滑动进度/横屏侧抽屉、柔光亚克力界面、B1 艺术标题动效，以及模拟器真实校园会话下的图书馆原生选座、单次预约、查单、取消、三级空间示意图与双视图体验。0.41 的精确检查、构建与发布证据见 [STATUS](docs/STATUS.md) 与 [0.41 发布说明](docs/releases/0.41.md)。
 
 仍待独立验证：完整学期逐项准确性、完整课时与长期会话、真实退出学校会话清理、开启水印的全部组合、真实认证失效恢复及更多真机与网络条件。学校 WebVPN 曾返回上游连接拒绝，当前没有恢复成功证据。**本机续播不等于学校观看记录。** 实际直播、学校观看记录上报、图书馆其他业务、提醒、社区、视频下载、后台播放及 iOS/Windows 交付均未开放。
 
@@ -68,7 +68,7 @@ python scripts/check.py --module classroom --direct-catalog
 
 ## 分支与文档
 
-- `main`：当前 Flutter Android 主线，已随 `0.3` 合入 `codex/quiet-ui-refresh`，并于 `0.4` 合入 `codex/library-seat-booking` 接续完整开发历史。
+- `main`：当前 Flutter Android 主线，已随 `0.3` 合入 `codex/quiet-ui-refresh`，并于 `0.41` 合入 `codex/library-seat-booking` 接续完整开发历史。
 - [`codex/legacy-java-prototype`](https://github.com/zhihaorao8-web/bucm-campus-prototype/tree/codex/legacy-java-prototype)：早期 Java 测试原型，固定保留原主线 `611ec8e`；旧版本标签与附件继续保留。
 - 日常开发继续使用独立分支；阶段进展与验证边界见 [当前开发进度](docs/DEVELOPMENT_PLAN.md) 与 [STATUS](docs/STATUS.md)。
 
