@@ -64,6 +64,7 @@
 - 在 `codex/schedule-acceptance@93a2e7e` 上回读 T3 线程配置、运行历史与上下文传输状态。「完善 Agent 协作规范」中，Codex 从 `gpt-6.2-astra` 改为 `gpt-6.1-sol` 后，后续运行的 `executedModel` 为 `gpt-6.1-sol`。「查看项目当前进度」从 Codex 切至 Antigravity 后，传输标记为 `consumed`，后续回合沿用已确认的录播验收范围。
 - 「评估液态玻璃应用集成」记载跨提供方切换因活动回合被拒。随后回读显示线程仍配置为 Antigravity `gemini-pro-orchestrator-neon`（高），两个既有回合均由 Antigravity 运行，且无上下文传输记录。方案已交付，Codex 接续未验证。此次仅核对既有记录，未重跑切换或开始页面实现。
 - `python scripts/check.py --module docs` 核对 332 个本地文件目标通过，新章节及文档内锚点另行核对。`git diff --check` 通过。此次验证范围为开发文档。
+- 2026-11-24 用户确认文档阶段审核通过，审核对应规范提交 `ba21494e3455b40f67c756c03e4e8b7851da2324`。已核对该提交位于远端 `codex/schedule-acceptance`，文档阶段关闭。
 
 ## 2026-11-24 协作技能与 MCP 核对
 
