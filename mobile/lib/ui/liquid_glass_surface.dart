@@ -62,50 +62,56 @@ class _LiquidGlassSurfaceState extends ConsumerState<LiquidGlassSurface> {
       _shader = program?.fragmentShader();
       _failed = false;
     }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(widget.radius),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          ui.ImageFilter filter = ui.ImageFilter.blur(
-            sigmaX: widget.blur,
-            sigmaY: widget.blur,
-          );
-          final shader = _shader;
-          if (shader != null &&
-              !_failed &&
-              constraints.hasBoundedWidth &&
-              constraints.hasBoundedHeight &&
-              constraints.biggest.shortestSide > 0) {
-            try {
-              shader
-                ..setFloat(2, constraints.maxWidth)
-                ..setFloat(3, constraints.maxHeight)
-                ..setFloat(4, widget.radius)
-                ..setFloat(5, widget.edgeDepth)
-                ..setFloat(6, widget.refraction);
-              filter = ui.ImageFilter.compose(
-                outer: ui.ImageFilter.shader(shader),
-                inner: filter,
+    return BackdropTransitionBuilder(
+      builder: (context, suspended) {
+        final enableBackdrop = policy.translucent && !suspended;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(widget.radius),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              ui.ImageFilter filter = ui.ImageFilter.blur(
+                sigmaX: widget.blur,
+                sigmaY: widget.blur,
+                tileMode: ui.TileMode.clamp,
               );
-            } on UnsupportedError {
-              _failed = true;
-            } on StateError {
-              _failed = true;
-            }
-          }
-          return BackdropFilter(
-            key: widget.blurKey,
-            enabled: policy.translucent,
-            filter: filter,
-            child: ColoredBox(
-              color: policy.opaque
-                  ? Theme.of(context).colorScheme.surfaceContainer
-                  : Colors.transparent,
-              child: widget.child,
-            ),
-          );
-        },
-      ),
+              final shader = enableBackdrop ? _shader : null;
+              if (shader != null &&
+                  !_failed &&
+                  constraints.hasBoundedWidth &&
+                  constraints.hasBoundedHeight &&
+                  constraints.biggest.shortestSide > 0) {
+                try {
+                  shader
+                    ..setFloat(2, constraints.maxWidth)
+                    ..setFloat(3, constraints.maxHeight)
+                    ..setFloat(4, widget.radius)
+                    ..setFloat(5, widget.edgeDepth)
+                    ..setFloat(6, widget.refraction);
+                  filter = ui.ImageFilter.compose(
+                    outer: ui.ImageFilter.shader(shader),
+                    inner: filter,
+                  );
+                } on UnsupportedError {
+                  _failed = true;
+                } on StateError {
+                  _failed = true;
+                }
+              }
+              return BackdropFilter(
+                key: widget.blurKey,
+                enabled: enableBackdrop,
+                filter: filter,
+                child: ColoredBox(
+                  color: policy.opaque
+                      ? Theme.of(context).colorScheme.surfaceContainer
+                      : Colors.transparent,
+                  child: widget.child,
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

@@ -1,5 +1,6 @@
 import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
+import 'visual_policy.dart';
 
 const navigationDuration = AppMotion.navigation;
 const navigationCurve = AppMotion.navigationCurve;
@@ -136,7 +137,12 @@ class _ScheduleModeTransitionState extends State<ScheduleModeTransition>
                         opacity: index == 0
                             ? 1 - progress.value
                             : progress.value,
-                        child: index == 0 ? widget.weekly : widget.dailyView,
+                        child: BackdropSuspensionScope(
+                          suspended:
+                              isBackdropAnimationActive(progress) ||
+                              BackdropSuspensionScope.maybeOf(context),
+                          child: index == 0 ? widget.weekly : widget.dailyView,
+                        ),
                       ),
                     ),
                   ),

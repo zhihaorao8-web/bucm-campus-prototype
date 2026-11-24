@@ -44,30 +44,33 @@ class QuietSheet extends ConsumerWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final opaque = AppVisualPolicy.of(context, settings).opaque;
     const radius = BorderRadius.vertical(top: Radius.circular(AppRadius.sheet));
-    return ClipRRect(
-      borderRadius: radius,
-      child: BackdropFilter(
-        enabled: !opaque,
-        filter: ui.ImageFilter.blur(
-          sigmaX: AppSurface.sheetBlur,
-          sigmaY: AppSurface.sheetBlur,
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.surface.withValues(
-                alpha: opaque ? 1 : AppSurface.sheetAlpha(dark),
+    return BackdropTransitionBuilder(
+      builder: (context, suspended) => ClipRRect(
+        borderRadius: radius,
+        child: BackdropFilter(
+          enabled: !opaque && !suspended,
+          filter: ui.ImageFilter.blur(
+            sigmaX: AppSurface.sheetBlur,
+            sigmaY: AppSurface.sheetBlur,
+            tileMode: ui.TileMode.clamp,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.surface.withValues(
+                  alpha: opaque ? 1 : AppSurface.sheetAlpha(dark),
+                ),
+                borderRadius: radius,
+                border: Border.all(
+                  width: .7,
+                  color: opaque
+                      ? colors.outlineVariant
+                      : Colors.white.withValues(alpha: dark ? .12 : .75),
+                ),
               ),
-              borderRadius: radius,
-              border: Border.all(
-                width: .7,
-                color: opaque
-                    ? colors.outlineVariant
-                    : Colors.white.withValues(alpha: dark ? .12 : .75),
-              ),
+              child: child,
             ),
-            child: child,
           ),
         ),
       ),

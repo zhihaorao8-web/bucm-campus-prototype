@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.41.1] - 2026-11-24
+
+- 修复真机在点击「今日」焦点卡或课程卡片进入详情页、返回及周/日切换期间出现的全屏平铺圆角黑块渲染异常：新增共享转场与局部渐变暂停底座（`BackdropTransitionBuilder`、`BackdropSuspensionScope`、`BackdropSuspensionAnimation`），消除 `GlassNavigation` 与 `ClassroomSectionSwitch` 嵌套 `BackdropFilter` 及 `AcrylicSurface` 重复 `ClipRRect`，为 `LiquidGlassSurface` 等滤镜补充 `TileMode.clamp`，并覆盖 `CourseCardHero` 返回飞行、`QuietSliverAppBar`、`QuietSheet`、主/设置 `MiuixTopAppBar`、`ScheduleModeTransition` 及选座胶囊进出过渡。
+- Android版本0.41.1/code15，Flutter版本0.41.1+15。发布构建、精确提交CI、签名与附件摘要正在核验，进度见[0.41.1发布记录](docs/releases/0.41.1.md)。
+
 ## [0.41] - 2026-11-24
 
 - 校园账号登录与认证恢复统一，设置首页按校园账号、课表与录播、外观、隐私和项目信息重排。

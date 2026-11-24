@@ -2,7 +2,7 @@ name: campus_schedule
 description: 北京中医药大学校园课表，官方登录与本机离线查看。
 publish_to: none
 # Generated from AndroidManifest.xml; two-part Android labels gain .0 for SemVer.
-version: 0.41.0+14
+version: 0.41.1+15
 environment:
   sdk: '>=3.12.2 <4.0.0'
 dependencies:

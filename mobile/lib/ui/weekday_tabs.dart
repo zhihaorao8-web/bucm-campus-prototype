@@ -49,24 +49,27 @@ class WeekdayTabs extends ConsumerWidget {
     return AcrylicSurface(
       radius: AppRadius.section,
       blurKey: const ValueKey('weekday-acrylic-blur'),
-      child: MiuixTabRow(
-        key: const ValueKey('weekday-tabs'),
-        tabs: labels,
-        colors: MiuixTabRowColors(
-          backgroundColor: Colors.transparent,
-          contentColor: colors.onSurfaceVariant,
-          selectedBackgroundColor: colors.surfaceContainer.withValues(
-            alpha: opaque ? 1 : .62,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.section),
+        child: MiuixTabRow(
+          key: const ValueKey('weekday-tabs'),
+          tabs: labels,
+          colors: MiuixTabRowColors(
+            backgroundColor: Colors.transparent,
+            contentColor: colors.onSurfaceVariant,
+            selectedBackgroundColor: colors.surfaceContainer.withValues(
+              alpha: opaque ? 1 : .62,
+            ),
+            selectedContentColor: colors.primary,
           ),
-          selectedContentColor: colors.primary,
+          selectedTabIndex: day - 1,
+          contentAlignment: Alignment.center,
+          minWidth: width.ceilToDouble(),
+          maxWidth: width.ceilToDouble(),
+          height: height.ceilToDouble(),
+          itemSpacing: 6,
+          onTabSelected: (index) => onSelected(index + 1),
         ),
-        selectedTabIndex: day - 1,
-        contentAlignment: Alignment.center,
-        minWidth: width.ceilToDouble(),
-        maxWidth: width.ceilToDouble(),
-        height: height.ceilToDouble(),
-        itemSpacing: 6,
-        onTabSelected: (index) => onSelected(index + 1),
       ),
     );
   }

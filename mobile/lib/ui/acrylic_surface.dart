@@ -35,25 +35,22 @@ class AcrylicSurface extends ConsumerWidget {
     final opaque = policy.opaque;
     final useLiquidGlass = liquidGlass && policy.liquidGlass;
     final borderRadius = BorderRadius.circular(radius);
-    final foreground = DecoratedBox(
-      decoration: BoxDecoration(
-        color: opaque ? colors.surfaceContainer : null,
-        gradient: opaque
-            ? null
-            : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: AppSurface.focusFill(dark),
-              ),
-        borderRadius: borderRadius,
-        border: Border.all(
-          width: .8,
-          color: opaque
-              ? colors.outlineVariant
-              : Colors.white.withValues(alpha: dark ? .15 : .80),
-        ),
+    final surfaceDecoration = BoxDecoration(
+      color: opaque ? colors.surfaceContainer : null,
+      gradient: opaque
+          ? null
+          : LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: AppSurface.focusFill(dark),
+            ),
+      borderRadius: borderRadius,
+      border: Border.all(
+        width: .8,
+        color: opaque
+            ? colors.outlineVariant
+            : Colors.white.withValues(alpha: dark ? .15 : .80),
       ),
-      child: child,
     );
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -69,39 +66,57 @@ class AcrylicSurface extends ConsumerWidget {
                 ),
               ],
       ),
-      child: ClipRRect(
-        borderRadius: borderRadius,
-        child: useLiquidGlass
-            ? Stack(
+      child: useLiquidGlass
+          ? Stack(
+              fit: StackFit.passthrough,
+              children: [
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ExcludeSemantics(
+                      child: LiquidGlassSurface(
+                        radius: radius,
+                        blur: AppSurface.focusBlur,
+                        edgeDepth: edgeDepth,
+                        refraction: refraction,
+                        blurKey: blurKey,
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  ),
+                ),
+                DecoratedBox(decoration: surfaceDecoration, child: child),
+              ],
+            )
+          : BackdropTransitionBuilder(
+              builder: (context, suspended) => Stack(
                 fit: StackFit.passthrough,
                 children: [
                   Positioned.fill(
                     child: IgnorePointer(
                       child: ExcludeSemantics(
-                        child: LiquidGlassSurface(
-                          radius: radius,
-                          blur: AppSurface.focusBlur,
-                          edgeDepth: edgeDepth,
-                          refraction: refraction,
-                          blurKey: blurKey,
-                          child: const SizedBox.expand(),
+                        child: ClipRRect(
+                          borderRadius: borderRadius,
+                          child: BackdropFilter(
+                            key: blurKey,
+                            enabled: !opaque && !suspended,
+                            filter: ui.ImageFilter.blur(
+                              sigmaX: AppSurface.focusBlur,
+                              sigmaY: AppSurface.focusBlur,
+                              tileMode: ui.TileMode.clamp,
+                            ),
+                            child: DecoratedBox(
+                              decoration: surfaceDecoration,
+                              child: const SizedBox.expand(),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  foreground,
+                  child,
                 ],
-              )
-            : BackdropFilter(
-                key: blurKey,
-                enabled: !opaque,
-                filter: ui.ImageFilter.blur(
-                  sigmaX: AppSurface.focusBlur,
-                  sigmaY: AppSurface.focusBlur,
-                ),
-                child: foreground,
               ),
-      ),
+            ),
     );
   }
 }

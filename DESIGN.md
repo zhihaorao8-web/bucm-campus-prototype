@@ -52,10 +52,10 @@ AppActionButton的busy/权限决定仍由调用方传onPressed。等待时禁用
 | 焦点 | 圆角28、模糊10；浅色填充.26–.46，深色.16–.30；今日焦点卡、图书馆当前预约票卡和选座胶囊显式启用 `AcrylicSurface.liquidGlass` 微折射（边缘深8、折射1.5，选座胶囊沿用圆角24），列表自然高度由前景决定，背景填满实际尺寸 | 同上；正文在滤镜之后绘制；普通亚克力消费方默认保持原变体，减少动画保留静态材质；选座胶囊在字号超过1.3倍时信息与按钮上下排列，座位/时段完整换行，时段使用 `onSurface` 保证阅读对比 |
 | 普通/dense卡 | 圆角默认24；浅/深普通alpha中心.78/.64，dense .90/.84，边缘±.02 | 同上；dense不加逐格滤镜 |
 | 抽屉 | 顶部28、局部模糊12；浅/深.90/.92，遮罩按主题 | 同上；不增加全屏背景模糊 |
-| 悬浮底栏 | 最大宽400、侧距24、底部安全留白20；模糊24，图标标签常显；选中透镜圆角32、内模糊3，公共渐变/边框/阴影从 `AppLiquidGlass` 读取，跟随同一分页时钟 | 非悬浮/关闭模糊/高对比度用不透明；仅关闭玻璃高光仍可保留普通模糊；透镜卸载并保留普通选中胶囊，高对比度附轮廓线 |
-| 导航/分段 | 一级260ms；周日/录播页签220ms；换周/日内容180ms进入/120ms退出；`AppSegmentIndicator` 在周/日、录播/直播及图书馆分段复用透镜，内模糊3、边缘深8、折射2.5，圆角沿用父控件 | 减少动画即时切换并保留静态材质，旧内容不能继续响应操作；高对比度或关闭玻璃/模糊使用原不透明指示器，装饰边框不挤占48dp触控区 |
-| 液态玻璃公共底座（阶段 1） | `LiquidGlassSurface`，圆角28、模糊10、边缘深14、折射5逻辑像素，参数集中于 `AppLiquidGlass`；限有界局部背景，前景在滤镜之后绘制 | 复用玻璃/模糊与对比度策略；Impeller 不支持、加载中或加载失败回落普通模糊；减少动画保留静态材质；阶段 2 审核接入底栏和分段。`liquid_glass_test` 与 Android 同名合成专项验证 |
-| 课程/播放路由 | 280ms进入/220ms返回；共享既有导航缓出曲线 | 减少动画即时，键盘播放不做按钮扩张；保持原生返回 |
+| 悬浮底栏 | 最大宽400、侧距24、底部安全留白20；模糊24，图标标签常显；选中透镜圆角32、内模糊3，公共渐变/边框/阴影从 `AppLiquidGlass` 读取，跟随同一分页时钟，并与底栏底糊以兄弟层并列而非嵌套 `BackdropFilter` | 非悬浮/关闭模糊/高对比度用不透明；仅关闭玻璃高光仍可保留普通模糊；透镜卸载并保留普通选中胶囊，高对比度附轮廓线 |
+| 导航/分段 | 一级260ms；周日/录播页签220ms；换周/日内容180ms进入/120ms退出；`AppSegmentIndicator` 在周/日、录播/直播及图书馆分段复用透镜，内模糊3、边缘深8、折射2.5，圆角沿用父控件（与 `ClassroomSectionSwitch` 外层模糊同层并列，不嵌套 `BackdropFilter`） | 减少动画即时切换并保留静态材质，旧内容不能继续响应操作；高对比度或关闭玻璃/模糊使用原不透明指示器，装饰边框不挤占48dp触控区；`ScheduleModeTransition` 渐变过程中暂停内部模糊，落定即恢复 |
+| 液态玻璃公共底座（阶段 1） | `LiquidGlassSurface`，圆角28、模糊10、边缘深14、折射5逻辑像素，参数集中于 `AppLiquidGlass`；限有界局部背景，前景在滤镜之后绘制，`ImageFilter.blur` 使用 `TileMode.clamp`；经 `BackdropTransitionBuilder` / `BackdropSuspensionScope` / `BackdropSuspensionAnimation` 在路由切换、Hero 飞行与局部透明渐变期间暂停背景模糊与着色器采样，保持浅透底色/边框且不嵌套 `BackdropFilter` / 重复 `ClipRRect` | 复用玻璃/模糊与对比度策略；Impeller 不支持、加载中或加载失败回落普通模糊；减少动画保留静态材质；路由或透明过渡期间暂挂光学读取、落定后恢复。`liquid_glass_test`、`course_interaction_test` 与 Android 同名合成专项验证 |
+| 课程/播放路由 | 280ms进入/220ms返回；共享既有导航缓出曲线；`CourseCardHero.flightShuttleBuilder`、`QuietSliverAppBar`、`QuietSheet` 与主/设置 `MiuixTopAppBar` 在路由转场与 Hero 飞行期间暂停 `BackdropFilter` | 减少动画即时，键盘播放不做按钮扩张；保持原生返回；转场期间保留半透明底色与前景不闪白，落定后恢复模糊 |
 | 图书馆空间转场 | L1↔L2 楼层景深进退（`AppMotion.routeEnter` 280ms / `AppMotion.routeExit` 220ms，`AppMotion.navigationCurve`）；L2↔L3 以选区 `libraryZoneAnchor` 为缩放枢轴推进/退回（280ms/220ms，退回 L2 时脉冲高亮刚浏览区域并在 L1 标记`刚才查看`）；L3 平面图↔网格共享轴平滑切换（`AppMotion.segment` 220ms，`AppMotion.segmentCurve`）；仅使用 GPU `Transform` + `Opacity` 并隔离旧视图交互、焦点与语义 | 减少动画下全部层级与视图切换即时完成；无坐标轮廓与过渡中旧视图均不可点击或聚焦 |
 | 今日柔光/标题 | 今日页10秒环境光，今日/课表/图书馆自研B1标题1350ms描边；其他阅读页静态光场 | 前台+可见才持续运行；减少动画保留静态，高对比度关闭装饰 |
 
