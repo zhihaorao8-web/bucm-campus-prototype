@@ -17,6 +17,8 @@
 
 ## 2026-11-24 液态玻璃阶段 1
 
+- 2026-11-24 用户确认「审核通过」，对应已推送的 `29f4881`，阶段 1 用户验收关闭，按此前授权推进阶段 2。
+
 - 从 `codex/schedule-acceptance@75e87b0` 接续，T3 本回合运行记录与运行时均为 Codex `gpt-6.1-sol` / high。既有 `.gitignore`、`AGENTS.md`、`DESIGN.md` 与 `PROJECT_MANAGEMENT.md` 修改保留，仅选择性提交本阶段新增设计规范行。
 - 实现 `LiquidGlassSurface`、共享 `FragmentProgram` provider、每实例 Shader 释放、`AppLiquidGlass` 参数、`AppVisualPolicy` 复用及 Shader 注册。支持能力不足、加载中/失败时普通模糊回退，关闭玻璃/模糊或提高对比度时不透明，减少动画保留静态材质。阶段 1 的调用入口为合成测试。MIT 原文由既有 prepare 随原生资产打包。
 - `--changed --dry-run` 已复核，其范围包含此前分支业务改动和共享配置而保守扩展。本阶段实际定向执行 `flutter analyze --no-pub` 0 问题，`liquid_glass`、`quiet_design`、`appearance` 三套测试 17/17 通过。文档与 tooling 37 项通过，报告 `report-df764a1b7bd041299a3fd7e01576ffad.json`。一次残留测试进程导致缓存复制冲突，结束残留后串行复跑通过。
