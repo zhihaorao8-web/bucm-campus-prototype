@@ -18,6 +18,7 @@
 ## 2026-11-24 0.41 发布准备
 
 - 用户授权保存当前进度、合入 main 并准备 GitHub 新版本0.41。候选版本0.41/code14，pubspec0.41.0+14。当前准备全量检查与PR，合入、候选CI及发布附件尚待核验，实际进度见[发布记录](releases/0.41.md)。
+- 已保存原有Stitch规范改动（`f471569`），版本候选提交 `7aa8f72`。本地 `python scripts/check.py --all` 全部步骤通过，含Java/Node、静态分析、默认Flutter与23项直取专项，报告 `report-8ff888b5bbd04f1e8afc6768e79febf4.json`。[PR #4](https://github.com/zhihaorao8-web/bucm-campus-prototype/pull/4) 已建立，远端CI及合入后精确提交的发布门禁继续执行。
 
 ## 2026-11-24 液态玻璃阶段 3
 
