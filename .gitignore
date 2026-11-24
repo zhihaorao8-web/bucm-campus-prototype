@@ -48,6 +48,7 @@ __pycache__/
 /mobile/.metadata
 *.iml
 /.hallmark/
+/.stitch/
 /mobile/assets/
 !/mobile/android/gradle/wrapper/gradle-wrapper.jar
 

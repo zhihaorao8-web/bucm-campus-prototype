@@ -1,6 +1,6 @@
 # 界面与交互开发规范
 
-更新：2026-11-22。适用当前Flutter Android课表、录播与图书馆座位预约，保留0.3已验收的MIUIX结构、柔光亚克力和B1标题。本文是当前组件规范；需求见[PROJECT_BRIEF](docs/PROJECT_BRIEF.md)，公共计算见[ARCHITECTURE](docs/ARCHITECTURE.md)，验证证据见[STATUS](docs/STATUS.md)，独有模拟器采样见[UI验证](docs/research/UI_VALIDATION.md)。旧UI计划已精简，不覆盖本文。
+更新：2026-11-24。适用当前Flutter Android课表、录播与图书馆座位预约，保留0.3已验收的MIUIX结构、柔光亚克力和B1标题。本文是当前组件规范；需求见[PROJECT_BRIEF](docs/PROJECT_BRIEF.md)，公共计算见[ARCHITECTURE](docs/ARCHITECTURE.md)，验证证据见[STATUS](docs/STATUS.md)，独有模拟器采样见[UI验证](docs/research/UI_VALIDATION.md)。旧UI计划已精简，不覆盖本文。
 
 ## 开发顺序与参数来源
 
@@ -88,6 +88,18 @@ AppActionButton的busy/权限决定仍由调用方传onPressed。等待时禁用
 ## 图标资源与开发使用
 
 49个功能图标已统一为IconMCP离线outline SVG（24px、1.75描边、radius 2）；按主题/实际尺寸绘制，操作保留触控区与语义。新增图标可用已配置MCP的search_icons/get_icon检索并本地打包，不在运行时依赖MCP或下载图标。来源、摘要与许可见[ICON_SYSTEM](docs/ICON_SYSTEM.md)和[THIRD_PARTY](docs/THIRD_PARTY.md)；启动品牌图与学校网页图标不随功能图标替换。
+
+## Stitch 辅助设计与原型边界
+
+Google Stitch MCP 与 `stitch-skills`（`stitch-design` / `stitch-build` / `stitch-utilities`）面向 Web HTML、React 与 React Native 生态；在当前 Flutter Android 主线中仅作为**可选视觉原型参考与独立周边展示工具**，不替代既有 Flutter 组件体系与验收流程。
+
+| 维度 | 规范要求 |
+|---|---|
+| 适用场景 | 新增独立页面/模块或较大视觉改版前，可用 `stitch::generate-design`、`enhance-prompt`、`stitch::manage-design-system` 生成多套视觉变体比稿；可用 `stitch::upload-to-stitch` 上传**合成数据**渲染的模拟器截图做局部排版探索；如后续制作独立于主 App 的 Web 下载/宣传展示页或演示视频，可使用 `site-md`、`stitch-loop`、`stitch::react-components`、`shadcn-ui`、`remotion`。 |
+| 不适用范围 | 主线 `mobile/lib/ui/` 不使用 `stitch-build`（React / React Native / shadcn-ui / react-vite-dashboard）生成或直译业务页面代码；不对 Flutter/Dart 源码使用 `code-to-design`、`extract-static-html`、`extract-design-md`。校园认证回跳、协议解析、状态机、无障碍、正式签名与原生播放器工程项不由 Stitch 处理。 |
+| 文档隔离 | 根目录 `DESIGN.md` 是本项目唯一生效的 Flutter 界面与交互规范，**严禁**用 `design-md` 或 `taste-design` 覆盖或改写。给 Stitch 使用的语义视觉文档须隔离存放在已忽略的本地 `.stitch/DESIGN.md`，由 [app_palette.dart](mobile/lib/design/app_palette.dart)、[app_tokens.dart](mobile/lib/design/app_tokens.dart) 与本文提炼，保持克制的 MIUIX 与柔光亚克力气质，不引入 `taste-design` 中与本规范冲突的非对称排版、强制微动效或禁用系统字体规则。 |
+| 落地与复用 | Stitch 产出仅作视觉参考，Flutter 落地仍须严格复用本文登记的公共组件（`AppShell`、`QuietCard`、`AcrylicSurface`、`QuietSheet`、`AppActionButton` 等）、`mobile/lib/design` 令牌、`AppVisualPolicy` 降级与离线 IconMCP 图标，并按「完成与复核」完成浅/深色、`320dp`、`1.5x/2.0x` 大字与降级验收。 |
+| 隐私与样本 | 上传至 Stitch 或写入提示词上下文的截图、HTML 与样本**仅允许使用合成示例数据**，严禁包含真实课表、学校会话、学号姓名、认证页面、Cookie/令牌或设备标识。 |
 
 ## 完成与复核
 
