@@ -4,7 +4,7 @@
 
 ## 液态玻璃改造
 
-- **v0.41 转场黑块修复与 0.41.1 发布候选（工作分支 `codex/fix-course-transition-glass`）**：定位物理真机点击课程卡片跳转课程详情期间全屏平铺黑角异常的复合根因（路由转场 `SaveLayer` 包裹活 `BackdropFilter`/`ImageFilter.shader`、`GlassNavigation` 与 `ClassroomSectionSwitch` 内层嵌套 `BackdropFilter` 及重复 `ClipRRect`、`CourseCardHero` 返回飞行未暂停滤镜、Flutter `3.47.9` 引擎缺少上游 Vulkan subpass/clip-restore 修复及 `TileMode.clamp` 缺失）。已在 `ui/visual_policy.dart` 新增共享转场暂停机制，在 `GlassNavigation` 与 `AcrylicSurface` 拆除嵌套滤镜/重复裁剪并全量接入转场与 Hero/局部透明渐变暂停；宿主 `38` 套默认 Flutter（`342` 通过/`9` 跳过）+ `2` 套直取专项（`23` 通过）、`Pixel 8 API 36` GLES 保留数据调试验证及基于干净提交 `1608ab4` 的 `preview` 静态双包核验均通过，2026-11-24 用户确认「审查通过」并授权合入 `main` 且按 `0.41.1`（`versionCode 15`）前推发布。当前正在准备 `0.41.1` 候选提交、全量 `--all` 检查、PR 合入、精确 `main` CI 与发布门禁（保留 `v0.41` 标签与附件不变）。详见[验证记录](STATUS.md#2026-11-24-液态玻璃转场黑块修复)与[0.41.1 发布说明](releases/0.41.1.md)。
+- **v0.41 转场黑块修复与 0.41.1 预发布（PR #6，标签 `v0.41.1`）**：定位物理真机点击课程卡片跳转课程详情期间全屏平铺黑角异常的复合根因（路由转场 `SaveLayer` 包裹活 `BackdropFilter`/`ImageFilter.shader`、`GlassNavigation` 与 `ClassroomSectionSwitch` 内层嵌套 `BackdropFilter` 及重复 `ClipRRect`、`CourseCardHero` 返回飞行未暂停滤镜、Flutter `3.47.9` 引擎缺少上游 Vulkan subpass/clip-restore 修复及 `TileMode.clamp` 缺失）。已在 `ui/visual_policy.dart` 新增共享转场暂停机制，在 `GlassNavigation` 与 `AcrylicSurface` 拆除嵌套滤镜/重复裁剪并全量接入转场与 Hero/局部透明渐变暂停；2026-11-24 已按用户授权通过 PR #6 合入 `main`（`b87784a2`），保持 `v0.41`（`8107fed`）标签与附件不变，完成全量 `--all`、精确 CI `45400708516`、隔离 R8 XLS `1/1`、可信签名双包校验、模拟器 `release` 抽查并公开预发布 `0.41.1/code15`（四份远端附件大小与 SHA-256 核对一致）。详见[验证记录](STATUS.md#2026-11-24-液态玻璃转场黑块修复)与[0.41.1 发布说明](releases/0.41.1.md)。
 
 2026-11-24 已按授权保存进度，经PR #4合入main，并公开预发布0.41/code14。源码8107fedc，精确CI、隔离R8 1/1、可信签名双包和四份远端附件摘要均已核验。[0.41发布记录](releases/0.41.md)。
 

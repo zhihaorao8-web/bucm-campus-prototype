@@ -5,7 +5,7 @@
 ## [0.41.1] - 2026-11-24
 
 - 修复真机在点击「今日」焦点卡或课程卡片进入详情页、返回及周/日切换期间出现的全屏平铺圆角黑块渲染异常：新增共享转场与局部渐变暂停底座（`BackdropTransitionBuilder`、`BackdropSuspensionScope`、`BackdropSuspensionAnimation`），消除 `GlassNavigation` 与 `ClassroomSectionSwitch` 嵌套 `BackdropFilter` 及 `AcrylicSurface` 重复 `ClipRRect`，为 `LiquidGlassSurface` 等滤镜补充 `TileMode.clamp`，并覆盖 `CourseCardHero` 返回飞行、`QuietSliverAppBar`、`QuietSheet`、主/设置 `MiuixTopAppBar`、`ScheduleModeTransition` 及选座胶囊进出过渡。
-- Android版本0.41.1/code15，Flutter版本0.41.1+15。发布构建、精确提交CI、签名与附件摘要正在核验，进度见[0.41.1发布记录](docs/releases/0.41.1.md)。
+- Android版本0.41.1/code15，Flutter版本0.41.1+15。已在精确提交 `b87784a2` 通过全量检查、`main` CI（Run `45400708516`）、隔离R8 XLS实测（1/1）、可信签名双包校验、模拟器 `release` 抽查并公开 GitHub 预发布 [v0.41.1](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.41.1)（原有 `v0.41` 标签与附件保持不变），完整证据见[0.41.1发布记录](docs/releases/0.41.1.md)。
 
 ## [0.41] - 2026-11-24
 
