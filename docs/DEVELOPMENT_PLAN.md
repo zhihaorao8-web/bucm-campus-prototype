@@ -4,7 +4,7 @@
 
 ## 液态玻璃改造
 
-2026-11-24 用户已授权保存当前进度、合入 main 并准备0.41发布。发布候选为0.41/code14，按[发布记录](releases/0.41.md)核验全量检查、精确CI、隔离R8与双包身份，上传后核对附件。
+2026-11-24 已按授权保存进度，经PR #4合入main，并公开预发布0.41/code14。源码8107fedc，精确CI、隔离R8 1/1、可信签名双包和四份远端附件摘要均已核验。[0.41发布记录](releases/0.41.md)。
 
 2026-11-24 用户批准阶段 1–2，复用现有 `settings.glass`。阶段 1 交付 Shader 底座、公共令牌、能力检测及加载失败回退、MIT 通知和合成测试，影响 `LiquidGlassSurface`、`AppVisualPolicy` 与资产注册。最小检查为静态分析、材质测试及检查计划，Android 合成场景验证编译、DPR/坐标与浅深色和降级。完成检查、记录、提交推送后停审。
 
@@ -22,10 +22,10 @@
 
 ## 当前基线
 
-- 主线为Flutter Android课表、录播与已获批图书馆座位预约；当前版本基线为0.4/code13（发布源码`7a73decf7f887af4fb296ce84ed8107ec1448269`，注释标签`v0.4`已推送至`origin`，精确CI `44750357261`、R8 `1/1`、可信签名双包及模拟器抽查见[0.4发布说明](releases/0.4.md)；历史0.3/code12见[0.3发布说明](releases/0.3.md)）。
+- 当前发布版本为0.41/code14（源码8107fedc4d4b90cdd6a7b3de44cc171e664e660d，标签v0.41已推送，精确CI 45372926858、隔离R8 1/1、可信签名双包与远端摘要均通过），见[0.41发布说明](releases/0.41.md)。历史版本见[0.4](releases/0.4.md)。
 - 柔光亚克力五阶段、浅色光效、B1标题/语录与图书馆1–8D均已在模拟器分项验收；0.4最终release已于模拟器核对“今日”“图书馆”及“设置 → 项目信息（发布构建 / 源码 7a73decf / 版本 0.4 (13)）”。不能再以发布前“未合入/待安装”描述当前交付状态。
 - 工程优化 A–F、SDK 37 签名校验修复（PR #2，`96213b2`）和图书馆座位预约已合入 `main`。`v0.4` 已在 GitHub 预发布，四份远端附件的大小和 SHA-256 均与本地归档一致。[CHANGELOG](../CHANGELOG.md) · [GitHub 预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.4)
-- 本阶段基线为 `main@926cb45`，包含 `v0.4` 后获验收的校园账号登录、设置页重排和已合入的 T3 Code 协作规范。全量质量检查与双包预览均通过，前两项功能待后续版本发布授权。[基线 CI](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/44999120823)
+- 本轮改造起点为 `main@926cb45`，包含 `v0.4` 后获验收的校园账号登录、设置页重排和已合入的 T3 Code 协作规范。全量质量检查与双包预览均通过，前两项功能待后续版本发布授权。[基线 CI](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/44999120823)
 
 ## T3 Code 模型切换与任务接续
 
