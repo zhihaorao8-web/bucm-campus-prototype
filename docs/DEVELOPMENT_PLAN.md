@@ -4,7 +4,7 @@
 
 ## 液态玻璃改造
 
-- **v0.41 转场黑块修复（工作分支 `codex/fix-course-transition-glass`，待用户审核与物理真机 Vulkan 复验）**：定位物理真机点击课程卡片跳转课程详情期间全屏平铺黑角异常的复合根因（路由转场 `SaveLayer` 包裹活 `BackdropFilter`/`ImageFilter.shader`、`GlassNavigation` 与 `ClassroomSectionSwitch` 内层嵌套 `BackdropFilter` 及重复 `ClipRRect`、`CourseCardHero` 返回飞行未暂停滤镜、Flutter `3.47.9` 引擎缺少上游 Vulkan subpass/clip-restore 修复及 `TileMode.clamp` 缺失）。已在 `ui/visual_policy.dart` 新增共享转场暂停机制，在 `GlassNavigation` 与 `AcrylicSurface` 拆除嵌套滤镜/重复裁剪并全量接入转场与 Hero/局部透明渐变暂停；宿主 `38` 套默认 Flutter（`342` 通过/`9` 跳过）+ `2` 套直取专项（`23` 通过）与 `Pixel 8 API 36` GLES 保留数据调试验证通过，物理 Android Vulkan 真机待用户复验。详见[验证记录](STATUS.md#2026-11-24-液态玻璃转场黑块修复)。
+- **v0.41 转场黑块修复（工作分支 `codex/fix-course-transition-glass`，已获用户审查通过，未合入 `main`）**：定位物理真机点击课程卡片跳转课程详情期间全屏平铺黑角异常的复合根因（路由转场 `SaveLayer` 包裹活 `BackdropFilter`/`ImageFilter.shader`、`GlassNavigation` 与 `ClassroomSectionSwitch` 内层嵌套 `BackdropFilter` 及重复 `ClipRRect`、`CourseCardHero` 返回飞行未暂停滤镜、Flutter `3.47.9` 引擎缺少上游 Vulkan subpass/clip-restore 修复及 `TileMode.clamp` 缺失）。已在 `ui/visual_policy.dart` 新增共享转场暂停机制，在 `GlassNavigation` 与 `AcrylicSurface` 拆除嵌套滤镜/重复裁剪并全量接入转场与 Hero/局部透明渐变暂停；宿主 `38` 套默认 Flutter（`342` 通过/`9` 跳过）+ `2` 套直取专项（`23` 通过）、`Pixel 8 API 36` GLES 保留数据调试验证及基于干净提交 `1608ab4` 的 `preview` 静态双包核验均通过，2026-11-24 用户确认「审查通过」。尚未合入 `main` 或发起新版本发布。详见[验证记录](STATUS.md#2026-11-24-液态玻璃转场黑块修复)。
 
 2026-11-24 已按授权保存进度，经PR #4合入main，并公开预发布0.41/code14。源码8107fedc，精确CI、隔离R8 1/1、可信签名双包和四份远端附件摘要均已核验。[0.41发布记录](releases/0.41.md)。
 
