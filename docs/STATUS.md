@@ -17,6 +17,8 @@
 
 ## 2026-11-24 液态玻璃阶段 2
 
+- 2026-11-24 用户确认「审核通过，继续」，对应底栏 `a3048dc` 与分段 `4520212`。阶段2用户验收关闭，授权推进此前待定的阶段3焦点卡与图书馆胶囊微折射。既有设备和数据恢复限制继续保留。
+
 - 底栏分项由 Antigravity `gemini-pro-orchestrator-neon` / high 回传实现，Codex 审阅、格式化与串行验证。`GlassNavigation` 保留 `dock-blur`、四项语义和按压入口、400dp 上限与单一分页时钟，选中层复用 `LiquidGlassSurface`，前景在之后绘制。关闭玻璃保留普通模糊，关闭模糊/非悬浮/高对比度卸载透镜，减少动画保留静态材质。
 - 静态分析最终 0 问题；`navigation_motion`、`quiet_design`、`ui`、`appearance`、`liquid_glass` 37/37 通过，覆盖快速切换、滑动取消、连续位置、Tab/Enter、320dp 大字和降级。Pixel 8 API 36 GLES 在 320dp、1x/2x 字号与浅深色下点击 3→1→0 通过。合成截图目检文字与图标清晰，无黑块/裁切异常。本地日志 `build/liquid-dock-host.log`、`build/liquid-dock-device-keep.log`，截图 `mobile/build/liquid-dock-{light,dark}-{1.0,2.0}.png`，未提交。构建沿用阶段 1 的临时离线依赖固定条件。
 - 发现之前使用的 `flutter drive --use-application-binary` 默认结束时卸载正常包名的测试应用，模拟器本机课表和学校会话可能已清除。已告知用户，后续命令使用 `--keep-app-running` 并在整阶段结束时覆盖安装正常入口。此次未恢复学校会话，不能将安装成功视为数据恢复。
