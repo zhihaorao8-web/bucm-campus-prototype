@@ -9,6 +9,10 @@
 - 工程优化 A–F、SDK 37 签名校验修复（PR #2，`96213b2`）和图书馆座位预约已合入 `main`。`v0.4` 已在 GitHub 预发布，四份远端附件的大小和 SHA-256 均与本地归档一致。[CHANGELOG](../CHANGELOG.md) · [GitHub 预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.4)
 - 本阶段基线为 `main@926cb45`，包含 `v0.4` 后获验收的校园账号登录、设置页重排和已合入的 T3 Code 协作规范。全量质量检查与双包预览均通过，前两项功能待后续版本发布授权。[基线 CI](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/44999120823)
 
+## T3 Code 模型切换与任务接续
+
+2026-11-24 本阶段只完善开发文档，基线为 `codex/schedule-acceptance@93a2e7e`。补齐同一主线程跨提供方切换的时机、操作归属、接续记录和实际接手的核对方法。完成文档与 Git 差异检查、提交推送后等待阶段审核。液态玻璃线程本阶段只核对历史交接记录。[切换流程](PROJECT_MANAGEMENT.md#主线程模型切换与交接) · [核对证据](STATUS.md#2026-11-24-t3-code-模型切换与任务接续)
+
 ## 协作能力核对与规范完善
 
 2026-11-24 用户授权检查两方技能及 MCP 并完善协作。本轮为单一文档阶段，基线 `codex/schedule-acceptance@c8dd92a`。范围为协作能力选择、派单与交接、执行归属及验证证据，交付更新后的 PROJECT_MANAGEMENT、进度和 STATUS。最小检查为 `python scripts/check.py --module docs` 与 `git diff --check`，完成提交推送后等待阶段审核。
