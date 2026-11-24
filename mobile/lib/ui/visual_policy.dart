@@ -13,6 +13,7 @@ class AppVisualPolicy {
   final bool highContrast, reducedMotion;
   bool get translucent => !highContrast && settings.blur && settings.glass;
   bool get opaque => !translucent;
+  bool get liquidGlass => translucent;
   // The existing dock can retain plain blur with glass highlights switched off.
   bool get dockBlur => !highContrast && settings.blur && settings.floating;
 }

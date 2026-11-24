@@ -25,10 +25,10 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 
 | 链路 | 入口与处理 | 提交/失败边界 |
 |---|---|---|
-| 课表导入 | `ui/import_page.dart` → 官方页面导航/导出 → `SchoolAdapter` → Android `MainActivity` → Java XLS/作息核心。遇到学校认证时保留所选入口和操作，统一登录返回后由导入页恢复自动导入或备用页面读取 | 当前页面加载到对应学校服务后消费待恢复操作一次。取消、再遇认证、会话清除或超时停止恢复。`ScheduleController`先保存再发布状态；整批有效才替换同学期，失败保留旧数据 |
+| 课表导入 | `ui/import_page.dart` → 官方页面导航/导出 → `SchoolAdapter` → Android `MainActivity` → Java XLS/作息核心。DOM 备用由 `assets/coverage-check.js` 校验已加载的官方筛选文档，再于同一脚本调用 `assets/extract.js` 提取该文档。认证往返保留所选入口和操作 | 当前页面加载到对应学校服务后消费待恢复操作一次。取消、再遇认证、会话清除或超时停止恢复。DOM 选项变化尚未对应到新文档时保留旧课表。`ScheduleController` 先保存再发布状态；整批有效才替换同学期 |
 | 校园账号登录 | 设置或课表导入或图书馆 → `openCampusLogin` → `CampusLoginPage` → 固定官方服务入口；`platform/campus_login_navigation.dart` 管理各入口的 HTTPS 主文档域名、CAS 标签、同域 `upgradeSameHostHttps`（教务 `:80` 跳回有界升级 HTTPS/:443，不放开明文 HTTP）与同步/异步就绪判定（含 `CampusLoginTarget.library` 同源 `/ic-web/seatMenu` 检查）；完成后经 `ui/app_controls.dart` `showAppNotice` 显式提示登录成功 | 已有有效会话可直接验证目标服务；认证凭据由本人在校方页面输入。发起方只接收目标可用或取消，自己保留待恢复的业务操作 |
 | 录播导入 | `classroom_import_page.dart` / `ClassroomCoursePage` → 官方上下文 → `ClassroomImportCoordinator`协调API或DOM收集结果 | `ClassroomArchive`校验所有来源完整分页，协调器按捕获的revision调用`ClassroomLibrary`整组保存；目录可读不代表认证有效 |
-| 播放 | 时间线保留来源课程ID、录播ID及原分页 → `ClassroomPlaybackPreparation` → 原生`ClassroomPlayback` / `ClassroomPlayerGroup`。需要重新认证时，`ClassroomCoursePage` 复用 `openCampusLogin`，直连用轻新课堂固定课程入口与 `ClassroomPageScripts` 目录就绪判定，WebVPN 用其独立门户扫码。 | 每次点播最多恢复一次。认证完成后重新读取原来源与分页，播放脚本校验学期、来源、页码、公开状态与唯一录播 ID，原生准备仍执行当次访问检查。取消或切换账号即丢弃请求，准备器负责移交前的原生会话释放。 |
+| 播放 | 时间线保留来源课程ID、录播ID及原分页 → `ClassroomPlaybackPreparation` → 原生`ClassroomPlayback` / `ClassroomPlayerGroup`。`ClassroomCoursePage` 复用 `openCampusLogin` 处理直连和 WebVPN 门户认证，门户就绪后 `assets/classroom-entry.js` 跟随校方当前教学资源入口。隧道内教学平台自己的 CAS 表单在原官方 WebView 继续，由本人认证；`/cc/` 加载停滞走既有有界恢复。 | 一次点播最多打开一次独立认证页。认证完成后重新读取原来源与分页，播放脚本校验学期、来源、页码、公开状态与唯一录播 ID，原生准备仍执行当次访问检查。取消或切换账号即丢弃请求，准备器负责移交前的原生会话释放。 |
 | 退出会话 | `ui/privacy_data_page.dart`（`PrivacyDataPage`）承载「隐私与数据」独立子页；经各自确认后分别调用 `SchoolAdapter.clearSession`（清除诊断、页面缓存、目录、续播及原生WebView会话，保留离线课表）或 `scheduleProvider.notifier.clear()`（清空全部学期本地课程，不影响学校会话） | 缓存/存储revision和任务generation阻止旧回调写回；两项操作相互独立确认 |
 | 图书馆座位预约 | 底部“图书馆”一级页直接进入 `ui/library_seat_query_page.dart`（一级页切入后惰性加载，合成示例模式下隔离）；三级空间选座视图与转场在 `ui/library_floor_overview.dart`（`LibraryFloorListView`、`LibraryFloorSchematicView`、楼层分组、`2F` 专绘与 `3F–5F` 区域方位模型、`LibrarySpatialLevelTransition`、`LibrarySeatViewModeTransition`）；具体区域选座双视图与骨架在 `ui/library_seat_map.dart`，区域/时段轴/预约与取消确认 `QuietSheet` 在 `ui/library_seat_sheets.dart`，“我的预约”焦点票卡与历史分层在 `ui/library_seat_bookings.dart`；`LibrarySeatQueries` 协调查询、预约确认和取消 | L1/L2 仅通过 `/ic-web/seatMenu` 拉取楼层与区域目录，进入 L3 具体区域后才按需拉取座位清单。需要认证时「登录校园账号」先调用 `LibrarySeatReader.tryReuseCampusSession`（无界面受限 WebView 检查是否可复用有效 CAS 会话并在 `/ic-web/seatMenu` 就绪后无弹窗返回，见 `CampusLoginTarget.library`），需要本人认证时进入自动关闭的 `CampusLoginPage`，完成后均由 `showAppNotice` 提示登录成功并仅作只读刷新（0 次自动写重试）；`LibrarySeatPage` 继续作为显式「打开学校预约网页」手动回退。退出会话或离页丢弃迟到响应与个人数据 |
 | 外观与语录 | `AppearanceController`、`QuoteService` → 主题及今日展示 | 外观独立存储；在线语录默认关闭，失败回退本地 |
@@ -99,6 +99,8 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 配置按职责维护，不能将媒体/认证/课表导出合成宽泛允许列表。Java/JS与Dart处于不同信任边界，协议页大小等仍有独立校验；涉及这些契约变化时需对应多语言合成测试及必要L3验证，不因集中常量跳过防护。业务配置不得导入UI或视觉令牌。
 
 ## 尚未完成的结构整理
+
+公共材质底座 `ui/liquid_glass_surface.dart` 读取现有外观与 `AppVisualPolicy`，共享 FragmentProgram、每实例持有并释放 FragmentShader。能力不足、加载中或加载失败使用普通模糊，高对比度或关闭材质使用不透明底。输入为有界尺寸、前景 child 与可选 edgeDepth/refraction/blurKey，正文在滤镜之后绘制。调用入口为 `GlassNavigation` 选中透镜、`AppSegmentIndicator` 的可选液态分段层，以及 `AcrylicSurface` 的可选微折射变体。分段层由 `ScheduleModeSwitch`、`ClassroomSectionSwitch` 复用；亚克力变体由今日焦点卡、图书馆当前预约焦点票卡和选座胶囊显式开启，非定位前景决定自然高度，定位背景取得有界尺寸。父级继续拥有标签、焦点与回调。验证入口为 `liquid_glass`、`navigation_motion`、`schedule_motion`、`classroom_ui_polish`、`today_focus`、`library_seat_queries` 测试及 `integration_test/liquid_glass_{controls,focus,library}_test.dart`。
 
 - `ClassroomCoursePage`仍约2500行，D3已抽出路由选择/代次/读轮询、目录提交、脚本桥接及原生播放准备。页面继续拥有WebView标签、导航回调、可见认证、来源恢复、批量队列切换和UI；不宣称整个页面状态机已迁出。
 - D2已由data/local_files.dart共享文件定位和原子替换；各仓库仍拥有队列、业务备份与revision策略，不能在页面另写一套存储。

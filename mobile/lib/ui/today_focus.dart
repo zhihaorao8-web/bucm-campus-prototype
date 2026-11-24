@@ -41,6 +41,7 @@ class FocusCourseCard extends StatelessWidget {
         transitionTag: tag,
       ),
       child: AcrylicSurface(
+        liquidGlass: true,
         child: MiuixCard(
           key: const ValueKey('today-focus'),
           colors: MiuixCardColors(

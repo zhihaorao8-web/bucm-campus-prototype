@@ -1,9 +1,12 @@
+import 'package:campus_schedule/design/app_tokens.dart';
 import 'package:campus_schedule/ui/acrylic_surface.dart';
 import 'package:campus_schedule/ui/course_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:campus_schedule/application/appearance_controller.dart';
+import 'package:campus_schedule/ui/glass_navigation.dart';
+import 'package:campus_schedule/ui/liquid_glass_surface.dart';
 import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'ui_test.dart' show app;
@@ -143,4 +146,304 @@ void main() {
     expect(theme.colorScheme.onSurface, const Color(0xFF1E2022));
     expect(theme.colorScheme.surfaceContainer, Colors.white);
   });
+
+  for (final dark in [false, true]) {
+    testWidgets(
+      'dock liquid lens honors glass, blur, floating, contrast and reduced motion dark=$dark',
+      (tester) async {
+        for (final mode in [
+          'normal',
+          'reduced',
+          'glass-off',
+          'blur-off',
+          'non-floating',
+          'app-contrast',
+          'system-contrast',
+        ]) {
+          final settings = AppearanceSettings(
+            blur: mode != 'blur-off',
+            glass: mode != 'glass-off',
+            floating: mode != 'non-floating',
+            contrast: mode == 'app-contrast' ? .5 : 0,
+          );
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                currentAppearanceProvider.overrideWithValue(settings),
+              ],
+              child: MaterialApp(
+                theme: appTheme(dark ? Brightness.dark : Brightness.light),
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    highContrast: mode == 'system-contrast',
+                    disableAnimations: mode == 'reduced',
+                  ),
+                  child: MiuixThemeBridge(child: child!),
+                ),
+                home: Scaffold(
+                  bottomNavigationBar: GlassNavigation(
+                    selected: 1,
+                    onSelect: (_) {},
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          final dockFilter = tester.widget<BackdropFilter>(
+            find.byKey(const ValueKey('dock-blur')),
+          );
+          final dockBlurred =
+              mode == 'normal' || mode == 'reduced' || mode == 'glass-off';
+          final liquidLens = mode == 'normal' || mode == 'reduced';
+          expect(dockFilter.enabled, dockBlurred, reason: mode);
+
+          final dockBox =
+              (dockFilter.child! as DecoratedBox).decoration as BoxDecoration;
+          expect(dockBox.gradient != null, liquidLens, reason: mode);
+          if (!dockBlurred) {
+            expect(dockBox.color!.a, 1, reason: mode);
+          } else if (mode == 'glass-off') {
+            expect(dockBox.color!.a, closeTo(.95, .001), reason: mode);
+          }
+
+          if (liquidLens) {
+            expect(
+              find.byKey(const ValueKey('dock-lens')),
+              findsOneWidget,
+              reason: mode,
+            );
+            expect(
+              find.byType(LiquidGlassSurface),
+              findsOneWidget,
+              reason: mode,
+            );
+            expect(
+              find.byKey(const ValueKey('dock-lens-fallback')),
+              findsNothing,
+              reason: mode,
+            );
+            final lensFilter = tester.widget<BackdropFilter>(
+              find.descendant(
+                of: find.byType(LiquidGlassSurface),
+                matching: find.byType(BackdropFilter),
+              ),
+            );
+            expect(lensFilter.enabled, isTrue, reason: mode);
+            expect(
+              find.descendant(
+                of: find.byType(LiquidGlassSurface),
+                matching: find.text('课表'),
+              ),
+              findsNothing,
+              reason: mode,
+            );
+          } else {
+            expect(
+              find.byKey(const ValueKey('dock-lens')),
+              findsNothing,
+              reason: mode,
+            );
+            expect(find.byType(LiquidGlassSurface), findsNothing, reason: mode);
+            final fallback = tester.widget<DecoratedBox>(
+              find.byKey(const ValueKey('dock-lens-fallback')),
+            );
+            final fallbackBox = fallback.decoration as BoxDecoration;
+            final contrastMode =
+                mode == 'app-contrast' || mode == 'system-contrast';
+            expect(fallbackBox.border != null, contrastMode, reason: mode);
+          }
+
+          for (final label in GlassNavigation.labels) {
+            expect(find.text(label), findsOneWidget, reason: mode);
+          }
+          expect(tester.takeException(), isNull, reason: mode);
+        }
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  for (final dark in [false, true]) {
+    testWidgets(
+      'acrylic liquidGlass variant honors policy, keeps single blurKey, bounded background and sharp foreground dark=$dark',
+      (tester) async {
+        for (final mode in [
+          'normal',
+          'reduced',
+          'glass-off',
+          'blur-off',
+          'app-contrast',
+          'system-contrast',
+        ]) {
+          final settings = AppearanceSettings(
+            blur: mode != 'blur-off',
+            glass: mode != 'glass-off',
+            contrast: mode == 'app-contrast' ? .5 : 0,
+          );
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                currentAppearanceProvider.overrideWithValue(settings),
+              ],
+              child: MaterialApp(
+                theme: appTheme(dark ? Brightness.dark : Brightness.light),
+                home: MediaQuery(
+                  data: MediaQueryData(
+                    highContrast: mode == 'system-contrast',
+                    disableAnimations: mode == 'reduced',
+                  ),
+                  child: Scaffold(
+                    body: SizedBox(
+                      width: 320,
+                      height: 480,
+                      child: ListView(
+                        children: const [
+                          AcrylicSurface(
+                            key: ValueKey('plain-acrylic-surface'),
+                            blurKey: ValueKey('plain-acrylic-blur'),
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text('普通亚克力'),
+                            ),
+                          ),
+                          AcrylicSurface(
+                            key: ValueKey('liquid-acrylic-surface'),
+                            liquidGlass: true,
+                            child: Padding(
+                              padding: EdgeInsets.all(22),
+                              child: Text('微折射焦点卡'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          final translucent = mode == 'normal' || mode == 'reduced';
+          final plainFinder = find.byKey(
+            const ValueKey('plain-acrylic-surface'),
+          );
+          final focusFinder = find.byKey(
+            const ValueKey('liquid-acrylic-surface'),
+          );
+
+          expect(
+            find.descendant(
+              of: plainFinder,
+              matching: find.byType(LiquidGlassSurface),
+            ),
+            findsNothing,
+            reason: mode,
+          );
+          final plainBlur = find.descendant(
+            of: plainFinder,
+            matching: find.byKey(const ValueKey('plain-acrylic-blur')),
+          );
+          expect(plainBlur, findsOneWidget, reason: mode);
+          expect(
+            tester.widget<BackdropFilter>(plainBlur).enabled,
+            translucent,
+            reason: mode,
+          );
+
+          final focusBackdrop = find.descendant(
+            of: focusFinder,
+            matching: find.byType(BackdropFilter),
+          );
+          expect(focusBackdrop, findsOneWidget, reason: mode);
+          final focusBlur = find.descendant(
+            of: focusFinder,
+            matching: find.byKey(const ValueKey('focus-acrylic-blur')),
+          );
+          expect(focusBlur, findsOneWidget, reason: mode);
+          expect(
+            tester.widget<BackdropFilter>(focusBlur).enabled,
+            translucent,
+            reason: mode,
+          );
+
+          final boxes = tester
+              .widgetList<DecoratedBox>(
+                find.descendant(
+                  of: focusFinder,
+                  matching: find.byType(DecoratedBox),
+                ),
+              )
+              .toList();
+          expect(boxes.length, 2, reason: mode);
+          final outerBox = boxes.first.decoration as BoxDecoration;
+          final foregroundBox = boxes.last.decoration as BoxDecoration;
+
+          if (translucent) {
+            final glassFinder = find.descendant(
+              of: focusFinder,
+              matching: find.byType(LiquidGlassSurface),
+            );
+            expect(glassFinder, findsOneWidget, reason: mode);
+            final glass = tester.widget<LiquidGlassSurface>(glassFinder);
+            expect(glass.radius, AppRadius.focus, reason: mode);
+            expect(glass.blur, AppSurface.focusBlur, reason: mode);
+            expect(
+              glass.edgeDepth,
+              AppLiquidGlass.focusEdgeDepth,
+              reason: mode,
+            );
+            expect(
+              glass.refraction,
+              AppLiquidGlass.focusRefraction,
+              reason: mode,
+            );
+            expect(
+              glass.blurKey,
+              const ValueKey('focus-acrylic-blur'),
+              reason: mode,
+            );
+
+            final glassSize = tester.getSize(glassFinder);
+            final focusSize = tester.getSize(focusFinder);
+            expect(glassSize.width, closeTo(320, .1), reason: mode);
+            expect(glassSize.height.isFinite, isTrue, reason: mode);
+            expect(glassSize.height, greaterThan(0), reason: mode);
+            expect(
+              glassSize.height,
+              closeTo(focusSize.height, .1),
+              reason: mode,
+            );
+
+            expect(
+              find.descendant(of: glassFinder, matching: find.text('微折射焦点卡')),
+              findsNothing,
+              reason: mode,
+            );
+            expect(
+              find.descendant(of: focusBackdrop, matching: find.text('微折射焦点卡')),
+              findsNothing,
+              reason: mode,
+            );
+            expect(outerBox.boxShadow, isNotEmpty, reason: mode);
+            expect(foregroundBox.gradient, isNotNull, reason: mode);
+            expect(foregroundBox.color, isNull, reason: mode);
+            expect(foregroundBox.border, isNotNull, reason: mode);
+          } else {
+            expect(find.byType(LiquidGlassSurface), findsNothing, reason: mode);
+            expect(outerBox.boxShadow, isNull, reason: mode);
+            expect(foregroundBox.gradient, isNull, reason: mode);
+            expect(foregroundBox.color!.a, 1, reason: mode);
+            expect(foregroundBox.border, isNotNull, reason: mode);
+          }
+
+          expect(find.text('微折射焦点卡'), findsOneWidget, reason: mode);
+          expect(tester.takeException(), isNull, reason: mode);
+        }
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
 }

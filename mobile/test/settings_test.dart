@@ -318,7 +318,9 @@ void main() {
           final operation = Completer<void>();
           controller.execute = (_) {
             if (!operation.isCompleted) operation.complete();
-            return pageRead ? {'full': false} : {'state': 'waiting'};
+            return pageRead
+                ? {'full': false, 'refreshing': true}
+                : {'state': 'waiting'};
           };
           importer.visit(teaching.entry);
           importer.visit(teaching.entry);
@@ -327,7 +329,9 @@ void main() {
         await tester.pump();
         expect(controller.scripts.length, 1);
         expect(repo.value.courses, [course]);
-        if (!pageRead) {
+        if (pageRead) {
+          expect(find.textContaining('学校课表仍在刷新'), findsOneWidget);
+        } else {
           importer.visit(cas);
           await tester.pumpAndSettle();
           expect(find.byType(CampusLoginPage), findsNothing);

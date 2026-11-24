@@ -45,15 +45,25 @@ assert.equal(run('https://webvpn.bucm.edu.cn/', resource, {password: true}).clic
 assert.equal(run('https://webvpn.bucm.edu.cn/', resource, {label: '无关资源', body: '统一认证扫码'}).result.state, 'authentication');
 assert.equal(run('https://qhz.bucm.edu.cn/cc/', resource, {modal: true}).clicks, 0);
 assert.equal(run('https://qhz.bucm.edu.cn/cc/', resource, {throwing: true}).result.state, 'blocked');
-// The screen-recorded portal layout has grouped resources, not necessarily the
-// teaching card. Only a positively identified portal may use the fixed mapping.
+// A verified portal may render before its resource is available. Wait for the
+// school link and keep its query rather than jumping to a static course route.
 for (const route of ['/', '/portal', '/synthetic/portal']) {
-  const value=run('https://webvpn.bucm.edu.cn'+route,resource,{label:'数字北中医',body:'最近访问 办公系统 业务系统 其他资源'});
-  assert.equal(value.result.state,'opening');
-  assert.equal(value.result.reason,'verified-entry');
-  assert.equal(value.clicks,0);
-  assert.deepEqual(value.assigned,['https://webvpn.bucm.edu.cn'+prefix+'coursePlatform/#/courseCenter/index?firstMenuId=11']);
+  const address = 'https://webvpn.bucm.edu.cn'+route;
+  const portal = {body:'最近访问 办公系统 业务系统 其他资源'};
+  const visible = run(address,resource,{...portal,label:'智慧教学平台'});
+  assert.equal(visible.result.state,'opening');
+  assert.equal(visible.clicks,1);
+  assert.deepEqual(visible.assigned,[resource]);
+  assert(!JSON.stringify(visible.result).includes('NEVER_EXPORT'));
+  const missing = run(address,resource,{...portal,label:'数字北中医'});
+  assert.equal(missing.result.state,'waiting');
+  assert.equal(missing.result.reason,'no-entry');
+  assert.equal(missing.clicks,0);
+  assert.deepEqual(missing.assigned,[]);
 }
+const badPortalTarget = run('https://webvpn.bucm.edu.cn/', 'https://webvpn.bucm.edu.cn.example/cc/', {body:'最近访问 办公系统'});
+assert.equal(badPortalTarget.result.state, 'blocked');
+assert.deepEqual(badPortalTarget.assigned, []);
 const framed=run('https://webvpn.bucm.edu.cn/',resource,{iframe:true,label:'无关资源'});
 assert.equal(framed.result.state,'authentication');assert.equal(framed.clicks,0);
 assert.deepEqual(framed.assigned,[]);
@@ -62,6 +72,17 @@ for (const options of [{body:'统一认证扫码'},{iframe:true},{password:true}
   assert.equal(login.result.state,'authentication');assert.equal(login.clicks,0);assert.deepEqual(login.assigned,[]);
 }
 assert.equal(run('https://webvpn.bucm.edu.cn/https/other/login',resource,{body:'统一认证扫码'}).result.state,'untrusted');
+const serviceLogin = 'https://webvpn.bucm.edu.cn/https/' + '1'.repeat(62) + '/cas/login?service=';
+const classroomService = encodeURIComponent('https://qhz.bucm.edu.cn/bd/auth/authLogin');
+const serviceResult = run(serviceLogin + classroomService, resource, {password: true});
+assert.equal(serviceResult.result.state, 'serviceAuthentication');
+assert.equal(serviceResult.clicks, 0);
+assert.deepEqual(serviceResult.assigned, []);
+for (const service of ['', encodeURIComponent('http://qhz.bucm.edu.cn/bd/auth/authLogin'),
+  encodeURIComponent('https://qhz.bucm.edu.cn.evil.test/bd/auth/authLogin'),
+  encodeURIComponent('https://qhz.bucm.edu.cn/bd/auth/other'), classroomService + '&service=' + classroomService]) {
+  assert.equal(run(serviceLogin + service, resource, {password: true}).result.state, 'untrusted');
+}
 assert.equal(run('https://webvpn.bucm.edu.cn/',resource,{label:'无关资源'}).result.reason,'no-entry');
 assert.equal(run('https://webvpn.bucm.edu.cn/portal',resource,{label:'数字北中医',body:'最近访问 办公系统',title:'Other platform'}).result.state,'untrusted');
 console.log('Classroom automatic entry checks passed; no credentials or school network used.');

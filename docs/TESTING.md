@@ -86,6 +86,12 @@ python scripts/check.py --module docs --module tooling
 
 方法通道：`flutter test integration_test/school_adapter_test.dart -d <指定模拟器>`。R8 XLS使用`connectedReleaseAndroidTest -PcampusReleaseParserTest=true`隔离目标；媒体继续复用`scripts/check_native_media.py`的6项检查。完整参数、设备限制、隔离后重建正常包名规则见FLUTTER，不用通用检查器复制第二套安装流程。
 
+液态玻璃底座：`flutter test --no-pub integration_test/liquid_glass_test.dart -d <指定模拟器>` 使用合成渐变背景，检查 Impeller 支持、两种尺寸/主题的采样方向与 Shader 相对普通滤镜的像素差异。测试应用直接构造公共组件，后续业务入口及物理真机性能另验。设备命令与宿主 Flutter 检查串行执行。
+
+控件设备场景为 `integration_test/liquid_glass_controls_test.dart`，仅写合成截图至应用临时目录。使用预构建测试包配合 `flutter drive --use-application-binary` 时须显式添加 `--keep-app-running`，该命令默认结束会卸载应用，正常包名测试可能清除本机课表及学校会话。结束后覆盖安装正常入口。
+
+焦点列表与图书馆专项分别为 `integration_test/liquid_glass_focus_test.dart` 和 `integration_test/liquid_glass_library_test.dart`。前者验证内容自然高度下的有界滤镜，后者复用宿主 FakeLibrarySeatReader 进入选座与预约票卡，断言0预约/取消调用及大字胶囊文字未省略。截图均为合成数据，不提交仓库。
+
 ## 输出与失败定位
 
 每次执行在忽略的build/checks/report-<随机ID>.json保存独立报告，含计划、选择理由、已运行步骤、退出码、耗时与补验提示。报告scope固定为synthetic-host-checks；status=passed仅表示选定宿主检查通过，不能据此宣布设备补验通过。dry-run没有报告。

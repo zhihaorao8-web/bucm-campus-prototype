@@ -65,10 +65,17 @@ class NameImportController extends fake.RecoveryController {
                 )
                 as Map;
         if (command['action'] == 'catalogRoute') prematureRoutes++;
-        return jsonEncode({'state': pendingState});
+        return jsonEncode({
+          'state': pendingState == 'serviceAuthentication'
+              ? 'navigate'
+              : pendingState,
+        });
       }
       return jsonEncode({
-        'state': pendingState == 'authentication' ? 'authentication' : 'waiting',
+        'state': switch (pendingState) {
+          'authentication' || 'serviceAuthentication' => pendingState,
+          _ => 'waiting',
+        },
       });
     }
     if (!source.contains('var command =')) {
@@ -174,6 +181,8 @@ void main() {
     ('loading', vpnEntry, 'resume'),
     ('navigate', vpnEntry, 'resume'),
     ('authentication', vpnEntry, 'resume'),
+    ('serviceAuthentication', vpnEntry, 'resume'),
+    ('serviceAuthentication', vpnEntry, 'cancel'),
     ('authentication', classroomProbe, 'resume'),
     ('authentication', classroomProbe, 'cancel'),
     ('authentication', classroomProbe, 'switch-account'),
@@ -253,7 +262,15 @@ void main() {
       expect(controller.prematureRoutes, 0);
       expect(controller.played, isEmpty);
       expect(find.text('学校数据已变化，请刷新列表后重试。'), findsNothing);
-      if (pending == 'authentication' || duringPreparation) {
+      if (pending == 'serviceAuthentication') {
+        expect(platform.login.views, isEmpty);
+        expect(find.textContaining('登录后继续观看原回放'), findsOneWidget);
+        expect(nativeCalls, isNot(contains('prepare')));
+        if (outcome == 'cancel') {
+          await tester.tap(find.byTooltip('返回课程'));
+          await tester.pump();
+        }
+      } else if (pending == 'authentication' || duringPreparation) {
         final login = platform.login.views.single;
         final target = route == vpnEntry
             ? CampusLoginTarget.vpn

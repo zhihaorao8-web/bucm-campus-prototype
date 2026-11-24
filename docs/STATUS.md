@@ -1,10 +1,10 @@
 # 当前验证概览
 
-更新：2026-11-22。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
+更新：2026-11-24。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
-| 主线集成（`main@76f5bca`） | 校园账号登录阶段 1–3、设置页重排阶段 1–3 已获用户审核并合入。精确提交的远端全量 `quality` 与 `dual-preview` 均通过。[项目进度同步](#2026-11-22-项目进度同步) | 双包为 CI 预览；含这两项改动的后续版本待授权发布 |
+| 主线集成（`main@926cb45`） | 已合入获验收的校园账号登录、设置页重排和 T3 Code 协作规范。该提交的全量 `quality` 和 `dual-preview` 均通过。[主线 CI](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/44999120823) | 双包为 CI 预览；含统一登录和设置重排的后续版本待授权发布 |
 | 设置页重排（阶段 1–3，已审核通过并合入 `main`） | 阶段 1（`d685d9e`）、阶段 2（`b096c94`、`859bdd4`）与阶段 3（`40983d6`，用户已确认“审核通过”）均已审核通过；阶段 3 移除设置页图书馆快捷卡及空分组并同步 `DESIGN.md` / `ARCHITECTURE.md`；干净工作树 `flutter analyze --no-pub` 0 问题、7 套受影响测试 106/106 全通过；`Pixel_8_API_36`（`0.4`/code13 debug APK `99e9f735`）覆盖浅/深色、`320dp` `1.5x/2.0x` 换行与末项清栏、三子页往返与底栏直达「图书馆」；2026-11-22 在 `04a27af` 通过 `python scripts/check.py --all` 全量宿主检查。[阶段 3 记录](#2026-11-22-设置页重排阶段-3导航收尾与整页验收) | 物理真机整页目检与完整 TalkBack 仍待另行验收 |
 | 校园账号登录（阶段 3，已获用户验收） | `bdcc287` debug 包中的录播原课时恢复与图书馆认证后只读恢复通过宿主检查。模拟器与真机保留数据安装，模拟器冷启动通过。用户确认阶段验收通过。[用户验收](#2026-11-21-校园账号登录阶段-3-用户验收) · [测试包安装](#2026-11-21-校园账号登录阶段-3-测试包安装) | 用户反馈为阶段汇总结果，设备、网络、是否触发重新认证及分项样本未单列。 |
 | 校园账号登录（阶段 2，已获用户验收） | `f8f4125` 通过宿主合成回归及模拟器会话复用回跳复验。用户确认该修复包的重新认证、真机回跳、课表恢复和图书馆登录均通过。[用户验收](#2026-11-21-校园账号登录阶段-2-用户验收) · [回跳修复与复验](#2026-11-21-校园账号登录阶段-2-教务回跳误拦截修复) | 课表恢复为用户汇总反馈，完整学期逐项准确性单独验收。 |
@@ -12,13 +12,113 @@
 | 0.4/code13 发布 | 源码 `7a73decf` 全量 `--all` 检查、精确 `main` CI `44750357261` 成功、隔离 R8 XLS `1/1`、双包签名与 release 模拟器抽查通过。`v0.4` 已预发布，四份附件的大小和 SHA-256 已核对。同一 release 包的真实退出学校会话已在上方校园账号登录阶段 1 验证。[0.4 发布说明](releases/0.4.md) | 物理真机性能/功耗与提交/取消、完整 TalkBack、预测返回及完整学期准确性仍待验 |
 | 0.3/code12发布 | 729663f本地合成/静态检查、隔离R8 XLS 1/1、同源双包签名/摘要、最终release模拟器抽查及4份远端附件核对 | 精确提交的Actions因当时账户计费限制未运行；用户仅就该次发布授权例外，不作为未来跳过CI规则 |
 | 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
-| 学校链路 | 历史分项XLS导入、直连目录、短时播放和续播样本 | 全学期独立准确性、完整课时、水印组合、WebVPN恢复、真实认证失效及7天会话待验 |
+| 学校链路 | 模拟器上的 WebVPN 扫码后恢复课表自动导入已通过；WebVPN 录播修复版（`69c83f6`）在模拟器通过原任务教学平台认证回跳、权限重验、原生双流短时播放及本机进度保存；用户确认真机上人工实际听音质量与完整课时播放均已验证通过（无需重验）。修复版 XLS 和 DOM 各 31 条均与独立官方导出吻合，并通过单周及切换时的旧课表保留测试。直连目录、短时播放和续播已有分项样本。[课表复验](#2026-11-23-课表读取修复) · [录播复验](#2026-11-23-录播-webvpn-回跳验收) | 水印组合、门户直连回跳、真实会话失效、其余物理真机项及 7 天会话待验。[录播复测记录](#2026-11-23-录播-webvpn-回跳验收) |
 | 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）、7B（`9d5d2bd`）与 7C（`b4227e5`）已全部获用户审核通过；三级渐进空间选座及顶栏 B1 统一阶段 8A（`cf0189b`）、8B（`bf2e2e2`）、8C（`6c47522`）与 8D（`ff716b2`）已全部获用户审核通过，通过主机变更检查（`report-fb07fac86c6944828ac2fa41d4fb9608.json`）与 Pixel 8 API 36 真实校园会话深/浅色只读验收（0 POST 写入） | 真实退出会话已在模拟器验证，物理真机提交、查单及取消另行验收 |
+
+## 2026-11-24 0.41 发布准备
+
+- 用户授权保存当前进度、合入 main 并准备 GitHub 新版本0.41。候选版本0.41/code14，pubspec0.41.0+14。当前准备全量检查与PR，合入、候选CI及发布附件尚待核验，实际进度见[发布记录](releases/0.41.md)。
+- 已保存原有Stitch规范改动（`f471569`），版本候选提交 `7aa8f72`。本地 `python scripts/check.py --all` 全部步骤通过，含Java/Node、静态分析、默认Flutter与23项直取专项，报告 `report-8ff888b5bbd04f1e8afc6768e79febf4.json`。[PR #4](https://github.com/zhihaorao8-web/bucm-campus-prototype/pull/4) 已建立，远端CI及合入后精确提交的发布门禁继续执行。
+
+## 2026-11-24 液态玻璃阶段 3
+
+- 2026-11-24 用户确认「审核通过」，对应今日焦点卡 `e92dad5` 与图书馆分项 `894985e`，阶段3用户验收关闭。阶段1–3均已获用户审核通过，现有设备、学校整页及数据恢复限制继续保留。
+
+- 今日焦点分项由 Antigravity Neon / high 实现，Codex 审阅与验证。`AcrylicSurface` 新增默认关闭的可选微折射，`FocusCourseCard` 显式开启，`LiquidGlassSurface.blurKey` 透传原滤镜键。非定位前景在列表内决定自然高度，背景 `Positioned.fill` 获取有限尺寸，仅一个有效背景滤镜，文字在之后绘制。公共边缘深8、折射1.5、原模糊10，材质开关及高对比度降级、减少动画静态材质复用现有策略。
+- `--changed --base HEAD --dry-run` 已核对；定向 `quiet_design`、`today_focus`、`atmosphere`、`course_interaction`、`classroom_ui_polish`、`weekday_tabs` 65通过、1个可选截图跳过，静态分析0问题。日志 `build/liquid-focus-host.log`、`build/liquid-focus-analyze.log`。
+- Pixel 8 API36、GLES、420dpi，320dp列表、浅深色、1x/2x字号，真实 `FocusCourseCard` 的 Shader 背景有限宽288dp、自然高度与前景一致，设备测试通过。合成截图目检课程长名自然换行，边框贴合，无黑块/裁切。日志 `build/liquid-focus-device.log`，截图 `mobile/build/liquid-focus-{light,dark}-{1.0,2.0}.png`。沿用临时离线测试依赖固定脚本，`flutter drive` 显式保留应用。该构建含工作区修改，Vulkan、真机与学校整页另验。
+- 今日焦点分项 `e92dad5` 已推送。图书馆分项在当前预约焦点票卡与选座悬浮胶囊显式开启同一微折射变体，保留原圆角、滤镜键、按钮状态与回调。
+- 图书馆宿主 `library_seat_queries_test.dart` 48/48 通过，覆盖浅深色、大字、各类材质降级、减少动画、提交/取消忙碌态、普通历史行/座位节点的材质边界；最终静态分析0问题。日志 `build/liquid-library-host-final.log`、`build/liquid-library-analyze-final.log`。测试回调初始化的级联解析问题已修正，最终结果以这两份日志为准。
+- 图书馆设备合成场景复用 FakeLibrarySeatReader，320dp、浅深色、1x/2x字号下完成选区、选座、清除选择和切换预约票卡；预约与取消调用均为0。初次截图发现大字胶囊座位/时段被按钮挤占，Codex 补充超过1.3倍字号时的上下布局、完整换行及更强时段文字对比度，最终增加 RenderParagraph 未省略断言。定位滚动目标时显式区分主滚动容器，并按页面流程清除选择后切换控件。截图 `mobile/build/liquid-library-{capsule,ticket}-{light,dark}-{1.0,2.0}.png`，日志 `build/liquid-library-device-final.log`。2x 票卡自然增高，内容通过页面纵向滚动访问。
+- 本阶段设备构建继续使用忽略目录中的临时离线测试依赖固定脚本及 `flutter drive --keep-app-running`。合成工作区debug构建通过不等于学校整页、Vulkan或真机性能验收。图书馆分项提交推送后，阶段3整体停审。
+- 设备测试后覆盖安装 `lib/main.dart` 正常入口并启动成功，日志 `build/liquid-stage3-normal-build.log`。保留四个既有未提交文件，因此正常入口仍为标明含工作区修改的 debug 构建。此前测试卸载造成的模拟器课表/学校会话数据恢复仍未验证。
+
+## 2026-11-24 液态玻璃阶段 2
+
+- 2026-11-24 用户确认「审核通过，继续」，对应底栏 `a3048dc` 与分段 `4520212`。阶段2用户验收关闭，授权推进此前待定的阶段3焦点卡与图书馆胶囊微折射。既有设备和数据恢复限制继续保留。
+
+- 底栏分项由 Antigravity `gemini-pro-orchestrator-neon` / high 回传实现，Codex 审阅、格式化与串行验证。`GlassNavigation` 保留 `dock-blur`、四项语义和按压入口、400dp 上限与单一分页时钟，选中层复用 `LiquidGlassSurface`，前景在之后绘制。关闭玻璃保留普通模糊，关闭模糊/非悬浮/高对比度卸载透镜，减少动画保留静态材质。
+- 静态分析最终 0 问题；`navigation_motion`、`quiet_design`、`ui`、`appearance`、`liquid_glass` 37/37 通过，覆盖快速切换、滑动取消、连续位置、Tab/Enter、320dp 大字和降级。Pixel 8 API 36 GLES 在 320dp、1x/2x 字号与浅深色下点击 3→1→0 通过。合成截图目检文字与图标清晰，无黑块/裁切异常。本地日志 `build/liquid-dock-host.log`、`build/liquid-dock-device-keep.log`，截图 `mobile/build/liquid-dock-{light,dark}-{1.0,2.0}.png`，未提交。构建沿用阶段 1 的临时离线依赖固定条件。
+- 发现之前使用的 `flutter drive --use-application-binary` 默认结束时卸载正常包名的测试应用，模拟器本机课表和学校会话可能已清除。已告知用户，后续命令使用 `--keep-app-running` 并在整阶段结束时覆盖安装正常入口。此次未恢复学校会话，不能将安装成功视为数据恢复。
+- 本分项验证为合成组件设备场景。整页学校数据下的视觉、Vulkan、物理真机与性能/功耗仍待验证。公共分段指示器接入另行分项，完成后阶段 2 停审。
+
+- 分段分项由同一 Antigravity 模型回传，Codex 审阅集成。`AppSegmentIndicator` 保留旧纯装饰用法与 `indicatorKey` 外层定位，周/日、录播/直播占位、图书馆分段共用静态透镜与可中断位移，边缘深8、折射2.5、内模糊3集中于公共令牌。`LiquidGlassSurface` 增加可选 edgeDepth/refraction。指示器不接收触控/语义，前景在滤镜之后绘制。
+- `--changed --base HEAD --dry-run` 已核对公共依赖影响，实际选择改动的材质/分段消费者与导航回归。7 套宿主测试初次 68 通过、3 失败、1 个可选截图用例跳过，均因新增边框将周/日触控高缩至46.8dp。改用前景边框后，对应 `schedule_motion` 与 `week_stack` 22/22 通过，其余5套此前通过，合计71通过、1跳过。静态分析0问题。日志 `build/liquid-segment-host.log`、`build/liquid-segment-retest.log`、`build/liquid-segment-analyze-final.log`。
+- Pixel 8 API 36 GLES 使用同一临时离线依赖条件构建，`flutter drive --keep-app-running` 完成320dp、浅深色、1x/2x字号下周→日、录播→直播占位、选座→我的预约及底栏3→1→0切换。截图测试容器补齐 Material 文字环境后，周/日标签完整，分段边缘无黑块和裁切。图书馆2x标签按现有单行省略，完整语义保留。合成截图在 `mobile/build/liquid-controls-{light,dark}-{1.0,2.0}.png`，日志 `build/liquid-segment-device-final.log`。设备测试是工作区debug构建，学校整页、Vulkan、物理真机与功耗尚未覆盖。阶段2完成提交推送后停审。
+- 验证后以 `lib/main.dart` 重建正常包名 debug 应用，`adb install -r` 成功并启动正常 `MainActivity`。日志 `build/liquid-stage2-normal-build.log`。这是保留既有未提交文件的工作区构建；正常入口恢复不代表此前可能清除的本机数据或学校会话已恢复。
+
+## 2026-11-24 液态玻璃阶段 1
+
+- 2026-11-24 用户确认「审核通过」，对应已推送的 `29f4881`，阶段 1 用户验收关闭，按此前授权推进阶段 2。
+
+- 从 `codex/schedule-acceptance@75e87b0` 接续，T3 本回合运行记录与运行时均为 Codex `gpt-6.1-sol` / high。既有 `.gitignore`、`AGENTS.md`、`DESIGN.md` 与 `PROJECT_MANAGEMENT.md` 修改保留，仅选择性提交本阶段新增设计规范行。
+- 实现 `LiquidGlassSurface`、共享 `FragmentProgram` provider、每实例 Shader 释放、`AppLiquidGlass` 参数、`AppVisualPolicy` 复用及 Shader 注册。支持能力不足、加载中/失败时普通模糊回退，关闭玻璃/模糊或提高对比度时不透明，减少动画保留静态材质。阶段 1 的调用入口为合成测试。MIT 原文由既有 prepare 随原生资产打包。
+- `--changed --dry-run` 已复核，其范围包含此前分支业务改动和共享配置而保守扩展。本阶段实际定向执行 `flutter analyze --no-pub` 0 问题，`liquid_glass`、`quiet_design`、`appearance` 三套测试 17/17 通过。文档与 tooling 37 项通过，报告 `report-df764a1b7bd041299a3fd7e01576ffad.json`。一次残留测试进程导致缓存复制冲突，结束残留后串行复跑通过。
+- Pixel 8 API 36，420dpi（DPR 2.625），Impeller OpenGLES，debug 合成测试在 220×100 与 300×100 逻辑像素、浅/深主题下检查顶部红色/底部蓝色采样方向，并要求 Shader 与普通模糊输出存在超过 100 个通道的显著像素差异，均通过。初版 GLES 额外 Y 翻转使背景颠倒，移除后在实际 `compose(outer: shader, inner: blur)` 下通过。证据为本地 `build/liquid-glass-drive-final.log` 与集成测试，不包含学校页面。
+- 常规 `flutter test integration_test/liquid_glass_test.dart` 构建因 Maven 动态依赖解析失败。离线直接 Gradle 构建进一步暴露 runner 严格版本边的解析错误。使用忽略目录内的临时 init 脚本固定已有缓存 runner 1.3.0、rules 1.2.0、espresso-core 3.3.0 后离线构建成功，再通过 `flutter drive --use-application-binary` 与临时 integration driver 执行同一测试通过。日志 `build/liquid-glass-build-final.log`。该临时条件未写入项目依赖配置，标准在线设备测试入口仍待依赖环境恢复。
+- 本次为有未提交修改的工作区测试构建。Vulkan、物理真机性能/功耗、业务底栏/分段入口与最终视觉目检仍待后续阶段验证。阶段 1 完成后停审，阶段 2 等待用户确认。
+
+## 2026-11-23 录播 WebVPN 回跳验收
+
+- 用户确认本阶段仅验证录播 WebVPN 回跳，完整课时另排。Pixel 8 API 36 模拟器内仍为 `ea7b2307a5d7194e70ae98b179a9f0d0b699be64` 的 0.4/code13 debug APK，设备 APK SHA-256 为 `c7537fd23e85319511bf1590937d4ffaff40fe0117bed7a6a2d542ffb4da1138`。
+- 从课表进入带已有录播目录的课程，两次点播同一条已发布回放并在原任务中选择「校外访问（学校 WebVPN）」。WebVPN 门户复用现有会话；通往教学平台的自动入口均收到校方网关 `CONNECTION_FAILED`，可见错误为教学平台上游 80 端口连接被拒绝。App 显示学校服务暂时无法连接，诊断有 `accessWebVpn`、`selectedWebVpn` 与 `upstreamConnectionFailed`，本次未观察到 `authenticationNeeded`、`mediaPrepare` 或 `mediaReady`。关掉网页后同一回放仍可在本地目录找到。
+- 使用同一个 WebView 会话单独打开 WebVPN 资源门户，手动点「智慧教学平台」能到达显示扫码、账号、手机三种方式的校方统一认证页。该旁路检查止于认证页。原任务的真实扫码回跳、同一课时权限重验与实际开播未取得证据。
+- 宿主 `python scripts/check.py --flow auth-recovery` 通过，静态分析 0 问题、4 组 Node、73 项默认 Flutter 与 23 项直取专项通过，报告 `report-4ce0808cb4c84c34827c2a969755c806.json`。合成通过不能替代本次学校链路结果。
+
+### 校方入口排查与修复
+
+- 本轮网关 `CONNECTION_FAILED` 与 2026-11-13 记录的教学平台 WebVPN 上游 HTTP/80 拒绝一致。11-21 统一登录修复另覆盖教务同域 HTTP 跳转、WebView 回调和 WebVPN 根路径扫码页识别，发生阶段不同。本次错误发生在已有会话的门户选择教学资源时，在录播授权或播放准备之前。
+- Android 模拟器 Chrome 由本人在官方 WebVPN 扫码后，确认门户当前按钮打开经过验证的同一 HTTPS 网关 `/cc/` 入口并附带校方查询参数。按官方入口进入 `/cc/` 后，测试入口脚本调用页内「课程平台」可达 WebVPN 课程目录，聚合读取到 12 个目录项。App 原先在门户就绪后直接跳转专用课程页，绕过了校方资源入口。
+- 修复改为在门户等待并跟随校方教学资源按钮，保留校方在当前 WebView 内发出的查询参数；只接受被校验的 HTTPS 来源与固定资源路径。`/cc/` 已加载后发生历史空白循环仍沿用一次专用课程页恢复。`auth-recovery` 宿主 4 组 Node、73 项默认 Flutter 和 23 项直取专项通过，报告 `report-74761910351946b6bd5ded00e02c5736.json`，App 原任务及开播另验。
+- `df3e9a3` 的正常包名 debug APK 覆盖安装后，原录播的 WebVPN 路径越过旧网关错误，进入 WebVPN HTTPS 隧道内的 CAS 表单。实际 `service` 指向教学平台固定的官方身份回调。该分支现在将教学平台认证留在原学校 WebView 并保留待播放任务，避免打开已经登录的 WebVPN 门户。合成验证覆盖原课时复核、取消、错误服务和重复 `service` 参数，`auth-recovery` 4 组 Node、75 项默认 Flutter 和 23 项直取专项通过，报告 `report-48248cea0c75430c9ec970405579c28f.json`。
+- 使用干净源码 `69c83f6c8d6f9304b96a7a91ab5aadc43c253aff` 构建正常包名 0.4/code13 debug APK。包内源码与入口脚本一致，Pixel 8 API 36 保留数据安装后的 APK SHA-256 为 `87c1ca81365f69064f5799119f642dc97517a31ad15c0d23883f9089217a1729`，与本地一致。再次点播同一课时并选择 WebVPN，显示「请在当前学校页面完成教学平台认证，登录后继续观看原回放」，官方扫码页在原任务内可见。
+- 本人在原任务 WebView 内完成教学平台 CAS 认证后，应用自动回跳至 WebVPN 代理下的 `/coursePlatform/#/courseCenter/courseVideo/videoListXS` 并重定位同一录播条目、校验访问与 WebVPN 媒体边界；原生 `ClassroomPlayerGroup` 完成 2 路视频（`1280×720` H.264）与 48kHz 双声道 AAC 解码准备并进入播放页。点按播放后 `AudioTrack` 激活无欠载运行，屏幕保持 `KEEP_SCREEN_ON`，`AudioFlinger` 累计播放 `36.376834` 秒；`classroom-progress-v1.json` 仅为该原课时唯一匹配记录写入本机续播位置（播放中 `20432` ms，返回前更新为 `36082` / `10498015` ms）。按系统返回退出播放页后，音频焦点释放、`AudioTrack` 停止并移除、`KEEP_SCREEN_ON` 清除，界面回到无报错的课程录播列表页。
+- 同进程 `TestDiagnostics`（`test-recording-directory`，`dropped: 0`）按序记录 `accessAutomatic` → `selectedDirect` → `accessWebVpn` → `selectedWebVpn` → `authenticationNeeded` → `mediaPrepare` → `mediaReady`，未记录任何失败事件。本项模拟器实测覆盖 WebVPN 认证回跳、原课时重验与短时实际开播；水印组合、真实会话失效及真机 WebVPN 回跳未在本次模拟器样本覆盖。
+- **真机听音与完整课时用户验收（2026-11-23）**：用户明确确认「人工实际听音质量、完整课时播放在真机上验证通过，无需再次验证」，据此关闭这两项待验；反馈为真机汇总确认，未单列具体构建号、网络路径、时长或水印参数。
+- 2026-11-23 用户明确回复「审核通过」，第三阶段用户审核通过。审核对应工作分支的验收记录 `f0b12ef`、`b45aa79` 与被测源码 `69c83f6`。
+
+## 2026-11-23 课表读取修复
+
+- DOM 时序修复基于 `3762fbb`。真实教务文档证实「周次」是提交表单的选择控件，第 1 周由服务器标为默认选项。DOM 备用在同一次脚本内验证已加载文档、全周选项和同一表单的当前选项与 HTML 初始值一致，再提取唯一通过的文档。切换到全部而旧文档仍在时只显示刷新提示。合成回归另覆盖学期变化、加载状态、候选文档歧义和跨域 iframe。
+- 复用模拟器 Chrome 的本人官方教务会话，仅返回聚合结果，脚本在第 1 周返回 0 表，切换全部后仍处旧文档时返回 `refreshing` 与 0 表，新文档稳定后返回 1 表、25 个源单元格并识别学期及未排课区。此处验证的是学校页面和生产读取脚本，App 安装及保存链路另验。
+- `python scripts/check.py --flow schedule-import` 通过，含静态分析、4 组 Java、6 组 Node 和 17 项 Flutter（报告 `report-b04ffbd6dcda454780c40964f9aa01bb.json`）。`flutter test --no-pub test/settings_test.dart` 30/30 通过，含刷新中保留旧课表的认证回跳用例。
+- 教师字段修复基于 `66dbfa3`。用同一官方页面确认，附注后的文本确为校方 `title="教师"` 字段，两个重复来源均一致。共享 `ScheduleParser` 仅在括号附注、短姓名及标准排课行的顺序吻合时补识别，复用已有标注优先级和未标注歧义处理。合成教师候选与二进制 XLS 带附注回归通过；`python scripts/check.py --flow schedule-import` 报告 `report-8e98936ab4a6486b96bd78e664c597a1.json`。
+- 综合模拟器复验使用干净源码 `ea7b2307a5d7194e70ae98b179a9f0d0b699be64` 的正常包名 0.4/code13 debug APK，内嵌源码一致，两个 DOM 资产与维护源逐字节一致。Pixel 8 API 36 保留数据安装，设备 APK SHA-256 与本地一致，为 `c7537fd23e85319511bf1590937d4ffaff40fe0117bed7a6a2d542ffb4da1138`。
+- 已认证教务直连下，App 官方 XLS 与稳定「（全部）」DOM 均保存 52 段来源、去重后各 31 条、21 个重复项，均提示未排课区。以阶段一浏览器独立导出的同学期官方工作簿逐项核对，课程名、教师、地点、星期、周次、节次、分段、学期起点及来源次数均匹配，两个方向的差集均为 0。数据来源标记分别核对为 `official-xls` 和 `dom`。
+- 第 1 周执行备用读取提示选择全部，既有官方 XLS 保存时间与课程保留。为复现旧文档窗口，在模拟器临时配置 2,400ms 网络延迟，从第 1 周切到全部后约 0.5 秒触发备用读取，App 显示「学校课表仍在刷新」，比较前后持久化快照相同。延迟已恢复为 0；最后在正常网络下重新导入官方 XLS，并再次逐项核对 31 条。
+- 2026-11-23 用户明确回复「审核通过，继续」，第二阶段用户审核通过。审核对应工作分支的验收记录 `eb192f2` 和被测源码 `ea7b230`。
+
+## 2026-11-23 课表完整学期与 WebVPN 恢复验收
+
+- 基线 `926cb45fd1a7dfd6f85a64aa429c2ad61c8e4a0f`，正常包名 0.4/code13 debug APK，内嵌源码 SHA 与基线一致，保留数据覆盖安装至 Pixel 8 API 36 模拟器。设备安装包与本地 SHA-256 同为 `22e3b8327e82f88a8d1a2e9d34cfd0c2a3c265fa96e00f199d55bb9104884d15`。模拟器窗口启动异常后用冷启动及独立显示窗口恢复，连接模拟器自带虚拟 Wi-Fi 后学校页面可达。
+- `python scripts/check.py --flow schedule-import` 通过，含静态分析 0 问题、4 组 Java、6 组 Node 和 17 项 Flutter 合成测试（报告 `report-0234a73e6cd84dd1b66d655a1a2093fc.json`）。`flutter test --no-pub test/settings_test.dart` 30/30 通过，含课表导入及 DOM 读取的合成认证恢复。
+- WebVPN 真实样本从未认证的「自动导入」进入官方扫码并保留原任务。回跳后应用返回设置并新增「官方 Excel」导入记录，52 段来源合并 21 项完全重复后保存 31 条排课规则，全部标记为 `official-xls`。摘要提示另有未排课区域。此证据覆盖认证回跳、原任务恢复和 XLS 整批结构校验及保存。
+- 独立参考从模拟器 Chrome 的教务直连官方页导出 `2026-2027-1`「学期理论课表 →（全部）」，使用 `xlrd` 在内存读出 17,408 字节二进制 XLS 的 1 张表、7 个星期列、25 个排课单元格、52 段源排课和独立的「无课表课程」区。按同星期及完整原文独立分组后得到 31 条规则和 21 个重复项。按周次集合、明确列举的节次与[作息规则](COURSE_TIME_RULES.md)展开后，逐项对照 App 的课程名、地点、星期、周次、节次、授课分段、学期起点和来源次数，31 条均吻合。教师 30 条吻合，1 条在课名后的括号附注之后有一行疑似教师文本，两个 App 入口均留空。两次对照仅输出聚合结果。
+- DOM 备用在教务直连「学期理论课表」分别验证。第 1 周筛选下拒绝读取，原 XLS 保存时间和排课数均未变化。切换到「（全部）」后约 1 秒内点击读取，页面可读、DOM 提取和结构化保存均成功，但 App 仅保存 19 段来源合并出的 10 条规则，比同一学期 XLS 少 21 条。筛选已显示全部与表格内容更新之间存在时序窗口，具体页面就绪信号待定位。
+- 重新进入同一学期理论课表，待加载稳定后，DOM 独立保存 52 段来源、31 条规则和 21 个重复项。与首次官方 XLS 对照，课程名、教师字段现值、地点、星期、周次、节次、分段、学期起点与来源次数逐项一致。独立官方工作簿对照仍有上述教师字段缺口。实测结束复用官方 XLS 恢复，确认全部已保存排课记录与本阶段初次 XLS 导入一致。
 
 ## 2026-11-22 项目进度同步
 
 - 通过 Git 远端引用和 GitHub Actions API 核对 `main` 精确提交 `76f5bca32e20388eb2bde768f9e1b87baaf97df5`。`quality` 全量宿主检查与 `dual-preview`（顺序构建 debug/release 预览）均完成且成功。[主线 CI](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/44928859064)
 - 根 Manifest 仍为 `0.4` / `13`。GitHub 最新预发布 `v0.4` 仍指向 `7a73decf`，四份附件的 GitHub API 大小及 SHA-256 字段与发布记录一致。统一登录与设置页重排位于该标签之后，已有测试包和主线 CI 预览。[0.4 发布记录](releases/0.4.md) · [GitHub 预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.4)
+
+## 2026-11-24 T3 Code 模型切换与任务接续
+
+- 在 `codex/schedule-acceptance@93a2e7e` 上回读 T3 线程配置、运行历史与上下文传输状态。「完善 Agent 协作规范」中，Codex 从 `gpt-6.2-astra` 改为 `gpt-6.1-sol` 后，后续运行的 `executedModel` 为 `gpt-6.1-sol`。「查看项目当前进度」从 Codex 切至 Antigravity 后，传输标记为 `consumed`，后续回合沿用已确认的录播验收范围。
+- 「评估液态玻璃应用集成」记载跨提供方切换因活动回合被拒。随后回读显示线程仍配置为 Antigravity `gemini-pro-orchestrator-neon`（高），两个既有回合均由 Antigravity 运行，且无上下文传输记录。方案已交付，Codex 接续未验证。此次仅核对既有记录，未重跑切换或开始页面实现。
+- `python scripts/check.py --module docs` 核对 332 个本地文件目标通过，新章节及文档内锚点另行核对。`git diff --check` 通过。此次验证范围为开发文档。
+- 2026-11-24 用户确认文档阶段审核通过，审核对应规范提交 `ba21494e3455b40f67c756c03e4e8b7851da2324`。已核对该提交位于远端 `codex/schedule-acceptance`，文档阶段关闭。
+
+## 2026-11-24 协作技能与 MCP 核对
+
+用户于 2026-11-24 确认本阶段审核通过。规范提交 `8fc4efebcbe9e84c51226d9062511a567eb61889` 已推送至 `codex/schedule-acceptance`，远端分支 SHA 与本地一致。下述子会话及运行时验证缺口继续按对应页面阶段核对。
+
+- 对象为 `c8dd92a` 上的协作流程及本机两方工具。Codex 核对其会话技能目录与 MCP 工具，并读取 Antigravity `~/.gemini/config/skills`、`config/plugins/flutter`、`config/plugins/stitch-*` 和 CLI 的 MCP 定义。检查配置时仅提取服务名及启用标志。相关目录中的安装与定义已确认，Antigravity 当前子会话加载和运行时执行仍待具体任务验证。
+- Antigravity Flutter 插件包含响应式布局、约束异常诊断、widget 测试、静态分析和 widget 预览技能。Dart MCP 定义包括 `analyze_files`、`widget_inspector`、`get_runtime_errors` 和热重载，widget inspector 要求活动 DTD 连接。组件预览技能说明其 Web 环境对原生 API 的限制。以上内容已用于完善派单和证据要求，本次未启动应用或连接 Dart 运行时。
+- 两方均有 frontend-stack 等设计技能和 Stitch 技能。已读取按阶段选择技能及现有设计优先的规则，并核对 Stitch 生成设计技能的适用范围。Codex 本会话暴露 IconMCP、Stitch、REA、Scrapling 等工具，实际只读调用 IconMCP `search_icons` 成功返回 `calendar`。Antigravity 配置列有 context-mode、REA、Stitch，CLI 缓存含 Flutter Dart MCP 定义。Stitch 生成、REA 和抓取服务本轮未执行，配置及缓存的存在仅作为能力盘点证据。
+- T3 能力目录已列出 Codex 与 Antigravity 提供方和用户所选模型。用户指定 Codex `gpt-6.1-sol` / high、Antigravity `gemini-pro-orchestrator-neon` / 高思考程度。Codex 线程配置切换后回读一致，并由新模型接续本阶段。Antigravity 本轮未派单，其思考选项的传递与实际会话工具状态在下次委派时核对。
+- 本轮增加技能与工具选择表，补齐派单的模型、文件范围、执行归属、日志与视觉证据，明确共享目录和隔离工作树的基线、文件写入与设备操作交接。开工已有 `.gitignore`、AGENTS、DESIGN 和 PROJECT_MANAGEMENT 中的 Stitch 未提交改动，保留在工作区，本次仅暂存自身文档改动。
+- 工作区 `python scripts/check.py --module docs` 通过，核对 330 个本地文件目标，检查器未验证锚点和远端 URL。报告 `build/checks/report-c3cc8c62da954cb3b8ba5ff7d7054083.json`，`git diff --check` 通过。本记录随规范提交，推送结果在阶段交接时核对。页面协作、Android 设备和真实学校验证随各自已确认阶段执行。
 
 ## T3 Code 协作准备
 

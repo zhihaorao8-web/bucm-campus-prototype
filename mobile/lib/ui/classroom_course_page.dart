@@ -698,16 +698,17 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
     return true;
   }
 
-  void requireAuthentication(_SchoolTab tab) {
-    if (queuedPlayback != null) {
+  void requireAuthentication(_SchoolTab tab, {bool stayOnService = false}) {
+    final hasPendingPlayback = queuedPlayback != null;
+    if (hasPendingPlayback && !stayOnService) {
       unawaited(recoverQueuedPlayback());
       return;
     }
     if (connectionPhase != ClassroomConnectionPhase.authentication) {
       // Login completing quickly must not reactivate a pre-login read.
       connection.advance();
+      TestDiagnostics.shared.record(TestEvent.authenticationNeeded);
     }
-    TestDiagnostics.shared.record(TestEvent.authenticationNeeded);
     authVisible = true;
     fetchedAt = null;
     freshReadPending = false;
@@ -725,7 +726,9 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
       showWeb = true;
       busy = false;
       connectionPhase = ClassroomConnectionPhase.authentication;
-      message = '请在学校官方页面完成认证；登录成功后将继续自动获取录播。';
+      message = hasPendingPlayback
+          ? '请在当前学校页面完成教学平台认证，登录后继续观看原回放。'
+          : '请在学校官方页面完成认证；登录成功后将继续自动获取录播。';
     });
     readProgress.advance(ClassroomReadStage.authentication);
     scheduleRead(tab);
@@ -1306,9 +1309,12 @@ class _ClassroomCoursePageState extends State<ClassroomCoursePage>
           reportServiceUnavailable(tab);
           return;
         }
-        if (state == 'authentication') {
+        if (state == 'authentication' || state == 'serviceAuthentication') {
           completeDocumentLoad(tab);
-          requireAuthentication(tab);
+          requireAuthentication(
+            tab,
+            stayOnService: state == 'serviceAuthentication',
+          );
           return;
         }
         if (state == 'blocked' || state == 'untrusted') {
