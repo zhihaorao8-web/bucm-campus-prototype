@@ -23,6 +23,7 @@ import 'library_seat_map.dart';
 import 'library_seat_page.dart';
 import 'library_seat_sheets.dart';
 import 'quiet_backdrop.dart';
+import 'visual_policy.dart';
 
 class LibrarySeatTabController {
   VoidCallback? _onRefresh;
@@ -1514,18 +1515,21 @@ class _LibrarySeatQueryPageState extends State<LibrarySeatQueryPage> {
                   ? child
                   : FadeTransition(
                       opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 0.14),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: ScaleTransition(
-                          scale: Tween<double>(
-                            begin: 0.95,
-                            end: 1.0,
+                      child: BackdropSuspensionAnimation(
+                        animation: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.14),
+                            end: Offset.zero,
                           ).animate(animation),
-                          alignment: Alignment.bottomCenter,
-                          child: child,
+                          child: ScaleTransition(
+                            scale: Tween<double>(
+                              begin: 0.95,
+                              end: 1.0,
+                            ).animate(animation),
+                            alignment: Alignment.bottomCenter,
+                            child: child,
+                          ),
                         ),
                       ),
                     ),

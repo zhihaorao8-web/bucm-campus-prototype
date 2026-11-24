@@ -35,19 +35,22 @@ class QuietSliverAppBar extends ConsumerWidget {
       scrolledUnderElevation: 0,
       flexibleSpace: ListenableBuilder(
         listenable: scroll,
-        builder: (context, _) => ClipRect(
-          child: BackdropFilter(
-            enabled: !opaque,
-            filter: ui.ImageFilter.blur(
-              sigmaX: AppHeader.blur,
-              sigmaY: AppHeader.blur,
-            ),
-            child: ColoredBox(
-              key: const ValueKey('quiet-appbar-scrim'),
-              color: Theme.of(context).colorScheme.surface.withValues(
-                alpha: AppHeader.tint(
-                  scroll.hasClients ? scroll.offset : 0,
-                  opaque: opaque,
+        builder: (context, _) => BackdropTransitionBuilder(
+          builder: (context, suspended) => ClipRect(
+            child: BackdropFilter(
+              enabled: !opaque && !suspended,
+              filter: ui.ImageFilter.blur(
+                sigmaX: AppHeader.blur,
+                sigmaY: AppHeader.blur,
+                tileMode: ui.TileMode.clamp,
+              ),
+              child: ColoredBox(
+                key: const ValueKey('quiet-appbar-scrim'),
+                color: Theme.of(context).colorScheme.surface.withValues(
+                  alpha: AppHeader.tint(
+                    scroll.hasClients ? scroll.offset : 0,
+                    opaque: opaque,
+                  ),
                 ),
               ),
             ),

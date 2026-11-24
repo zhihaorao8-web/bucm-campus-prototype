@@ -121,47 +121,65 @@ class GlassNavigation extends ConsumerWidget {
                       ]
                     : [],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(radius),
-                child: BackdropFilter(
-                  key: const ValueKey('dock-blur'),
-                  enabled: !opaque,
-                  filter: ui.ImageFilter.blur(
-                    sigmaX: AppSurface.dockBlur,
-                    sigmaY: AppSurface.dockBlur,
-                  ),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: (dark ? AppSurface.dockDark : Colors.white)
-                          .withValues(
-                            alpha: AppSurface.dockAlpha(
-                              dark,
-                              glass: glass,
-                              opaque: opaque,
+              child: BackdropTransitionBuilder(
+                builder: (context, suspended) => Stack(
+                  fit: StackFit.passthrough,
+                  children: [
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: ExcludeSemantics(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(radius),
+                            child: BackdropFilter(
+                              key: const ValueKey('dock-blur'),
+                              enabled: !opaque && !suspended,
+                              filter: ui.ImageFilter.blur(
+                                sigmaX: AppSurface.dockBlur,
+                                sigmaY: AppSurface.dockBlur,
+                                tileMode: ui.TileMode.clamp,
+                              ),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color:
+                                      (dark
+                                              ? AppSurface.dockDark
+                                              : Colors.white)
+                                          .withValues(
+                                            alpha: AppSurface.dockAlpha(
+                                              dark,
+                                              glass: glass,
+                                              opaque: opaque,
+                                            ),
+                                          ),
+                                  gradient: glass
+                                      ? LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.white.withValues(
+                                              alpha: dark ? .08 : .24,
+                                            ),
+                                            Colors.transparent,
+                                            Colors.white.withValues(alpha: .04),
+                                          ],
+                                        )
+                                      : null,
+                                  borderRadius: BorderRadius.circular(radius),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(
+                                      alpha: glass ? (dark ? .16 : .85) : 0,
+                                    ),
+                                    width: .7,
+                                  ),
+                                ),
+                                child: const SizedBox.expand(),
+                              ),
                             ),
                           ),
-                      gradient: glass
-                          ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Colors.white.withValues(
-                                  alpha: dark ? .08 : .24,
-                                ),
-                                Colors.transparent,
-                                Colors.white.withValues(alpha: .04),
-                              ],
-                            )
-                          : null,
-                      borderRadius: BorderRadius.circular(radius),
-                      border: Border.all(
-                        color: Colors.white.withValues(
-                          alpha: glass ? (dark ? .16 : .85) : 0,
                         ),
-                        width: .7,
                       ),
                     ),
-                    child: SizedBox(
+                    SizedBox(
                       height: height,
                       child: Padding(
                         padding: const EdgeInsets.all(AppSpace.compact),
@@ -270,7 +288,7 @@ class GlassNavigation extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),

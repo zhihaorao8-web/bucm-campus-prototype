@@ -4,6 +4,7 @@
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
+| 液态玻璃转场黑块修复（`codex/fix-course-transition-glass`，待审核） | 已定位 v0.41 真机课程卡转场全屏平铺圆角黑块根因并完成公共暂停与去嵌套修复；宿主 `flutter analyze --no-pub` 0 问题、`38` 套默认测试 `342` 通过/`9` 既有跳过/`0` 失败、`2` 套直取专项 `23/23` 通过（`report-da14b2d9880d44a2849a77208f045c66.json`）；`Pixel 8 API 36` GLES 调试包保留数据安装及往返课程详情/切日视图 `app_logcat_warnings_errors=0` | `Pixel 8 API 36` 使用 Impeller OpenGLES；**物理 Android Vulkan 真机视觉验收仍待用户实机核对** |
 | 0.41 集成与发布（`main@8107fed`） | PR #4 已合入，校园账号登录、设置重排、课表/录播恢复与液态玻璃阶段1–3随v0.41预发布。精确 `quality`、`dual-preview`、隔离R8 1/1、可信签名双包及四份远端摘要均通过。[0.41发布记录](releases/0.41.md) | 兼容开发签名预发布；真机性能、Vulkan及学校整页等独立待验 |
 | 设置页重排（阶段 1–3，已审核通过并合入 `main`） | 阶段 1（`d685d9e`）、阶段 2（`b096c94`、`859bdd4`）与阶段 3（`40983d6`，用户已确认“审核通过”）均已审核通过；阶段 3 移除设置页图书馆快捷卡及空分组并同步 `DESIGN.md` / `ARCHITECTURE.md`；干净工作树 `flutter analyze --no-pub` 0 问题、7 套受影响测试 106/106 全通过；`Pixel_8_API_36`（`0.4`/code13 debug APK `99e9f735`）覆盖浅/深色、`320dp` `1.5x/2.0x` 换行与末项清栏、三子页往返与底栏直达「图书馆」；2026-11-22 在 `04a27af` 通过 `python scripts/check.py --all` 全量宿主检查。[阶段 3 记录](#2026-11-22-设置页重排阶段-3导航收尾与整页验收) | 物理真机整页目检与完整 TalkBack 仍待另行验收 |
 | 校园账号登录（阶段 3，已获用户验收） | `bdcc287` debug 包中的录播原课时恢复与图书馆认证后只读恢复通过宿主检查。模拟器与真机保留数据安装，模拟器冷启动通过。用户确认阶段验收通过。[用户验收](#2026-11-21-校园账号登录阶段-3-用户验收) · [测试包安装](#2026-11-21-校园账号登录阶段-3-测试包安装) | 用户反馈为阶段汇总结果，设备、网络、是否触发重新认证及分项样本未单列。 |
@@ -14,6 +15,15 @@
 | 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
 | 学校链路 | 模拟器上的 WebVPN 扫码后恢复课表自动导入已通过；WebVPN 录播修复版（`69c83f6`）在模拟器通过原任务教学平台认证回跳、权限重验、原生双流短时播放及本机进度保存；用户确认真机上人工实际听音质量与完整课时播放均已验证通过（无需重验）。修复版 XLS 和 DOM 各 31 条均与独立官方导出吻合，并通过单周及切换时的旧课表保留测试。直连目录、短时播放和续播已有分项样本。[课表复验](#2026-11-23-课表读取修复) · [录播复验](#2026-11-23-录播-webvpn-回跳验收) | 水印组合、门户直连回跳、真实会话失效、其余物理真机项及 7 天会话待验。[录播复测记录](#2026-11-23-录播-webvpn-回跳验收) |
 | 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）、7B（`9d5d2bd`）与 7C（`b4227e5`）已全部获用户审核通过；三级渐进空间选座及顶栏 B1 统一阶段 8A（`cf0189b`）、8B（`bf2e2e2`）、8C（`6c47522`）与 8D（`ff716b2`）已全部获用户审核通过，通过主机变更检查（`report-fb07fac86c6944828ac2fa41d4fb9608.json`）与 Pixel 8 API 36 真实校园会话深/浅色只读验收（0 POST 写入） | 真实退出会话已在模拟器验证，物理真机提交、查单及取消另行验收 |
+
+## 2026-11-24 液态玻璃转场黑块修复
+
+- **问题现象与根因定位**：`v0.41`（`0baba2c`）在物理 Android 设备（Xiaomi HyperOS，Impeller Vulkan）点击「今日」课程卡切换至课程详情页时，出现按规则网格全屏平铺的黑色圆角伪影（Hero 飞行卡片正常叠加在最上层）。核对引擎源码与像素特征后确认复合根因：（1）`FadeForwardsPageTransitionsBuilder` / `ZoomPageTransitionsBuilder` 路由转场 `SaveLayer`（`OpacityLayer` / `SnapshotWidget`）内持续运行活 `BackdropFilter` 与 `ImageFilter.compose(shader, blur)`；（2）`GlassNavigation`（`dock-lens` 嵌于 `dock-blur` + `ClipRRect(40)`）与 `ClassroomSectionSwitch`（`AppSegmentIndicator(liquidGlass: true)` 嵌于 `AcrylicSurface`）存在 `BackdropFilter` 嵌套与 `AcrylicSurface` 重复 `ClipRRect`；（3）`CourseCardHero` 返回 `FocusCourseCard` 的 Hero 飞行在 Overlay 内脱离路由动画继续运行 `LiquidGlassSurface`，`ScheduleModeTransition` 与选座胶囊 `FadeTransition` 也包含活 `BackdropFilter`；（4）随附 Flutter `3.47.9`（引擎 `c197ca5199`）未包含上游 Vulkan subpass/stencil 与 `EntityPassClipStack::RecordRestore` 修复，且 `ImageFilter.blur` 未显式传 `TileMode.clamp`。
+- **修复内容**：在 `mobile/lib/ui/visual_policy.dart` 新增 `isBackdropAnimationActive`、`BackdropSuspensionScope`、`BackdropSuspensionAnimation` 与 `BackdropTransitionBuilder`（以单一监听驱动开关、零逐帧重绘）；`LiquidGlassSurface` 补齐 `TileMode.clamp` 并在转场期间跳过 Shader 采样/合成与 `BackdropFilter`（保留已编译缓存与浅透底色）；重构 `GlassNavigation` 与 `AcrylicSurface` 为非嵌套兄弟模糊栈、移除 `AcrylicSurface` 重复 `ClipRRect`（为 `WeekdayTabs` 保留内容圆角裁剪）；接入 `CourseCardHero.flightShuttleBuilder`、`QuietSliverAppBar`、`QuietSheet`、主/设置 `MiuixTopAppBar`（保持半透明 tint 避免闪白）、`ScheduleModeTransition` 及选座胶囊进出场过渡暂停。在 `mobile/test/liquid_glass_test.dart` 与 `mobile/test/course_interaction_test.dart` 补齐作用域/路由推入弹出/Hero 返回飞行/零嵌套 `BackdropFilter`/`ScheduleModeTransition` 回归测试。
+- **宿主与模拟器（OpenGLES）验证**：
+  - 变更范围检查：`python scripts/check.py --changed --base main`（报告 `report-da14b2d9880d44a2849a77208f045c66.json`）通过：`flutter analyze --no-pub` 0 问题；`flutter-default` 38 套受影响测试 342 通过、9 个既有可选预览/探针用例跳过、0 失败（含 `liquid_glass_test.dart` 与 `course_interaction_test.dart` 10/10）；`flutter-direct` 23/23 通过。
+  - 模拟器构建与运行：`mobile` 单次进程设置 `GRADLE_OPTS=-Dhttp.nonProxyHosts=* -Dhttps.nonProxyHosts=*` 绕过失效本地代理完成 `flutter build apk --debug --no-pub`（13.7s，`app-debug.apk` `222,284,987` 字节），通过 `adb -s emulator-5554 install -r` 保留现有离线数据覆盖安装，冷启动 `.MainActivity` 并完成焦点课程卡 ↔ 课程详情页（`课程课堂`/`完成`）往返及「课表」周/日切换，`logcat` 中 Flutter/Impeller/AndroidRuntime 警告与错误计数 `app_logcat_warnings_errors=0`。
+- **明确边界**：`Pixel 8 API 36` 模拟器运行 Impeller **OpenGLES** 后端，不能代替报告异常所在的物理 **Qualcomm Adreno Vulkan** 渲染管线；**物理 Android 真机复验课程卡点击切换视觉表现仍在等待用户确认**。
 
 ## 2026-11-24 0.41 发布
 

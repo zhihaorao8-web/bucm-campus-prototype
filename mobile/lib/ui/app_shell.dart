@@ -328,97 +328,101 @@ class _AppShellState extends ConsumerState<AppShell>
     AppearanceSettings appearance,
   ) => ListenableBuilder(
     listenable: scrollFor(index),
-    builder: (context, _) {
-      final opaque = AppVisualPolicy.of(context, appearance).opaque;
-      final scroll = scrollFor(index);
-      final tint = AppHeader.tint(
-        scroll.hasClients ? scroll.positions.last.pixels : 0,
-      );
-      final topBar = MiuixTopAppBar(
-        key: ValueKey('topbar-$index'),
-        title: _tabTitles[index],
-        largeTitleColor: index == _settingsTab ? null : Colors.transparent,
-        color: Theme.of(context).colorScheme.surface,
-        scrollBehavior: scrollBehaviors[index],
-        blurred: !opaque,
-        blurRadius: AppHeader.blur,
-        blurTintAlpha: tint,
-        actions: [
-          if (demo)
-            TextButton(onPressed: _exitDemo, child: const Text('退出示例')),
-          if (!demo && stored.hasValue && index < _libraryTab)
-            Tooltip(
-              message: '导入或刷新课表',
-              child: MiuixIconButton(
-                minWidth: AppLayout.minTap,
-                minHeight: AppLayout.minTap,
-                onPressed: openImport,
-                child: const AppIcon(AppIcons.sync),
+    builder: (context, _) => BackdropTransitionBuilder(
+      builder: (context, suspended) {
+        final opaque = AppVisualPolicy.of(context, appearance).opaque;
+        final scroll = scrollFor(index);
+        final tint = AppHeader.tint(
+          scroll.hasClients ? scroll.positions.last.pixels : 0,
+        );
+        final surface = Theme.of(context).colorScheme.surface;
+        final topBar = MiuixTopAppBar(
+          key: ValueKey('topbar-$index'),
+          title: _tabTitles[index],
+          largeTitleColor: index == _settingsTab ? null : Colors.transparent,
+          color: !opaque && suspended
+              ? surface.withValues(alpha: tint)
+              : surface,
+          scrollBehavior: scrollBehaviors[index],
+          blurred: !opaque && !suspended,
+          blurRadius: AppHeader.blur,
+          blurTintAlpha: tint,
+          actions: [
+            if (demo) TextButton(onPressed: _exitDemo, child: const Text('退出示例')),
+            if (!demo && stored.hasValue && index < _libraryTab)
+              Tooltip(
+                message: '导入或刷新课表',
+                child: MiuixIconButton(
+                  minWidth: AppLayout.minTap,
+                  minHeight: AppLayout.minTap,
+                  onPressed: openImport,
+                  child: const AppIcon(AppIcons.sync),
+                ),
               ),
-            ),
-          if (!demo && stored.hasValue && index == _scheduleTab)
-            Tooltip(
-              message: '统一导入录播',
-              child: MiuixIconButton(
-                key: const ValueKey('classroom-import-button'),
-                minWidth: AppLayout.minTap,
-                minHeight: AppLayout.minTap,
-                onPressed: importClassroom,
-                child: const AppIcon(AppIcons.mediaLibrary),
+            if (!demo && stored.hasValue && index == _scheduleTab)
+              Tooltip(
+                message: '统一导入录播',
+                child: MiuixIconButton(
+                  key: const ValueKey('classroom-import-button'),
+                  minWidth: AppLayout.minTap,
+                  minHeight: AppLayout.minTap,
+                  onPressed: importClassroom,
+                  child: const AppIcon(AppIcons.mediaLibrary),
+                ),
               ),
-            ),
-          if (!demo && index == _libraryTab) ...[
-            Tooltip(
-              message: '刷新座位或预约',
-              child: MiuixIconButton(
-                key: const ValueKey('library-refresh-button'),
-                minWidth: AppLayout.minTap,
-                minHeight: AppLayout.minTap,
-                onPressed: _libraryTabController.refresh,
-                child: const AppIcon(AppIcons.refresh),
+            if (!demo && index == _libraryTab) ...[
+              Tooltip(
+                message: '刷新座位或预约',
+                child: MiuixIconButton(
+                  key: const ValueKey('library-refresh-button'),
+                  minWidth: AppLayout.minTap,
+                  minHeight: AppLayout.minTap,
+                  onPressed: _libraryTabController.refresh,
+                  child: const AppIcon(AppIcons.refresh),
+                ),
               ),
+              Tooltip(
+                message: '打开学校预约网页',
+                child: MiuixIconButton(
+                  key: const ValueKey('library-official-button'),
+                  minWidth: AppLayout.minTap,
+                  minHeight: AppLayout.minTap,
+                  onPressed: _libraryTabController.openOfficial,
+                  child: const AppIcon(AppIcons.globe),
+                ),
+              ),
+            ],
+            const SizedBox(width: 8),
+          ],
+        );
+        if (index == _settingsTab) return topBar;
+        final miuixTheme = MiuixTheme.of(context);
+        return Stack(
+          fit: StackFit.passthrough,
+          children: [
+            MiuixTheme(
+              data: miuixTheme.copyWith(
+                textStyles: miuixTheme.textStyles.copy(
+                  title1: miuixTheme.textStyles.title1.copyWith(
+                    fontSize: AppType.artisticHeader,
+                    height: 1.16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+              child: topBar,
             ),
-            Tooltip(
-              message: '打开学校预约网页',
-              child: MiuixIconButton(
-                key: const ValueKey('library-official-button'),
-                minWidth: AppLayout.minTap,
-                minHeight: AppLayout.minTap,
-                onPressed: _libraryTabController.openOfficial,
-                child: const AppIcon(AppIcons.globe),
+            Positioned.fill(
+              child: MacintoshHelloHeaderOverlay(
+                text: _tabTitles[index],
+                scrollBehavior: scrollBehaviors[index],
+                active: tab == index,
               ),
             ),
           ],
-          const SizedBox(width: 8),
-        ],
-      );
-      if (index == _settingsTab) return topBar;
-      final miuixTheme = MiuixTheme.of(context);
-      return Stack(
-        fit: StackFit.passthrough,
-        children: [
-          MiuixTheme(
-            data: miuixTheme.copyWith(
-              textStyles: miuixTheme.textStyles.copy(
-                title1: miuixTheme.textStyles.title1.copyWith(
-                  fontSize: AppType.artisticHeader,
-                  height: 1.16,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-            child: topBar,
-          ),
-          Positioned.fill(
-            child: MacintoshHelloHeaderOverlay(
-              text: _tabTitles[index],
-              scrollBehavior: scrollBehaviors[index],
-              active: tab == index,
-            ),
-          ),
-        ],
-      );
-    },
+        );
+      },
+    ),
   );
 
   EdgeInsets pagePadding(

@@ -2,6 +2,7 @@ import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_miuix/miuix.dart';
+import 'visual_policy.dart';
 
 /// One accessible press primitive, including keyboard and cancellation. The
 /// library's spring retargets from its current value; never stack two scales.
@@ -120,10 +121,13 @@ class CourseCardHero extends StatelessWidget {
           // destination vertically unconstrained and clip to the animated rect
           // rather than squeezing a Column into a short list-row rectangle.
           flightShuttleBuilder: (context, animation, direction, from, to) =>
-              ClipRect(
-                child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: (to.widget as Hero).child,
+              BackdropSuspensionScope(
+                suspended: true,
+                child: ClipRect(
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: (to.widget as Hero).child,
+                  ),
                 ),
               ),
           child: Material(type: MaterialType.transparency, child: child),

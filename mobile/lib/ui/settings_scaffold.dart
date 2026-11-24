@@ -43,20 +43,30 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
               containerColor: Colors.transparent,
               topBar: ListenableBuilder(
                 listenable: scroll,
-                builder: (context, _) => MiuixTopAppBar(
-                  title: widget.title,
-                  color: Theme.of(context).colorScheme.surface,
-                  scrollBehavior: behavior,
-                  blurred: AppVisualPolicy.of(context, settings).translucent,
-                  blurRadius: AppHeader.blur,
-                  blurTintAlpha: AppHeader.tint(
-                    scroll.hasClients ? scroll.offset : 0,
-                  ),
-                  navigationIcon: IconButton(
-                    tooltip: '返回',
-                    icon: const AppIcon(AppIcons.arrowBack),
-                    onPressed: () => Navigator.maybePop(context),
-                  ),
+                builder: (context, _) => BackdropTransitionBuilder(
+                  builder: (context, suspended) {
+                    final translucent =
+                        AppVisualPolicy.of(context, settings).translucent;
+                    final tint = AppHeader.tint(
+                      scroll.hasClients ? scroll.offset : 0,
+                    );
+                    final surface = Theme.of(context).colorScheme.surface;
+                    return MiuixTopAppBar(
+                      title: widget.title,
+                      color: translucent && suspended
+                          ? surface.withValues(alpha: tint)
+                          : surface,
+                      scrollBehavior: behavior,
+                      blurred: translucent && !suspended,
+                      blurRadius: AppHeader.blur,
+                      blurTintAlpha: tint,
+                      navigationIcon: IconButton(
+                        tooltip: '返回',
+                        icon: const AppIcon(AppIcons.arrowBack),
+                        onPressed: () => Navigator.maybePop(context),
+                      ),
+                    );
+                  },
                 ),
               ),
               content: (insets) => FocusTraversalGroup(
