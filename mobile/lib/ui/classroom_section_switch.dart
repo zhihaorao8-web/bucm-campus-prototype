@@ -7,9 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/appearance_controller.dart';
 import 'acrylic_surface.dart';
 
-/// Frosted-acrylic segmented control for switching between classroom sections
-/// (e.g. recorded playback and live stream), with sliding capsule indicator and
-/// automatic opaque fallback when glass, blur, or contrast settings require it.
+/// Frosted-acrylic segmented control for switching between classroom and library
+/// sections with a shared liquid glass selection lens and automatic opaque
+/// fallback when glass, blur, or contrast settings require it.
 class ClassroomSectionSwitch extends ConsumerWidget {
   const ClassroomSectionSwitch({
     super.key,
@@ -27,9 +27,9 @@ class ClassroomSectionSwitch extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(currentAppearanceProvider);
+    final policy = AppVisualPolicy.of(context, settings);
     final colors = Theme.of(context).colorScheme;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final opaque = AppVisualPolicy.of(context, settings).opaque;
+    final opaque = policy.opaque;
     final selected = selectedIndex.clamp(0, tabs.length - 1);
     final baseStyle =
         (Theme.of(context).textTheme.bodyLarge ?? const TextStyle()).copyWith(
@@ -59,35 +59,23 @@ class ClassroomSectionSwitch extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.all(AppSpace.xs),
           child: Stack(
+            clipBehavior: Clip.none,
             children: [
               AppSegmentIndicator(
                 selected: selected,
                 count: tabs.length,
                 indicatorKey: const ValueKey('classroom-section-indicator'),
+                liquidGlass: true,
+                radius: AppRadius.inset,
                 decoration: BoxDecoration(
-                  color: opaque
-                      ? colors.surfaceContainerHighest
-                      : (dark
-                            ? Colors.white.withValues(alpha: .13)
-                            : Colors.white.withValues(alpha: .84)),
+                  color: colors.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(AppRadius.inset),
                   border: Border.all(
-                    width: .6,
-                    color: opaque
-                        ? colors.outlineVariant
-                        : Colors.white.withValues(alpha: dark ? .20 : .94),
+                    width: policy.highContrast ? 1 : .6,
+                    color: policy.highContrast
+                        ? colors.outline
+                        : colors.outlineVariant,
                   ),
-                  boxShadow: opaque
-                      ? null
-                      : [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                              alpha: dark ? .18 : .06,
-                            ),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
                 ),
               ),
               Row(

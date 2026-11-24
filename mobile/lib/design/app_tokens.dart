@@ -97,6 +97,9 @@ abstract final class AppLiquidGlass {
   static const refraction = 5.0;
   static const dockLensBlur = 3.0;
   static const dockLensRadius = 32.0;
+  static const segmentLensBlur = 3.0;
+  static const segmentLensEdgeDepth = 8.0;
+  static const segmentLensRefraction = 2.5;
   static const lensBorderWidth = .85;
 
   static List<Color> lensFill(bool dark, Color accent) => dark

@@ -22,6 +22,11 @@
 - 发现之前使用的 `flutter drive --use-application-binary` 默认结束时卸载正常包名的测试应用，模拟器本机课表和学校会话可能已清除。已告知用户，后续命令使用 `--keep-app-running` 并在整阶段结束时覆盖安装正常入口。此次未恢复学校会话，不能将安装成功视为数据恢复。
 - 本分项验证为合成组件设备场景。整页学校数据下的视觉、Vulkan、物理真机与性能/功耗仍待验证。公共分段指示器接入另行分项，完成后阶段 2 停审。
 
+- 分段分项由同一 Antigravity 模型回传，Codex 审阅集成。`AppSegmentIndicator` 保留旧纯装饰用法与 `indicatorKey` 外层定位，周/日、录播/直播占位、图书馆分段共用静态透镜与可中断位移，边缘深8、折射2.5、内模糊3集中于公共令牌。`LiquidGlassSurface` 增加可选 edgeDepth/refraction。指示器不接收触控/语义，前景在滤镜之后绘制。
+- `--changed --base HEAD --dry-run` 已核对公共依赖影响，实际选择改动的材质/分段消费者与导航回归。7 套宿主测试初次 68 通过、3 失败、1 个可选截图用例跳过，均因新增边框将周/日触控高缩至46.8dp。改用前景边框后，对应 `schedule_motion` 与 `week_stack` 22/22 通过，其余5套此前通过，合计71通过、1跳过。静态分析0问题。日志 `build/liquid-segment-host.log`、`build/liquid-segment-retest.log`、`build/liquid-segment-analyze-final.log`。
+- Pixel 8 API 36 GLES 使用同一临时离线依赖条件构建，`flutter drive --keep-app-running` 完成320dp、浅深色、1x/2x字号下周→日、录播→直播占位、选座→我的预约及底栏3→1→0切换。截图测试容器补齐 Material 文字环境后，周/日标签完整，分段边缘无黑块和裁切。图书馆2x标签按现有单行省略，完整语义保留。合成截图在 `mobile/build/liquid-controls-{light,dark}-{1.0,2.0}.png`，日志 `build/liquid-segment-device-final.log`。设备测试是工作区debug构建，学校整页、Vulkan、物理真机与功耗尚未覆盖。阶段2完成提交推送后停审。
+- 验证后以 `lib/main.dart` 重建正常包名 debug 应用，`adb install -r` 成功并启动正常 `MainActivity`。日志 `build/liquid-stage2-normal-build.log`。这是保留既有未提交文件的工作区构建；正常入口恢复不代表此前可能清除的本机数据或学校会话已恢复。
+
 ## 2026-11-24 液态玻璃阶段 1
 
 - 2026-11-24 用户确认「审核通过」，对应已推送的 `29f4881`，阶段 1 用户验收关闭，按此前授权推进阶段 2。

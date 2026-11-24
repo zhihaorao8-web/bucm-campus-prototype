@@ -20,10 +20,14 @@ class LiquidGlassSurface extends ConsumerStatefulWidget {
     required this.child,
     this.radius = AppLiquidGlass.radius,
     this.blur = AppLiquidGlass.blur,
+    this.edgeDepth = AppLiquidGlass.edgeDepth,
+    this.refraction = AppLiquidGlass.refraction,
   }) : assert(radius >= 0),
-       assert(blur >= 0);
+       assert(blur >= 0),
+       assert(edgeDepth > 0),
+       assert(refraction >= 0);
   final Widget child;
-  final double radius, blur;
+  final double radius, blur, edgeDepth, refraction;
 
   @override
   ConsumerState<LiquidGlassSurface> createState() => _LiquidGlassSurfaceState();
@@ -75,8 +79,8 @@ class _LiquidGlassSurfaceState extends ConsumerState<LiquidGlassSurface> {
                 ..setFloat(2, constraints.maxWidth)
                 ..setFloat(3, constraints.maxHeight)
                 ..setFloat(4, widget.radius)
-                ..setFloat(5, AppLiquidGlass.edgeDepth)
-                ..setFloat(6, AppLiquidGlass.refraction);
+                ..setFloat(5, widget.edgeDepth)
+                ..setFloat(6, widget.refraction);
               filter = ui.ImageFilter.compose(
                 outer: ui.ImageFilter.shader(shader),
                 inner: filter,

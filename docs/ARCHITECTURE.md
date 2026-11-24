@@ -100,7 +100,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 
 ## 尚未完成的结构整理
 
-公共材质底座 `ui/liquid_glass_surface.dart` 读取现有外观与 `AppVisualPolicy`，共享 FragmentProgram、每实例持有并释放 FragmentShader。能力不足、加载中或加载失败使用普通模糊，高对比度或关闭材质使用不透明底。输入为有界尺寸和前景 child，正文在滤镜之后绘制。阶段 1 的调用入口为合成组件/设备测试，业务底栏接入在阶段 2。验证入口 `test/liquid_glass_test.dart`。
+公共材质底座 `ui/liquid_glass_surface.dart` 读取现有外观与 `AppVisualPolicy`，共享 FragmentProgram、每实例持有并释放 FragmentShader。能力不足、加载中或加载失败使用普通模糊，高对比度或关闭材质使用不透明底。输入为有界尺寸、前景 child 与可选 edgeDepth/refraction，正文在滤镜之后绘制。调用入口为 `GlassNavigation` 选中透镜和 `AppSegmentIndicator` 的可选液态分段层，后者由 `ScheduleModeSwitch`、`ClassroomSectionSwitch` 复用，父级继续拥有标签、焦点与回调。验证入口为 `liquid_glass`、`navigation_motion`、`schedule_motion`、`classroom_ui_polish` 测试及 `integration_test/liquid_glass_controls_test.dart`。
 
 - `ClassroomCoursePage`仍约2500行，D3已抽出路由选择/代次/读轮询、目录提交、脚本桥接及原生播放准备。页面继续拥有WebView标签、导航回调、可见认证、来源恢复、批量队列切换和UI；不宣称整个页面状态机已迁出。
 - D2已由data/local_files.dart共享文件定位和原子替换；各仓库仍拥有队列、业务备份与revision策略，不能在页面另写一套存储。

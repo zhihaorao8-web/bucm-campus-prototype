@@ -2,10 +2,13 @@ import 'app_controls.dart';
 import '../design/app_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../application/appearance_controller.dart';
 import 'app_icons.dart';
 import 'app_theme.dart';
+import 'visual_policy.dart';
 
-class ScheduleModeSwitch extends StatelessWidget {
+class ScheduleModeSwitch extends ConsumerWidget {
   const ScheduleModeSwitch({
     super.key,
     required this.daily,
@@ -14,31 +17,54 @@ class ScheduleModeSwitch extends StatelessWidget {
   final bool daily;
   final ValueChanged<bool> onChanged;
   @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(currentAppearanceProvider);
+    final policy = AppVisualPolicy.of(context, settings);
+    final glass = policy.liquidGlass;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
     return Container(
       width: 112,
       height: 56,
       padding: const EdgeInsets.all(AppSpace.xs),
       decoration: BoxDecoration(
-        color: colors.onSurface.withValues(alpha: .055),
+        color: policy.highContrast
+            ? colors.surfaceContainerHighest
+            : colors.onSurface.withValues(
+                alpha: glass ? (dark ? .12 : .065) : .055,
+              ),
         borderRadius: BorderRadius.circular(AppRadius.inset),
       ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.inset),
+        border: policy.highContrast
+            ? Border.all(color: colors.outline, width: 1)
+            : glass
+            ? Border.all(
+                color: Colors.white.withValues(alpha: dark ? .12 : .45),
+                width: .6,
+              )
+            : null,
+      ),
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           AppSegmentIndicator(
             selected: daily ? 1 : 0,
             count: 2,
+            indicatorKey: const ValueKey('schedule-mode-indicator'),
+            liquidGlass: true,
+            radius: AppRadius.small,
             decoration: BoxDecoration(
               color: colors.surfaceContainer,
               borderRadius: BorderRadius.circular(AppRadius.small),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: .04),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              border: Border.all(
+                width: policy.highContrast ? 1 : .6,
+                color: policy.highContrast
+                    ? colors.outline
+                    : colors.outlineVariant.withValues(alpha: .7),
+              ),
             ),
           ),
           Row(
@@ -57,7 +83,7 @@ class ScheduleModeSwitch extends StatelessWidget {
                           label,
                           style: TextStyle(
                             color: value == daily
-                                ? colors.onSurface
+                                ? (glass ? colors.primary : colors.onSurface)
                                 : colors.onSurfaceVariant,
                             fontWeight: value == daily
                                 ? FontWeight.w600
