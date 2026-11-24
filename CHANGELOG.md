@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.41] - 2026-11-24
+
+- 校园账号登录与认证恢复统一，设置首页按校园账号、课表与录播、外观、隐私和项目信息重排。
+- 修复整学期 DOM 读取时序与带括号附注的教师字段；官方 XLS 与 DOM 各31条已与独立官方导出逐项对照通过。
+- 修复录播 WebVPN 官方入口、教学平台 CAS 回跳和原课时恢复；用户已确认真机听音与完整课时播放通过。
+- 液态玻璃阶段1–3完成并获用户审核，覆盖悬浮底栏、公共分段、今日焦点卡及图书馆焦点票卡/选座胶囊，复用现有外观开关与无障碍降级。大字选座胶囊完整换行。
+- Android版本0.41/code14，Flutter版本0.41.0+14。发布构建、精确提交CI、签名与附件摘要正在核验，进度见[0.41发布记录](docs/releases/0.41.md)。
+
 ## [0.4] - 2026-11-20
 
 - **工程治理与构建核验基线**：完成 A–F 长期工程管理与分层测试体系建设（[PROJECT_MANAGEMENT](docs/PROJECT_MANAGEMENT.md)、[check.py](scripts/check.py)、[ci_plan.py](scripts/ci_plan.py)）；落地顺序构建与双包核验流程（[build_flutter_previews.ps1](scripts/build_flutter_previews.ps1)、[verify_apks.py](scripts/verify_apks.py)），兼容 Android Build Tools 37 单一 V2 签名输出并保留未提交修改检测与 ZIP/引擎核对。
