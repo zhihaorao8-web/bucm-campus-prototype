@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:campus_schedule/design/app_tokens.dart';
 import 'package:campus_schedule/domain/schedule.dart';
+import 'package:campus_schedule/ui/acrylic_surface.dart';
+import 'package:campus_schedule/ui/liquid_glass_surface.dart';
 import 'package:campus_schedule/ui/today_focus.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'package:campus_schedule/application/appearance_controller.dart';
@@ -122,4 +125,149 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'focus card enables restrained liquid glass optics with natural height in ListView across light/dark and 320dp 2.0x',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final lesson = event('13:30', '15:00');
+      final now = DateTime(2026, 11, 13, 14, 15);
+      for (final dark in [false, true]) {
+        for (final scale in [1.0, 2.0]) {
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                currentAppearanceProvider.overrideWithValue(
+                  const AppearanceSettings(),
+                ),
+              ],
+              child: MaterialApp(
+                theme: appTheme(dark ? Brightness.dark : Brightness.light),
+                builder: (context, child) => MediaQuery(
+                  data: MediaQueryData(
+                    disableAnimations: true,
+                    textScaler: TextScaler.linear(scale),
+                  ),
+                  child: MiuixThemeBridge(child: child!),
+                ),
+                home: Scaffold(
+                  body: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      FocusCourseCard(event: lesson, now: now, overlaps: 2),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          final surfaceFinder = find.byType(LiquidGlassSurface);
+          expect(surfaceFinder, findsOneWidget);
+          final surface = tester.widget<LiquidGlassSurface>(surfaceFinder);
+          expect(surface.radius, AppRadius.focus);
+          expect(surface.blur, AppSurface.focusBlur);
+          expect(surface.edgeDepth, AppLiquidGlass.focusEdgeDepth);
+          expect(surface.refraction, AppLiquidGlass.focusRefraction);
+          expect(surface.blurKey, const ValueKey('focus-acrylic-blur'));
+
+          final acrylicSize = tester.getSize(find.byType(AcrylicSurface));
+          final surfaceSize = tester.getSize(surfaceFinder);
+          expect(surfaceSize.width, closeTo(288, .1));
+          expect(surfaceSize.height.isFinite, isTrue);
+          expect(surfaceSize.height, greaterThan(100));
+          expect(surfaceSize.height, closeTo(acrylicSize.height, .1));
+
+          final blurFinder = find.byKey(const ValueKey('focus-acrylic-blur'));
+          expect(find.byType(BackdropFilter), findsOneWidget);
+          expect(blurFinder, findsOneWidget);
+          expect(tester.widget<BackdropFilter>(blurFinder).enabled, isTrue);
+
+          expect(find.text(lesson.course.name), findsOneWidget);
+          expect(
+            find.descendant(
+              of: surfaceFinder,
+              matching: find.text(lesson.course.name),
+            ),
+            findsNothing,
+          );
+          expect(
+            find.descendant(
+              of: blurFinder,
+              matching: find.text(lesson.course.name),
+            ),
+            findsNothing,
+          );
+
+          final gesture = await tester.startGesture(
+            tester.getCenter(find.byKey(const ValueKey('today-focus'))),
+          );
+          await tester.pump();
+          await gesture.cancel();
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        }
+      }
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'focus card unmounts liquid glass and degrades cleanly under glass/blur/contrast overrides',
+    (tester) async {
+      final lesson = event('13:30', '15:00');
+      final now = DateTime(2026, 11, 13, 14, 15);
+      for (final mode in [
+        'glass-off',
+        'blur-off',
+        'app-contrast',
+        'system-contrast',
+      ]) {
+        final settings = AppearanceSettings(
+          glass: mode != 'glass-off',
+          blur: mode != 'blur-off',
+          contrast: mode == 'app-contrast' ? .5 : 0,
+        );
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [currentAppearanceProvider.overrideWithValue(settings)],
+            child: MaterialApp(
+              theme: appTheme(Brightness.light),
+              builder: (context, child) => MediaQuery(
+                data: MediaQueryData(
+                  highContrast: mode == 'system-contrast',
+                  disableAnimations: true,
+                ),
+                child: MiuixThemeBridge(child: child!),
+              ),
+              home: Scaffold(
+                body: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [FocusCourseCard(event: lesson, now: now)],
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(LiquidGlassSurface), findsNothing, reason: mode);
+        final blurFinder = find.byKey(const ValueKey('focus-acrylic-blur'));
+        expect(find.byType(BackdropFilter), findsOneWidget, reason: mode);
+        expect(blurFinder, findsOneWidget, reason: mode);
+        expect(
+          tester.widget<BackdropFilter>(blurFinder).enabled,
+          isFalse,
+          reason: mode,
+        );
+        expect(find.text(lesson.course.name), findsOneWidget, reason: mode);
+        expect(tester.takeException(), isNull, reason: mode);
+      }
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 }

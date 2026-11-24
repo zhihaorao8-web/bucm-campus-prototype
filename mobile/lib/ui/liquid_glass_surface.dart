@@ -22,12 +22,14 @@ class LiquidGlassSurface extends ConsumerStatefulWidget {
     this.blur = AppLiquidGlass.blur,
     this.edgeDepth = AppLiquidGlass.edgeDepth,
     this.refraction = AppLiquidGlass.refraction,
+    this.blurKey,
   }) : assert(radius >= 0),
        assert(blur >= 0),
        assert(edgeDepth > 0),
        assert(refraction >= 0);
   final Widget child;
   final double radius, blur, edgeDepth, refraction;
+  final Key? blurKey;
 
   @override
   ConsumerState<LiquidGlassSurface> createState() => _LiquidGlassSurfaceState();
@@ -92,6 +94,7 @@ class _LiquidGlassSurfaceState extends ConsumerState<LiquidGlassSurface> {
             }
           }
           return BackdropFilter(
+            key: widget.blurKey,
             enabled: policy.translucent,
             filter: filter,
             child: ColoredBox(
