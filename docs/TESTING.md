@@ -88,6 +88,8 @@ python scripts/check.py --module docs --module tooling
 
 液态玻璃底座：`flutter test --no-pub integration_test/liquid_glass_test.dart -d <指定模拟器>` 使用合成渐变背景，检查 Impeller 支持、两种尺寸/主题的采样方向与 Shader 相对普通滤镜的像素差异。测试应用直接构造公共组件，后续业务入口及物理真机性能另验。设备命令与宿主 Flutter 检查串行执行。
 
+控件设备场景为 `integration_test/liquid_glass_controls_test.dart`，仅写合成截图至应用临时目录。使用预构建测试包配合 `flutter drive --use-application-binary` 时须显式添加 `--keep-app-running`，该命令默认结束会卸载应用，正常包名测试可能清除本机课表及学校会话。结束后覆盖安装正常入口。
+
 ## 输出与失败定位
 
 每次执行在忽略的build/checks/report-<随机ID>.json保存独立报告，含计划、选择理由、已运行步骤、退出码、耗时与补验提示。报告scope固定为synthetic-host-checks；status=passed仅表示选定宿主检查通过，不能据此宣布设备补验通过。dry-run没有报告。

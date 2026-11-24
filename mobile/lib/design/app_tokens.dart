@@ -73,6 +73,15 @@ abstract final class AppSurface {
   static double listAlpha(bool dark, {bool dense = false}) =>
       dense ? (dark ? .84 : .90) : (dark ? .64 : .78);
   static double sheetAlpha(bool dark) => dark ? .92 : .90;
+  static double dockAlpha(
+    bool dark, {
+    required bool glass,
+    required bool opaque,
+  }) => opaque
+      ? 1
+      : glass
+      ? (dark ? .74 : .68)
+      : .95;
   static List<Color> focusFill(bool dark) => [
     (dark ? focusDark : Colors.white).withValues(alpha: dark ? .30 : .46),
     (dark ? focusDark : Colors.white).withValues(alpha: dark ? .16 : .26),
@@ -86,4 +95,53 @@ abstract final class AppLiquidGlass {
   static const radius = 28.0;
   static const edgeDepth = 14.0;
   static const refraction = 5.0;
+  static const dockLensBlur = 3.0;
+  static const dockLensRadius = 32.0;
+  static const lensBorderWidth = .85;
+
+  static List<Color> lensFill(bool dark, Color accent) => dark
+      ? [
+          Colors.white.withValues(alpha: .20),
+          Colors.white.withValues(alpha: .08),
+          Color.lerp(Colors.white, accent, .30)!.withValues(alpha: .14),
+        ]
+      : [
+          Colors.white.withValues(alpha: .72),
+          Colors.white.withValues(alpha: .36),
+          Color.lerp(Colors.white, accent, .14)!.withValues(alpha: .54),
+        ];
+
+  static Color lensBorder(bool dark) =>
+      Colors.white.withValues(alpha: dark ? .26 : .94);
+
+  static List<BoxShadow> lensShadows(bool dark, Color accent, Color outline) =>
+      dark
+      ? [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .32),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: accent.withValues(alpha: .10),
+            blurRadius: 8,
+            spreadRadius: -2,
+          ),
+        ]
+      : [
+          BoxShadow(
+            color: outline.withValues(alpha: .07),
+            blurRadius: 1.5,
+            spreadRadius: .4,
+          ),
+          BoxShadow(
+            color: Color.lerp(
+              Colors.black,
+              accent,
+              .28,
+            )!.withValues(alpha: .10),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ];
 }

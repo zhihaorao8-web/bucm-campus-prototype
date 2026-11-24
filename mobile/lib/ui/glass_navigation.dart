@@ -1,4 +1,5 @@
 import '../design/app_tokens.dart';
+import 'liquid_glass_surface.dart';
 import 'visual_policy.dart';
 import 'app_icons.dart';
 import 'dart:ui' as ui;
@@ -30,12 +31,63 @@ class GlassNavigation extends ConsumerWidget {
     final settings = ref.watch(currentAppearanceProvider);
     final floating = settings.floating;
     final policy = AppVisualPolicy.of(context, settings);
-    final glass = floating && policy.translucent;
+    final glass = floating && policy.liquidGlass;
     final radius = floating ? 40.0 : 0.0;
     final theme = Theme.of(context), colors = Theme.of(context).colorScheme;
     final dark = theme.brightness == Brightness.dark;
     final opaque = !policy.dockBlur;
-    final motion = !MediaQuery.disableAnimationsOf(context);
+    final motion = !policy.reducedMotion;
+    final current = (position ?? selected.toDouble()).clamp(
+      0.0,
+      (labels.length - 1).toDouble(),
+    );
+    final lensRadius = BorderRadius.circular(AppLiquidGlass.dockLensRadius);
+    final lens = glass
+        ? DecoratedBox(
+            key: const ValueKey('dock-lens'),
+            decoration: BoxDecoration(
+              borderRadius: lensRadius,
+              boxShadow: AppLiquidGlass.lensShadows(
+                dark,
+                colors.primary,
+                colors.onSurface,
+              ),
+            ),
+            child: LiquidGlassSurface(
+              radius: AppLiquidGlass.dockLensRadius,
+              blur: AppLiquidGlass.dockLensBlur,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    stops: const [0, .48, 1],
+                    colors: AppLiquidGlass.lensFill(dark, colors.primary),
+                  ),
+                  borderRadius: lensRadius,
+                  border: Border.all(
+                    color: AppLiquidGlass.lensBorder(dark),
+                    width: AppLiquidGlass.lensBorderWidth,
+                  ),
+                ),
+                child: const SizedBox.expand(),
+              ),
+            ),
+          )
+        : DecoratedBox(
+            key: const ValueKey('dock-lens-fallback'),
+            decoration: BoxDecoration(
+              color: colors.onSurface.withValues(
+                alpha: policy.highContrast
+                    ? (dark ? .16 : .10)
+                    : (dark ? .12 : .065),
+              ),
+              borderRadius: lensRadius,
+              border: policy.highContrast
+                  ? Border.all(color: colors.outline, width: 1)
+                  : null,
+            ),
+          );
     final height =
         70.0 + (MediaQuery.textScalerOf(context).scale(13) - 13).clamp(0, 24);
     return SafeArea(
@@ -82,11 +134,11 @@ class GlassNavigation extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: (dark ? AppSurface.dockDark : Colors.white)
                           .withValues(
-                            alpha: opaque
-                                ? 1
-                                : glass
-                                ? (dark ? .78 : .72)
-                                : .95,
+                            alpha: AppSurface.dockAlpha(
+                              dark,
+                              glass: glass,
+                              opaque: opaque,
+                            ),
                           ),
                       gradient: glass
                           ? LinearGradient(
@@ -114,29 +166,25 @@ class GlassNavigation extends ConsumerWidget {
                       child: Padding(
                         padding: const EdgeInsets.all(AppSpace.compact),
                         child: Stack(
+                          clipBehavior: Clip.none,
                           children: [
                             Positioned.fill(
-                              child: AnimatedAlign(
-                                duration: motion && position == null
-                                    ? AppMotion.navigation
-                                    : Duration.zero,
-                                curve: Curves.easeOutCubic,
-                                alignment: Alignment(
-                                  -1.0 +
-                                      2.0 *
-                                          (position ?? selected) /
-                                          (labels.length - 1),
-                                  0,
-                                ),
-                                child: FractionallySizedBox(
-                                  widthFactor: 1 / labels.length,
-                                  heightFactor: 1,
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      color: colors.onSurface.withValues(
-                                        alpha: dark ? .12 : .065,
-                                      ),
-                                      borderRadius: BorderRadius.circular(32),
+                              child: IgnorePointer(
+                                child: ExcludeSemantics(
+                                  child: AnimatedAlign(
+                                    duration: motion && position == null
+                                        ? AppMotion.navigation
+                                        : Duration.zero,
+                                    curve: AppMotion.navigationCurve,
+                                    alignment: Alignment(
+                                      -1.0 +
+                                          2.0 * current / (labels.length - 1),
+                                      0,
+                                    ),
+                                    child: FractionallySizedBox(
+                                      widthFactor: 1 / labels.length,
+                                      heightFactor: 1,
+                                      child: lens,
                                     ),
                                   ),
                                 ),
@@ -159,9 +207,7 @@ class GlassNavigation extends ConsumerWidget {
                                       child: ExcludeSemantics(
                                         child: MiuixPressable(
                                           onPressed: () => onSelect(index),
-                                          borderRadius: BorderRadius.circular(
-                                            32,
-                                          ),
+                                          borderRadius: lensRadius,
                                           feedbackType:
                                               MiuixPressFeedbackType.none,
                                           child: SizedBox.expand(
