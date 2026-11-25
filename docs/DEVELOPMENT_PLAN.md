@@ -4,12 +4,12 @@
 
 ## 背景主题与跨页渐变
 
-工作分支 `codex/backdrop-themes`（基于 `main@d32357c2`）。按用户确认方案 A 实施：保留现有「柔和弥散（`diffusion`）」作为默认项，新增 3 套单 Pass `FragmentProgram` 背景主题「流光丝绸雾（`grainGradient`）」「极光柔幕（`aurora`）」「晨昏地平线（`horizonGradient`）」，每套按今日/课表/图书馆/设置页面语义配 4 组浅/深色子样式与几何参数，并在主壳层实现跟随 `PageController` 连续位置的跨页背景色渐变过渡。
+工作分支 `codex/backdrop-themes`（基于 `main@d32357c2`）。**阶段 1–2 均已获用户审核通过，本功能阶段关闭**（待另行授权合入 `main` 或设备实测）。按用户确认方案 A 实施：保留现有「柔和弥散（`diffusion`）」作为默认项，新增 3 套单 Pass `FragmentProgram` 背景主题「流光丝绸雾（`grainGradient`）」「极光柔幕（`aurora`）」「晨昏地平线（`horizonGradient`）」，每套按今日/课表/图书馆/设置页面语义配 4 组浅/深色子样式与几何参数，并在主壳层实现跟随 `PageController` 连续位置的跨页背景色渐变过渡。
 
 | 阶段 | 交付与影响范围 | 最小检查与停审状态 |
 |---|---|---|
 | 1．着色器底座、子样式色板与跨页渐变过渡<br>**（已审核通过）** | 新增 `mobile/shaders/backdrop_{grain_gradient,aurora,horizon_gradient}.frag` 并在 `mobile/pubspec.yaml` 注册；`mobile/lib/design/backdrop_styles.dart` 与 `app_palette.dart` 定义 `BackdropTheme`、`BackdropStyleSpec`（OKLab 转换与四页子样式及连续插值 `forPosition`）；重构 `QuietBackdrop` 支持 `FragmentProgram` 渲染、加载/失败渐进回退与连续位置插值；将 `AppShell` 四页内嵌背景提升为 `PageView` 后方单一共享 `QuietBackdrop`，并修正 `SettingsScaffold` 传入 `tab: 3`；补齐 `atmosphere_test.dart` 与 `THIRD_PARTY.md`。 | **已审核通过**（用户“继续”指令，`361273a`）：`flutter analyze --no-pub` 0 问题；6 套受影响测试 78/78 通过。[阶段 1 证据](STATUS.md#2026-11-25-背景主题与跨页渐变阶段-1) |
-| 2．外观设置 UI、持久化与实时预览 | `BackdropTheme.description` 补充主题说明；`AppearanceSettings` 新增向后兼容 `backdropTheme` 字段（保留 `schema: 1`，缺省回落 `diffusion`）；`QuietBackdrop` 默认读取 `settings.backdropTheme`；`AppearancePage` 新增「背景主题」选择器（带色环预览、关闭柔光时停用）并升级 `ThemePhonePreview` 实时静帧预览所选主题；同步 `DESIGN.md` 与 `appearance_test.dart` / `atmosphere_test.dart`。 | **已完成待审核**：`flutter analyze --no-pub` 0 问题（2.7s）；`appearance`、`atmosphere`、`navigation_motion`、`liquid_glass`、`settings`、`ui`、`quiet_design` 7 套 89/89 全部通过（覆盖旧配置兼容、390×844 / 320×720 2.0x 大字、开关联动与主题切换像素变化）；`docs` 与 `git diff --check` 通过后提交推送并**停审**。[阶段 2 证据](STATUS.md#2026-11-25-背景主题与跨页渐变阶段-2) |
+| 2．外观设置 UI、持久化与实时预览<br>**（已审核通过）** | `BackdropTheme.description` 补充主题说明；`AppearanceSettings` 新增向后兼容 `backdropTheme` 字段（保留 `schema: 1`，缺省回落 `diffusion`）；`QuietBackdrop` 默认读取 `settings.backdropTheme`；`AppearancePage` 新增「背景主题」选择器（带色环预览、关闭柔光时停用）并升级 `ThemePhonePreview` 实时静帧预览所选主题；同步 `DESIGN.md` 与 `appearance_test.dart` / `atmosphere_test.dart`。 | **已审核通过**（用户确认“审核通过”，`727392a`）：`flutter analyze --no-pub` 0 问题（2.7s）；7 套受影响测试 89/89 通过；`docs` 与 `git diff --check` 通过。设备端渲染与合入另行安排。[阶段 2 证据](STATUS.md#2026-11-25-背景主题与跨页渐变阶段-2) |
 
 ## 液态玻璃改造
 
