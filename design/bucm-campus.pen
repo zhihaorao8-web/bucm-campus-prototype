@@ -2469,7 +2469,8 @@
                           "width": "fill_container",
                           "content": "今日 · 课表 · 图书馆",
                           "fontFamily": "$font-ui",
-                          "fontSize": 40
+                          "fontSize": 40,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -2638,7 +2639,8 @@
                           "width": "fill_container",
                           "content": "示例教学楼 304 · 第 10 教学周",
                           "fontFamily": "$font-ui",
-                          "fontSize": 16
+                          "fontSize": 16,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -2671,7 +2673,8 @@
                           "width": "fill_container",
                           "content": "大医精诚，止于至善。—— 孙思邈",
                           "fontFamily": "$font-ui",
-                          "fontSize": 14
+                          "fontSize": 14,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -3341,7 +3344,8 @@
                       "fill": "$text-secondary",
                       "content": "课表",
                       "fontFamily": "$font-ui",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -3373,7 +3377,8 @@
                       "fill": "$text-secondary",
                       "content": "图书馆",
                       "fontFamily": "$font-ui",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -3405,7 +3410,8 @@
                       "fill": "$text-secondary",
                       "content": "设置",
                       "fontFamily": "$font-ui",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -3487,7 +3493,8 @@
                       "fill": "$text-secondary",
                       "content": "今日",
                       "fontFamily": "$font-ui",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -3572,7 +3579,8 @@
                       "fill": "$text-secondary",
                       "content": "图书馆",
                       "fontFamily": "$font-ui",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -3604,7 +3612,8 @@
                       "fill": "$text-secondary",
                       "content": "设置",
                       "fontFamily": "$font-ui",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -3686,7 +3695,8 @@
                       "fill": "$text-secondary",
                       "content": "今日",
                       "fontFamily": "$font-ui",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -3718,7 +3728,8 @@
                       "fill": "$text-secondary",
                       "content": "课表",
                       "fontFamily": "$font-ui",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -3803,7 +3814,8 @@
                       "fill": "$text-secondary",
                       "content": "设置",
                       "fontFamily": "$font-ui",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -3813,196 +3825,211 @@
         },
         {
           "type": "frame",
-          "id": "J92OG",
-          "name": "active=settings",
-          "reusable": {
-            "active": "settings"
-          },
-          "width": 390,
-          "padding": [
-            8,
-            24,
-            16,
-            24
-          ],
-          "justifyContent": "center",
-          "alignItems": "center",
+          "id": "VJSsR",
+          "name": "Frame 1",
+          "width": 410,
+          "height": 114,
+          "layout": "none",
           "children": [
             {
               "type": "frame",
-              "id": "GWOm9",
-              "name": "Dock Pill",
-              "width": 342,
-              "height": 70,
-              "fill": "$dock-bg",
-              "cornerRadius": 40,
-              "stroke": "$border-glass",
-              "strokeWidth": 0.8,
-              "effect": [
-                {
-                  "type": "background_blur",
-                  "radius": 24
-                },
-                {
-                  "type": "shadow",
-                  "shadowType": "outer",
-                  "color": "#0000001A",
-                  "offset": {
-                    "x": 0,
-                    "y": 8
-                  },
-                  "blur": 24
-                }
+              "id": "J92OG",
+              "x": 10,
+              "y": 10,
+              "name": "active=settings",
+              "reusable": {
+                "active": "settings"
+              },
+              "width": 390,
+              "padding": [
+                8,
+                24,
+                16,
+                24
               ],
-              "padding": 6,
+              "justifyContent": "center",
               "alignItems": "center",
               "children": [
                 {
                   "type": "frame",
-                  "id": "HOXxu",
-                  "name": "今日",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "layout": "vertical",
-                  "gap": 3,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "u7cczu",
-                      "name": "Icon",
-                      "width": 22,
-                      "height": 22,
-                      "icon": "sun",
-                      "library": "lucide",
-                      "fill": "$text-secondary"
-                    },
-                    {
-                      "type": "text",
-                      "id": "OESXs",
-                      "name": "Label",
-                      "fill": "$text-secondary",
-                      "content": "今日",
-                      "fontFamily": "$font-ui",
-                      "fontSize": 12
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "P5zEy",
-                  "name": "课表",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "layout": "vertical",
-                  "gap": 3,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "fMhjt",
-                      "name": "Icon",
-                      "width": 22,
-                      "height": 22,
-                      "icon": "calendar-days",
-                      "library": "lucide",
-                      "fill": "$text-secondary"
-                    },
-                    {
-                      "type": "text",
-                      "id": "D3B5c",
-                      "name": "Label",
-                      "fill": "$text-secondary",
-                      "content": "课表",
-                      "fontFamily": "$font-ui",
-                      "fontSize": 12
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "Z3MbBw",
-                  "name": "图书馆",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "layout": "vertical",
-                  "gap": 3,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "lDroW",
-                      "name": "Icon",
-                      "width": 22,
-                      "height": 22,
-                      "icon": "book-open",
-                      "library": "lucide",
-                      "fill": "$text-secondary"
-                    },
-                    {
-                      "type": "text",
-                      "id": "EXCc4",
-                      "name": "Label",
-                      "fill": "$text-secondary",
-                      "content": "图书馆",
-                      "fontFamily": "$font-ui",
-                      "fontSize": 12
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "g4Fwl",
-                  "name": "设置",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$dock-lens",
-                  "cornerRadius": 32,
+                  "id": "GWOm9",
+                  "name": "Dock Pill",
+                  "width": 342,
+                  "height": 70,
+                  "fill": "$dock-bg",
+                  "cornerRadius": 40,
                   "stroke": "$border-glass",
-                  "strokeWidth": 0.85,
+                  "strokeWidth": 0.8,
                   "effect": [
                     {
                       "type": "background_blur",
-                      "radius": 3
+                      "radius": 24
                     },
                     {
                       "type": "shadow",
                       "shadowType": "outer",
-                      "color": "#0F274D1A",
+                      "color": "#0000001A",
                       "offset": {
                         "x": 0,
-                        "y": 3
+                        "y": 8
                       },
-                      "blur": 12
+                      "blur": 24
                     }
                   ],
-                  "layout": "vertical",
-                  "gap": 3,
-                  "justifyContent": "center",
+                  "padding": 6,
                   "alignItems": "center",
                   "children": [
                     {
-                      "type": "icon",
-                      "id": "FMNxu",
-                      "name": "Icon",
-                      "width": 22,
-                      "height": 22,
-                      "icon": "sliders-horizontal",
-                      "library": "lucide",
-                      "fill": "$accent"
+                      "type": "frame",
+                      "id": "HOXxu",
+                      "name": "今日",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "gap": 3,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "u7cczu",
+                          "name": "Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "sun",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "OESXs",
+                          "name": "Label",
+                          "fill": "$text-secondary",
+                          "content": "今日",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
                     },
                     {
-                      "type": "text",
-                      "id": "d7U2Qf",
-                      "name": "Label",
-                      "fill": "$accent",
-                      "content": "设置",
-                      "fontFamily": "$font-ui",
-                      "fontSize": 12,
-                      "fontWeight": "600"
+                      "type": "frame",
+                      "id": "P5zEy",
+                      "name": "课表",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "gap": 3,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "fMhjt",
+                          "name": "Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "calendar-days",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "D3B5c",
+                          "name": "Label",
+                          "fill": "$text-secondary",
+                          "content": "课表",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Z3MbBw",
+                      "name": "图书馆",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "gap": 3,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "lDroW",
+                          "name": "Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "book-open",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "EXCc4",
+                          "name": "Label",
+                          "fill": "$text-secondary",
+                          "content": "图书馆",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "g4Fwl",
+                      "name": "设置",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$dock-lens",
+                      "cornerRadius": 32,
+                      "stroke": "$border-glass",
+                      "strokeWidth": 0.85,
+                      "effect": [
+                        {
+                          "type": "background_blur",
+                          "radius": 3
+                        },
+                        {
+                          "type": "shadow",
+                          "shadowType": "outer",
+                          "color": "#0F274D1A",
+                          "offset": {
+                            "x": 0,
+                            "y": 3
+                          },
+                          "blur": 12
+                        }
+                      ],
+                      "layout": "vertical",
+                      "gap": 3,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "FMNxu",
+                          "name": "Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "sliders-horizontal",
+                          "library": "lucide",
+                          "fill": "$accent"
+                        },
+                        {
+                          "type": "text",
+                          "id": "d7U2Qf",
+                          "name": "Label",
+                          "fill": "$accent",
+                          "content": "设置",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -4243,22 +4270,39 @@
         },
         {
           "type": "frame",
-          "id": "vNr1t",
-          "name": "Progress Track",
-          "clip": true,
+          "id": "TQaNw",
+          "name": "Wavy Progress Bar",
           "width": "fill_container",
-          "height": 4,
-          "fill": "#3482FF18",
-          "cornerRadius": 4,
+          "height": 12,
+          "gap": 6,
+          "alignItems": "center",
           "children": [
             {
-              "type": "rectangle",
-              "cornerRadius": 4,
-              "id": "tAMtG",
-              "name": "Progress Fill",
-              "fill": "$accent",
+              "type": "path",
+              "id": "IfmeU",
+              "name": "Wavy Progress Fill",
+              "geometry": "M2 5c4.73-3.47 8.27-3.47 13 0 4.73 3.47 8.27 3.47 13 0 4.73-3.47 8.27-3.47 13 0 4.73 3.47 8.27 3.47 13 0 4.73-3.47 8.27-3.47 13 0 4.73 3.47 8.27 3.47 13 0 4.73-3.47 8.27-3.47 13 0 4.73 3.47 8.27 3.47 13 0 4.73-3.47 8.27-3.47 13 0 4.73 3.47 8.27 3.47 13 0 4.73-3.47 8.27-3.47 13 0 4.73 3.47 8.27 3.47 13 0 4.73-3.47 8.27-3.47 13 0 4.73 3.47 8.27 3.47 13 0",
+              "viewBox": [
+                0,
+                0,
+                186,
+                10
+              ],
               "width": 186,
-              "height": 4
+              "height": 10,
+              "stroke": "$accent",
+              "strokeWidth": 2.8,
+              "strokeLinejoin": "round",
+              "strokeLinecap": "round"
+            },
+            {
+              "type": "rectangle",
+              "cornerRadius": 2,
+              "id": "KltR4",
+              "name": "Remaining Track",
+              "fill": "$progress-track",
+              "width": "fill_container",
+              "height": 3.5
             }
           ]
         }
@@ -4468,7 +4512,8 @@
                   "fill": "$text-secondary",
                   "content": "日",
                   "fontFamily": "$font-ui",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 }
               ]
             }
@@ -4507,7 +4552,8 @@
                   "fill": "$text-secondary",
                   "content": "周",
                   "fontFamily": "$font-ui",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -5054,7 +5100,8 @@
                   "fill": "$text-primary",
                   "content": "今日",
                   "fontFamily": "$font-ui",
-                  "fontSize": 40
+                  "fontSize": 40,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -5547,7 +5594,8 @@
                   "fill": "$text-primary",
                   "content": "课表",
                   "fontFamily": "$font-ui",
-                  "fontSize": 40
+                  "fontSize": 40,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -7157,7 +7205,8 @@
                   "fill": "$text-primary",
                   "content": "课表",
                   "fontFamily": "$font-ui",
-                  "fontSize": 40
+                  "fontSize": 40,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -7362,7 +7411,8 @@
                           "fill": "$text-primary",
                           "content": "一",
                           "fontFamily": "$font-ui",
-                          "fontSize": 14
+                          "fontSize": 14,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -7386,7 +7436,8 @@
                           "fill": "$text-primary",
                           "content": "二",
                           "fontFamily": "$font-ui",
-                          "fontSize": 14
+                          "fontSize": 14,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -7435,7 +7486,8 @@
                           "fill": "$text-primary",
                           "content": "四",
                           "fontFamily": "$font-ui",
-                          "fontSize": 14
+                          "fontSize": 14,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -7459,7 +7511,8 @@
                           "fill": "$text-primary",
                           "content": "五",
                           "fontFamily": "$font-ui",
-                          "fontSize": 14
+                          "fontSize": 14,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -7483,7 +7536,8 @@
                           "fill": "$text-primary",
                           "content": "六",
                           "fontFamily": "$font-ui",
-                          "fontSize": 14
+                          "fontSize": 14,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -7507,7 +7561,8 @@
                           "fill": "$text-primary",
                           "content": "日",
                           "fontFamily": "$font-ui",
-                          "fontSize": 14
+                          "fontSize": 14,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -7738,7 +7793,8 @@
                   "fill": "$text-primary",
                   "content": "图书馆",
                   "fontFamily": "$font-ui",
-                  "fontSize": 40
+                  "fontSize": 40,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -8513,7 +8569,8 @@
                   "fill": "$text-primary",
                   "content": "图书馆",
                   "fontFamily": "$font-ui",
-                  "fontSize": 40
+                  "fontSize": 40,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -9892,7 +9949,8 @@
                           "fill": "$text-primary",
                           "content": "浅色",
                           "fontFamily": "$font-ui",
-                          "fontSize": 12
+                          "fontSize": 12,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -9916,7 +9974,8 @@
                           "fill": "$text-primary",
                           "content": "深色",
                           "fontFamily": "$font-ui",
-                          "fontSize": 12
+                          "fontSize": 12,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -10798,7 +10857,8 @@
                   "fill": "$text-primary",
                   "content": "今日",
                   "fontFamily": "$font-ui",
-                  "fontSize": 40
+                  "fontSize": 40,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -11147,7 +11207,8 @@
                   "fill": "$text-primary",
                   "content": "图书馆",
                   "fontFamily": "$font-ui",
-                  "fontSize": 40
+                  "fontSize": 40,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -12128,7 +12189,8 @@
                           "fill": "$text-primary",
                           "content": "今日",
                           "fontFamily": "$font-ui",
-                          "fontSize": 24
+                          "fontSize": 24,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -12345,7 +12407,8 @@
                           "fill": "$text-primary",
                           "content": "今日",
                           "fontFamily": "$font-ui",
-                          "fontSize": 24
+                          "fontSize": 24,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -12562,7 +12625,8 @@
                           "fill": "$text-primary",
                           "content": "今日",
                           "fontFamily": "$font-ui",
-                          "fontSize": 24
+                          "fontSize": 24,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -12779,7 +12843,8 @@
                           "fill": "$text-primary",
                           "content": "今日",
                           "fontFamily": "$font-ui",
-                          "fontSize": 24
+                          "fontSize": 24,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -13015,7 +13080,8 @@
                           "fill": "$text-primary",
                           "content": "今日",
                           "fontFamily": "$font-ui",
-                          "fontSize": 24
+                          "fontSize": 24,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -13232,7 +13298,8 @@
                           "fill": "$text-primary",
                           "content": "今日",
                           "fontFamily": "$font-ui",
-                          "fontSize": 24
+                          "fontSize": 24,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -13449,7 +13516,8 @@
                           "fill": "$text-primary",
                           "content": "今日",
                           "fontFamily": "$font-ui",
-                          "fontSize": 24
+                          "fontSize": 24,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -13666,7 +13734,8 @@
                           "fill": "$text-primary",
                           "content": "今日",
                           "fontFamily": "$font-ui",
-                          "fontSize": 24
+                          "fontSize": 24,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -14251,6 +14320,23 @@
     "radius-dock": {
       "type": "number",
       "value": 40
+    },
+    "progress-track": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#3482FF22",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#4E94FF33",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     }
   },
   "fileToken": "173148e8-5a9b-4dc8-aaae-e186542b1b0c"

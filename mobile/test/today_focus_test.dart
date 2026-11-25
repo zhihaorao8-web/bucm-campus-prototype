@@ -5,6 +5,7 @@ import 'package:campus_schedule/design/app_tokens.dart';
 import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/ui/acrylic_surface.dart';
 import 'package:campus_schedule/ui/liquid_glass_surface.dart';
+import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'package:campus_schedule/ui/today_focus.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'package:campus_schedule/application/appearance_controller.dart';
@@ -96,7 +97,7 @@ void main() {
         expect(find.text('有2门课程重叠'), findsOneWidget);
         expect(
           tester
-              .widget<LinearProgressIndicator>(
+              .widget<WavyProgressIndicator>(
                 find.byKey(const ValueKey('today-lesson-progress')),
               )
               .value,
@@ -119,7 +120,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('下一节课'), findsOneWidget);
         expect(find.text('30 分钟后开始'), findsOneWidget);
-        expect(find.byType(LinearProgressIndicator), findsNothing);
+        expect(find.byType(WavyProgressIndicator), findsNothing);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       },
@@ -267,6 +268,106 @@ void main() {
         expect(find.text(lesson.course.name), findsOneWidget, reason: mode);
         expect(tester.takeException(), isNull, reason: mode);
       }
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'wavy lesson progress animates smoothly in foreground and stops under reduced motion, hidden route, background, and boundary values',
+    (tester) async {
+      Future<void> mountWave({
+        required double value,
+        bool dark = false,
+        bool highContrast = false,
+        bool reduced = false,
+        bool visible = true,
+        bool ambientEnabled = true,
+      }) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              ambientMotionEnabledProvider.overrideWithValue(ambientEnabled),
+              appearanceRepositoryProvider.overrideWithValue(
+                MemoryAppearanceRepository(),
+              ),
+            ],
+            child: MaterialApp(
+              theme: appTheme(dark ? Brightness.dark : Brightness.light),
+              themeAnimationDuration: Duration.zero,
+              home: MediaQuery(
+                data: MediaQueryData(
+                  disableAnimations: reduced,
+                  highContrast: highContrast,
+                ),
+                child: TickerMode(
+                  enabled: visible,
+                  child: Scaffold(
+                    body: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: WavyProgressIndicator(
+                        key: const ValueKey('test-wavy-progress'),
+                        value: value,
+                        semanticsLabel: '当前授课分段进度',
+                        semanticsValue: '${(value * 100).round()}%',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        if (reduced || !visible || !ambientEnabled) {
+          await tester.pumpAndSettle();
+        } else {
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+        }
+      }
+
+      for (final dark in [false, true]) {
+        for (final highContrast in [false, true]) {
+          for (final value in [0.0, 0.5, 1.0]) {
+            await mountWave(
+              value: value,
+              dark: dark,
+              highContrast: highContrast,
+              reduced: true,
+            );
+            expect(find.byType(WavyProgressIndicator), findsOneWidget);
+            expect(tester.binding.transientCallbackCount, 0);
+            expect(tester.takeException(), isNull);
+          }
+        }
+      }
+
+      await tester.pumpWidget(const SizedBox());
+      await mountWave(value: 0.5);
+      final semantics = tester.getSemantics(
+        find.byKey(const ValueKey('test-wavy-progress')),
+      );
+      expect(semantics.label, '当前授课分段进度');
+      expect(semantics.value, '50%');
+      expect(tester.binding.transientCallbackCount, greaterThan(0));
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      expect(tester.binding.transientCallbackCount, 0);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(tester.binding.transientCallbackCount, greaterThan(0));
+
+      await mountWave(value: 0.5, visible: false);
+      expect(tester.binding.transientCallbackCount, 0);
+
+      await mountWave(value: 0.5, reduced: true);
+      expect(find.byType(WavyProgressIndicator), findsOneWidget);
+      expect(tester.binding.transientCallbackCount, 0);
+
+      await mountWave(value: 0.5, ambientEnabled: false);
+      expect(tester.binding.transientCallbackCount, 0);
+
       await tester.pumpWidget(const SizedBox());
     },
   );

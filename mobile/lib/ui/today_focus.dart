@@ -1,13 +1,16 @@
+import 'dart:math' as math;
 import '../design/app_tokens.dart';
 import '../design/app_palette.dart';
 import 'course_interaction.dart';
 import 'acrylic_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_miuix/miuix.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/schedule.dart';
 import 'app_icons.dart';
 import 'app_theme.dart';
 import 'course_widgets.dart';
+import 'quiet_backdrop.dart';
 
 double lessonProgress(Occurrence event, DateTime now) =>
     (now.difference(event.start).inMilliseconds /
@@ -161,12 +164,9 @@ class FocusCourseCard extends StatelessWidget {
                     duration: motion
                         ? const Duration(milliseconds: 500)
                         : Duration.zero,
-                    builder: (context, value, _) => LinearProgressIndicator(
+                    builder: (context, value, _) => WavyProgressIndicator(
                       key: const ValueKey('today-lesson-progress'),
                       value: value,
-                      minHeight: 4,
-                      borderRadius: BorderRadius.circular(4),
-                      backgroundColor: colors.primary.withValues(alpha: .09),
                       semanticsLabel: '当前授课分段进度',
                       semanticsValue:
                           '${(lessonProgress(event, now) * 100).round()}%',
@@ -265,6 +265,210 @@ class TodayCourseTimeline extends StatelessWidget {
 
   static String clock(DateTime time) =>
       '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+}
+
+/// Serene Material 3-inspired wavy progress indicator matching the Pen spec.
+/// Flows gently while visible in the foreground and freezes under reduced
+/// motion, background lifecycle, or inactive [TickerMode].
+class WavyProgressIndicator extends ConsumerStatefulWidget {
+  const WavyProgressIndicator({
+    super.key,
+    required this.value,
+    this.activeColor,
+    this.trackColor,
+    this.height = 12.0,
+    this.strokeWidth = 2.8,
+    this.trackHeight = 3.5,
+    this.amplitude = 2.6,
+    this.wavelength = 26.0,
+    this.gap = 6.0,
+    this.semanticsLabel,
+    this.semanticsValue,
+  });
+
+  final double value;
+  final Color? activeColor;
+  final Color? trackColor;
+  final double height;
+  final double strokeWidth;
+  final double trackHeight;
+  final double amplitude;
+  final double wavelength;
+  final double gap;
+  final String? semanticsLabel;
+  final String? semanticsValue;
+
+  @override
+  ConsumerState<WavyProgressIndicator> createState() =>
+      _WavyProgressIndicatorState();
+}
+
+class _WavyProgressIndicatorState extends ConsumerState<WavyProgressIndicator>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  late final AnimationController _phase;
+  bool _foreground = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _phase = AnimationController(vsync: this, duration: AppMotion.wave);
+    _foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _phase.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = widget.value.clamp(0.0, 1.0);
+    final animate =
+        progress > 0 &&
+        !MediaQuery.disableAnimationsOf(context) &&
+        _foreground &&
+        TickerMode.valuesOf(context).enabled &&
+        ref.watch(ambientMotionEnabledProvider);
+    if (animate && !_phase.isAnimating) {
+      _phase.repeat();
+    } else if (!animate && _phase.isAnimating) {
+      _phase.stop();
+    }
+
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+    final highContrast = MediaQuery.highContrastOf(context);
+    final active = widget.activeColor ?? colors.primary;
+    final track =
+        widget.trackColor ??
+        (highContrast
+            ? colors.outline
+            : colors.primary.withValues(alpha: dark ? .20 : .13));
+
+    return Semantics(
+      label: widget.semanticsLabel,
+      value: widget.semanticsValue,
+      child: SizedBox(
+        width: double.infinity,
+        height: widget.height,
+        child: RepaintBoundary(
+          child: CustomPaint(
+            painter: _WavyProgressPainter(
+              value: progress,
+              phase: _phase,
+              activeColor: active,
+              trackColor: track,
+              strokeWidth: widget.strokeWidth,
+              trackHeight: widget.trackHeight,
+              amplitude: widget.amplitude,
+              wavelength: widget.wavelength,
+              gap: widget.gap,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WavyProgressPainter extends CustomPainter {
+  _WavyProgressPainter({
+    required this.value,
+    required this.phase,
+    required this.activeColor,
+    required this.trackColor,
+    required this.strokeWidth,
+    required this.trackHeight,
+    required this.amplitude,
+    required this.wavelength,
+    required this.gap,
+  }) : super(repaint: phase);
+
+  final double value;
+  final Animation<double> phase;
+  final Color activeColor;
+  final Color trackColor;
+  final double strokeWidth;
+  final double trackHeight;
+  final double amplitude;
+  final double wavelength;
+  final double gap;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final halfStroke = strokeWidth / 2;
+    final usable = size.width - strokeWidth;
+    if (usable <= 0 || size.height <= 0) return;
+
+    final centerY = size.height / 2;
+    final maxAmp = math.max(0.0, (size.height - strokeWidth) / 2);
+    final effectiveAmp = math.min(amplitude, maxAmp);
+    final activeWidth = usable * value;
+
+    if (value > 0) {
+      final path = Path();
+      final endX = halfStroke + activeWidth;
+      final phaseShift = phase.value * math.pi * 2;
+      double yAt(double x) =>
+          centerY -
+          effectiveAmp *
+              math.sin((2 * math.pi * (x - halfStroke) / wavelength) - phaseShift);
+      path.moveTo(halfStroke, yAt(halfStroke));
+      for (var x = halfStroke + 1.5; x < endX; x += 1.5) {
+        path.lineTo(x, yAt(x));
+      }
+      path.lineTo(endX, yAt(endX));
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = activeColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round,
+      );
+    }
+
+    if (value < 1) {
+      final trackStart = value <= 0 ? 0.0 : halfStroke + activeWidth + gap;
+      final trackEnd = size.width;
+      if (trackEnd - trackStart > trackHeight) {
+        canvas.drawRRect(
+          RRect.fromLTRBR(
+            trackStart,
+            centerY - trackHeight / 2,
+            trackEnd,
+            centerY + trackHeight / 2,
+            Radius.circular(trackHeight / 2),
+          ),
+          Paint()..color = trackColor,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WavyProgressPainter old) =>
+      old.value != value ||
+      old.activeColor != activeColor ||
+      old.trackColor != trackColor ||
+      old.strokeWidth != strokeWidth ||
+      old.trackHeight != trackHeight ||
+      old.amplitude != amplitude ||
+      old.wavelength != wavelength ||
+      old.gap != gap;
 }
 
 class _TimelineEvent extends StatelessWidget {

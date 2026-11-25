@@ -53,6 +53,7 @@ abstract final class AppMotion {
     curve: Cubic(0.32, 0.0, 0.12, 1.0),
   );
   static const title = Duration(milliseconds: 1350);
+  static const wave = Duration(milliseconds: 2400);
   static const navigationCurve = Cubic(.23, 1, .32, 1);
   static const segmentCurve = Curves.easeOutCubic;
 }
