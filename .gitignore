@@ -47,6 +47,7 @@ __pycache__/
 /mobile/android/app/src/main/java/cn/bucm/campusprobe/
 /mobile/.metadata
 *.iml
+/.agents/
 /.hallmark/
 /.stitch/
 /mobile/assets/
