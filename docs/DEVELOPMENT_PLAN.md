@@ -1,6 +1,15 @@
 # 当前开发进度与下一步
 
-更新：2026-11-24。本页只维护当前状态，历史分项证据见[STATUS](STATUS.md)、[发布记录](releases/0.4.md)及Git历史。生效规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。
+更新：2026-11-25。本页只维护当前状态，历史分项证据见[STATUS](STATUS.md)、[发布记录](releases/0.4.md)及Git历史。生效规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。
+
+## 背景主题与跨页渐变
+
+工作分支 `codex/backdrop-themes`（基于 `main@d32357c2`）。按用户确认方案 A 实施：保留现有「柔和弥散（`diffusion`）」作为默认项，新增 3 套单 Pass `FragmentProgram` 背景主题「流光丝绸雾（`grainGradient`）」「极光柔幕（`aurora`）」「晨昏地平线（`horizonGradient`）」，每套按今日/课表/图书馆/设置页面语义配 4 组浅/深色子样式与几何参数，并在主壳层实现跟随 `PageController` 连续位置的跨页背景色渐变过渡。
+
+| 阶段 | 交付与影响范围 | 最小检查与停审状态 |
+|---|---|---|
+| 1．着色器底座、子样式色板与跨页渐变过渡 | 新增 `mobile/shaders/backdrop_{grain_gradient,aurora,horizon_gradient}.frag` 并在 `mobile/pubspec.yaml` 注册；`mobile/lib/design/backdrop_styles.dart` 与 `app_palette.dart` 定义 `BackdropTheme`、`BackdropStyleSpec`（OKLab 转换与四页子样式及连续插值 `forPosition`）；重构 `QuietBackdrop` 支持 `FragmentProgram` 渲染、加载/失败渐进回退与连续位置插值；将 `AppShell` 四页内嵌背景提升为 `PageView` 后方单一共享 `QuietBackdrop`，并修正 `SettingsScaffold` 传入 `tab: 3`；补齐 `atmosphere_test.dart` 与 `THIRD_PARTY.md`。 | **已完成待审核**：`flutter analyze --no-pub` 0 问题；`atmosphere`、`navigation_motion`、`liquid_glass`、`appearance`、`settings`、`ui` 6 套 78/78 全部通过（含 SkSL + FragmentProgram 像素差异、降级与跨页插值验证）；`docs` 与 `git diff --check` 核对后提交推送并**停审**。[验证证据](STATUS.md#2026-11-25-背景主题与跨页渐变阶段-1) |
+| 2．外观设置 UI、持久化与实时预览 | `AppearanceSettings` 新增向后兼容 `backdropTheme` 字段（保留 `schema: 1`）；`AppearancePage` 新增「背景主题」选择项与升级版 `ThemePhonePreview` 实时预览；更新 `DESIGN.md` 与 `appearance_test.dart` / `settings_test.dart` / `atmosphere_test.dart`。 | 待阶段 1 审核通过后开始。 |
 
 ## 液态玻璃改造
 

@@ -1,5 +1,7 @@
 # 依赖、素材与许可
 
+2026-11-25 多背景主题 Shader（`mobile/shaders/backdrop_grain_gradient.frag`、`backdrop_aurora.frag`、`backdrop_horizon_gradient.frag`）改编自 `uibrik` 公开免费背景组件（https://uibrik.com ），内含 Ashima Arts / Stefan Gustavson 的 3D Simplex Noise（[webgl-noise](https://github.com/stegu/webgl-noise)，MIT）与 David Hoskins 的 `Hash without Sine`（MIT）；Flutter 端基于 SDK `FragmentProgram` 单 Pass 移植实现。
+
 2026-11-24 液态玻璃 Shader 的圆角距离场及边缘折射衰减参考并改写自 [bilalgursen/liquid-glass](https://github.com/bilalgursen/liquid-glass) 的 `src/components/liquid-glass/engine.ts`，固定参考提交 `c2a6aade68fd655771cb98cce21100bbdbd258f3`。MIT，Copyright (c) 2026 Bilal Abdullah Gürşen。完整许可保存在 `assets/third-party/liquid-glass/LICENSE`，由 prepare 脚本随 Android 原生资产打包。Flutter 实现使用 SDK Shader API。
 
 2026-11-14标题艺术字说明：“今日”与“课表”顶部艺术标题由项目自研矢量路径脚本 `scripts/generate_macintosh_hello_glyphs.py` 生成（`mobile/lib/ui/macintosh_hello_glyphs.g.dart`），灵感源自 Apple `Macintosh Skeletal` 手写风与 `npwitk/Macintosh-Skeletal-Filled` 圆管柔融合构形原理，未引入或分发第三方专有字库文件。

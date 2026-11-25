@@ -25,6 +25,9 @@ flutter:
   uses-material-design: true
   shaders:
     - shaders/liquid_glass.frag
+    - shaders/backdrop_grain_gradient.frag
+    - shaders/backdrop_aurora.frag
+    - shaders/backdrop_horizon_gradient.frag
   assets:
     - assets/icons/iconmcp/
     - assets/extract.js

@@ -38,7 +38,7 @@ class _SettingsScaffoldState extends ConsumerState<SettingsScaffold> {
       body: Stack(
         children: [
           QuietBackdrop(
-            tab: 2,
+            tab: 3,
             child: MiuixScaffold(
               containerColor: Colors.transparent,
               topBar: ListenableBuilder(

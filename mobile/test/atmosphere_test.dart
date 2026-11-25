@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:campus_schedule/design/app_palette.dart';
 import 'package:campus_schedule/ui/quiet_backdrop.dart';
 import 'package:campus_schedule/ui/acrylic_surface.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
@@ -376,4 +377,313 @@ void main() {
       },
     );
   }
+
+  test('backdrop sub-styles differ across pages and interpolate smoothly', () {
+    for (final theme in [
+      BackdropTheme.grainGradient,
+      BackdropTheme.aurora,
+      BackdropTheme.horizonGradient,
+    ]) {
+      for (final dark in [false, true]) {
+        final specs = [
+          for (var tab = 0; tab < 4; tab++)
+            BackdropStyleSpec.forTab(theme, dark, tab),
+        ];
+        for (var i = 0; i < 3; i++) {
+          expect(specs[i].colors, isNot(equals(specs[i + 1].colors)));
+          final mid = BackdropStyleSpec.forPosition(theme, dark, i + 0.5);
+          expect(mid.colors, isNot(equals(specs[i].colors)));
+          expect(mid.colors, isNot(equals(specs[i + 1].colors)));
+          for (var k = 0; k < specs[i].colors.length; k++) {
+            final expected = Color.lerp(
+              specs[i].colors[k],
+              specs[i + 1].colors[k],
+              0.5,
+            )!;
+            expect(mid.colors[k].toARGB32(), expected.toARGB32());
+          }
+        }
+      }
+    }
+    final darkLab = BackdropStyleSpec.colorToOklab(const Color(0xFF070D14));
+    final lightLab = BackdropStyleSpec.colorToOklab(const Color(0xFFFAFBFD));
+    expect(lightLab.l, greaterThan(darkLab.l));
+  });
+
+  testWidgets(
+    'shader themes load, differentiate pages, and respect policy fallbacks',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final boundary = GlobalKey();
+
+      Future<List<int>> sampleTheme({
+        required BackdropTheme theme,
+        required bool dark,
+        required int tab,
+        bool aurora = true,
+        bool highContrast = false,
+        bool reducedMotion = false,
+        bool failLoad = false,
+      }) async {
+        final container = ProviderContainer(
+          overrides: [
+            ambientMotionEnabledProvider.overrideWithValue(!reducedMotion),
+            currentAppearanceProvider.overrideWithValue(
+              AppearanceSettings(
+                aurora: aurora,
+                paperTexture: false,
+                contrast: highContrast ? 1 : 0,
+              ),
+            ),
+            if (failLoad)
+              backdropProgramProvider.overrideWith(
+                (ref, _) => Future<ui.FragmentProgram>.error(
+                  StateError('synthetic shader load failure'),
+                ),
+              ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: appTheme(dark ? Brightness.dark : Brightness.light),
+              home: MediaQuery(
+                data: MediaQueryData(
+                  highContrast: highContrast,
+                  disableAnimations: reducedMotion,
+                ),
+                child: RepaintBoundary(
+                  key: boundary,
+                  child: QuietBackdrop(
+                    tab: tab,
+                    theme: theme,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        if (aurora && !highContrast && !failLoad) {
+          await tester.runAsync(
+            () => container.read(backdropProgramProvider(theme).future),
+          );
+        }
+        await tester.pump();
+        if (reducedMotion) {
+          await tester.pumpAndSettle();
+          expect(tester.binding.transientCallbackCount, 0);
+        }
+        expect(tester.takeException(), isNull);
+        return (await tester.runAsync(() async {
+          final render =
+              boundary.currentContext!.findRenderObject()!
+                  as RenderRepaintBoundary;
+          final image = await render.toImage();
+          final bytes = await image.toByteData(
+            format: ui.ImageByteFormat.rawRgba,
+          );
+          final colors = <int>[];
+          for (final point in [
+            const Offset(.18, .16),
+            const Offset(.82, .35),
+            const Offset(.24, .65),
+            const Offset(.76, .84),
+          ]) {
+            final offset =
+                ((point.dy * image.height).floor() * image.width +
+                    (point.dx * image.width).floor()) *
+                4;
+            colors.addAll(bytes!.buffer.asUint8List(offset, 3));
+          }
+          image.dispose();
+          return colors;
+        }))!;
+      }
+
+      int totalDiff(List<int> a, List<int> b) => [
+        for (var i = 0; i < a.length; i++) (a[i] - b[i]).abs(),
+      ].reduce((x, y) => x + y);
+
+      for (final theme in [
+        BackdropTheme.grainGradient,
+        BackdropTheme.aurora,
+        BackdropTheme.horizonGradient,
+      ]) {
+        for (final dark in [false, true]) {
+          final tab0 = await sampleTheme(
+            theme: theme,
+            dark: dark,
+            tab: 0,
+            reducedMotion: true,
+          );
+          final tab2 = await sampleTheme(
+            theme: theme,
+            dark: dark,
+            tab: 2,
+            reducedMotion: true,
+          );
+          final off = await sampleTheme(
+            theme: theme,
+            dark: dark,
+            tab: 0,
+            aurora: false,
+            reducedMotion: true,
+          );
+          expect(
+            totalDiff(tab0, off),
+            greaterThan(16),
+            reason: '$theme dark=$dark must visibly render over plain surface',
+          );
+          expect(
+            totalDiff(tab0, tab2),
+            greaterThan(12),
+            reason: '$theme dark=$dark tab=0 and tab=2 must differ visually',
+          );
+        }
+        final contrastPixels = await sampleTheme(
+          theme: theme,
+          dark: false,
+          tab: 0,
+          highContrast: true,
+          reducedMotion: true,
+        );
+        final plainPixels = await sampleTheme(
+          theme: theme,
+          dark: false,
+          tab: 0,
+          aurora: false,
+          reducedMotion: true,
+        );
+        expect(totalDiff(contrastPixels, plainPixels), 0);
+
+        final fallbackPixels = await sampleTheme(
+          theme: theme,
+          dark: false,
+          tab: 0,
+          failLoad: true,
+          reducedMotion: true,
+        );
+        expect(fallbackPixels.length, 12);
+      }
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'cross-page position smoothly interpolates backdrop colors and AppShell shares one backdrop',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final boundary = GlobalKey();
+      final position = ValueNotifier<double>(0.0);
+      addTearDown(position.dispose);
+
+      for (final theme in [
+        BackdropTheme.diffusion,
+        BackdropTheme.grainGradient,
+      ]) {
+        position.value = 0.0;
+        final container = ProviderContainer(
+          overrides: [
+            ambientMotionEnabledProvider.overrideWithValue(false),
+            currentAppearanceProvider.overrideWithValue(
+              const AppearanceSettings(aurora: true, paperTexture: false),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: appTheme(Brightness.light),
+              home: RepaintBoundary(
+                key: boundary,
+                child: QuietBackdrop(
+                  tab: 0,
+                  theme: theme,
+                  positionListenable: position,
+                  positionResolver: () => position.value,
+                  child: const SizedBox.expand(),
+                ),
+              ),
+            ),
+          ),
+        );
+        if (theme != BackdropTheme.diffusion) {
+          await tester.runAsync(
+            () => container.read(backdropProgramProvider(theme).future),
+          );
+        }
+        await tester.pump();
+
+        Future<List<int>> sampleAt(double pos) async {
+          position.value = pos;
+          await tester.pump();
+          return (await tester.runAsync(() async {
+            final render =
+                boundary.currentContext!.findRenderObject()!
+                    as RenderRepaintBoundary;
+            final image = await render.toImage();
+            final bytes = await image.toByteData(
+              format: ui.ImageByteFormat.rawRgba,
+            );
+            final colors = <int>[];
+            for (final point in [
+              const Offset(.20, .20),
+              const Offset(.80, .35),
+              const Offset(.22, .72),
+              const Offset(.78, .82),
+            ]) {
+              final offset =
+                  ((point.dy * image.height).floor() * image.width +
+                      (point.dx * image.width).floor()) *
+                  4;
+              colors.addAll(bytes!.buffer.asUint8List(offset, 3));
+            }
+            image.dispose();
+            return colors;
+          }))!;
+        }
+
+        final p0 = await sampleAt(0.0);
+        final pMid = await sampleAt(0.5);
+        final p1 = await sampleAt(1.0);
+        int diff(List<int> a, List<int> b) => [
+          for (var i = 0; i < a.length; i++) (a[i] - b[i]).abs(),
+        ].reduce((x, y) => x + y);
+
+        expect(diff(p0, pMid), greaterThan(0));
+        expect(diff(pMid, p1), greaterThan(0));
+        expect(diff(p0, p1), greaterThan(0));
+      }
+
+      await tester.pumpWidget(
+        app(
+          MemoryRepository(weeklyPreviewData(DateTime.now())),
+          libraryReader: _AtmosphereLibraryReader(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(QuietBackdrop), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('tab-2')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(find.byType(QuietBackdrop), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(tester.binding.transientCallbackCount, 0);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 }

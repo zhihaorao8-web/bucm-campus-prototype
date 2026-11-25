@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'backdrop_styles.dart';
+
+export 'backdrop_styles.dart';
 
 /// Fixed identity and fallback colors. Widgets use ColorScheme for semantic
 /// text/status colors; ambient and course palettes preserve the approved look.
@@ -108,4 +111,11 @@ abstract final class AppPalette {
             _ => todayLightHues,
           };
   }
+
+  static List<Color> ambientHuesAt(bool dark, double position) =>
+      BackdropStyleSpec.forPosition(
+        BackdropTheme.diffusion,
+        dark,
+        position,
+      ).colors;
 }

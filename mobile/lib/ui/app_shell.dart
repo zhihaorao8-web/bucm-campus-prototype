@@ -241,9 +241,13 @@ class _AppShellState extends ConsumerState<AppShell>
     final stored = ref.watch(scheduleProvider);
     final appearance = ref.watch(currentAppearanceProvider);
     return Scaffold(
-      body: MiuixScaffold(
-        containerColor: Colors.transparent,
-        content: (dockInsets) {
+      body: QuietBackdrop(
+        tab: tab,
+        positionListenable: navigation,
+        positionResolver: () => navigationPosition(navigation, tab),
+        child: MiuixScaffold(
+          containerColor: Colors.transparent,
+          content: (dockInsets) {
           _dockBottomInset = dockInsets.bottom;
           return GestureDetector(
           onHorizontalDragStart:
@@ -289,21 +293,17 @@ class _AppShellState extends ConsumerState<AppShell>
                   controller: navigation,
                   index: index,
                   selected: tab,
-                  child: QuietBackdrop(
-                    tab: index,
-                    child: MiuixScaffold(
-                      key: ValueKey('main-page-scaffold-$index'),
-                      containerColor: Colors.transparent,
-                      contentWindowInsets: EdgeInsets.fromLTRB(
-                        dockInsets.left,
-                        MediaQuery.paddingOf(context).top,
-                        dockInsets.right,
-                        dockInsets.bottom,
-                      ),
-                      topBar: navigationHeader(index, stored, appearance),
-                      content: (insets) =>
-                          navigationPage(index, insets, stored),
+                  child: MiuixScaffold(
+                    key: ValueKey('main-page-scaffold-$index'),
+                    containerColor: Colors.transparent,
+                    contentWindowInsets: EdgeInsets.fromLTRB(
+                      dockInsets.left,
+                      MediaQuery.paddingOf(context).top,
+                      dockInsets.right,
+                      dockInsets.bottom,
                     ),
+                    topBar: navigationHeader(index, stored, appearance),
+                    content: (insets) => navigationPage(index, insets, stored),
                   ),
                 ),
             ],
@@ -319,8 +319,9 @@ class _AppShellState extends ConsumerState<AppShell>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget navigationHeader(
     int index,
