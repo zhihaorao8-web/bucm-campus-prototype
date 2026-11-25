@@ -1,6 +1,6 @@
 # 界面与交互开发规范
 
-更新：2026-11-24。适用当前Flutter Android课表、录播与图书馆座位预约，保留0.3已验收的MIUIX结构、柔光亚克力和B1标题。本文是当前组件规范；需求见[PROJECT_BRIEF](docs/PROJECT_BRIEF.md)，公共计算见[ARCHITECTURE](docs/ARCHITECTURE.md)，验证证据见[STATUS](docs/STATUS.md)，独有模拟器采样见[UI验证](docs/research/UI_VALIDATION.md)。旧UI计划已精简，不覆盖本文。
+更新：2026-11-25。适用当前Flutter Android课表、录播与图书馆座位预约，保留0.3已验收的MIUIX结构、柔光亚克力和B1标题。本文是当前组件规范；需求见[PROJECT_BRIEF](docs/PROJECT_BRIEF.md)，公共计算见[ARCHITECTURE](docs/ARCHITECTURE.md)，验证证据见[STATUS](docs/STATUS.md)，独有模拟器采样见[UI验证](docs/research/UI_VALIDATION.md)。旧UI计划已精简，不覆盖本文。
 
 ## 开发顺序与参数来源
 
@@ -88,6 +88,17 @@ AppActionButton的busy/权限决定仍由调用方传onPressed。等待时禁用
 ## 图标资源与开发使用
 
 49个功能图标已统一为IconMCP离线outline SVG（24px、1.75描边、radius 2）；按主题/实际尺寸绘制，操作保留触控区与语义。新增图标可用已配置MCP的search_icons/get_icon检索并本地打包，不在运行时依赖MCP或下载图标。来源、摘要与许可见[ICON_SYSTEM](docs/ICON_SYSTEM.md)和[THIRD_PARTY](docs/THIRD_PARTY.md)；启动品牌图与学校网页图标不随功能图标替换。
+
+## Pen（pen.dev）设计媒介与同步规范
+
+本项目前端页面设计与视觉改版以 **pen.dev（Pen）** 为首要媒介，通过 `pencil` MCP 与本地项目设计稿 [bucm-campus.pen](design/bucm-campus.pen) 协作。
+
+| 维度 | 规范要求 |
+|---|---|
+| 主设计稿与画布结构 | 项目主稿为 [bucm-campus.pen](design/bucm-campus.pen)，包含 `Foundations · 视觉令牌与色板`（Light/Dark 语义变量、色板、字阶、间距与圆角）、顶部公共组件区（`StatusBar`、`GlassNavigation`、`TodayQuoteBanner`、`FocusCourseCard`、`CourseRow`、`SegmentSwitch`、`SettingsRow`、`ScheduleSyncCard`、`LibrarySeatChip`）、`01`–`07` 浅色核心页面、`08`–`10` 深色核心页面及 `11 · 四套背景主题预览`。 |
+| 先设计后编码 | 新增前端页面或视觉改版前，先通过 `pencil` MCP 在 Pen 中完成布局、组件复用、浅/深色与态别设计，并在 Pen 桌面客户端呈现给用户审核；审核通过后再按本文与 `mobile/lib/design` 令牌落 Flutter 代码。代码侧有视觉微调时须同步回 `.pen` 稿保持一致。 |
+| 加密文件操作边界 | `.pen` 为加密设计格式，仅允许通过 `pencil` MCP 工具（`get_app_state`、`execute`、`save` 等）读写与截图自检，**严禁**使用文件读取或文本检索工具直接读取/解析 `.pen` 内容。 |
+| 隐私与样本约束 | 画布与导出内容**仅允许使用合成示例数据**（如 `demo_schedule.dart` 与 `QuoteService.localQuotes`），严禁写入真实课表、学校会话、学号姓名、凭据或设备截图。 |
 
 ## Stitch 辅助设计与原型边界
 

@@ -38,6 +38,7 @@ Codex 在派单前核对当前会话的技能目录和可调用工具，Antigrav
 | Flutter 运行时诊断 | Antigravity 在 Dart MCP 已连接合成数据 debug 应用时，可用 `widget_inspector`、`get_runtime_errors`、热重载等能力 | 记录应用基线及连接状态，运行时操作与构建由约定的一方串行执行 |
 | 组件预览 | Antigravity 可选 `flutter-add-widget-preview`，先核对锁定 SDK、插件和组件依赖是否支持 | 预览记录注明尺寸、字号、主题和替身，Web 预览涉及原生插件时须明确缺口，Android 真实入口继续验证 |
 | 视觉审阅与动效 | 两方可参考 `frontend-stack` 的按阶段选技能原则，按需参考 `impeccable`、`ui-ux-pro-max`、`emil-design-eng` | Flutter 参数与验收采用 DESIGN 和公共令牌，Web 专用 CSS、字体、布局规则按适用性取舍 |
+| Pen（pen.dev）前端设计与客户端评审 | Antigravity 优先通过 `pencil` MCP 在 `design/bucm-campus.pen` 完成视觉令牌、组件复用与页面设计，并在 Pen 桌面客户端向用户呈现与审核，通过后再落 Flutter 代码 | 仅使用合成示例数据；`.pen` 为加密设计文件，仅经 `pencil` MCP 读写，不直接以文本读取/检索 |
 | 图标素材 | Codex 可通过 IconMCP 检索与获取，按[图标流程](ICON_SYSTEM.md)登记并打包离线资产，Antigravity 优先复用 `AppIcons` | 缺少图标时回传语义及尺寸，由素材获取方交付业务别名、来源和许可 |
 | 学校协议、平台与异常路径 | Codex 复用现有代码、具名检查和必要的 REA、抓取或设备工具诊断，按实际问题选工具 | 接口、认证、账号隔离和平台行为的调整由 Codex 审核，学校验证遵守本人授权会话规则 |
 | 大日志与上下文 | Antigravity 可选 context-mode 提炼日志，两方均保留完整本地日志和退出码 | 回传原始日志位置、关键错误与结论依据，摘要支持追溯 |
@@ -64,6 +65,8 @@ Codex 在派单前核对当前会话的技能目录和可调用工具，Antigrav
 委派后的等待、恢复和取消遵循 T3 返回的 `next`。任务失败先核对错误，恢复时明确已完成部分与仍需交付内容。废弃或替换运行中的任务先取消，新的独立复核使用新的 `delegate_task`。小型审阅问题由 Codex 直接修复并定向验证。
 
 **验收。** Codex 按[分层测试](TESTING.md)选择受影响检查。设计稿按设计规范审阅；实现后的页面按同一规范核对真实入口、浅深色、窄屏大字、无障碍降级及适用的加载、空、错误或取消状态。分别记录设计审阅、合成测试、设备观察与用户验收。
+
+**Pen 设计媒介。** 已确认阶段涉及前端页面设计或视觉改版时，优先通过 `pencil` MCP 在 [bucm-campus.pen](../design/bucm-campus.pen) 完成设计并在 Pen 桌面客户端向用户呈现与审核，通过后再落 Flutter 实现，详见[设计规范 — Pen（pen.dev）设计媒介与同步规范](../DESIGN.md#penpen-dev设计媒介与同步规范)。
 
 **Stitch 辅助原型。** 已确认阶段涉及新页面或较大视觉改版时，Antigravity 可按[设计规范 — Stitch 辅助设计与原型边界](../DESIGN.md#stitch-辅助设计与原型边界)在编码前选用 Stitch 做合成数据视觉比稿；Stitch 产出仅作原型参考，本地 `.stitch/` 产物不提交，不得替代 Flutter 组件复用、Codex 技术审核与分阶段验收。
 

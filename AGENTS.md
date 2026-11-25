@@ -17,6 +17,7 @@
 - 在 T3 Code 中，Codex 是主 agent，负责拆解任务、业务与平台实现、集成和最终技术审核。已确认阶段涉及 Flutter 页面设计时，由 Codex 委派 Antigravity 子 agent；仅在任务单明确包含 UI 实现时才写页面代码。具体分工、派单模板和交付顺序见[多 agent 协作](docs/PROJECT_MANAGEMENT.md#t3-code-多-agent-协作)。
 - 所有后续开发必须遵守`docs/PROJECT_MANAGEMENT.md`的长期流程，不限于本轮工程优化。开工先读该规范及`docs/PROJECT_BRIEF.md`（生效需求）、`docs/DEVELOPMENT_PLAN.md`（当前进度）、`docs/STATUS.md`（实际证据）；修改UI同时读`DESIGN.md`，实现前检索`docs/ARCHITECTURE.md`及已有代码。
 - UI修改遵循DESIGN.md的组件/状态/验收表；固定配色及公共尺寸、动效从mobile/lib/design读取，材质降级复用AppVisualPolicy，不在页面复制主题或交互算法。新增变体先扩展公共组件并更新规范。
+- 前端页面设计与视觉改版以 **pen.dev（Pen）** 为首要媒介：先通过 `pencil` MCP 在项目设计稿 `design/bucm-campus.pen` 中完成视觉令牌、组件复用与页面设计，并在 Pen 桌面客户端向用户呈现与审核；审核通过后再落 Flutter 代码，并在代码视觉调整后同步回 `.pen` 稿。`.pen` 为加密设计文件，仅通过 `pencil` MCP 读写（不直接用文本工具读取/检索），画布仅允许使用合成示例数据，严禁写入真实课表、学校会话、学号姓名、凭据或设备截图。
 - 使用 Stitch MCP / `stitch-skills` 辅助视觉原型或独立 Web 展示页时，遵守 `DESIGN.md` 中的「Stitch 辅助设计与原型边界」：严禁覆盖根目录 `DESIGN.md`（Stitch 语义文档与临时产物隔离在本地 `.stitch/`），严禁上传真实课表、学校会话、凭据或设备截图，主线 Flutter 工程不直接合入 React/RN 生成代码。
 - 原始Markdown提示词完整保存在`docs/requirements/ORIGINAL_PROMPT.md`，作为历史需求来源。与后续用户确认冲突的内容按`docs/PROJECT_BRIEF.md`中的决策表执行，不重新启用保存密码、静默重登、明文HTTP或第一版以外模块。
 - 项目长期目标是校园生活聚合应用；当前仅推进已确认的Flutter Android课表、录播与图书馆座位预约。图书馆其他服务、实际直播、提醒、社区以及iOS/Windows交付均不得因原始提示词提及而自动进入开发范围。
