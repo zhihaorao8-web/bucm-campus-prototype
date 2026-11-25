@@ -47,6 +47,11 @@ abstract final class AppMotion {
   static const routeExit = Duration(milliseconds: 220);
   static const ambient = Duration(seconds: 10);
   static const ambientChange = Duration(milliseconds: 900);
+  static const Curve ambientChangeCurve = Interval(
+    0.22,
+    1.0,
+    curve: Cubic(0.32, 0.0, 0.12, 1.0),
+  );
   static const title = Duration(milliseconds: 1350);
   static const navigationCurve = Cubic(.23, 1, .32, 1);
   static const segmentCurve = Curves.easeOutCubic;

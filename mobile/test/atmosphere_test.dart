@@ -765,4 +765,158 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  testWidgets(
+    'tab change holds previous backdrop color briefly then transitions smoothly with ambientChangeCurve',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final boundary = GlobalKey();
+      final tab = ValueNotifier<int>(0);
+      addTearDown(tab.dispose);
+
+      Future<List<int>> samplePixels() async => (await tester.runAsync(() async {
+        final render =
+            boundary.currentContext!.findRenderObject()!
+                as RenderRepaintBoundary;
+        final image = await render.toImage();
+        final bytes = await image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        );
+        final colors = <int>[];
+        for (final point in [
+          const Offset(.20, .20),
+          const Offset(.80, .35),
+          const Offset(.22, .72),
+          const Offset(.78, .82),
+        ]) {
+          final offset =
+              ((point.dy * image.height).floor() * image.width +
+                  (point.dx * image.width).floor()) *
+              4;
+          colors.addAll(bytes!.buffer.asUint8List(offset, 3));
+        }
+        image.dispose();
+        return colors;
+      }))!;
+
+      int diff(List<int> a, List<int> b) => [
+        for (var i = 0; i < a.length; i++) (a[i] - b[i]).abs(),
+      ].reduce((x, y) => x + y);
+
+      for (final theme in [
+        BackdropTheme.diffusion,
+        BackdropTheme.grainGradient,
+      ]) {
+        tab.value = 0;
+        final container = ProviderContainer(
+          overrides: [
+            ambientMotionEnabledProvider.overrideWithValue(false),
+            currentAppearanceProvider.overrideWithValue(
+              const AppearanceSettings(aurora: true, paperTexture: false),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: appTheme(Brightness.light),
+              home: ValueListenableBuilder<int>(
+                valueListenable: tab,
+                builder: (context, value, _) => RepaintBoundary(
+                  key: boundary,
+                  child: QuietBackdrop(
+                    tab: value,
+                    theme: theme,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        if (theme != BackdropTheme.diffusion) {
+          await tester.runAsync(
+            () => container.read(backdropProgramProvider(theme).future),
+          );
+        }
+        await tester.pump();
+        final before = await samplePixels();
+
+        tab.value = 3;
+        await tester.pump();
+        final atZero = await samplePixels();
+        expect(diff(before, atZero), 0);
+
+        await tester.pump(const Duration(milliseconds: 150));
+        final duringPause = await samplePixels();
+        expect(diff(before, duringPause), 0);
+
+        await tester.pump(const Duration(milliseconds: 350));
+        final midBloom = await samplePixels();
+        expect(diff(before, midBloom), greaterThan(0));
+
+        await tester.pumpAndSettle();
+        final settled = await samplePixels();
+        expect(diff(before, settled), greaterThan(0));
+        expect(diff(midBloom, settled), greaterThan(0));
+        expect(tester.binding.transientCallbackCount, 0);
+
+        tab.value = 2;
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        tab.value = 1;
+        await tester.pumpAndSettle();
+        expect(tester.binding.transientCallbackCount, 0);
+        expect(tester.takeException(), isNull);
+      }
+
+      await tester.pumpWidget(const SizedBox());
+      tab.value = 0;
+      final reducedContainer = ProviderContainer(
+        overrides: [
+          ambientMotionEnabledProvider.overrideWithValue(false),
+          currentAppearanceProvider.overrideWithValue(
+            const AppearanceSettings(aurora: true, paperTexture: false),
+          ),
+        ],
+      );
+      addTearDown(reducedContainer.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: reducedContainer,
+          child: MaterialApp(
+            theme: appTheme(Brightness.light),
+            home: MediaQuery(
+              data: const MediaQueryData(disableAnimations: true),
+              child: ValueListenableBuilder<int>(
+                valueListenable: tab,
+                builder: (context, value, _) => RepaintBoundary(
+                  key: boundary,
+                  child: QuietBackdrop(
+                    tab: value,
+                    theme: BackdropTheme.diffusion,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final reducedBefore = await samplePixels();
+      tab.value = 3;
+      await tester.pump();
+      final reducedAfter = await samplePixels();
+      expect(diff(reducedBefore, reducedAfter), greaterThan(0));
+      expect(tester.binding.transientCallbackCount, 0);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 }

@@ -77,8 +77,9 @@ class QuietSliverAppBar extends ConsumerWidget {
 }
 
 /// Only Today uses a continuous ambient clock; reading pages stay still.
-/// When [positionListenable] and [positionResolver] are supplied, background
-/// colors and parameters interpolate continuously across page transitions.
+/// Tab changes animate via [AppMotion.ambientChange] and
+/// [AppMotion.ambientChangeCurve] (brief pause then color bloom), while explicit
+/// [positionListenable] and [positionResolver] support direct position scrubbing.
 class QuietBackdrop extends ConsumerStatefulWidget {
   const QuietBackdrop({
     super.key,
@@ -98,8 +99,11 @@ class QuietBackdrop extends ConsumerStatefulWidget {
 }
 
 class _QuietBackdropState extends ConsumerState<QuietBackdrop>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController phase;
+  late final AnimationController _tabTransition;
+  late double _fromPos;
+  late double _toPos;
   double _lastPhaseValue = 0;
   double _elapsedSeconds = 0;
   ui.FragmentProgram? _program;
@@ -110,8 +114,15 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
   @override
   void initState() {
     super.initState();
+    _fromPos = widget.tab.toDouble();
+    _toPos = _fromPos;
     phase = AnimationController(vsync: this, duration: AppMotion.ambient)
       ..addListener(_advanceClock);
+    _tabTransition = AnimationController(
+      vsync: this,
+      duration: AppMotion.ambientChange,
+      value: 1.0,
+    );
     foreground =
         WidgetsBinding.instance.lifecycleState == null ||
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
@@ -127,6 +138,30 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
   }
 
   @override
+  void didUpdateWidget(QuietBackdrop oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.positionResolver != null) {
+      _tabTransition.stop();
+      _fromPos = _toPos = widget.tab.toDouble();
+      return;
+    }
+    if (widget.tab != oldWidget.tab) {
+      final current = _resolvePosition();
+      _fromPos = current;
+      _toPos = widget.tab.toDouble();
+      final instant =
+          MediaQuery.disableAnimationsOf(context) ||
+          !TickerMode.valuesOf(context).enabled;
+      if (instant) {
+        _fromPos = _toPos;
+        _tabTransition.value = 1.0;
+      } else {
+        _tabTransition.forward(from: 0.0);
+      }
+    }
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     foreground = state == AppLifecycleState.resumed;
     if (mounted) setState(() {});
@@ -136,12 +171,18 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
   void dispose() {
     _shader?.dispose();
     WidgetsBinding.instance.removeObserver(this);
+    _tabTransition.dispose();
     phase.dispose();
     super.dispose();
   }
 
-  double _resolvePosition() =>
-      (widget.positionResolver?.call() ?? widget.tab.toDouble()).clamp(0.0, 3.0);
+  double _resolvePosition() {
+    if (widget.positionResolver != null) {
+      return widget.positionResolver!().clamp(0.0, 3.0);
+    }
+    final t = AppMotion.ambientChangeCurve.transform(_tabTransition.value);
+    return ui.lerpDouble(_fromPos, _toPos, t)!.clamp(0.0, 3.0);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -180,10 +221,18 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
       _shaderFailed = false;
     }
 
+    if ((policy.reducedMotion || !TickerMode.valuesOf(context).enabled) &&
+        _tabTransition.isAnimating) {
+      _fromPos = _toPos;
+      _tabTransition.value = 1.0;
+    }
+
     final useShader = _shader != null && !_shaderFailed;
-    final repaint = widget.positionListenable == null
-        ? phase
-        : Listenable.merge([phase, widget.positionListenable!]);
+    final repaint = Listenable.merge([
+      phase,
+      _tabTransition,
+      if (widget.positionListenable != null) widget.positionListenable!,
+    ]);
 
     return Stack(
       fit: StackFit.expand,

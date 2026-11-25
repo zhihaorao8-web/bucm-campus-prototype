@@ -24,7 +24,7 @@
 
 | 场景 | 必须复用的入口 | 交互/布局要求 | 代表验收 |
 |---|---|---|---|
-| 主页面/背景 | AppShell、QuietBackdrop、GlassNavigation | 今日/课表/图书馆/设置四个目的地；`AppShell` 在 `PageView` 后共享单一 `QuietBackdrop`，随分页位置连续插值背景色板与参数；`QuietBackdrop` 支持「柔和弥散（默认）/ 流光丝绸雾 / 极光柔幕 / 晨昏地平线」4 套主题；非当前页隔离触控/焦点/语义/ticker；B1用于今日/课表/图书馆展开标题，折叠标题及设置用系统字体；图书馆切入后惰性加载 | navigation_motion、atmosphere、ui |
+| 主页面/背景 | AppShell、QuietBackdrop、GlassNavigation | 今日/课表/图书馆/设置四个目的地；`AppShell` 在 `PageView` 后共享单一 `QuietBackdrop`，切页时经 `AppMotion.ambientChange`（900ms）与 `AppMotion.ambientChangeCurve`（约 200ms 短暂停顿后平滑显色，减少动画下即时切换）过渡背景色板与参数；`QuietBackdrop` 支持「柔和弥散（默认）/ 流光丝绸雾 / 极光柔幕 / 晨昏地平线」4 套主题；非当前页隔离触控/焦点/语义/ticker；B1用于今日/课表/图书馆展开标题，折叠标题及设置用系统字体；图书馆切入后惰性加载 | navigation_motion、atmosphere、ui |
 | 设置子页 | SettingsScaffold、settingsGroup、AppArrowPreference、AppearancePage | 顶栏遮挡登记到滚动视口，末项可滚出底栏；保留返回和大字换行；`SettingsScaffold` 传入 `tab: 3` 与设置页子样式对齐；`AppearancePage` 提供「背景主题」选择器及关闭柔光停用逻辑，顶部 `ThemePhonePreview` 实时静帧预览所选主题；`PrivacyDataPage` 复用 `AppArrowPreference(destructive: true)` 区分危险本地删除与中性会话清理 | settings、appearance |
 | 课程阅读顶栏 | QuietSliverAppBar | 与主/设置顶栏共享AppHeader计算，不覆盖可见内容或系统栏前景 | atmosphere、settings |
 | 焦点大卡 | AcrylicSurface、FocusCourseCard | 仅局部裁剪模糊；优先显示此刻/下一节、开始/结束及授课分段进度 | today_focus、quiet_design |

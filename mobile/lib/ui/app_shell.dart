@@ -242,9 +242,7 @@ class _AppShellState extends ConsumerState<AppShell>
     final appearance = ref.watch(currentAppearanceProvider);
     return Scaffold(
       body: QuietBackdrop(
-        tab: tab,
-        positionListenable: navigation,
-        positionResolver: () => navigationPosition(navigation, tab),
+        tab: _targetTab ?? tab,
         child: MiuixScaffold(
           containerColor: Colors.transparent,
           content: (dockInsets) {
