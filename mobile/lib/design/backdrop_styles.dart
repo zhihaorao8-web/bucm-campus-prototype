@@ -23,6 +23,13 @@ enum BackdropTheme {
     BackdropTheme.aurora => '极光柔幕',
     BackdropTheme.horizonGradient => '晨昏地平线',
   };
+
+  String get description => switch (this) {
+    BackdropTheme.diffusion => '柔和四色光场弥散，经典静谧质感',
+    BackdropTheme.grainGradient => '域扭曲丝绸柔雾，四页独立色带与细腻质感',
+    BackdropTheme.aurora => '柔和垂幕光带，浅色薄墨、深色微光',
+    BackdropTheme.horizonGradient => '弧形天际线渐变，顶栏柔光、列表区极净',
+  };
 }
 
 /// Resolved base, palette stops, and shader geometry parameters for a given

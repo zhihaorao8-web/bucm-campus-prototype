@@ -8,7 +8,7 @@
 
 | 层次 | 代码入口 | 使用规则 |
 |---|---|---|
-| 固定配色 | [app_palette.dart](mobile/lib/design/app_palette.dart) | 默认强调色、浅深色fallback、课程/环境光色板。主题和默认外观引用同一强调色值 |
+| 固定配色 | [app_palette.dart](mobile/lib/design/app_palette.dart) / [backdrop_styles.dart](mobile/lib/design/backdrop_styles.dart) | 默认强调色、浅深色fallback、课程/环境光色板与多背景主题四页子样式色板（`BackdropTheme` / `BackdropStyleSpec`）。主题和默认外观引用同一强调色值 |
 | 基础/语义参数 | [app_tokens.dart](mobile/lib/design/app_tokens.dart) | AppSpace间距、AppLayout安全布局/触控、AppType字阶、AppRadius圆角、AppMotion时长/曲线 |
 | 组件参数 | 同文件AppHeader、AppSurface、AppControl | 顶栏、不同密度材质、维护按钮按用途取值，不以相同数值推断相同用途 |
 | 主题语义 | [app_theme.dart](mobile/lib/ui/app_theme.dart) | 正文、表面、主操作、异常优先使用Theme.colorScheme/textTheme；MIUIX经MiuixThemeBridge同步 |
@@ -24,8 +24,8 @@
 
 | 场景 | 必须复用的入口 | 交互/布局要求 | 代表验收 |
 |---|---|---|---|
-| 主页面/背景 | AppShell、QuietBackdrop、GlassNavigation | 今日/课表/图书馆/设置四个目的地；同一分页时钟，独立滚动/折叠状态，非当前页隔离触控/焦点/语义/ticker；B1用于今日/课表/图书馆展开标题，折叠标题及设置用系统字体；图书馆切入后惰性加载 | navigation_motion、atmosphere、ui |
-| 设置子页 | SettingsScaffold、settingsGroup、AppArrowPreference | 顶栏遮挡登记到滚动视口，末项可滚出底栏；保留返回和大字换行；`PrivacyDataPage` 复用 `AppArrowPreference(destructive: true)` 区分危险本地删除与中性会话清理 | settings、appearance |
+| 主页面/背景 | AppShell、QuietBackdrop、GlassNavigation | 今日/课表/图书馆/设置四个目的地；`AppShell` 在 `PageView` 后共享单一 `QuietBackdrop`，随分页位置连续插值背景色板与参数；`QuietBackdrop` 支持「柔和弥散（默认）/ 流光丝绸雾 / 极光柔幕 / 晨昏地平线」4 套主题；非当前页隔离触控/焦点/语义/ticker；B1用于今日/课表/图书馆展开标题，折叠标题及设置用系统字体；图书馆切入后惰性加载 | navigation_motion、atmosphere、ui |
+| 设置子页 | SettingsScaffold、settingsGroup、AppArrowPreference、AppearancePage | 顶栏遮挡登记到滚动视口，末项可滚出底栏；保留返回和大字换行；`SettingsScaffold` 传入 `tab: 3` 与设置页子样式对齐；`AppearancePage` 提供「背景主题」选择器及关闭柔光停用逻辑，顶部 `ThemePhonePreview` 实时静帧预览所选主题；`PrivacyDataPage` 复用 `AppArrowPreference(destructive: true)` 区分危险本地删除与中性会话清理 | settings、appearance |
 | 课程阅读顶栏 | QuietSliverAppBar | 与主/设置顶栏共享AppHeader计算，不覆盖可见内容或系统栏前景 | atmosphere、settings |
 | 焦点大卡 | AcrylicSurface、FocusCourseCard | 仅局部裁剪模糊；优先显示此刻/下一节、开始/结束及授课分段进度 | today_focus、quiet_design |
 | 普通/课程卡 | QuietCard、CourseSurface、CourseRow | 普通列表与dense周表分别选材质，不逐格加BackdropFilter；完整信息有详情入口 | week_grid、week_stack、course_interaction |
@@ -57,7 +57,7 @@ AppActionButton的busy/权限决定仍由调用方传onPressed。等待时禁用
 | 液态玻璃公共底座（阶段 1） | `LiquidGlassSurface`，圆角28、模糊10、边缘深14、折射5逻辑像素，参数集中于 `AppLiquidGlass`；限有界局部背景，前景在滤镜之后绘制，`ImageFilter.blur` 使用 `TileMode.clamp`；经 `BackdropTransitionBuilder` / `BackdropSuspensionScope` / `BackdropSuspensionAnimation` 在路由切换、Hero 飞行与局部透明渐变期间暂停背景模糊与着色器采样，保持浅透底色/边框且不嵌套 `BackdropFilter` / 重复 `ClipRRect` | 复用玻璃/模糊与对比度策略；Impeller 不支持、加载中或加载失败回落普通模糊；减少动画保留静态材质；路由或透明过渡期间暂挂光学读取、落定后恢复。`liquid_glass_test`、`course_interaction_test` 与 Android 同名合成专项验证 |
 | 课程/播放路由 | 280ms进入/220ms返回；共享既有导航缓出曲线；`CourseCardHero.flightShuttleBuilder`、`QuietSliverAppBar`、`QuietSheet` 与主/设置 `MiuixTopAppBar` 在路由转场与 Hero 飞行期间暂停 `BackdropFilter` | 减少动画即时，键盘播放不做按钮扩张；保持原生返回；转场期间保留半透明底色与前景不闪白，落定后恢复模糊 |
 | 图书馆空间转场 | L1↔L2 楼层景深进退（`AppMotion.routeEnter` 280ms / `AppMotion.routeExit` 220ms，`AppMotion.navigationCurve`）；L2↔L3 以选区 `libraryZoneAnchor` 为缩放枢轴推进/退回（280ms/220ms，退回 L2 时脉冲高亮刚浏览区域并在 L1 标记`刚才查看`）；L3 平面图↔网格共享轴平滑切换（`AppMotion.segment` 220ms，`AppMotion.segmentCurve`）；仅使用 GPU `Transform` + `Opacity` 并隔离旧视图交互、焦点与语义 | 减少动画下全部层级与视图切换即时完成；无坐标轮廓与过渡中旧视图均不可点击或聚焦 |
-| 今日柔光/标题 | 今日页10秒环境光，今日/课表/图书馆自研B1标题1350ms描边；其他阅读页静态光场 | 前台+可见才持续运行；减少动画保留静态，高对比度关闭装饰 |
+| 今日柔光/标题 | 今日页10秒环境光（跨周期单调时钟），今日/课表/图书馆自研B1标题1350ms描边；其余阅读页静态光场；3 套可选单 Pass `FragmentProgram` 背景（`backdrop_{grain_gradient,aurora,horizon_gradient}.frag`）内置程序化微粒替代 `_PaperPainter` | 前台+可见才持续运行；减少动画保留静态，高对比度关闭装饰；Shader 加载中或异常回落多色渐变与普通纸纹 |
 
 减少动画与透明材质是不同偏好：减少动画不自动移除静态材质。抽屉在传统焦点模式下即时出现。系统字号/80%–120%整体缩放继续生效；后台/不可见页面不能靠动画维持活动。玻璃是Flutter视觉实现，不宣称系统原生折射。
 

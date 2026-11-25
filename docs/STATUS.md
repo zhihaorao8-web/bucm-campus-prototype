@@ -4,7 +4,7 @@
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
-| 背景主题与跨页渐变（阶段 1，`codex/backdrop-themes`） | 3 个单 Pass 着色器（`backdrop_grain_gradient.frag`、`backdrop_aurora.frag`、`backdrop_horizon_gradient.frag`）完成 Impeller/SkSL 编译注册，新增 `BackdropStyleSpec` 四页子样式与连续位置插值，升级 `QuietBackdrop`、`AppShell` 单一共享背景及 `SettingsScaffold(tab: 3)`；`flutter analyze --no-pub` 0 问题，`atmosphere` / `navigation_motion` / `liquid_glass` / `appearance` / `settings` / `ui` 6 套 78/78 通过。[阶段 1 记录](#2026-11-25-背景主题与跨页渐变阶段-1) | 阶段 2 外观设置 UI/持久化与 Android 模拟器/物理真机 GPU 目检及性能待验 |
+| 背景主题与跨页渐变（阶段 1–2，`codex/backdrop-themes`） | 阶段 1（`361273a`）已获审核通过；阶段 2 完成 `AppearanceSettings.backdropTheme`（`schema: 1` 向后兼容）、`QuietBackdrop` 读取配置、`AppearancePage` 「背景主题」选择器与实时静帧 `ThemePhonePreview` 并同步 `DESIGN.md`；`flutter analyze --no-pub` 0 问题，7 套受影响测试 89/89 通过。[阶段 2 记录](#2026-11-25-背景主题与跨页渐变阶段-2) | Android 模拟器（GLES）与物理真机（Vulkan）整页渲染目检及功耗待验 |
 | 0.41.1 修复与发布（`main@b87784a2`） | PR #6 已合入 `main` 并公开预发布 `v0.41.1`（`0.41.1/code15`，保留 `v0.41` 标签与附件不变）。修复 `v0.41` 点击课程卡片转场/Hero/周日切换全屏圆角黑块；候选全量 `--all`（52 默认套 424/9/0、直取 23/23、`report-f87c999806824ec5b3ca4697dfc5cfd7.json`）、精确 `main` CI `45400708516`、隔离 R8 XLS `1/1`、可信签名 `release` 双包（`9170362e...`/`57d96e6d...`）、模拟器 `release` 抽查及 4 份远端附件大小/SHA-256 均核对通过。[0.41.1 发布记录](releases/0.41.1.md) · [修复详情](#2026-11-24-液态玻璃转场黑块修复) | 兼容开发签名预发布；真机 Vulkan 实测与性能功耗等独立待验 |
 | 0.41 集成与发布（`main@8107fed`） | PR #4 已合入，校园账号登录、设置重排、课表/录播恢复与液态玻璃阶段1–3随v0.41预发布。精确 `quality`、`dual-preview`、隔离R8 1/1、可信签名双包及四份远端摘要均通过。[0.41发布记录](releases/0.41.md) | 兼容开发签名预发布；真机性能、Vulkan及学校整页等独立待验 |
 | 设置页重排（阶段 1–3，已审核通过并合入 `main`） | 阶段 1（`d685d9e`）、阶段 2（`b096c94`、`859bdd4`）与阶段 3（`40983d6`，用户已确认“审核通过”）均已审核通过；阶段 3 移除设置页图书馆快捷卡及空分组并同步 `DESIGN.md` / `ARCHITECTURE.md`；干净工作树 `flutter analyze --no-pub` 0 问题、7 套受影响测试 106/106 全通过；`Pixel_8_API_36`（`0.4`/code13 debug APK `99e9f735`）覆盖浅/深色、`320dp` `1.5x/2.0x` 换行与末项清栏、三子页往返与底栏直达「图书馆」；2026-11-22 在 `04a27af` 通过 `python scripts/check.py --all` 全量宿主检查。[阶段 3 记录](#2026-11-22-设置页重排阶段-3导航收尾与整页验收) | 物理真机整页目检与完整 TalkBack 仍待另行验收 |
@@ -16,6 +16,15 @@
 | 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
 | 学校链路 | 模拟器上的 WebVPN 扫码后恢复课表自动导入已通过；WebVPN 录播修复版（`69c83f6`）在模拟器通过原任务教学平台认证回跳、权限重验、原生双流短时播放及本机进度保存；用户确认真机上人工实际听音质量与完整课时播放均已验证通过（无需重验）。修复版 XLS 和 DOM 各 31 条均与独立官方导出吻合，并通过单周及切换时的旧课表保留测试。直连目录、短时播放和续播已有分项样本。[课表复验](#2026-11-23-课表读取修复) · [录播复验](#2026-11-23-录播-webvpn-回跳验收) | 水印组合、门户直连回跳、真实会话失效、其余物理真机项及 7 天会话待验。[录播复测记录](#2026-11-23-录播-webvpn-回跳验收) |
 | 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）、7B（`9d5d2bd`）与 7C（`b4227e5`）已全部获用户审核通过；三级渐进空间选座及顶栏 B1 统一阶段 8A（`cf0189b`）、8B（`bf2e2e2`）、8C（`6c47522`）与 8D（`ff716b2`）已全部获用户审核通过，通过主机变更检查（`report-fb07fac86c6944828ac2fa41d4fb9608.json`）与 Pixel 8 API 36 真实校园会话深/浅色只读验收（0 POST 写入） | 真实退出会话已在模拟器验证，物理真机提交、查单及取消另行验收 |
+
+## 2026-11-25 背景主题与跨页渐变阶段 2
+
+- **范围与实现**：基于阶段 1 提交 `361273a`（用户回复「继续」）。在 `mobile/lib/design/backdrop_styles.dart` 新增 `BackdropTheme.description`；在 `mobile/lib/application/appearance_controller.dart` 为 `AppearanceSettings` 增补向后兼容持久化字段 `backdropTheme`（保留 `schema: 1`，缺省自动回落 `BackdropTheme.diffusion`，非法字符串抛出 `FormatException`）；`QuietBackdrop` 默认读取 `settings.backdropTheme`；在 `mobile/lib/ui/appearance_page.dart` 新增「背景主题」选择项（带 `_BackdropThemeSwatch` 渐变圆环、关闭 `左上角极光` 时自动停用）并将 `ThemePhonePreview` 升级为绑定 `TickerMode(enabled: false)` + `QuietBackdrop` 的实时静帧预览；同步 `DESIGN.md` 组件、参数与动效/降级规范。
+- **宿主检查**：
+  - `..\build\toolchain\flutter\bin\flutter.bat analyze --no-pub`：0 问题（2.7s）。
+  - `..\build\toolchain\flutter\bin\flutter.bat test --no-pub test/appearance_test.dart test/atmosphere_test.dart test/navigation_motion_test.dart test/liquid_glass_test.dart test/settings_test.dart test/ui_test.dart test/quiet_design_test.dart`：89/89 全部通过，覆盖 `backdropTheme` 存取与旧文件向后兼容、`390×844` / `320×720`（`2.0x` 字号、深/浅色）弹窗选换与 `aurora` 开关联动，以及 `QuietBackdrop` 跟随 `currentAppearanceProvider.backdropTheme` 的像素变化。
+  - `python scripts/check.py --module docs` 与 `git diff --check`：文档链接与空白检查通过。
+- **未验证项**：Android 模拟器（GLES）与物理真机（Vulkan）整页渲染视觉、跨页滑动手感及 GPU 功耗表现。
 
 ## 2026-11-25 背景主题与跨页渐变阶段 1
 

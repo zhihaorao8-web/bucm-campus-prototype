@@ -7,7 +7,9 @@ import 'package:flutter_miuix/miuix.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/appearance_controller.dart';
 import '../platform/app_platform.dart';
+import 'quiet_backdrop.dart';
 import 'settings_scaffold.dart';
+import 'visual_policy.dart';
 
 const accentChoices = <int, String>{
   AppPalette.accentValue: 'MIUIX 蓝',
@@ -110,8 +112,10 @@ class AppearancePage extends ConsumerWidget {
       String summary,
       AppIconData icon,
       VoidCallback onTap, {
+      Key? key,
       bool enabled = true,
     }) => AppArrowPreference(
+      key: key,
       title: title,
       summary: summary,
       startAction: AppIcon(icon),
@@ -223,10 +227,46 @@ class AppearancePage extends ConsumerWidget {
         settingsGroup([
           toggle(
             '左上角极光',
-            '今日页柔光缓慢流转；减少动画时静止，高对比度时关闭',
+            '今日页柔光缓慢流转，切页时平滑渐变；减少动画时静止，高对比度时关闭',
             AppIcons.sun,
             p.aurora,
             (v, value) => v.copyWith(aurora: value),
+          ),
+          choice(
+            '背景主题',
+            p.aurora ? p.backdropTheme.label : '关闭柔光背景时停用',
+            AppIcons.palette,
+            () async {
+              final dark = Theme.of(context).brightness == Brightness.dark;
+              final selected = await showDialog<BackdropTheme>(
+                context: context,
+                builder: (context) => SimpleDialog(
+                  title: const Text('背景主题'),
+                  children: [
+                    for (final theme in BackdropTheme.values)
+                      ListTile(
+                        leading: _BackdropThemeSwatch(theme: theme, dark: dark),
+                        title: Text(theme.label),
+                        subtitle: Text(theme.description),
+                        selected: theme == p.backdropTheme,
+                        trailing: theme == p.backdropTheme
+                            ? const AppIcon(AppIcons.check)
+                            : null,
+                        onTap: () => Navigator.pop(context, theme),
+                      ),
+                  ],
+                ),
+              );
+              if (selected != null && context.mounted) {
+                await save(
+                  context,
+                  ref,
+                  (v) => v.copyWith(backdropTheme: selected),
+                );
+              }
+            },
+            key: const ValueKey('appearance-backdrop-theme'),
+            enabled: p.aurora,
           ),
           toggle(
             '宣纸微纹理',
@@ -373,67 +413,122 @@ class _ScaleSettingState extends ConsumerState<_ScaleSetting> {
   }
 }
 
-class ThemePhonePreview extends StatelessWidget {
-  const ThemePhonePreview({super.key});
+class _BackdropThemeSwatch extends StatelessWidget {
+  const _BackdropThemeSwatch({required this.theme, required this.dark});
+  final BackdropTheme theme;
+  final bool dark;
   @override
   Widget build(BuildContext context) {
+    final spec = BackdropStyleSpec.forTab(theme, dark, 0);
+    final colors = theme == BackdropTheme.diffusion
+        ? spec.colors.take(3).toList()
+        : spec.colors.length >= 4
+        ? [spec.colors[0], spec.colors[2], spec.colors[3]]
+        : spec.colors;
+    return ExcludeSemantics(
+      child: Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: colors,
+          ),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ThemePhonePreview extends ConsumerWidget {
+  const ThemePhonePreview({super.key});
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = Theme.of(context).colorScheme;
+    final settings = ref.watch(currentAppearanceProvider);
+    final policy = AppVisualPolicy.of(context, settings);
     return ExcludeSemantics(
       child: Container(
         width: 136,
         height: 246,
-        padding: const EdgeInsets.all(AppSpace.sm),
         margin: const EdgeInsets.symmetric(vertical: AppSpace.comfortable),
         decoration: BoxDecoration(
           color: c.surface,
           borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: c.outline, width: 1.2),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 16),
-            Text(
-              '校园课表',
-              style: TextStyle(fontSize: AppType.micro, color: c.onSurface),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              height: 42,
-              decoration: BoxDecoration(
-                color: c.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            const SizedBox(height: 7),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: c.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.card - 1),
+          child: TickerMode(
+            enabled: false,
+            child: QuietBackdrop(
+              tab: 0,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpace.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 16),
+                    Text(
+                      '校园课表',
+                      style: TextStyle(fontSize: AppType.micro, color: c.onSurface),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: c.primaryContainer.withValues(
+                          alpha: policy.opaque ? 1 : .86,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: c.surfaceContainerHighest.withValues(
+                            alpha: policy.opaque ? 1 : .78,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: c.surfaceContainer.withValues(
+                          alpha: policy.opaque ? 1 : .84,
+                        ),
+                        borderRadius: BorderRadius.circular(AppRadius.section),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          for (var i = 0; i < 3; i++)
+                            AppIcon(
+                              [
+                                AppIcons.sun,
+                                AppIcons.calendar,
+                                AppIcons.sliders,
+                              ][i],
+                              size: 12,
+                              color: i == 2 ? c.primary : c.onSurfaceVariant,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Container(
-              height: 24,
-              decoration: BoxDecoration(
-                color: c.surfaceContainer,
-                borderRadius: BorderRadius.circular(AppRadius.section),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  for (var i = 0; i < 3; i++)
-                    AppIcon(
-                      [AppIcons.sun, AppIcons.calendar, AppIcons.sliders][i],
-                      size: 12,
-                      color: i == 2 ? c.primary : c.onSurfaceVariant,
-                    ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

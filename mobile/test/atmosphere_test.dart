@@ -686,4 +686,83 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  testWidgets(
+    'QuietBackdrop follows currentAppearanceProvider backdropTheme when no explicit override is passed',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final boundary = GlobalKey();
+
+      Future<List<int>> sample(BackdropTheme theme) async {
+        final container = ProviderContainer(
+          overrides: [
+            ambientMotionEnabledProvider.overrideWithValue(false),
+            currentAppearanceProvider.overrideWithValue(
+              AppearanceSettings(
+                aurora: true,
+                backdropTheme: theme,
+                paperTexture: false,
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: appTheme(Brightness.light),
+              home: RepaintBoundary(
+                key: boundary,
+                child: const QuietBackdrop(tab: 0, child: SizedBox.expand()),
+              ),
+            ),
+          ),
+        );
+        if (theme != BackdropTheme.diffusion) {
+          await tester.runAsync(
+            () => container.read(backdropProgramProvider(theme).future),
+          );
+        }
+        await tester.pump();
+        return (await tester.runAsync(() async {
+          final render =
+              boundary.currentContext!.findRenderObject()!
+                  as RenderRepaintBoundary;
+          final image = await render.toImage();
+          final bytes = await image.toByteData(
+            format: ui.ImageByteFormat.rawRgba,
+          );
+          final colors = <int>[];
+          for (final point in [
+            const Offset(.18, .12),
+            const Offset(.82, .25),
+            const Offset(.24, .65),
+            const Offset(.76, .84),
+          ]) {
+            final offset =
+                ((point.dy * image.height).floor() * image.width +
+                    (point.dx * image.width).floor()) *
+                4;
+            colors.addAll(bytes!.buffer.asUint8List(offset, 3));
+          }
+          image.dispose();
+          return colors;
+        }))!;
+      }
+
+      final diffusionPixels = await sample(BackdropTheme.diffusion);
+      final horizonPixels = await sample(BackdropTheme.horizonGradient);
+      final diff = [
+        for (var i = 0; i < diffusionPixels.length; i++)
+          (diffusionPixels[i] - horizonPixels[i]).abs(),
+      ].reduce((a, b) => a + b);
+      expect(diff, greaterThan(16));
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 }

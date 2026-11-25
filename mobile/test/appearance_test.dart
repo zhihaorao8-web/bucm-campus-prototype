@@ -10,8 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:campus_schedule/main.dart';
 import 'package:campus_schedule/application/appearance_controller.dart';
 import 'package:campus_schedule/application/schedule_controller.dart';
+import 'package:campus_schedule/design/app_palette.dart';
 import 'package:campus_schedule/domain/schedule.dart';
 import 'package:campus_schedule/platform/app_platform.dart';
+import 'package:campus_schedule/ui/app_icon_controls.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'package:campus_schedule/ui/interface_scale.dart';
 import 'schedule_test.dart' show MemoryRepository;
@@ -40,6 +42,7 @@ void main() {
         swipePages: true,
         scale: 1.2,
         aurora: false,
+        backdropTheme: BackdropTheme.grainGradient,
         paperTexture: false,
         softCards: true,
         showWeekend: true,
@@ -61,17 +64,24 @@ void main() {
     () {
       final old = const AppearanceSettings(accent: 0xff00897b).toJson()
         ..remove('aurora')
+        ..remove('backdropTheme')
         ..remove('paperTexture')
         ..remove('softCards')
         ..remove('showWeekend');
       final loaded = AppearanceSettings.fromJson(old);
       expect(loaded.accent, 0xff00897b);
       expect(loaded.aurora, isTrue);
+      expect(loaded.backdropTheme, BackdropTheme.diffusion);
       expect(loaded.paperTexture, isTrue);
       expect(loaded.softCards, isFalse);
       expect(loaded.showWeekend, isFalse);
       expect(
         () => AppearanceSettings.fromJson({...old, 'aurora': 'true'}),
+        throwsFormatException,
+      );
+      expect(
+        () =>
+            AppearanceSettings.fromJson({...old, 'backdropTheme': 'invalid'}),
         throwsFormatException,
       );
     },
@@ -381,6 +391,130 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       semantics.dispose();
+    },
+  );
+
+  testWidgets(
+    'appearance page selects backdrop theme, honors aurora toggle, and fits 320dp 2.0x text',
+    (tester) async {
+      for (final (size, textScale, dark) in [
+        (const Size(390, 844), 1.0, false),
+        (const Size(320, 720), 2.0, true),
+      ]) {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = textScale;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+        final repo = MemoryAppearanceRepository();
+        repo.value = AppearanceSettings(
+          mode: dark ? ThemeMode.dark : ThemeMode.light,
+        );
+        final container = ProviderContainer(
+          overrides: [
+            ambientMotionEnabledProvider.overrideWithValue(false),
+            appearanceRepositoryProvider.overrideWithValue(repo),
+            repositoryProvider.overrideWithValue(
+              MemoryRepository(const ScheduleData()),
+            ),
+            appInfoProvider.overrideWith(
+              (ref) async => const AppPlatformInfo(sdk: 36, systemAccent: null),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        await container.read(appearanceProvider.future);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const CampusApp(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const ValueKey('tab-3')));
+        await tester.pumpAndSettle();
+        final entry = find.text('外观设置');
+        if (entry.evaluate().isEmpty) {
+          await tester.scrollUntilVisible(
+            entry,
+            180,
+            scrollable: find
+                .descendant(
+                  of: find.byKey(const PageStorageKey('settings-page')),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          );
+        }
+        await Scrollable.ensureVisible(tester.element(entry), alignment: .5);
+        await tester.pumpAndSettle();
+        await tester.tap(entry);
+        await tester.pumpAndSettle();
+
+        final themeRow = find.byKey(const ValueKey('appearance-backdrop-theme'));
+        final scrollable = find
+            .descendant(
+              of: find.byKey(const ValueKey('settings-route-外观设置')),
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        await tester.scrollUntilVisible(themeRow, 180, scrollable: scrollable);
+        await Scrollable.ensureVisible(tester.element(themeRow), alignment: .5);
+        await tester.pumpAndSettle();
+
+        expect(
+          tester.widget<AppArrowPreference>(themeRow).enabled,
+          isTrue,
+        );
+        expect(
+          find.descendant(of: themeRow, matching: find.text('柔和弥散')),
+          findsOneWidget,
+        );
+
+        await tester.tap(themeRow);
+        await tester.pumpAndSettle();
+        for (final theme in BackdropTheme.values) {
+          expect(find.text(theme.label), findsWidgets);
+        }
+        await tester.tap(find.text('流光丝绸雾').last);
+        await tester.pumpAndSettle();
+
+        expect(repo.value.backdropTheme, BackdropTheme.grainGradient);
+        expect(
+          find.descendant(of: themeRow, matching: find.text('流光丝绸雾')),
+          findsOneWidget,
+        );
+
+        final auroraRow = find.byKey(const ValueKey('appearance-左上角极光'));
+        await Scrollable.ensureVisible(tester.element(auroraRow), alignment: .5);
+        await tester.pumpAndSettle();
+        await tester.tap(auroraRow);
+        await tester.pumpAndSettle();
+
+        expect(repo.value.aurora, isFalse);
+        expect(
+          tester.widget<AppArrowPreference>(themeRow).enabled,
+          isFalse,
+        );
+        expect(
+          find.descendant(of: themeRow, matching: find.text('关闭柔光背景时停用')),
+          findsOneWidget,
+        );
+
+        await tester.tap(auroraRow);
+        await tester.pumpAndSettle();
+        expect(repo.value.aurora, isTrue);
+        expect(
+          tester.widget<AppArrowPreference>(themeRow).enabled,
+          isTrue,
+        );
+
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      }
     },
   );
 }

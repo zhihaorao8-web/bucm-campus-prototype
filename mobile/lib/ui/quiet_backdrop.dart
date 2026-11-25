@@ -149,7 +149,7 @@ class _QuietBackdropState extends ConsumerState<QuietBackdrop>
     final policy = AppVisualPolicy.of(context, settings);
     final contrast = policy.highContrast;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final activeTheme = widget.theme ?? BackdropTheme.diffusion;
+    final activeTheme = widget.theme ?? settings.backdropTheme;
     final animate =
         widget.tab == 0 &&
         settings.aurora &&

@@ -22,6 +22,7 @@ class AppearanceSettings {
     this.swipePages = false,
     this.scale = 1,
     this.aurora = true,
+    this.backdropTheme = BackdropTheme.diffusion,
     this.paperTexture = true,
     this.softCards = false,
     this.showWeekend = false,
@@ -39,6 +40,7 @@ class AppearanceSettings {
   final DynamicSchemeVariant variant;
   final double contrast, scale;
   final bool aurora, paperTexture, softCards, showWeekend, onlineQuotes;
+  final BackdropTheme backdropTheme;
   AppearanceSettings copyWith({
     ThemeMode? mode,
     bool? monet,
@@ -53,6 +55,7 @@ class AppearanceSettings {
     bool? swipePages,
     double? scale,
     bool? aurora,
+    BackdropTheme? backdropTheme,
     bool? paperTexture,
     bool? softCards,
     bool? showWeekend,
@@ -71,6 +74,7 @@ class AppearanceSettings {
     swipePages: swipePages ?? this.swipePages,
     scale: scale ?? this.scale,
     aurora: aurora ?? this.aurora,
+    backdropTheme: backdropTheme ?? this.backdropTheme,
     paperTexture: paperTexture ?? this.paperTexture,
     softCards: softCards ?? this.softCards,
     showWeekend: showWeekend ?? this.showWeekend,
@@ -91,6 +95,7 @@ class AppearanceSettings {
     'swipePages': swipePages,
     'scale': scale,
     'aurora': aurora,
+    'backdropTheme': backdropTheme.name,
     'paperTexture': paperTexture,
     'softCards': softCards,
     'showWeekend': showWeekend,
@@ -149,6 +154,9 @@ class AppearanceSettings {
         swipeBack: values['swipeBack'] as bool,
         swipePages: values['swipePages'] as bool,
         aurora: values['aurora'] as bool,
+        backdropTheme: BackdropTheme.values.byName(
+          values['backdropTheme'] as String,
+        ),
         paperTexture: values['paperTexture'] as bool,
         softCards: values['softCards'] as bool,
         showWeekend: values['showWeekend'] as bool,
