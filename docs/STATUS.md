@@ -4,7 +4,7 @@
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
-| 背景主题与跨页渐变（阶段 1–2，已审核通过，`codex/backdrop-themes`） | 阶段 1（`361273a`）与阶段 2（`727392a`，用户确认“审核通过”）均已获审核通过；交付 3 套单 Pass 着色器、四页子样式与连续跨页插值、外观设置持久化与实时静帧预览，同步 `DESIGN.md`；`flutter analyze --no-pub` 0 问题，7 套受影响测试 89/89 通过。[阶段 2 记录](#2026-11-25-背景主题与跨页渐变阶段-2) | Android 模拟器（GLES）与物理真机（Vulkan）整页渲染目检、功耗及合入 `main` 待另行安排 |
+| 背景主题与跨页渐变（阶段 1–2，已审核通过，`codex/backdrop-themes`） | 阶段 1（`361273a`）与阶段 2（`727392a`，用户确认“审核通过”）均已获审核通过；交付 3 套单 Pass 着色器、四页子样式与连续跨页插值、外观设置持久化与实时静帧预览，同步 `DESIGN.md`；`flutter analyze --no-pub` 0 问题，7 套受影响测试 89/89 通过；`Pixel_8_API_36`（Impeller OpenGLES，源码 `4a204eb` debug APK `222,325,831` 字节）完成 4 套主题浅/深色、分页面子样式、选择器、迷你预览及跨页切换实机目检，`logcat` 0 Flutter/Shader/崩溃异常。[阶段 2 记录](#2026-11-25-背景主题与跨页渐变阶段-2) | 物理真机（Vulkan）整页渲染功耗及合入 `main` 待另行安排 |
 | 0.41.1 修复与发布（`main@b87784a2`） | PR #6 已合入 `main` 并公开预发布 `v0.41.1`（`0.41.1/code15`，保留 `v0.41` 标签与附件不变）。修复 `v0.41` 点击课程卡片转场/Hero/周日切换全屏圆角黑块；候选全量 `--all`（52 默认套 424/9/0、直取 23/23、`report-f87c999806824ec5b3ca4697dfc5cfd7.json`）、精确 `main` CI `45400708516`、隔离 R8 XLS `1/1`、可信签名 `release` 双包（`9170362e...`/`57d96e6d...`）、模拟器 `release` 抽查及 4 份远端附件大小/SHA-256 均核对通过。[0.41.1 发布记录](releases/0.41.1.md) · [修复详情](#2026-11-24-液态玻璃转场黑块修复) | 兼容开发签名预发布；真机 Vulkan 实测与性能功耗等独立待验 |
 | 0.41 集成与发布（`main@8107fed`） | PR #4 已合入，校园账号登录、设置重排、课表/录播恢复与液态玻璃阶段1–3随v0.41预发布。精确 `quality`、`dual-preview`、隔离R8 1/1、可信签名双包及四份远端摘要均通过。[0.41发布记录](releases/0.41.md) | 兼容开发签名预发布；真机性能、Vulkan及学校整页等独立待验 |
 | 设置页重排（阶段 1–3，已审核通过并合入 `main`） | 阶段 1（`d685d9e`）、阶段 2（`b096c94`、`859bdd4`）与阶段 3（`40983d6`，用户已确认“审核通过”）均已审核通过；阶段 3 移除设置页图书馆快捷卡及空分组并同步 `DESIGN.md` / `ARCHITECTURE.md`；干净工作树 `flutter analyze --no-pub` 0 问题、7 套受影响测试 106/106 全通过；`Pixel_8_API_36`（`0.4`/code13 debug APK `99e9f735`）覆盖浅/深色、`320dp` `1.5x/2.0x` 换行与末项清栏、三子页往返与底栏直达「图书馆」；2026-11-22 在 `04a27af` 通过 `python scripts/check.py --all` 全量宿主检查。[阶段 3 记录](#2026-11-22-设置页重排阶段-3导航收尾与整页验收) | 物理真机整页目检与完整 TalkBack 仍待另行验收 |
@@ -25,7 +25,8 @@
   - `..\build\toolchain\flutter\bin\flutter.bat analyze --no-pub`：0 问题（2.7s）。
   - `..\build\toolchain\flutter\bin\flutter.bat test --no-pub test/appearance_test.dart test/atmosphere_test.dart test/navigation_motion_test.dart test/liquid_glass_test.dart test/settings_test.dart test/ui_test.dart test/quiet_design_test.dart`：89/89 全部通过，覆盖 `backdropTheme` 存取与旧文件向后兼容、`390×844` / `320×720`（`2.0x` 字号、深/浅色）弹窗选换与 `aurora` 开关联动，以及 `QuietBackdrop` 跟随 `currentAppearanceProvider.backdropTheme` 的像素变化。
   - `python scripts/check.py --module docs` 与 `git diff --check`：文档链接与空白检查通过。
-- **未验证项**：Android 模拟器（GLES）与物理真机（Vulkan）整页渲染视觉、跨页滑动手感及 GPU 功耗表现。
+- **Android 模拟器（OpenGLES）目检**：基于源码 `4a204eb` 构建 debug APK（`222,325,831` 字节），保留本地数据覆盖安装至 `Pixel_8_API_36`（`1080×2400`、`420dpi`，Impeller OpenGLES）。实测目检「外观设置」4 项主题选择弹窗与 `ThemePhonePreview` 实时静帧联动、4 套主题在浅/深色下的「今日 / 课表 / 图书馆 / 设置」分页面子样式渲染与文字可读性，以及跨页快速切换；验证结束后已恢复设备外观为「跟随系统 + 柔和弥散」。`logcat` 中 0 条 Flutter 异常、0 条 Shader/Impeller 错误、0 崩溃。临时截图仅保留于本机任务目录，未提交仓库。
+- **未验证项**：物理真机（Vulkan）渲染一致性、长时功耗表现及合入 `main` 后的全量 `--all` 门禁。
 
 ## 2026-11-25 背景主题与跨页渐变阶段 1
 
