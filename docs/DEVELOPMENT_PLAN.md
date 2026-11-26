@@ -2,6 +2,10 @@
 
 更新：2026-11-25。本页只维护当前状态，历史分项证据见[STATUS](STATUS.md)、[发布记录](releases/0.4.md)及Git历史。生效规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。
 
+## 应用启动图标设计
+
+2026-11-26 完成第 20 版的像素风矢量优化稿，Pen 画布第 21 版与 [SVG 母版](../design/asclepius-needle-v21.svg) 待审核。验证范围为画布构图、小尺寸预览和独立 SVG 渲染。Android 启动图标接入与设备验证待另行确认。[设计验证](STATUS.md#2026-11-26-针灸蛇杖图标设计)
+
 ## Paseo worktree 设置
 
 2026-11-26 配置 worktree 初始化与按需检查入口，范围为 Flutter 公开资产和锁定依赖。干净检出初始化、检查计划与文档链接验证见 [STATUS](STATUS.md#2026-11-26-paseo-worktree-设置)。配置随当前工作分支同步后交付审核。
