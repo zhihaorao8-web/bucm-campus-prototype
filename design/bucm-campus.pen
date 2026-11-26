@@ -13891,6 +13891,3518 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "uTcXW",
+      "x": 3186,
+      "y": 1480,
+      "name": "学期内找课 · 课表入口",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 155,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#EBF2FF",
+            "position": 0
+          },
+          {
+            "color": "#FCFDFF",
+            "position": 0.45
+          },
+          {
+            "color": "#EFFAF6",
+            "position": 1
+          }
+        ]
+      },
+      "cornerRadius": 36,
+      "stroke": "$border-subtle",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "justifyContent": "space_between",
+      "children": [
+        {
+          "type": "frame",
+          "id": "A7GOJ",
+          "name": "Top Content",
+          "width": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "RJAQm",
+              "type": "ref",
+              "ref": "O3xBEp",
+              "name": "StatusBar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "qwFnL",
+              "name": "TopBar",
+              "width": "fill_container",
+              "padding": [
+                6,
+                24,
+                10,
+                24
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "rRpfw",
+                  "name": "Page Title",
+                  "fill": "$text-primary",
+                  "content": "课表",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 40,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "K7eyez",
+                  "name": "Actions",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "LKNyh",
+                      "name": "学期内找课",
+                      "width": 48,
+                      "height": 48,
+                      "fill": "$primary-container",
+                      "cornerRadius": "$radius-btn",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "mhmkN",
+                          "name": "学期内找课图标",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "search",
+                          "library": "lucide",
+                          "fill": "$text-primary"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qO2El",
+                      "name": "Action refresh-cw",
+                      "width": 40,
+                      "height": 40,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "R54191",
+                          "name": "refresh-cw",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "refresh-cw",
+                          "library": "lucide",
+                          "fill": "$text-primary"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Uk56T",
+                      "name": "Action video",
+                      "width": 40,
+                      "height": 40,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "h5vAYb",
+                          "name": "video",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "video",
+                          "library": "lucide",
+                          "fill": "$text-primary"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "J5rDF",
+              "name": "Body",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 14,
+              "padding": [
+                2,
+                24,
+                12,
+                24
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "XO7Jx",
+                  "name": "Term & Switch",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "YZO0I",
+                      "name": "Term",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "N8u5f",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "2026-2027-1 学期",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 15,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "icon",
+                          "id": "JPxGj",
+                          "name": "Chevron",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "chevron-down",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "MjDoT",
+                      "type": "ref",
+                      "ref": "maGZw",
+                      "name": "ScheduleModeSwitch",
+                      "variant": {
+                        "active": "second"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "AOgwe",
+                  "name": "WeekNavigation",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "MrPic",
+                      "name": "Prev",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "chevron-left",
+                      "library": "lucide",
+                      "fill": "$text-secondary"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "t2E2lb",
+                      "name": "Week Label",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "tOq9F",
+                          "name": "Week",
+                          "fill": "$text-primary",
+                          "content": "第 10 周",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 16,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "t6Nhhr",
+                          "name": "Range",
+                          "fill": "$text-secondary",
+                          "content": "11/23 – 11/29",
+                          "fontFamily": "$font-num",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "ltGLr",
+                      "name": "Next",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "chevron-right",
+                      "library": "lucide",
+                      "fill": "$text-secondary"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Li8lY",
+                  "name": "WeekdayTabs",
+                  "width": "fill_container",
+                  "height": 48,
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "eDc4v",
+                      "name": "周一",
+                      "width": "fill_container",
+                      "height": 40,
+                      "fill": "$card-bg",
+                      "cornerRadius": 14,
+                      "stroke": "$border-subtle",
+                      "strokeWidth": 0.8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "InFtd",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "一",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "xu3eg",
+                      "name": "周二",
+                      "width": "fill_container",
+                      "height": 40,
+                      "fill": "$card-bg",
+                      "cornerRadius": 14,
+                      "stroke": "$border-subtle",
+                      "strokeWidth": 0.8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "IGOVA",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "二",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "dkCWw",
+                      "name": "周三",
+                      "width": "fill_container",
+                      "height": 40,
+                      "fill": "$accent",
+                      "cornerRadius": 14,
+                      "stroke": "$accent",
+                      "strokeWidth": 0.8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "L5jJz",
+                          "name": "Label",
+                          "fill": "$on-accent",
+                          "content": "三",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 14,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "gFvpA",
+                      "name": "周四",
+                      "width": "fill_container",
+                      "height": 40,
+                      "fill": "$card-bg",
+                      "cornerRadius": 14,
+                      "stroke": "$border-subtle",
+                      "strokeWidth": 0.8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ojqee",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "四",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Wzl7w",
+                      "name": "周五",
+                      "width": "fill_container",
+                      "height": 40,
+                      "fill": "$card-bg",
+                      "cornerRadius": 14,
+                      "stroke": "$border-subtle",
+                      "strokeWidth": 0.8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "IzhIT",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "五",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "LW4r8",
+                      "name": "周六",
+                      "width": "fill_container",
+                      "height": 40,
+                      "fill": "$card-bg",
+                      "cornerRadius": 14,
+                      "stroke": "$border-subtle",
+                      "strokeWidth": 0.8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "e1iIz",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "六",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "E2SCnk",
+                      "name": "周日",
+                      "width": "fill_container",
+                      "height": 40,
+                      "fill": "$card-bg",
+                      "cornerRadius": 14,
+                      "stroke": "$border-subtle",
+                      "strokeWidth": 0.8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "dKbm6",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "日",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "fO0Wi",
+                  "name": "Day Course List",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 10,
+                  "children": [
+                    {
+                      "id": "XVTOd",
+                      "type": "ref",
+                      "ref": "BNszo",
+                      "name": "示例课程：中医基础",
+                      "width": "fill_container",
+                      "descendants": {
+                        "u0aqcM": {
+                          "fill": "#3B6EF6"
+                        },
+                        "eZiIh": {
+                          "content": "08:30"
+                        },
+                        "eKy3y": {
+                          "content": "10:00"
+                        },
+                        "sjY37": {
+                          "content": "示例课程：中医基础"
+                        },
+                        "oHCr6": {
+                          "content": "示例教学楼 201"
+                        },
+                        "E6oMU": {
+                          "enabled": false
+                        },
+                        "n4Le2": {
+                          "enabled": false
+                        }
+                      }
+                    },
+                    {
+                      "id": "Z9gj6",
+                      "type": "ref",
+                      "ref": "BNszo",
+                      "name": "示例课程：人体结构",
+                      "width": "fill_container",
+                      "descendants": {
+                        "u0aqcM": {
+                          "fill": "#9A6B2F"
+                        },
+                        "eZiIh": {
+                          "content": "10:30"
+                        },
+                        "eKy3y": {
+                          "content": "12:00"
+                        },
+                        "sjY37": {
+                          "content": "示例课程：人体结构"
+                        },
+                        "oHCr6": {
+                          "content": "示例教学楼 304"
+                        },
+                        "E6oMU": {
+                          "enabled": true,
+                          "fill": "$error",
+                          "content": "正在上课，时段重叠"
+                        },
+                        "n4Le2": {
+                          "enabled": true
+                        }
+                      }
+                    },
+                    {
+                      "id": "urHK2",
+                      "type": "ref",
+                      "ref": "BNszo",
+                      "name": "示例课程：实验讨论",
+                      "width": "fill_container",
+                      "descendants": {
+                        "u0aqcM": {
+                          "fill": "#C23B3B"
+                        },
+                        "eZiIh": {
+                          "content": "10:30"
+                        },
+                        "eKy3y": {
+                          "content": "12:00"
+                        },
+                        "sjY37": {
+                          "content": "示例课程：实验讨论"
+                        },
+                        "oHCr6": {
+                          "content": "示例实验室"
+                        },
+                        "E6oMU": {
+                          "enabled": true,
+                          "fill": "$error",
+                          "content": "时段重叠"
+                        },
+                        "n4Le2": {
+                          "enabled": false
+                        }
+                      }
+                    },
+                    {
+                      "id": "TpBrp",
+                      "type": "ref",
+                      "ref": "BNszo",
+                      "name": "示例课程：医学英语",
+                      "width": "fill_container",
+                      "descendants": {
+                        "u0aqcM": {
+                          "fill": "#257A54"
+                        },
+                        "eZiIh": {
+                          "content": "13:30"
+                        },
+                        "eKy3y": {
+                          "content": "15:00"
+                        },
+                        "sjY37": {
+                          "content": "示例课程：医学英语"
+                        },
+                        "oHCr6": {
+                          "content": "示例教学楼 102"
+                        },
+                        "E6oMU": {
+                          "enabled": false
+                        },
+                        "n4Le2": {
+                          "enabled": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "vKcnV",
+          "type": "ref",
+          "ref": "jGxlq",
+          "name": "GlassNavigation",
+          "width": "fill_container",
+          "variant": {
+            "active": "schedule"
+          }
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "g2vQm",
+      "x": 3634,
+      "y": 1480,
+      "name": "学期内找课 · 输入",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 820,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 155,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#EBF2FF",
+            "position": 0
+          },
+          {
+            "color": "#FCFDFF",
+            "position": 0.45
+          },
+          {
+            "color": "#EFFAF6",
+            "position": 1
+          }
+        ]
+      },
+      "cornerRadius": 36,
+      "stroke": "$border-subtle",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "JvppE",
+          "type": "ref",
+          "ref": "O3xBEp",
+          "name": "系统状态栏",
+          "width": "fill_container",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "uEVTI",
+          "name": "搜索顶栏",
+          "width": "fill_container",
+          "gap": 8,
+          "padding": [
+            4,
+            16,
+            8,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "jPbUn",
+              "name": "返回课表",
+              "width": 48,
+              "height": 48,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Eu5LI",
+                  "name": "返回课表图标",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "arrow-left",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "I13dm",
+              "name": "页面标题",
+              "fill": "$text-primary",
+              "content": "学期内找课",
+              "fontFamily": "$font-ui",
+              "fontSize": 22,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "eZ8lU",
+          "name": "日期和课程结果",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 20,
+          "padding": [
+            4,
+            24,
+            16,
+            24
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "kjeXG",
+              "name": "搜索条件",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "miwdn",
+                  "name": "课程名输入框 · 已聚焦",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "$card-dense",
+                  "cornerRadius": 16,
+                  "stroke": "$accent",
+                  "strokeWidth": 1.5,
+                  "gap": 12,
+                  "padding": [
+                    0,
+                    4,
+                    0,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "kBIiE",
+                      "name": "搜索提示图标",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "search",
+                      "library": "lucide",
+                      "fill": "$text-secondary"
+                    },
+                    {
+                      "type": "text",
+                      "id": "e9RzYm",
+                      "name": "课程名",
+                      "fill": "$text-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "输入课程名",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "VpqnD",
+                  "name": "当前搜索学期",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "2026–2027 学年 第 1 学期",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "WPur1",
+          "name": "Android 输入法示意",
+          "width": "fill_container",
+          "fill": "$surface-subtle",
+          "stroke": "$border-subtle",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 6,
+          "padding": [
+            6,
+            6,
+            10,
+            6
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "CHLe7",
+              "name": "输入法候选栏",
+              "width": "fill_container",
+              "height": 32,
+              "gap": 12,
+              "padding": [
+                0,
+                8
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "r10cPN",
+                  "name": "输入法菜单",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "grid-2x2",
+                  "library": "lucide",
+                  "fill": "$text-secondary"
+                },
+                {
+                  "type": "text",
+                  "id": "W3nt0",
+                  "x": 36,
+                  "y": 6,
+                  "name": "候选区",
+                  "enabled": false,
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container(334)",
+                  "content": "结构　机构　结果",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qInYB",
+              "name": "键盘字母行",
+              "width": "fill_container",
+              "gap": 4,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "juVWD",
+                  "name": "字母 q",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hcK3I",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "q",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "FPnqI",
+                  "name": "字母 w",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "S8Dal",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "w",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "vXTpg",
+                  "name": "字母 e",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "PIMtX",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "e",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Vghpw",
+                  "name": "字母 r",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "jFdH6",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "r",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "FcyzT",
+                  "name": "字母 t",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "osSzE",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "t",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "PO47V",
+                  "name": "字母 y",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "y1tVsv",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "y",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "oAb7R",
+                  "name": "字母 u",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "j84tZ",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "u",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "W5P597",
+                  "name": "字母 i",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pWAtM",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "i",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "rEQCS",
+                  "name": "字母 o",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "kvqkf",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "o",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "RTPnW",
+                  "name": "字母 p",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "yl1pH",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "p",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "f141wY",
+              "name": "键盘字母行",
+              "width": "fill_container",
+              "gap": 4,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "TWDPd",
+                  "name": "字母 a",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "yn9tQ",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "a",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "PWQC9",
+                  "name": "字母 s",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "CErc1",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "s",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "aJzC2",
+                  "name": "字母 d",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ttCgK",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "d",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "NELfR",
+                  "name": "字母 f",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Yx7md",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "f",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Gojq0",
+                  "name": "字母 g",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "NZMxA",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "g",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LJI8r",
+                  "name": "字母 h",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "YdJRP",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "h",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "i1pNH",
+                  "name": "字母 j",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "p3qWo",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "j",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "etQeb",
+                  "name": "字母 k",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hJBIW",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "k",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ZJzcK",
+                  "name": "字母 l",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HTuOU",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "l",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "x2eQNd",
+              "name": "键盘字母行",
+              "width": "fill_container",
+              "gap": 4,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "z5gqJM",
+                  "name": "字母 z",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "b2FIw",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "z",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "q7HY1o",
+                  "name": "字母 x",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "wQJdC",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "x",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "P4hvsI",
+                  "name": "字母 c",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "WRkJg",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "c",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "M9IC0e",
+                  "name": "字母 v",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "oJqmY",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "v",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "J4z0Ov",
+                  "name": "字母 b",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "injOh",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "b",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "VZzkB",
+                  "name": "字母 n",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "M3jUw8",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "n",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "R2Hxdd",
+                  "name": "字母 m",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "D5x2R",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "m",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Fx4jj",
+              "name": "键盘操作行",
+              "width": "fill_container",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "WQ9oI",
+                  "name": "?123键",
+                  "width": 52,
+                  "height": 38,
+                  "fill": "$card-dense",
+                  "cornerRadius": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "CfDOe",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "?123",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "W9XZQ",
+                  "name": "空格键",
+                  "width": "fill_container",
+                  "height": 38,
+                  "fill": "$card-dense",
+                  "cornerRadius": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MHGmR",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "空格",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "NJxC7",
+                  "name": "搜索键",
+                  "width": 56,
+                  "height": 38,
+                  "fill": "$primary-container",
+                  "cornerRadius": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "N2XROA",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "搜索",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "c3YluK",
+      "x": 4082,
+      "y": 1480,
+      "name": "学期内找课 · 按日期的结果",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 820,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 155,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#EBF2FF",
+            "position": 0
+          },
+          {
+            "color": "#FCFDFF",
+            "position": 0.45
+          },
+          {
+            "color": "#EFFAF6",
+            "position": 1
+          }
+        ]
+      },
+      "cornerRadius": 36,
+      "stroke": "$border-subtle",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "dvWeK",
+          "type": "ref",
+          "ref": "O3xBEp",
+          "name": "系统状态栏",
+          "width": "fill_container",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "snSV4",
+          "name": "搜索顶栏",
+          "width": "fill_container",
+          "gap": 8,
+          "padding": [
+            4,
+            16,
+            8,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "NIXHF",
+              "name": "返回课表",
+              "width": 48,
+              "height": 48,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "arc3D",
+                  "name": "返回课表图标",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "arrow-left",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "g7b07",
+              "name": "页面标题",
+              "fill": "$text-primary",
+              "content": "学期内找课",
+              "fontFamily": "$font-ui",
+              "fontSize": 22,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Ps2yF",
+          "name": "日期和课程结果",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 20,
+          "padding": [
+            4,
+            24,
+            16,
+            24
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "p4n0Kb",
+              "name": "搜索条件",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "yGbhL",
+                  "name": "课程名输入框",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "$card-dense",
+                  "cornerRadius": 16,
+                  "stroke": "$border-subtle",
+                  "strokeWidth": 1,
+                  "gap": 12,
+                  "padding": [
+                    0,
+                    4,
+                    0,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "sYqH9",
+                      "name": "搜索提示图标",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "search",
+                      "library": "lucide",
+                      "fill": "$text-secondary"
+                    },
+                    {
+                      "type": "text",
+                      "id": "aFbMD",
+                      "name": "课程名",
+                      "fill": "$text-primary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "结构",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "t3M14H",
+                      "name": "清空课程名",
+                      "width": 48,
+                      "height": 48,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "YXlIA",
+                          "name": "清空课程名图标",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "x",
+                          "library": "lucide",
+                          "fill": "$text-primary"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "DcIfB",
+                  "name": "当前搜索学期",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "2026–2027 学年 第 1 学期",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "k6b0V",
+              "name": "11 月 28 日 周六 排课",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "mw0ml",
+                  "name": "日期标题",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "padding": [
+                    0,
+                    4
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Z3jNPV",
+                      "name": "日期",
+                      "fill": "$text-primary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "11 月 28 日 周六",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 17,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "KgvTZ",
+                      "name": "教学周",
+                      "fill": "$text-secondary",
+                      "content": "第 12 周",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "fDOjw",
+                  "type": "ref",
+                  "ref": "BNszo",
+                  "name": "示例人体结构",
+                  "width": "fill_container",
+                  "theme": {
+                    "mode": "light"
+                  },
+                  "descendants": {
+                    "u0aqcM": {
+                      "fill": "#3B6EF6"
+                    },
+                    "eZiIh": {
+                      "content": "08:30"
+                    },
+                    "eKy3y": {
+                      "content": "09:15"
+                    },
+                    "sjY37": {
+                      "content": "示例人体结构"
+                    },
+                    "oHCr6": {
+                      "content": "示例教学楼 304"
+                    },
+                    "E6oMU": {
+                      "enabled": false
+                    },
+                    "n4Le2": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "x9X2R",
+                  "type": "ref",
+                  "ref": "BNszo",
+                  "name": "示例人体结构",
+                  "width": "fill_container",
+                  "theme": {
+                    "mode": "light"
+                  },
+                  "descendants": {
+                    "u0aqcM": {
+                      "fill": "#497F62"
+                    },
+                    "eZiIh": {
+                      "content": "10:30"
+                    },
+                    "eKy3y": {
+                      "content": "11:15"
+                    },
+                    "sjY37": {
+                      "content": "示例人体结构"
+                    },
+                    "oHCr6": {
+                      "content": "示例实验楼 201"
+                    },
+                    "E6oMU": {
+                      "enabled": false
+                    },
+                    "n4Le2": {
+                      "enabled": false
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "eG9ck",
+              "name": "12 月 5 日 周六 排课",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "X8LNG",
+                  "name": "日期标题",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "padding": [
+                    0,
+                    4
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "W3Z7P",
+                      "name": "日期",
+                      "fill": "$text-primary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "12 月 5 日 周六",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 17,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "N3FRpl",
+                      "name": "教学周",
+                      "fill": "$text-secondary",
+                      "content": "第 13 周",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "EtgFr",
+                  "type": "ref",
+                  "ref": "BNszo",
+                  "name": "示例人体结构实验",
+                  "width": "fill_container",
+                  "theme": {
+                    "mode": "light"
+                  },
+                  "descendants": {
+                    "u0aqcM": {
+                      "fill": "#497F62"
+                    },
+                    "eZiIh": {
+                      "content": "10:30"
+                    },
+                    "eKy3y": {
+                      "content": "11:15"
+                    },
+                    "sjY37": {
+                      "content": "示例人体结构实验"
+                    },
+                    "oHCr6": {
+                      "content": "示例实验楼 201"
+                    },
+                    "E6oMU": {
+                      "enabled": false
+                    },
+                    "n4Le2": {
+                      "enabled": false
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "MDVNX",
+              "name": "11 月 21 日 周六 排课",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "FmfkF",
+                  "name": "日期标题",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "padding": [
+                    0,
+                    4
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "BWuM1",
+                      "name": "日期",
+                      "fill": "$text-primary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "11 月 21 日 周六",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 17,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "MsYRG",
+                      "name": "教学周",
+                      "fill": "$text-secondary",
+                      "content": "第 11 周 · 已结束",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "EoXds",
+                  "type": "ref",
+                  "ref": "BNszo",
+                  "name": "示例人体结构",
+                  "width": "fill_container",
+                  "theme": {
+                    "mode": "light"
+                  },
+                  "descendants": {
+                    "u0aqcM": {
+                      "fill": "#3B6EF6"
+                    },
+                    "eZiIh": {
+                      "content": "08:30"
+                    },
+                    "eKy3y": {
+                      "content": "09:15"
+                    },
+                    "sjY37": {
+                      "content": "示例人体结构"
+                    },
+                    "oHCr6": {
+                      "content": "示例教学楼 304"
+                    },
+                    "E6oMU": {
+                      "enabled": false
+                    },
+                    "n4Le2": {
+                      "enabled": false
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Zy3Qx",
+      "x": 4530,
+      "y": 1480,
+      "name": "学期内找课 · 无匹配",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 820,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 155,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#EBF2FF",
+            "position": 0
+          },
+          {
+            "color": "#FCFDFF",
+            "position": 0.45
+          },
+          {
+            "color": "#EFFAF6",
+            "position": 1
+          }
+        ]
+      },
+      "cornerRadius": 36,
+      "stroke": "$border-subtle",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "OTHH1",
+          "type": "ref",
+          "ref": "O3xBEp",
+          "name": "系统状态栏",
+          "width": "fill_container",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "EWEq7",
+          "name": "搜索顶栏",
+          "width": "fill_container",
+          "gap": 8,
+          "padding": [
+            4,
+            16,
+            8,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "ncyfS",
+              "name": "返回课表",
+              "width": 48,
+              "height": 48,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "G66VZ",
+                  "name": "返回课表图标",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "arrow-left",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "c1ioa",
+              "name": "页面标题",
+              "fill": "$text-primary",
+              "content": "学期内找课",
+              "fontFamily": "$font-ui",
+              "fontSize": 22,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "DUPRk",
+          "name": "日期和课程结果",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 20,
+          "padding": [
+            4,
+            24,
+            16,
+            24
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "fjriV",
+              "name": "搜索条件",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "kqWrd",
+                  "name": "课程名输入框",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "$card-dense",
+                  "cornerRadius": 16,
+                  "stroke": "$border-subtle",
+                  "strokeWidth": 1,
+                  "gap": 12,
+                  "padding": [
+                    0,
+                    4,
+                    0,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "udG1k",
+                      "name": "搜索提示图标",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "search",
+                      "library": "lucide",
+                      "fill": "$text-secondary"
+                    },
+                    {
+                      "type": "text",
+                      "id": "I4DhO",
+                      "name": "课程名",
+                      "fill": "$text-primary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "结构甲",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ryXI5",
+                      "name": "清空课程名",
+                      "width": 48,
+                      "height": 48,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "m6y0Xd",
+                          "name": "清空课程名图标",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "x",
+                          "library": "lucide",
+                          "fill": "$text-primary"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "N75HY",
+                  "name": "当前搜索学期",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "2026–2027 学年 第 1 学期",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wOuLQ",
+              "name": "无匹配提示",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "padding": [
+                32,
+                0,
+                0,
+                0
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "GKubz",
+                  "name": "空状态标题",
+                  "fill": "$text-primary",
+                  "content": "未找到匹配的课程",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "l4uug4",
+                  "name": "下一步",
+                  "fill": "$text-secondary",
+                  "content": "试试更短的课名",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "i57rs",
+      "x": 4978,
+      "y": 1480,
+      "name": "学期内找课 · 未导入课表",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 820,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 155,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#EBF2FF",
+            "position": 0
+          },
+          {
+            "color": "#FCFDFF",
+            "position": 0.45
+          },
+          {
+            "color": "#EFFAF6",
+            "position": 1
+          }
+        ]
+      },
+      "cornerRadius": 36,
+      "stroke": "$border-subtle",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "Fkra9",
+          "type": "ref",
+          "ref": "O3xBEp",
+          "name": "系统状态栏",
+          "width": "fill_container",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "a8WKz8",
+          "name": "搜索顶栏",
+          "width": "fill_container",
+          "gap": 8,
+          "padding": [
+            4,
+            16,
+            8,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "IncJ7",
+              "name": "返回课表",
+              "width": 48,
+              "height": 48,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "lE0lm",
+                  "name": "返回课表图标",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "arrow-left",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "SESXO",
+              "name": "页面标题",
+              "fill": "$text-primary",
+              "content": "学期内找课",
+              "fontFamily": "$font-ui",
+              "fontSize": 22,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "DIHt2",
+          "name": "日期和课程结果",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 20,
+          "padding": [
+            4,
+            24,
+            16,
+            24
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "z6O2p",
+              "name": "未导入提示",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": [
+                24,
+                0,
+                0,
+                0
+              ],
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "cq0zh",
+                  "name": "课表图标",
+                  "width": 40,
+                  "height": 40,
+                  "icon": "calendar-days",
+                  "library": "lucide",
+                  "fill": "$accent"
+                },
+                {
+                  "type": "text",
+                  "id": "V0hGXZ",
+                  "name": "未导入标题",
+                  "fill": "$text-primary",
+                  "content": "尚未导入课表",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "kbSjY",
+                  "name": "说明",
+                  "fill": "$text-secondary",
+                  "content": "导入课表后，即可离线搜索课程。",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "L5fMuu",
+                  "name": "从学校导入课表",
+                  "height": 48,
+                  "fill": "$primary-container",
+                  "cornerRadius": "$radius-btn",
+                  "padding": [
+                    0,
+                    16
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "eiJ72",
+                      "name": "导入入口",
+                      "fill": "$text-primary",
+                      "content": "从学校导入课表",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "U9oOI4",
+      "x": 5426,
+      "y": 1480,
+      "name": "学期内找课 · 320dp 大字和键盘",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 320,
+      "height": 720,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 155,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#0E243B",
+            "position": 0
+          },
+          {
+            "color": "#070D14",
+            "position": 0.45
+          },
+          {
+            "color": "#2B2030",
+            "position": 1
+          }
+        ]
+      },
+      "cornerRadius": 36,
+      "stroke": "$border-subtle",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "z89u6",
+          "type": "ref",
+          "ref": "O3xBEp",
+          "name": "系统状态栏",
+          "width": "fill_container",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "D1ffah",
+          "name": "搜索顶栏",
+          "width": "fill_container",
+          "gap": 8,
+          "padding": [
+            4,
+            8,
+            8,
+            8
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "EQjHO",
+              "name": "返回课表",
+              "width": 48,
+              "height": 48,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "gDH8y",
+                  "name": "返回课表图标",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "arrow-left",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "y0zZK",
+              "name": "页面标题",
+              "fill": "$text-primary",
+              "content": "学期内找课",
+              "fontFamily": "$font-ui",
+              "fontSize": 28,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "n1XeGQ",
+          "name": "日期和课程结果",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 20,
+          "padding": [
+            4,
+            16,
+            16,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "wKyq6",
+              "name": "搜索条件",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "iela9",
+                  "name": "课程名输入框 · 已聚焦",
+                  "width": "fill_container",
+                  "height": 60,
+                  "fill": "$card-dense",
+                  "cornerRadius": 16,
+                  "stroke": "$accent",
+                  "strokeWidth": 1.5,
+                  "gap": 12,
+                  "padding": [
+                    0,
+                    4,
+                    0,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "B1CAuF",
+                      "name": "搜索提示图标",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "search",
+                      "library": "lucide",
+                      "fill": "$text-secondary"
+                    },
+                    {
+                      "type": "text",
+                      "id": "B0GsRN",
+                      "name": "课程名",
+                      "fill": "$text-primary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "结构",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 28,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "abQaN",
+                      "name": "清空课程名",
+                      "width": 48,
+                      "height": 48,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "qoBbG",
+                          "name": "清空课程名图标",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "x",
+                          "library": "lucide",
+                          "fill": "$text-primary"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "qRVcc",
+                  "name": "当前搜索学期",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "2026–2027 学年 第 1 学期",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 20,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LhlMM",
+              "name": "11 月 28 日 周六 排课",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ITd8I",
+                  "name": "日期标题",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "padding": [
+                    0,
+                    4
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "XaiRM",
+                      "name": "日期",
+                      "fill": "$text-primary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "11 月 28 日 周六",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 25,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "FZZx2",
+                      "name": "教学周",
+                      "fill": "$text-secondary",
+                      "content": "第 12 周",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 19,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "nEZBi",
+                  "type": "ref",
+                  "ref": "BNszo",
+                  "name": "人体结构",
+                  "width": "fill_container",
+                  "theme": {
+                    "mode": "dark"
+                  },
+                  "padding": 12,
+                  "gap": 8,
+                  "descendants": {
+                    "u0aqcM": {
+                      "fill": "#598BFF"
+                    },
+                    "esOnQ": {
+                      "width": 88
+                    },
+                    "eZiIh": {
+                      "content": "08:30",
+                      "fontSize": 28
+                    },
+                    "eKy3y": {
+                      "content": "09:15",
+                      "fontSize": 24
+                    },
+                    "sjY37": {
+                      "content": "人体结构",
+                      "fontSize": 30
+                    },
+                    "oHCr6": {
+                      "content": "示例楼 304",
+                      "fontSize": 24
+                    },
+                    "E6oMU": {
+                      "enabled": false
+                    },
+                    "n4Le2": {
+                      "enabled": false
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "QOJzd",
+          "name": "Android 输入法示意",
+          "width": "fill_container",
+          "fill": "$surface-subtle",
+          "stroke": "$border-subtle",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 6,
+          "padding": [
+            6,
+            6,
+            10,
+            6
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "x8uzt",
+              "name": "输入法候选栏",
+              "width": "fill_container",
+              "height": 32,
+              "gap": 12,
+              "padding": [
+                0,
+                8
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Sd2GC",
+                  "name": "输入法菜单",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "grid-2x2",
+                  "library": "lucide",
+                  "fill": "$text-secondary"
+                },
+                {
+                  "type": "text",
+                  "id": "SwnLX",
+                  "name": "候选区",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "结构　机构　结果",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "cRfak",
+              "name": "键盘字母行",
+              "width": "fill_container",
+              "gap": 4,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "adikI",
+                  "name": "字母 q",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "LD6Tz",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "q",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kYQyu",
+                  "name": "字母 w",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "tj9a3",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "w",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "i2dFF7",
+                  "name": "字母 e",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "aaVXK",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "e",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "mJpXx",
+                  "name": "字母 r",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Q8nY4h",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "r",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "CpRf6",
+                  "name": "字母 t",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "J8orPP",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "t",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wOvZc",
+                  "name": "字母 y",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "QaS8P",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "y",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "X0YyqM",
+                  "name": "字母 u",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "H8EsL0",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "u",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "V8sh21",
+                  "name": "字母 i",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "getRp",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "i",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "VsvNO",
+                  "name": "字母 o",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "p2yJzz",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "o",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "uYW0G",
+                  "name": "字母 p",
+                  "width": "fill_container",
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "K2yOZW",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "p",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "j8cbX",
+              "name": "键盘字母行",
+              "width": "fill_container",
+              "gap": 4,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "m06BLW",
+                  "name": "字母 a",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Gwx49",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "a",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "jEuJ4",
+                  "name": "字母 s",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "A3Ukvw",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "s",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "pq3q7",
+                  "name": "字母 d",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "sjcBc",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "d",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "uAq0t",
+                  "name": "字母 f",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "mAQHO",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "f",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LXSJD",
+                  "name": "字母 g",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ZvHDk",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "g",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "FSzw6",
+                  "name": "字母 h",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "moJ4B",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "h",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "TzDxo",
+                  "name": "字母 j",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "JM2Bv",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "j",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "e8nXa",
+                  "name": "字母 k",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "mjD47",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "k",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "eQuDf",
+                  "name": "字母 l",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "H74wFH",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "l",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Q8LYFg",
+              "name": "键盘字母行",
+              "width": "fill_container",
+              "gap": 4,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "bz14R",
+                  "name": "字母 z",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "YY1TV",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "z",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Z5Y4KG",
+                  "name": "字母 x",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "iemAu",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "x",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "r5dywo",
+                  "name": "字母 c",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Z0CDGU",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "c",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ACcrB",
+                  "name": "字母 v",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "zDBlJ",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "v",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "CcgJ2",
+                  "name": "字母 b",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "BIFJq",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "b",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "fPGZr",
+                  "name": "字母 n",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "GfkOi",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "n",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "z0jh7",
+                  "name": "字母 m",
+                  "width": 26,
+                  "height": 32,
+                  "fill": "$card-dense",
+                  "cornerRadius": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ifNdT",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "m",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "k2aWV",
+              "name": "键盘操作行",
+              "width": "fill_container",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "j0YKY",
+                  "name": "?123键",
+                  "width": 52,
+                  "height": 38,
+                  "fill": "$card-dense",
+                  "cornerRadius": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "H6kAL2",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "?123",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "nW3Mm",
+                  "name": "空格键",
+                  "width": "fill_container",
+                  "height": 38,
+                  "fill": "$card-dense",
+                  "cornerRadius": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "qNlf9",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "空格",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "R2YhLp",
+                  "name": "搜索键",
+                  "width": 56,
+                  "height": 38,
+                  "fill": "$primary-container",
+                  "cornerRadius": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "s6RwX",
+                      "name": "按键",
+                      "fill": "$text-primary",
+                      "content": "搜索",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
