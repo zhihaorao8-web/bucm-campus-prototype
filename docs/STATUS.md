@@ -21,6 +21,7 @@
 
 - 使用干净的源码检出验证了初始化入口。Flutter SDK 提交校验通过，7 个锁定 XLS 依赖完成摘要校验，公开资产同步与 `flutter pub get --enforce-lockfile` 成功。
 - `check-plan` 使用可用的 Flutter 路径输出变更检查计划，`check-docs` 校验文档链接。验证范围为宿主准备和检查入口。
+- Paseo Windows daemon 创建隔离 worktree 后自动生成资源和依赖配置，并识别三个工作区脚本。首次验证发现 `prepare_flutter.py` 将 `pubspec.yaml` 写成 CRLF，现已改为保留原换行且仅在版本变化时写入。
 
 ## 2026-11-25 背景主题与跨页渐变阶段 2
 
