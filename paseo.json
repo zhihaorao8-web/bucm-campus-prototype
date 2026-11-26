@@ -1,0 +1,10 @@
+{
+  "worktree": {
+    "setup": "python scripts/paseo_setup.py"
+  },
+  "scripts": {
+    "prepare-flutter": { "command": "python scripts/paseo_setup.py" },
+    "check-plan": { "command": "python scripts/paseo_setup.py --check-plan" },
+    "check-docs": { "command": "python scripts/check.py --module docs" }
+  }
+}

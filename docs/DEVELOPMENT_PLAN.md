@@ -2,6 +2,10 @@
 
 更新：2026-11-25。本页只维护当前状态，历史分项证据见[STATUS](STATUS.md)、[发布记录](releases/0.4.md)及Git历史。生效规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。
 
+## Paseo worktree 设置
+
+2026-11-26 配置 worktree 初始化与按需检查入口，范围为 Flutter 公开资产和锁定依赖。干净检出初始化、检查计划与文档链接验证见 [STATUS](STATUS.md#2026-11-26-paseo-worktree-设置)。配置随当前工作分支同步后交付审核。
+
 ## 背景主题与跨页渐变
 
 工作分支 `codex/backdrop-themes`（基于 `main@d32357c2`）。**阶段 1–2 均已获用户审核通过，本功能阶段关闭**（待另行授权合入 `main` 或设备实测）。按用户确认方案 A 实施：保留现有「柔和弥散（`diffusion`）」作为默认项，新增 3 套单 Pass `FragmentProgram` 背景主题「流光丝绸雾（`grainGradient`）」「极光柔幕（`aurora`）」「晨昏地平线（`horizonGradient`）」，每套按今日/课表/图书馆/设置页面语义配 4 组浅/深色子样式与几何参数，并在主壳层实现跟随 `PageController` 连续位置的跨页背景色渐变过渡。

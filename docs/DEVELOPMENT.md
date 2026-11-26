@@ -22,6 +22,12 @@ flutter pub get --enforce-lockfile
 
 公开依赖均校验锁定摘要；不通过删除锁文件、SHA或关闭TLS解决下载失败。Windows依赖源码与工程同盘，CI使用官方源。版本只从根AndroidManifest.xml同步。
 
+### Paseo worktree
+
+Paseo 从新 worktree 所选基线的已提交 `paseo.json` 读取设置。选择包含该配置的分支后，Setup 会校验 Flutter SDK 提交、准备公开资源并按锁文件解析依赖。SDK 优先使用源检出的固定本地安装，其次查找 PATH。源检出的 pub 缓存与 worktree 同盘且已存在时直接复用，否则使用 worktree 内的缓存。
+
+工作区脚本 `prepare-flutter` 可重新执行准备，`check-plan` 预览相对 `origin/main` 的分层检查，`check-docs` 检查文档链接。初始化只准备公开资产和依赖。
+
 ## 当前可用检查
 
 ```powershell
