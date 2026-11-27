@@ -14,7 +14,8 @@
 
 - 每个新 T3 Code 对话开始时，先询问本对话要使用的 Codex 主模型和 Antigravity 设计模型。用户在首条消息中已指定的模型直接采用，只询问缺失项。选模和主线程模型核对按[多 agent 协作](docs/PROJECT_MANAGEMENT.md#t3-code-多-agent-协作)执行。
 
-- 在 T3 Code 中，Codex 是主 agent，负责拆解任务、业务与平台实现、集成和最终技术审核。已确认阶段涉及 Flutter 页面设计时，由 Codex 委派 Antigravity 子 agent；仅在任务单明确包含 UI 实现时才写页面代码。具体分工、派单模板和交付顺序见[多 agent 协作](docs/PROJECT_MANAGEMENT.md#t3-code-多-agent-协作)。
+- T3 Code 和 Orca 统一按职责派单。已确认任务中，凡涉及外观、UI/UX 或前端界面的部分，均由 Codex 委派 Antigravity 负责，包括设计、评审、已授权的实现与修复及界面验证。已有界面的小改和公共组件同样适用。Codex 负责业务、数据、平台接口、集成和最终技术审核。
+- 混合任务由 Codex 先约定状态、动作与接口，再按 [T3 Code 派单流程](docs/PROJECT_MANAGEMENT.md#t3-code-多-agent-协作)或 [Orca 派单流程](docs/PROJECT_MANAGEMENT.md#orca-多-agent-协作)分工。用户只要求方案时交付方案，已要求实现时把界面代码、素材和受影响的测试列入 Antigravity 的任务单。
 - 所有后续开发必须遵守`docs/PROJECT_MANAGEMENT.md`的长期流程，不限于本轮工程优化。开工先读该规范及`docs/PROJECT_BRIEF.md`（生效需求）、`docs/DEVELOPMENT_PLAN.md`（当前进度）、`docs/STATUS.md`（实际证据）；修改UI同时读`DESIGN.md`，实现前检索`docs/ARCHITECTURE.md`及已有代码。
 - UI修改遵循DESIGN.md的组件/状态/验收表；固定配色及公共尺寸、动效从mobile/lib/design读取，材质降级复用AppVisualPolicy，不在页面复制主题或交互算法。新增变体先扩展公共组件并更新规范。
 - 使用 Stitch MCP / `stitch-skills` 辅助视觉原型或独立 Web 展示页时，遵守 `DESIGN.md` 中的「Stitch 辅助设计与原型边界」：严禁覆盖根目录 `DESIGN.md`（Stitch 语义文档与临时产物隔离在本地 `.stitch/`），严禁上传真实课表、学校会话、凭据或设备截图，主线 Flutter 工程不直接合入 React/RN 生成代码。

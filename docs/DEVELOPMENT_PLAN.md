@@ -2,6 +2,14 @@
 
 更新：2026-11-27。本页只维护当前状态，历史分项证据见[STATUS](STATUS.md)及 Git 历史。生效规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。
 
+## Orca 工作树初始化
+
+2026-11-27 本机 `studentsAPP` 的 Setup Hook 已更新并回读核对，Flutter 准备脚本已修复 Windows 换行重写。最小验收覆盖当前 Orca 工作树的初始化、失败退出码、依赖锁和文档检查。变更集中在本机项目设置和共享准备脚本，等待本阶段审核。[验证记录](STATUS.md#2026-11-27-orca-工作树初始化)
+
+## Orca 派单配置
+
+2026-11-27 T3 Code 和 Orca 的分工已统一。已确认任务中的外观、UI/UX 和前端界面部分均派给 Antigravity。本机 `studentsAPP` 的「外观与前端派单」入口已通过配置回读和文档检查，等待阶段审核。[Orca 派单流程](PROJECT_MANAGEMENT.md#orca-多-agent-协作) · [验证记录](STATUS.md#2026-11-27-orca-派单配置)
+
 ## 0.42 发布
 
 2026-11-27 正式启动图标与学期内找课经 PR #8 合入 `main`（`b10f09c`），已公开预发布 Android `0.42` / `code16`。精确提交 CI、隔离 XLS、可信签名双包及四份公开附件核验通过。[发布验证](STATUS.md#042-发布验证)
