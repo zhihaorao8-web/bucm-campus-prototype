@@ -8,7 +8,7 @@
 
 ## Orca 派单配置
 
-2026-11-27 已保存本机 `studentsAPP` 的「Flutter 设计派单」快捷命令，并在项目规则中补齐 Codex 向 Antigravity 的 [Orca 派单流程](PROJECT_MANAGEMENT.md#orca-多-agent-协作)，覆盖任务范围、工作树、模型、启动、回传和主 Agent 审核。配置回读、CLI 参数和文档检查完成，等待本阶段审核。[验证记录](STATUS.md#2026-11-27-orca-派单配置)
+2026-11-27 T3 Code 和 Orca 的分工已统一。已确认任务中的外观、UI/UX 和前端界面部分均派给 Antigravity。本机 `studentsAPP` 的「外观与前端派单」入口已通过配置回读和文档检查，等待阶段审核。[Orca 派单流程](PROJECT_MANAGEMENT.md#orca-多-agent-协作) · [验证记录](STATUS.md#2026-11-27-orca-派单配置)
 
 ## 0.42 发布
 

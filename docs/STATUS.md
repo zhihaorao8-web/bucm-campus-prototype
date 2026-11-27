@@ -4,6 +4,8 @@
 
 ## 2026-11-27 Orca 派单配置
 
+- 在 `8139876` 的派单规则上扩展 T3 Code 和 Orca 的职责范围。在 Orca 设置页回读确认「外观与前端派单」属于 `studentsAPP`，提示词指定 Codex 协调、Antigravity 负责全部界面工作。已核对保存的完整提示词和标签栏入口。文档检查的 355 个本地文件目标及 Git 差异检查通过，实际 Worker 回传待具体任务验证。
+
 - 基于 `c90cdc0`，在本机 Windows Orca `1.4.280` 保存「Flutter 设计派单」。设置页回读确认命令范围为 `studentsAPP`，类型为 Codex 代理提示，项目标签栏已显示该入口。
 - 仓库 [Orca 派单流程](PROJECT_MANAGEMENT.md#orca-多-agent-协作) 复用既有任务模板。用安装版 CLI 的 `--help` 核对 `worker-start`、`worker-show` 和 `worker-read` 参数。文档检查与 Git 差异检查通过。此项验收覆盖保存回读及命令参数，实际 Worker 启动和回传留待已确认的设计任务验证。
 
