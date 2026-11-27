@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.42] - 2026-11-27
+
+- 课表页新增「学期内找课」。输入部分课名即可离线搜索当前学期，结果按日期列出，复用日视图课程卡片及详情入口。
+- 更新 Android 启动图标为宣纸米色底与双杏仁嫩芽图案，同步五档密度及应用内品牌资源。
+- Android 0.42（versionCode 16），Flutter 0.42.0+16。[发布说明](docs/releases/0.42.md)
+
 ## [0.41.1] - 2026-11-24
 
 - 修复真机在点击「今日」焦点卡或课程卡片进入详情页、返回及周/日切换期间出现的全屏平铺圆角黑块渲染异常：新增共享转场与局部渐变暂停底座（`BackdropTransitionBuilder`、`BackdropSuspensionScope`、`BackdropSuspensionAnimation`），消除 `GlassNavigation` 与 `ClassroomSectionSwitch` 嵌套 `BackdropFilter` 及 `AcrylicSurface` 重复 `ClipRRect`，为 `LiquidGlassSurface` 等滤镜补充 `TileMode.clamp`，并覆盖 `CourseCardHero` 返回飞行、`QuietSliverAppBar`、`QuietSheet`、主/设置 `MiuixTopAppBar`、`ScheduleModeTransition` 及选座胶囊进出过渡。

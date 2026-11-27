@@ -9,20 +9,25 @@ import 'package:campus_schedule/ui/week_grid.dart';
 
 Course sample({
   String id = 'synthetic-1',
+  String name = '合成课程',
+  String teacher = '示例教师',
+  String place = '示例楼',
   String term = '2026-2027-1',
+  String termStart = '2026-09-07',
+  int day = DateTime.monday,
   String weeks = '1-16',
   List<TeachingSegment> segments = const [TeachingSegment('08:30', '10:00')],
 }) => Course.fromJson({
   'id': id,
-  'name': '合成课程',
-  'teacher': '示例教师',
-  'place': '示例楼',
-  'day': 1,
+  'name': name,
+  'teacher': teacher,
+  'place': place,
+  'day': day,
   'weeks': weeks,
   'periods': [1, 2],
   'segments': segments.map((s) => s.toJson()).toList(),
   'semester': term,
-  'termStart': '2026-09-07',
+  'termStart': termStart,
 });
 
 class MemoryRepository implements ScheduleRepository {
@@ -65,6 +70,136 @@ void main() {
     expect(next.first.activeAt(DateTime(2026, 9, 7, 10, 15)), isFalse);
     expect(next.first.activeAt(DateTime(2026, 9, 7, 10, 30)), isTrue);
     expect(next.first.activeAt(DateTime(2026, 9, 7, 11, 15)), isFalse);
+  });
+  group('semester course search', () {
+    const semester = '2026-2027-1';
+
+    test('matches only part of the name in the selected semester', () {
+      final courses = [
+        sample(id: 'match', name: '基础解剖学 Lab', weeks: '1'),
+        sample(id: 'teacher', teacher: '解剖教研组', weeks: '1'),
+        sample(id: 'room', place: '解剖实验室', weeks: '1'),
+        sample(
+          id: 'old',
+          name: '基础解剖学 Lab',
+          term: '2025-2026-1',
+          termStart: '2025-09-08',
+          weeks: '1',
+        ),
+      ];
+      Map<DateTime, List<Occurrence>> search(
+        String query,
+        String selectedTerm,
+      ) => searchCourseOccurrences(
+        courses,
+        semester: selectedTerm,
+        query: query,
+        now: DateTime(2026, 9, 7),
+      );
+
+      expect(
+        search('  解剖  ', semester).values.single.single.course.id,
+        'match',
+      );
+      expect(search('lab', semester).values.single.single.course.id, 'match');
+      expect(search('解剖', '2025-2026-1').values.single.single.course.id, 'old');
+      expect(search('解剖', '2026-2027-2'), isEmpty);
+      expect(search('解剖教研组', semester), isEmpty);
+      expect(search('解剖实验室', semester), isEmpty);
+      expect(search('  ', semester), isEmpty);
+    });
+
+    test('retains same-name classes and the day view segment order', () {
+      final first = sample(
+        id: 'a',
+        teacher: '示例教师甲',
+        place: '示例楼 A',
+        weeks: '1',
+        segments: const [
+          TeachingSegment('08:30', '10:00'),
+          TeachingSegment('10:30', '11:15'),
+        ],
+      );
+      final second = sample(
+        id: 'b',
+        teacher: '示例教师乙',
+        place: '示例楼 B',
+        weeks: '1',
+      );
+      final courses = [second, first];
+      final date = DateTime(2026, 9, 7);
+      final result = searchCourseOccurrences(
+        courses,
+        semester: semester,
+        query: '合成',
+        now: date,
+      );
+
+      expect(result.keys, [date]);
+      final events = result[date]!;
+      final dailyEvents = occurrencesOn(courses, date);
+      expect(events.map((event) => event.course), [first, second, first]);
+      expect(
+        events.map((event) => event.start),
+        dailyEvents.map((e) => e.start),
+      );
+      expect(events.map((event) => event.end), dailyEvents.map((e) => e.end));
+    });
+
+    test('expands odd and even weekend classes across the calendar year', () {
+      final courses = [
+        sample(id: 'odd', termStart: '2026-12-21', day: 6, weeks: '1-4单'),
+        sample(id: 'even', termStart: '2026-12-21', day: 7, weeks: '1-4双'),
+      ];
+      final result = searchCourseOccurrences(
+        courses,
+        semester: semester,
+        query: '合成',
+        now: DateTime(2026, 12, 20),
+      );
+
+      expect(result.keys.map(isoDate), [
+        '2026-12-26',
+        '2027-01-03',
+        '2027-01-09',
+        '2027-01-17',
+      ]);
+      expect(result.values.map((day) => day.single.course.id), [
+        'odd',
+        'even',
+        'odd',
+        'even',
+      ]);
+    });
+
+    test('places dates with remaining classes before completed dates', () {
+      final courses = [sample(weeks: '1-4')];
+      List<String> datesAt(DateTime now) => searchCourseOccurrences(
+        courses,
+        semester: semester,
+        query: '合成',
+        now: now,
+      ).keys.map(isoDate).toList();
+
+      expect(datesAt(DateTime(2026, 9, 21, 9)), [
+        '2026-09-21',
+        '2026-09-28',
+        '2026-09-14',
+        '2026-09-07',
+      ]);
+      expect(datesAt(DateTime(2026, 9, 21, 10)), [
+        '2026-09-28',
+        '2026-09-21',
+        '2026-09-14',
+        '2026-09-07',
+      ]);
+      expect(datesAt(DateTime(2026, 10, 1)), [
+        '2026-09-28',
+        '2026-09-21',
+        '2026-09-14',
+        '2026-09-07',
+      ]);
+    });
   });
   test(
     'overlap groups show conflicts while adjoining lessons reuse a lane',

@@ -7,7 +7,7 @@ import re
 MODULES = ('docs', 'schedule', 'storage', 'classroom', 'player', 'ui', 'adapter', 'tooling')
 FLUTTER_TESTS = {
     'adapter': ('schedule', 'classroom_policy', 'library_seat_navigation', 'library_seat_queries'),
-    'schedule': ('schedule', 'schedule_difference', 'schedule_freshness',
+    'schedule': ('schedule', 'schedule_difference', 'schedule_freshness', 'schedule_search',
                  'today_focus', 'week_grid', 'week_stack', 'weekday_tabs', 'course_colors'),
     'storage': ('atomic_file', 'schedule_recovery', 'classroom_library',
                 'classroom_playback_progress', 'appearance'),

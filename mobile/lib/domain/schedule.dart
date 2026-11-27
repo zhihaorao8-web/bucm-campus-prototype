@@ -207,19 +207,18 @@ class Occurrence {
       start.isBefore(other.end) && other.start.isBefore(end);
 }
 
-List<Occurrence> occurrencesOn(Iterable<Course> courses, DateTime date) =>
-    [
-      for (final course in courses)
-        if (course.occursOn(date))
-          for (final segment in course.segments)
-            Occurrence(course, segment, date),
-    ]..sort((a, b) {
-      final time = a.start.compareTo(b.start);
-      return time != 0 ? time : a.course.id.compareTo(b.course.id);
-    });
+List<Occurrence> occurrencesOn(Iterable<Course> courses, DateTime date) => [
+  for (final course in courses)
+    if (course.occursOn(date))
+      for (final segment in course.segments) Occurrence(course, segment, date),
+]..sort(_compareDailyOccurrences);
 
-List<Occurrence> nextOccurrences(Iterable<Course> courses, DateTime now) {
-  final all = <Occurrence>[];
+int _compareDailyOccurrences(Occurrence a, Occurrence b) {
+  final time = a.start.compareTo(b.start);
+  return time != 0 ? time : a.course.id.compareTo(b.course.id);
+}
+
+Iterable<Occurrence> _scheduledOccurrences(Iterable<Course> courses) sync* {
   for (final course in courses) {
     for (final week in course.weekSet) {
       final date = calendarAdd(
@@ -227,13 +226,56 @@ List<Occurrence> nextOccurrences(Iterable<Course> courses, DateTime now) {
         (week - 1) * 7 + course.day - 1,
       );
       for (final segment in course.segments) {
-        final event = Occurrence(course, segment, date);
-        if (event.end.isAfter(now)) all.add(event);
+        yield Occurrence(course, segment, date);
       }
     }
   }
-  all.sort((a, b) => a.start.compareTo(b.start));
-  return all;
+}
+
+List<Occurrence> nextOccurrences(Iterable<Course> courses, DateTime now) =>
+    _scheduledOccurrences(
+        courses,
+      ).where((event) => event.end.isAfter(now)).toList()
+      ..sort((a, b) => a.start.compareTo(b.start));
+
+/// Finds course names in [semester] and groups their daily cards by date.
+/// Pass [now] in school wall-clock time. Dates with remaining classes come
+/// first, earliest to latest, followed by completed dates, latest to earliest.
+Map<DateTime, List<Occurrence>> searchCourseOccurrences(
+  Iterable<Course> courses, {
+  required String semester,
+  required String query,
+  required DateTime now,
+}) {
+  final keyword = query.trim().toLowerCase();
+  if (keyword.isEmpty) return const {};
+
+  final matches = courses.where(
+    (course) =>
+        course.semester == semester &&
+        course.name.toLowerCase().contains(keyword),
+  );
+  final byDate = <DateTime, List<Occurrence>>{};
+  for (final event in _scheduledOccurrences(matches)) {
+    byDate.putIfAbsent(event.date, () => []).add(event);
+  }
+
+  final upcomingDates = <DateTime>[];
+  final completedDates = <DateTime>[];
+  for (final entry in byDate.entries) {
+    entry.value.sort(_compareDailyOccurrences);
+    final hasRemainingClass = entry.value.any(
+      (event) => event.end.isAfter(now),
+    );
+    (hasRemainingClass ? upcomingDates : completedDates).add(entry.key);
+  }
+  upcomingDates.sort();
+  completedDates.sort((a, b) => b.compareTo(a));
+
+  return {
+    for (final date in [...upcomingDates, ...completedDates])
+      date: byDate[date]!,
+  };
 }
 
 class ScheduleDifference {

@@ -123,6 +123,26 @@ void showCourseInformation(BuildContext context, Course course) {
   );
 }
 
+Iterable<CourseRow> scheduleDayCourseRows(
+  List<Occurrence> events, {
+  required DateTime now,
+  required bool Function(Course) hasRecordings,
+  Set<Course>? matchingCourses,
+}) sync* {
+  for (final (index, event) in events.indexed) {
+    if (matchingCourses != null && !matchingCourses.contains(event.course)) {
+      continue;
+    }
+    yield CourseRow(
+      event: event,
+      hasRecordings: hasRecordings(event.course),
+      colorIndex: index % 5,
+      now: now,
+      conflict: events.any((other) => other != event && event.overlaps(other)),
+    );
+  }
+}
+
 class CourseRow extends ConsumerWidget {
   const CourseRow({
     super.key,
@@ -183,8 +203,8 @@ class CourseRow extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                 ],
-                SizedBox(
-                  width: 64 * MediaQuery.textScalerOf(context).scale(16) / 16,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 64),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
