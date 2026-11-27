@@ -67,6 +67,23 @@ Codex 在派单前核对当前会话的技能目录和可调用工具，Antigrav
 
 **Stitch 辅助原型。** 已确认阶段涉及新页面或较大视觉改版时，Antigravity 可按[设计规范 — Stitch 辅助设计与原型边界](../DESIGN.md#stitch-辅助设计与原型边界)在编码前选用 Stitch 做合成数据视觉比稿；Stitch 产出仅作原型参考，本地 `.stitch/` 产物不提交，不得替代 Flutter 组件复用、Codex 技术审核与分阶段验收。
 
+## Orca 多 agent 协作
+
+Codex 在主对话负责拆解、业务与平台实现、集成及最终审核。经确认的 Flutter 页面设计交给 Antigravity。沿用上节的分工、派单模板、合成数据和分阶段验收要求。
+
+本机 Orca 的 `studentsAPP` 项目可从标签栏选择「Flutter 设计派单」，由 Codex 读取项目规则并按用户提供的任务组织派单。正在进行的 Codex 主对话也可直接执行以下步骤。
+
+1. 在 `studentsAPP` 的 Codex 主对话中，读取 `orca skills get orchestration`，核对工作分支、基线 SHA、现有改动和 `orca agent installed --environment local --worktree current --json` 的结果。按项目规则确认本对话的主模型和设计模型。使用用户选定的模型和受支持的推理强度，已经明确的选项直接采用。
+2. 将上节模板填入 UTF-8 任务文件，注明交付是只读设计还是包含 Flutter 实现，列明可改文件、组件复用、接口、验收和回传证据。只读设计可以使用当前工作树。需要隔离写入时，指定 `--worktree new-child`、`--name` 和指向已提交基线的 `--base-branch`，核对初始化及文件范围。共享目录内，同一文件及同一 Flutter 构建目录均由约定的一方串行操作。
+3. 从 Codex 主对话发起受监督的 Worker。以下为当前工作树示例。Windows 可用 Orca 为当前会话提供的 `ORCA_CLI_COMMAND` 指向的可执行文件。
+
+   ```powershell
+   orca orchestration worker-start --environment local --agent antigravity --worktree current --spec-file '任务文件路径' --model '用户选定的模型ID' --json
+   ```
+
+   执行前替换任务文件路径和模型 ID。只有明确指定且模型支持时，才追加 `--effort <推理强度>`。从回执核对启动阶段并记录 Dispatch ID。出现等待、失败或结果未知时，按回执的 `next` 和 Orca 编排技能处理。
+4. 通过 Orca 编排接收 `worker_done`。用 `orca orchestration worker-show --environment local --dispatch <ID> --json` 核对状态，需要核实输出时使用同参数的 `worker-read`。Codex 审阅设计或完整差异，复核验收证据，按项目规则记录、提交和推送，然后停在当前阶段供用户审核。Antigravity 回传结果及验证，提交推送由 Codex 负责。
+
 ## 每个分项的固定顺序
 
 **核对已有实现 → 确定复用点与验收 → 修改 → 分层检查 → 更新证据/进度 → 仅暂存本项 → 提交并普通推送。**

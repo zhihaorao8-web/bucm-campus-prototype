@@ -2,6 +2,11 @@
 
 更新：2026-11-27。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
 
+## 2026-11-27 Orca 派单配置
+
+- 基于 `c90cdc0`，在本机 Windows Orca `1.4.280` 保存「Flutter 设计派单」。设置页回读确认命令范围为 `studentsAPP`，类型为 Codex 代理提示，项目标签栏已显示该入口。
+- 仓库 [Orca 派单流程](PROJECT_MANAGEMENT.md#orca-多-agent-协作) 复用既有任务模板。用安装版 CLI 的 `--help` 核对 `worker-start`、`worker-show` 和 `worker-read` 参数。文档检查与 Git 差异检查通过。此项验收覆盖保存回读及命令参数，实际 Worker 启动和回传留待已确认的设计任务验证。
+
 ## 2026-11-27 Orca 工作树初始化
 
 - 在 Windows Orca `1.4.280` 的 `studentsAPP` 项目核对当前 `fangtooth` 工作树（基线 `604097f`），确认 Codex 和 Antigravity 可被 Orca 发现，且两者的托管状态 Hook 已安装。项目 Setup Hook 已通过设置界面保存，CLI 回读与验证脚本一致，运行策略为默认执行、等待设置完成后启动 Agent。
