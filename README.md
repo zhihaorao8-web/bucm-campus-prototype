@@ -2,20 +2,22 @@
 
 面向北京中医药大学的非官方 Flutter Android 课表与课程录播应用。本人在学校官方页面完成认证，应用在本机导入课表、整理录播目录并播放课程。
 
-**当前版本：0.41.1 预发布 · Android 8.0 及以上。** 主线工程位于 `mobile/`，默认分支为 `main`。更新内容见 [CHANGELOG](CHANGELOG.md)。
+**当前版本 0.42 预发布，支持 Android 8.0 及以上。** 主线工程位于 `mobile/`，默认分支为 `main`。[变更记录](CHANGELOG.md)
 
 ## 下载安装
 
 | 安装包 | 适用场景 | 下载 |
 |---|---|---|
-| 正常版 release | 日常使用，关闭测试诊断与测试入口 | [0.41.1 正常版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.41.1/campus-schedule-0.41.1-android-release.apk) |
-| 测试版 debug | 问题排查，内置可复制、可清空的白名单诊断 | [0.41.1 测试版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.41.1/campus-schedule-0.41.1-android-debug.apk) |
+| 正常版 release | 日常使用，关闭测试诊断与测试入口 | [0.42 正常版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.42/campus-schedule-0.42-android-release.apk) |
+| 测试版 debug | 问题排查，内置可复制、可清空的白名单诊断 | [0.42 测试版 APK](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/download/v0.42/campus-schedule-0.42-android-debug.apk) |
 
-[发布说明与 SHA-256 校验文件](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.41.1) · [详细版本说明](docs/releases/0.41.1.md)
+[发布说明与 SHA-256 校验文件](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.42) · [详细版本说明](docs/releases/0.42.md)
 
 两个包来自同一源码，均启用本轮已确认的录播目录直取路径；包名、版本与本机开发签名一致，可以覆盖切换并保留数据。沿用既有 Flutter 预览版升级时无需清数据；与早期 Java 原型的包名不同。当前仍使用开发签名，正式生产签名方案尚未建立。仓库已公开，可通过发布页下载安装包。
 
 ## 已有功能
+
+- **学期内找课**。从课表右上角按部分课名离线搜索当前学期，按日期查看上课安排，点击课程卡片可打开对应课次详情。
 
 - **课表导入与离线查看**：通过官方页面导出 XLS，整批校验、去除完全重复并保存（兼容课程名全半角括号）；支持今日/下一节授课分段进度、连接时间轴、周视图（全宽层叠冲突 + 底部详情抽屉、可选周末列与周次横滑）、日视图（单层磨砂星期栏）与学期切换。失败保留原课表，提供备份恢复和导入变化摘要。
 - **今日语录与艺术标题**：「今日」「课表」「图书馆」展开大标题采用自研 B1 Macintosh Skeletal Filled 矢量轮廓与 1350ms 逐笔描边入场动效（上滑折叠与「设置」保持系统字体）；今日页顶端提供 24 条本地中文语录，并在外观设置中提供默认关闭的“在线一言”可选开关。

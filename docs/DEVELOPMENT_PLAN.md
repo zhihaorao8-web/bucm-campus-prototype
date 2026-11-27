@@ -1,10 +1,10 @@
 # 当前开发进度与下一步
 
+更新：2026-11-27。本页只维护当前状态，历史分项证据见[STATUS](STATUS.md)及 Git 历史。生效规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。
+
 ## 0.42 发布
 
-2026-11-27 用户授权将正式启动图标与学期内找课合入 `main` 并发布 `0.42`。在 `codex/release/0.42` 准备候选，经 PR 集成。以最终源码的质量检查、双包预览、隔离 XLS 验证和可信签名双包为发布依据。[发布验证](STATUS.md#042-发布验证)
-
-更新：2026-11-24。本页只维护当前状态，历史分项证据见[STATUS](STATUS.md)、[发布记录](releases/0.4.md)及Git历史。生效规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。
+2026-11-27 正式启动图标与学期内找课经 PR #8 合入 `main`（`b10f09c`），已公开预发布 Android `0.42` / `code16`。精确提交 CI、隔离 XLS、可信签名双包及四份公开附件核验通过。[发布验证](STATUS.md#042-发布验证)
 
 ## 液态玻璃改造
 
@@ -28,7 +28,7 @@
 
 ## 当前基线
 
-- 当前发布版本为0.41/code14（源码8107fedc4d4b90cdd6a7b3de44cc171e664e660d，标签v0.41已推送，精确CI 45372926858、隔离R8 1/1、可信签名双包与远端摘要均通过），见[0.41发布说明](releases/0.41.md)。历史版本见[0.4](releases/0.4.md)。
+- 当前公开预发布为 `0.42` / `code16`，发布源码为 `b10f09c`。[0.42 发布说明](releases/0.42.md)
 - 柔光亚克力五阶段、浅色光效、B1标题/语录与图书馆1–8D均已在模拟器分项验收；0.4最终release已于模拟器核对“今日”“图书馆”及“设置 → 项目信息（发布构建 / 源码 7a73decf / 版本 0.4 (13)）”。不能再以发布前“未合入/待安装”描述当前交付状态。
 - 工程优化 A–F、SDK 37 签名校验修复（PR #2，`96213b2`）和图书馆座位预约已合入 `main`。`v0.4` 已在 GitHub 预发布，四份远端附件的大小和 SHA-256 均与本地归档一致。[CHANGELOG](../CHANGELOG.md) · [GitHub 预发布](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.4)
 - 本轮改造起点为 `main@926cb45`，包含 `v0.4` 后获验收的校园账号登录、设置页重排和已合入的 T3 Code 协作规范。全量质量检查与双包预览均通过，前两项功能待后续版本发布授权。[基线 CI](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/44999120823)

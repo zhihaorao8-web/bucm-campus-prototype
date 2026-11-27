@@ -1,11 +1,15 @@
 # 当前验证概览
 
+更新：2026-11-27。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
+
 ## 0.42 发布验证
 
-- 用户已授权将正式启动图标和学期内找课合入 `main` 并发布 `0.42`。候选由 `main` 基线 `d32357c` 整合图标 `2806c8f` 与找课 `7e9525d`、`d36d251`。版本为 Android `0.42` / `code16`，Flutter `0.42.0+16`。
-- 找课原工作分支已通过 247 项课表及 UI 合成测试，1 项可选用例跳过。Pixel 8 API 36 的隔离包已用合成课表验证断网搜索、课程详情及与日视图一致。本次候选的集成 CI、包签名和发布附件另记。
+- 正式启动图标和学期内找课经 [PR #8](https://github.com/zhihaorao8-web/bucm-campus-prototype/pull/8) 合入 `main` 的 `b10f09ce27e61466d0fa88059201ddda9b44cb76`，公开预发布 `v0.42`（Android `0.42` / `code16`，Flutter `0.42.0+16`）。[GitHub 发布页](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.42)
+- 候选 `8bf789d` 与 `main` 合入提交的文件树一致。全量 `--all` 静态分析 0 问题，默认 Flutter 432 项通过、9 项跳过，直取配置 23 项通过。`main` 精确 CI 的 `quality`、`dual-preview` 均成功。[GitHub Actions](https://github.com/zhihaorao8-web/bucm-campus-prototype/actions/runs/45993383746)
+- 专用 Android 模拟器通过隔离 R8 XLS `1/1`，正常 release APK 冷启动、版本、合成搜索入口及应用抽屉图标确认。真机和真实学校课表另行验证。
+- 从干净 `b10f09c` 顺序构建兼容签名双包，包身份、实际模式、公开资产及 ZIP 完整性通过核验。GitHub 四份公开附件的大小和 SHA-256 与本地归档一致。[附件和摘要](releases/0.42.md#验证与附件)
 
-更新：2026-11-24。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
+## 历次验证
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
