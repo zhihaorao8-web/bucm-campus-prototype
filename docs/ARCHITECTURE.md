@@ -43,7 +43,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 |---|---|---|
 | 北京时间/日历天 | `domain/schedule.dart`：`schoolNow`、`dateOnly`、`calendarAdd`、`calendarDays`、`isoDate`、`schoolTimestamp` | `schedule_test.dart`、`schedule_freshness_test.dart` |
 | 周次/课程展开 | 同文件：`parseWeeks`、`Course.weekAt/occursOn`、`occurrencesOn`、`nextOccurrences` | `schedule_test.dart` |
-| 学期内找课 | 同文件：`searchCourseOccurrences` 接收课表、所选学期、部分课名和北京时间。返回按日期排序的 `Occurrence` 分组，每日沿用 `occurrencesOn` 的顺序。仍有课的日期从近到远，已结束的日期从新到旧。空白或未匹配时返回空结果 | `schedule_test.dart` |
+| 学期内找课 | `domain/schedule.dart` 的 `searchCourseOccurrences` 按所选学期和部分课名在本地查找。仍有课的日期从近到远，已结束的日期从新到旧。`ui/schedule_search_page.dart` 与日视图共用 `scheduleDayCourseRows`，卡片颜色、冲突标记及详情入口沿用同日完整课表 | `schedule_test.dart`、`schedule_search_test.dart` |
 | 导入差异/替换 | 同文件：`scheduleDifference`、`ScheduleData.mergeImport`；`application/schedule_controller.dart`保存后更新状态 | `schedule_difference_test.dart`、`schedule_recovery_test.dart` |
 | 完整名称匹配 | `domain/classroom.dart`：`classroomName`、`matchingClassroomCourses`；`classroomStoredName`保留旧持久化键语义 | `classroom_matching_test.dart`、`classroom_name_merge_test.dart` |
 | 完整分页/来源组 | `application/classroom_import_collection.dart`收集；`data/classroom_library.dart`的`ClassroomArchive`校验完整性 | `classroom_import_collection_test.dart`、`classroom_library_test.dart` |

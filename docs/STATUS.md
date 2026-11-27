@@ -24,11 +24,18 @@
 - 已将母版覆盖 [app-icon.png](../design/branding/app-icon.png)，更新 [品牌说明](../design/branding/README.md) 与 [icon_colors.xml](../mobile/android/app/src/main/res/values/icon_colors.xml)（`ic_launcher_background` 由 `#DFEAFE` 改为 `#F7EEDF`），运行 `scripts/prepare_icons.py` 重生成 `mdpi`–`xxxhdpi` 共 10 份启动图标并运行 `scripts/prepare_flutter.py` 同步 `mobile/assets/app-icon.png`（保留 `0.41.1+15` 版本号不变）。
 - 校验确认 `design/branding/app-icon.png`、`mobile/assets/app-icon.png` 与 `design/app-icon-v28b-paper.png` 的 SHA-256（`39e6c0d01c07...`）及 `1024×1024` RGB 规格一致，10 份 Android 资源尺寸与 `icon_colors.xml` 合法，`flutter test --no-pub test/settings_test.dart` 30/30 通过（含 `project-app-icon` 解码与渲染），`python scripts/check.py --module docs` 通过。替换涉及的 15 个文件已精准提交推送至 `codex/backdrop-themes`（`2806c8f`），未混入工作区既有 `bucm-campus.pen` 等改动；Android 模拟器/真机桌面实装目检与 APK 发布验收待另行安排。
 
+## 2026-11-27 学期内找课阶段 3
+
+- 在基线 `5ce1334` 接入课表顶栏入口、当前学期离线搜索及导入空状态。日视图和结果共用 `CourseRow` 构造，保留同日颜色、时间、地点、冲突标记及课程详情入口。共享卡片的时间列按文字宽度扩展，给窄屏大字留出课名空间。
+- `python scripts/check.py --module schedule --module ui --module docs` 通过。静态分析 0 问题，23 套 Flutter 合计 247 项通过、1 项可选用例跳过，3 组 Java 及文档检查通过。新增 4 项搜索回归覆盖学期隔离、日视图卡片对照、原课次详情、导入空状态及 320dp 深色两倍字号与键盘避让。顶栏滚动测试显式选取课次较多的合成星期二。报告 `build/checks/report-f6503492e6624aa88fa6712905954631.json`。
+- 在 `Pixel_8_API_36` 上使用 `0.41.1/code15` 隔离 debug 包 `cn.bucm.campus_schedule.mediatest`，APK 185,500,578 字节，SHA-256 `683a7fc823045672fb71475d3983f4480786ad04a82a756ba054f9b88047e450`。APK 来自 `5ce1334-modified` 的阶段 3 代码，提交前分支新增的 Android 改动只涉及启动图标资源。隔离构建使用用户级 Gradle 缓存及本地 `integration_test` 依赖固定脚本，详细日志为 `build/course-search-android-pinned.log`。
+- 模拟器确认无默认网络后，从课表顶栏打开搜索，提交输入法候选词，检出两门同名课程的各段时间和跨周结果。只有教师名含关键词的课程及其他学期的课程未命中。打开指定课程详情核对教师，再返回日视图对照时间、地点与冲突标记。使用合成课表，结束后恢复原网络和隔离包课表。设备日志 `build/course-search-device-final.log`。阶段 3 待用户审核。
+
 ## 2026-11-27 学期内找课阶段 2
 
 - 在项目 [Pen 主稿](../design/bucm-campus.pen)完成 `学期内找课` 系列六个画面。课表顶栏进入独立搜索页，显示当前学期。按日期列出 `CourseRow`，同一日期保留同名课程的各次安排。课程教师沿用卡片原有详情入口。
 - Pen 截图核对浅色 390dp 的入口、输入、结果与两个空状态，以及深色 320dp 的大字号和键盘示意。画布边界检查未发现可见内容裁切。使用合成课程；键盘与输入为静态示意，交互及断网验收安排在 Flutter 接入阶段。
-- 在已提交的 `7e9525d` 设计稿基线副本中用 Pencil 应用同一组设计并验证六个画面的结构和可见边界。主稿中的既有本地设计改动保留，以基线副本同步本阶段画面。待用户审核。
+- 在已提交的 `7e9525d` 设计稿基线副本中用 Pencil 应用同一组设计并验证六个画面的结构和可见边界。主稿中的既有本地设计改动保留，以基线副本同步本阶段画面。用户以「继续」通过阶段 2。
 
 ## 2026-11-27 学期内找课阶段 1
 

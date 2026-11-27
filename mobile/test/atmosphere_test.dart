@@ -340,6 +340,10 @@ void main() {
           if (page == 'timetable-day-page') {
             await tester.tap(find.text('日'));
             await tester.pumpAndSettle();
+            final tuesday = find.text('周二');
+            await tester.ensureVisible(tuesday);
+            await tester.tap(tuesday);
+            await tester.pumpAndSettle();
           }
           final header = find.byKey(ValueKey('topbar-$index'));
           final initial = tester.widget<MiuixTopAppBar>(header).blurTintAlpha;
@@ -354,6 +358,7 @@ void main() {
           expect(
             tester.widget<MiuixTopAppBar>(header).blurTintAlpha,
             greaterThan(initial),
+            reason: page,
           );
         }
         final container = ProviderScope.containerOf(
