@@ -1,6 +1,6 @@
 # 版本与协作规范
 
-更新：2026-11-24。当前发布版本为0.41.1/code15，pubspec为0.41.1+15；唯一版本来源为根AndroidManifest.xml。发布证据见[0.41.1](releases/0.41.1.md)、[0.41](releases/0.41.md)、[0.4](releases/0.4.md)、[0.3](releases/0.3.md)、[0.27](releases/0.27.md)与[STATUS](STATUS.md)。
+更新：2026-11-27。当前源码版本为 0.42/code16，pubspec 为 0.42.0+16。唯一版本来源为根 AndroidManifest.xml。发布证据见[0.42](releases/0.42.md)、[0.41.1](releases/0.41.1.md)与[STATUS](STATUS.md)。
 
 ## 当前协作规则
 

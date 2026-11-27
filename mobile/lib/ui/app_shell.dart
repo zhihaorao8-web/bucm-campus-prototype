@@ -34,6 +34,7 @@ import 'today_focus.dart';
 import 'today_quote_banner.dart';
 import 'week_navigation.dart';
 import 'schedule_sync_card.dart';
+import 'schedule_search_page.dart';
 import 'app_theme.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -205,6 +206,25 @@ class _AppShellState extends ConsumerState<AppShell>
     );
   }
 
+  void openScheduleSearch() {
+    final demoData = demo ? demoSchedule(now) : null;
+    final data = demoData ?? ref.read(scheduleProvider).value;
+    if (data == null) return;
+    final semester = data.semesters.contains(selectedSemester)
+        ? selectedSemester
+        : data.semesters.firstOrNull;
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => ScheduleSearchPage(
+          semester: semester,
+          demoData: demoData,
+          hasRecordings: hasRecordings,
+          onImport: openImport,
+        ),
+      ),
+    );
+  }
+
   Future<bool> confirm(String title, String detail) async =>
       await showDialog<bool>(
         context: context,
@@ -348,7 +368,19 @@ class _AppShellState extends ConsumerState<AppShell>
           blurRadius: AppHeader.blur,
           blurTintAlpha: tint,
           actions: [
-            if (demo) TextButton(onPressed: _exitDemo, child: const Text('退出示例')),
+            if (stored.hasValue && index == _scheduleTab)
+              Tooltip(
+                message: '学期内找课',
+                child: MiuixIconButton(
+                  key: const ValueKey('course-search-button'),
+                  minWidth: AppLayout.minTap,
+                  minHeight: AppLayout.minTap,
+                  onPressed: openScheduleSearch,
+                  child: const AppIcon(AppIcons.search),
+                ),
+              ),
+            if (demo)
+              TextButton(onPressed: _exitDemo, child: const Text('退出示例')),
             if (!demo && stored.hasValue && index < _libraryTab)
               Tooltip(
                 message: '导入或刷新课表',
@@ -789,16 +821,11 @@ class _AppShellState extends ConsumerState<AppShell>
                   padding: EdgeInsets.symmetric(vertical: 40),
                   child: Center(child: Text('这一天没有排课')),
                 ),
-              for (final (index, event) in events.indexed)
-                CourseRow(
-                  event: event,
-                  hasRecordings: hasRecordings(event.course),
-                  colorIndex: index % 5,
-                  now: now,
-                  conflict: events.any(
-                    (other) => other != event && event.overlaps(other),
-                  ),
-                ),
+              ...scheduleDayCourseRows(
+                events,
+                now: now,
+                hasRecordings: hasRecordings,
+              ),
             ],
           ),
         ),
