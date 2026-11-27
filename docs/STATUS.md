@@ -2,6 +2,12 @@
 
 更新：2026-11-27。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
 
+## 2026-11-27 Orca 工作树初始化
+
+- 在 Windows Orca `1.4.280` 的 `studentsAPP` 项目核对当前 `fangtooth` 工作树（基线 `604097f`），确认 Codex 和 Antigravity 可被 Orca 发现，且两者的托管状态 Hook 已安装。项目 Setup Hook 已通过设置界面保存，CLI 回读与验证脚本一致，运行策略为默认执行、等待设置完成后启动 Agent。
+- 在当前工作树用 Windows `cmd` 执行该 Setup Hook。7 个固定 SHA-256 的 XLS 依赖校验完成，生成 Flutter 依赖配置，`flutter pub get --enforce-lockfile` 通过。`pubspec.lock` 字节和修复后的 LF `pubspec.yaml` 字节及修改时间保持一致。用合成环境令依赖步骤返回 `37`，Hook 返回同一退出码且后续准备步骤未执行。验收覆盖当前工作树的初始化命令和保存回读。
+- `python scripts/check.py --module docs` 的 351 个本地 Markdown 文件目标检查通过，`git diff --check` 通过。
+
 ## 0.42 发布验证
 
 - 正式启动图标和学期内找课经 [PR #8](https://github.com/zhihaorao8-web/bucm-campus-prototype/pull/8) 合入 `main` 的 `b10f09ce27e61466d0fa88059201ddda9b44cb76`，公开预发布 `v0.42`（Android `0.42` / `code16`，Flutter `0.42.0+16`）。[GitHub 发布页](https://github.com/zhihaorao8-web/bucm-campus-prototype/releases/tag/v0.42)

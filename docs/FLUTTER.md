@@ -51,6 +51,10 @@ $env:JAVA_HOME='D:\AndroidStudio\jbr'
 
 `prepare_flutter.py`只同步公开JS、7个共享Java核心源文件、SHA-256验证过的HSSF依赖和第三方许可；生成文件不入Git。解析器唯一维护源仍在根`src/`。修改它们后先运行`python scripts/check.py`，再重新prepare。Flutter应用依赖锁文件、宿主和Gradle wrapper应提交，SDK、缓存、JAR、密钥和APK不提交。
 
+Windows 上的 Orca `studentsAPP` 项目通过「项目设置 → 工作树挂钩 → 设置脚本」初始化新工作树，默认运行并在设置完成后启动 Agent。脚本使用 `ORCA_WORKTREE_PATH` 定位新工作树，从 `ORCA_ROOT_PATH` 复用 Flutter SDK。`PUB_CACHE` 与新工作树同盘时复用，跨盘时改用新工作树下的 `build/pub-cache`。脚本依次运行 `scripts/dependencies.py`、`scripts/prepare_flutter.py` 和 `flutter pub get --enforce-lockfile`，遇到失败立即返回退出码。SDK 和 Python 路径由本机 Orca 设置管理。排查时可在新工作树复跑这三步，核对 `mobile/.dart_tool/package_config.json` 已生成，以及 `pubspec.yaml` 和 `pubspec.lock` 的 Git 状态。
+
+Hook 的环境变量仅在初始化期间生效。若工作树终端未将 Flutter 加入 PATH，可从工作树根目录执行 `python scripts/check.py --module ui --flutter C:\studentsAPP\build\toolchain\flutter\bin\flutter.bat`，按改动范围替换 `--module`。
+
 应用版本从根 `AndroidManifest.xml` 读取。prepare 同步 pubspec，Android 构建直接读取根版本。当前源码的 Android 显示版本为 `0.42`，code 为 `16`，pubspec 为 `0.42.0+16`。[版本与标签规则](VERSIONING.md) · [0.42 发布说明](releases/0.42.md)
 
 正常APK使用`flutter build apk --release --dart-define=CAMPUS_DIRECT_CATALOG=true --dart-define=CAMPUS_TEST_DIAGNOSTICS=false`，debug改为`--debug`及诊断true；两包顺序构建且来源相同。构建时重新生成对应插件注册表。当前沿用本机兼容开发签名、标记预发布；其他机器的密钥不能保证覆盖安装，正式生产签名尚未建立。详见[双包规范](BUILD_VARIANTS.md)。

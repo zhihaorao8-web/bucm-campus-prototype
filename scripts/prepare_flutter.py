@@ -54,8 +54,10 @@ def main():
     package_version = display_version + '.0' if display_version.count('.') == 1 else display_version
     version = package_version + '+' + manifest.get(ns + 'versionCode')
     pubspec = app / 'pubspec.yaml'
-    content = re.sub(r'^version:.*$', 'version: ' + version, pubspec.read_text(encoding='utf-8'), flags=re.M)
-    pubspec.write_text(content, encoding='utf-8')
+    original = pubspec.read_bytes().decode('utf-8')
+    content = re.sub(r'^version:[^\r\n]*', 'version: ' + version, original, flags=re.M)
+    if content != original:
+        pubspec.write_bytes(content.encode('utf-8'))
     print('Prepared public scripts, verified XLS dependencies and licenses; Android ' + display_version + ', pubspec ' + version)
 
 
