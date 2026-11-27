@@ -4,6 +4,7 @@
 
 | 对象 | 已有证据 | 未完成/限制 |
 |---|---|---|
+| 应用启动图标（`28B-1` 宣纸米暖底双杏仁嫩芽，已替换并推送，`codex/backdrop-themes`） | 2026-11-27 经 Pen 对比（`Board 27 / 28 / 29`）选定 `28B-1` 矢量母版（[SVG](../design/app-icon-v28b-paper.svg) / [PNG](../design/app-icon-v28b-paper.png)），覆盖 [app-icon.png](../design/branding/app-icon.png) 并同步 [README](../design/branding/README.md)、[icon_colors.xml](../mobile/android/app/src/main/res/values/icon_colors.xml)（`#F7EEDF`）与 5 档 Android 图标（`2806c8f`）；SHA-256（`39e6c0d01c07...`）、尺寸、`flutter test --no-pub test/settings_test.dart`（30/30）及文档链接检查通过。[替换记录](#2026-11-27-应用启动图标替换为宣纸米暖底双杏仁嫩芽) | 未修改版本号；Android 模拟器/真机桌面实装目检、APK 构建与合入 `main` 待另行验收 |
 | 背景主题与跨页渐变（阶段 1–2，已审核通过，`codex/backdrop-themes`） | 阶段 1（`361273a`）与阶段 2（`727392a`，用户确认“审核通过”）均已获审核通过；交付 3 套单 Pass 着色器、四页子样式与连续跨页插值、外观设置持久化与实时静帧预览，同步 `DESIGN.md`；`flutter analyze --no-pub` 0 问题，7 套受影响测试 89/89 通过；`Pixel_8_API_36`（Impeller OpenGLES，源码 `4a204eb` debug APK `222,325,831` 字节）完成 4 套主题浅/深色、分页面子样式、选择器、迷你预览及跨页切换实机目检，`logcat` 0 Flutter/Shader/崩溃异常。[阶段 2 记录](#2026-11-25-背景主题与跨页渐变阶段-2) | 物理真机（Vulkan）整页渲染功耗及合入 `main` 待另行安排 |
 | 0.41.1 修复与发布（`main@b87784a2`） | PR #6 已合入 `main` 并公开预发布 `v0.41.1`（`0.41.1/code15`，保留 `v0.41` 标签与附件不变）。修复 `v0.41` 点击课程卡片转场/Hero/周日切换全屏圆角黑块；候选全量 `--all`（52 默认套 424/9/0、直取 23/23、`report-f87c999806824ec5b3ca4697dfc5cfd7.json`）、精确 `main` CI `45400708516`、隔离 R8 XLS `1/1`、可信签名 `release` 双包（`9170362e...`/`57d96e6d...`）、模拟器 `release` 抽查及 4 份远端附件大小/SHA-256 均核对通过。[0.41.1 发布记录](releases/0.41.1.md) · [修复详情](#2026-11-24-液态玻璃转场黑块修复) | 兼容开发签名预发布；真机 Vulkan 实测与性能功耗等独立待验 |
 | 0.41 集成与发布（`main@8107fed`） | PR #4 已合入，校园账号登录、设置重排、课表/录播恢复与液态玻璃阶段1–3随v0.41预发布。精确 `quality`、`dual-preview`、隔离R8 1/1、可信签名双包及四份远端摘要均通过。[0.41发布记录](releases/0.41.md) | 兼容开发签名预发布；真机性能、Vulkan及学校整页等独立待验 |
@@ -16,6 +17,12 @@
 | 当前UI | 五阶段及B1/语录分项验收；最终0.3课堂页模拟器抽查 | 物理手机性能/功耗、完整读屏与预测返回等仍待验 |
 | 学校链路 | 模拟器上的 WebVPN 扫码后恢复课表自动导入已通过；WebVPN 录播修复版（`69c83f6`）在模拟器通过原任务教学平台认证回跳、权限重验、原生双流短时播放及本机进度保存；用户确认真机上人工实际听音质量与完整课时播放均已验证通过（无需重验）。修复版 XLS 和 DOM 各 31 条均与独立官方导出吻合，并通过单周及切换时的旧课表保留测试。直连目录、短时播放和续播已有分项样本。[课表复验](#2026-11-23-课表读取修复) · [录播复验](#2026-11-23-录播-webvpn-回跳验收) | 水印组合、门户直连回跳、真实会话失效、其余物理真机项及 7 天会话待验。[录播复测记录](#2026-11-23-录播-webvpn-回跳验收) |
 | 图书馆座位预约 | Pixel 8 API 36 与真实学校平台通过原生提交、非空查单和原生取消（阶段 1–6 已审核通过）；前端重设计阶段 7A（`4bd9329`）、7B（`9d5d2bd`）与 7C（`b4227e5`）已全部获用户审核通过；三级渐进空间选座及顶栏 B1 统一阶段 8A（`cf0189b`）、8B（`bf2e2e2`）、8C（`6c47522`）与 8D（`ff716b2`）已全部获用户审核通过，通过主机变更检查（`report-fb07fac86c6944828ac2fa41d4fb9608.json`）与 Pixel 8 API 36 真实校园会话深/浅色只读验收（0 POST 写入） | 真实退出会话已在模拟器验证，物理真机提交、查单及取消另行验收 |
+
+## 2026-11-27 应用启动图标替换为宣纸米暖底双杏仁嫩芽
+
+- 经五瓣杏仁花（`Board 27`）、双杏仁发芽（`Board 28`）及 `28B` 四套底板配色（`Board 29`）对比后，用户选定 `28B-1` 宣纸米暖底极简镂空双杏仁夹缝嫩芽方案（[SVG 母版](../design/app-icon-v28b-paper.svg)、[1024px PNG](../design/app-icon-v28b-paper.png)）；主体按 66/108dp 自适应安全区居中绘制（`maxR=56.1%`），底板采用 `#FEFBF5 → #E6D5B8` 径向渐变（`r=57%`）。
+- 已将母版覆盖 [app-icon.png](../design/branding/app-icon.png)，更新 [品牌说明](../design/branding/README.md) 与 [icon_colors.xml](../mobile/android/app/src/main/res/values/icon_colors.xml)（`ic_launcher_background` 由 `#DFEAFE` 改为 `#F7EEDF`），运行 `scripts/prepare_icons.py` 重生成 `mdpi`–`xxxhdpi` 共 10 份启动图标并运行 `scripts/prepare_flutter.py` 同步 `mobile/assets/app-icon.png`（保留 `0.41.1+15` 版本号不变）。
+- 校验确认 `design/branding/app-icon.png`、`mobile/assets/app-icon.png` 与 `design/app-icon-v28b-paper.png` 的 SHA-256（`39e6c0d01c07...`）及 `1024×1024` RGB 规格一致，10 份 Android 资源尺寸与 `icon_colors.xml` 合法，`flutter test --no-pub test/settings_test.dart` 30/30 通过（含 `project-app-icon` 解码与渲染），`python scripts/check.py --module docs` 通过。替换涉及的 15 个文件已精准提交推送至 `codex/backdrop-themes`（`2806c8f`），未混入工作区既有 `bucm-campus.pen` 等改动；Android 模拟器/真机桌面实装目检与 APK 发布验收待另行安排。
 
 ## 2026-11-27 学期内找课阶段 2
 
