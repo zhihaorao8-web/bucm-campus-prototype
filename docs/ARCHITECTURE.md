@@ -1,6 +1,6 @@
 # 架构与公共能力索引
 
-更新：2026-11-22，按当前分支源码核对。需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，交互见[DESIGN](../DESIGN.md)，验证见[STATUS](STATUS.md)。本页描述已有实现；拟拆分与删除见[工程优化计划](MAINTENANCE_PLAN.md)。
+更新：2026-11-28，按当前分支源码核对。需求见[PROJECT_BRIEF](PROJECT_BRIEF.md)，交互见[DESIGN](../DESIGN.md)，验证见[STATUS](STATUS.md)。本页描述已有实现；拟拆分与删除见[工程优化计划](MAINTENANCE_PLAN.md)。
 
 课堂连接/目录协议与排查见[CLASSROOM](CLASSROOM.md)，播放所有权/媒体边界与公开来源见[PLAYER](PLAYER.md)；不要从已删除的旧专项计划重新实现功能。
 
@@ -26,14 +26,14 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 | 链路 | 入口与处理 | 提交/失败边界 |
 |---|---|---|
 | 课表导入 | `ui/import_page.dart` → 官方页面导航/导出 → `SchoolAdapter` → Android `MainActivity` → Java XLS/作息核心。DOM 备用由 `assets/coverage-check.js` 校验已加载的官方筛选文档，再于同一脚本调用 `assets/extract.js` 提取该文档。认证往返保留所选入口和操作 | 当前页面加载到对应学校服务后消费待恢复操作一次。取消、再遇认证、会话清除或超时停止恢复。DOM 选项变化尚未对应到新文档时保留旧课表。`ScheduleController` 先保存再发布状态；整批有效才替换同学期 |
-| 校园账号登录 | 设置或课表导入或图书馆 → `openCampusLogin` → `CampusLoginPage` → 固定官方服务入口；`platform/campus_login_navigation.dart` 管理各入口的 HTTPS 主文档域名、CAS 标签、同域 `upgradeSameHostHttps`（教务 `:80` 跳回有界升级 HTTPS/:443，不放开明文 HTTP）与同步/异步就绪判定（含 `CampusLoginTarget.library` 同源 `/ic-web/seatMenu` 检查）；完成后经 `ui/app_controls.dart` `showAppNotice` 显式提示登录成功 | 已有有效会话可直接验证目标服务；认证凭据由本人在校方页面输入。发起方只接收目标可用或取消，自己保留待恢复的业务操作 |
+| 校园账号登录 | 设置或课表导入或图书馆 → `openCampusLogin` → `CampusLoginPage` → `CampusLoginContent`（隔离覆盖层下保持官方 WebView 存活）+ `CampusPasswordForm` / `CampusSmsForm`（`ui/campus_login_forms.dart`）；`platform/campus_login_navigation.dart` 管理各入口的 HTTPS 主文档域名、CAS 标签、`upgradeSameHostHttps`（教务 `:80` 跳回有界升级 HTTPS/:443）与同步/异步就绪判定；`platform/campus_native_login.dart`（`CampusNativeLogin`）管理同源顶层 CAS 表单探测/提交、服务票据（`ST-`）校验、分类错误/脱敏手机号解析、串行代次队列及 `cn.bucm.campus/credentials` 通道 → Android `CampusCredentialStore` / `MainActivity`（`credentialGeneration` 防竞态） | 已有有效会话可跳过凭据保存；仅主动勾选「保存账号密码」、完成学校全部验证（含短信二次验证）且确认 `ST-` 回跳和目标就绪后才按未变更代次本机加密保存；短信验证码离开即清，阶段 2 通道不向 Dart 暴露 `read`；未知页面/异常退回官方 WebView；发起方只接收目标可用或取消，自己保留业务上下文 |
 | 录播导入 | `classroom_import_page.dart` / `ClassroomCoursePage` → 官方上下文 → `ClassroomImportCoordinator`协调API或DOM收集结果 | `ClassroomArchive`校验所有来源完整分页，协调器按捕获的revision调用`ClassroomLibrary`整组保存；目录可读不代表认证有效 |
 | 播放 | 时间线保留来源课程ID、录播ID及原分页 → `ClassroomPlaybackPreparation` → 原生`ClassroomPlayback` / `ClassroomPlayerGroup`。`ClassroomCoursePage` 复用 `openCampusLogin` 处理直连和 WebVPN 门户认证，门户就绪后 `assets/classroom-entry.js` 跟随校方当前教学资源入口。隧道内教学平台自己的 CAS 表单在原官方 WebView 继续，由本人认证；`/cc/` 加载停滞走既有有界恢复。 | 一次点播最多打开一次独立认证页。认证完成后重新读取原来源与分页，播放脚本校验学期、来源、页码、公开状态与唯一录播 ID，原生准备仍执行当次访问检查。取消或切换账号即丢弃请求，准备器负责移交前的原生会话释放。 |
-| 退出会话 | `ui/privacy_data_page.dart`（`PrivacyDataPage`）承载「隐私与数据」独立子页；经各自确认后分别调用 `SchoolAdapter.clearSession`（清除诊断、页面缓存、目录、续播及原生WebView会话，保留离线课表）或 `scheduleProvider.notifier.clear()`（清空全部学期本地课程，不影响学校会话） | 缓存/存储revision和任务generation阻止旧回调写回；两项操作相互独立确认 |
+| 退出会话 | `ui/privacy_data_page.dart`（`PrivacyDataPage`）承载「隐私与数据」独立子页；各自确认后分别调用 `SchoolAdapter.clearSession`（经 `CampusNativeLogin.clearWithSession` 递增凭据代次并清除 Android 凭据/Cookies/WebStorage 及录播目录/进度，保留离线课表）、`CampusNativeLogin.clear()`（仅清除本机加密保存账密，保留会话与课表）或 `scheduleProvider.notifier.clear()`（清空本地课程，不影响会话与账密） | 缓存/存储/凭据 revision 与 Android `credentialGeneration` 阻止迟到回调写回；三项清理操作相互独立确认 |
 | 图书馆座位预约 | 底部“图书馆”一级页直接进入 `ui/library_seat_query_page.dart`（一级页切入后惰性加载，合成示例模式下隔离）；三级空间选座视图与转场在 `ui/library_floor_overview.dart`（`LibraryFloorListView`、`LibraryFloorSchematicView`、楼层分组、`2F` 专绘与 `3F–5F` 区域方位模型、`LibrarySpatialLevelTransition`、`LibrarySeatViewModeTransition`）；具体区域选座双视图与骨架在 `ui/library_seat_map.dart`，区域/时段轴/预约与取消确认 `QuietSheet` 在 `ui/library_seat_sheets.dart`，“我的预约”焦点票卡与历史分层在 `ui/library_seat_bookings.dart`；`LibrarySeatQueries` 协调查询、预约确认和取消 | L1/L2 仅通过 `/ic-web/seatMenu` 拉取楼层与区域目录，进入 L3 具体区域后才按需拉取座位清单。需要认证时「登录校园账号」先调用 `LibrarySeatReader.tryReuseCampusSession`（无界面受限 WebView 检查是否可复用有效 CAS 会话并在 `/ic-web/seatMenu` 就绪后无弹窗返回，见 `CampusLoginTarget.library`），需要本人认证时进入自动关闭的 `CampusLoginPage`，完成后均由 `showAppNotice` 提示登录成功并仅作只读刷新（0 次自动写重试）；`LibrarySeatPage` 继续作为显式「打开学校预约网页」手动回退。退出会话或离页丢弃迟到响应与个人数据 |
 | 外观与语录 | `AppearanceController`、`QuoteService` → 主题及今日展示 | 外观独立存储；在线语录默认关闭，失败回退本地 |
 
-认证由用户在可见官方页面完成，App不额外保存凭据。下载Cookie仅在原生内存中按验证后的目标使用，不返回Dart。学校导出、主文档、认证和媒体分别校验用途/域名/端口/路径，不能合并为宽泛白名单。真实数据不进入测试或Git。
+认证由用户在可见官方页面或阶段 2 直连原生表单完成；仅在本人主动勾选并完成全部验证后由 Android Keystore 本机加密保存一组账密（阶段 2 方法通道不向 Dart 暴露 `read`）。下载Cookie仅在原生内存中按验证后的目标使用，不返回Dart。学校导出、主文档、认证和媒体分别校验用途/域名/端口/路径，不能合并为宽泛白名单。真实数据不进入测试或Git。
 
 ## 开发前先复用的能力
 
@@ -59,7 +59,9 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 | 本机续播 | `data/classroom_playback_progress.dart`校验身份/位置；`application/classroom_playback_progress_session.dart`协调选择、周期保存与清理 | `classroom_playback_progress_test.dart` |
 | 相邻错色/冲突布局 | `ui/course_colors.dart`分配色索引；`ui/week_grid.dart`按真实时间分片和层叠 | `course_colors_test.dart`、`week_stack_test.dart` |
 | 视觉策略/控件 | `design/app_palette.dart`、`design/app_tokens.dart`；`ui/visual_policy.dart`（`AppVisualPolicy` 降级、`isBackdropAnimationActive`、`BackdropSuspensionScope`、`BackdropSuspensionAnimation`、`BackdropTransitionBuilder`）、`ui/app_controls.dart`维护按钮/分段指示器/`showAppNotice`、`ui/app_icon_controls.dart` `AppArrowPreference`（含 `destructive` 语义红变体）、`ui/schedule_sync_card.dart`（支持 `footer` 槽位合卡） | `quiet_design_test.dart`、`liquid_glass_test.dart`、`course_interaction_test.dart`、`classroom_ui_polish_test.dart`、`appearance_test.dart`、`settings_test.dart` |
-| 校园登录导航 | `platform/campus_login_navigation.dart`：`CampusLoginTarget`（含 `library`）、`upgradeSameHostHttps`、`campusCasForm` | `settings_test.dart` |
+| 校园登录导航 | `platform/campus_login_navigation.dart`：`CampusLoginTarget`（含 `library`）、`upgradeSameHostHttps`、`campusCasForm` | `settings_test.dart`、`campus_login_native_test.dart` |
+| 原生校园登录表单 | `ui/campus_login_forms.dart`：`CampusPasswordForm`（默认不勾选保存、脱敏控制器、保留账号清密码）、`CampusSmsForm`（6 位验证、`onRequestCode` 可空）、`CampusLoginContent`（WebView 保活与隔离覆盖） | `campus_login_forms_test.dart`、`campus_login_native_test.dart` |
+| 原生校园登录与凭据 | `platform/campus_native_login.dart`：`CampusNativeLogin`（CAS 顶层表单同调用校验、分类错误与脱敏手机号探测、`ST-` 回跳校验、代次防竞态串行队列与 `cn.bucm.campus/credentials` 通道）、`CampusCredentials`；Android 宿主 `CampusCredentialStore` 与 `MainActivity.credentialGeneration` | `campus_login_native_test.dart`、`settings_test.dart` |
 | 主题/材质/交互 | `app_theme.dart`、`AcrylicSurface`、`CourseSurface/QuietCard/QuietSheet`、`CoursePressable/CourseCardLink`、`navigation_motion.dart` | `quiet_design_test.dart`、`course_interaction_test.dart`、`navigation_motion_test.dart` |
 
 不得重新按设备时区计算教学周、模糊匹配课程，或仅按录播ID丢弃来源。Java导入校验和Dart缓存校验属于不同信任边界，保持各自防护，以合成契约样本约束一致性。
@@ -73,6 +75,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 | 录播目录 | `classroom-library-v1.json`，读取schema 1/2、写schema 2；账号会话退出清除 |
 | 本机进度 | `classroom-progress-v1.json`，schema 1；仅身份、位置、时长、更新时间；退出会话清除 |
 | 旧单课程关联 | 已停用读写；`ClassroomLibrary.clear`在清除学校会话/目录时删除固定旧文件及pending，不读取或迁移旧关联 |
+| 已保存校园账密 | `campus-login-v1.enc` 于 `noBackupFilesDir`，`AndroidKeyStore`（`AES/GCM/NoPadding`）；仅主动勾选并完整验证后保存，`clear()` 与 `clearSession()` 均同步删密钥与密文，密钥失效重建 |
 | 短时页面/诊断 | `ClassroomSessionCache`和`TestDiagnostics`只在内存；诊断200条，debug硬门控 |
 | 公共网页脚本 | 根`assets/`为维护源，包括recording-api.cjs；prepare复制到Flutter/原生资产 |
 | Java共享核心 | `src/cn/bucm/campusprobe/`的`ScheduleParser`、`CourseTimes`、`CourseImportPlan`、`AcademicTerm`、`ExportWorkbook`、`SchoolExport`、`ClassroomMediaTransport`共7个文件 |
@@ -95,7 +98,7 @@ mobile/lib/main.dart → AppShell（今日 / 课表 / 图书馆 / 设置）
 | classroom_limits.dart | 字段长度、模型/官方API分页边界、来源/记录上限、短时缓存、页面/桥接超时与阶段预算 |
 | playback_policy.dart | 毫秒续播阈值/时长容差、保存/轮询/准备间隔；模型与活动会话复用resumablePosition |
 | network_policy.dart | 固定官方入口及WebVPN已知路径、无凭据探测、课表导入等待、可选语录请求；入口不替代用途白名单 |
-| runtime_config.dart | AppAssets、AppChannels、AppFeatures、AppLinks；资源源文件仍由prepare复制，原生通道保持相同协议 |
+| runtime_config.dart | AppAssets、AppChannels（含 `credentials`）、AppFeatures、AppLinks；资源源文件仍由prepare复制，原生通道保持相同协议 |
 
 配置按职责维护，不能将媒体/认证/课表导出合成宽泛允许列表。Java/JS与Dart处于不同信任边界，协议页大小等仍有独立校验；涉及这些契约变化时需对应多语言合成测试及必要L3验证，不因集中常量跳过防护。业务配置不得导入UI或视觉令牌。
 

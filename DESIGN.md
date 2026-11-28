@@ -1,6 +1,6 @@
 # 界面与交互开发规范
 
-更新：2026-11-24。适用当前Flutter Android课表、录播与图书馆座位预约，保留0.3已验收的MIUIX结构、柔光亚克力和B1标题。本文是当前组件规范；需求见[PROJECT_BRIEF](docs/PROJECT_BRIEF.md)，公共计算见[ARCHITECTURE](docs/ARCHITECTURE.md)，验证证据见[STATUS](docs/STATUS.md)，独有模拟器采样见[UI验证](docs/research/UI_VALIDATION.md)。旧UI计划已精简，不覆盖本文。
+更新：2026-11-28。适用当前Flutter Android课表、录播与图书馆座位预约，保留0.3已验收的MIUIX结构、柔光亚克力和B1标题。本文是当前组件规范；需求见[PROJECT_BRIEF](docs/PROJECT_BRIEF.md)，公共计算见[ARCHITECTURE](docs/ARCHITECTURE.md)，验证证据见[STATUS](docs/STATUS.md)，独有模拟器采样见[UI验证](docs/research/UI_VALIDATION.md)。旧UI计划已精简，不覆盖本文。
 
 ## 开发顺序与参数来源
 
@@ -25,14 +25,14 @@
 | 场景 | 必须复用的入口 | 交互/布局要求 | 代表验收 |
 |---|---|---|---|
 | 主页面/背景 | AppShell、QuietBackdrop、GlassNavigation | 今日/课表/图书馆/设置四个目的地；同一分页时钟，独立滚动/折叠状态，非当前页隔离触控/焦点/语义/ticker；B1用于今日/课表/图书馆展开标题，折叠标题及设置用系统字体；图书馆切入后惰性加载 | navigation_motion、atmosphere、ui |
-| 设置子页 | SettingsScaffold、settingsGroup、AppArrowPreference | 顶栏遮挡登记到滚动视口，末项可滚出底栏；保留返回和大字换行；`PrivacyDataPage` 复用 `AppArrowPreference(destructive: true)` 区分危险本地删除与中性会话清理 | settings、appearance |
+| 设置子页 | SettingsScaffold、settingsGroup、AppArrowPreference | 顶栏遮挡登记到滚动视口，末项可滚出底栏；保留返回和大字换行；`PrivacyDataPage` 在「学校会话」分组提供中性 `退出学校会话`（同步清除已保存账密与录播目录/进度，保留离线课表）及独立 `清除已保存的校园账号密码`（无已保存账密时禁用，不退出会话、不删课表），并用 `AppArrowPreference(destructive: true)` 区分「本地数据 → 清空本地课表」危险删除 | settings、appearance |
 | 课程阅读顶栏 | QuietSliverAppBar | 与主/设置顶栏共享AppHeader计算，不覆盖可见内容或系统栏前景 | atmosphere、settings |
 | 焦点大卡 | AcrylicSurface、FocusCourseCard | 仅局部裁剪模糊；优先显示此刻/下一节、开始/结束及授课分段进度 | today_focus、quiet_design |
 | 普通/课程卡 | QuietCard、CourseSurface、CourseRow | 普通列表与dense周表分别选材质，不逐格加BackdropFilter；完整信息有详情入口 | week_grid、week_stack、course_interaction |
 | 课程按压/跳转 | CoursePressable、CourseCardLink、CourseDetailsRoute | 接触反馈；移动/取消释放；同一入口防重复打开；每个可见实例独立Hero身份 | course_interaction |
 | 课程信息/冲突抽屉 | showQuietSheet、QuietSheet | 长内容滚动，安全区/关闭/系统返回可用；优先显示仅本次生效，不写回学校课表 | settings、week_stack |
 | 维护/连接恢复 | AppActionButton、ClassroomConnectionCard、showAppNotice | 主操作tonal、次操作outline，统一圆角/内边距/48dp最小高度；Wrap允许换行；`showAppNotice` 统一悬浮提示并避让悬浮底栏，成功态带语义图标 | classroom_ui_polish、classroom_connection、settings |
-| 校园账号登录 | 设置分组、AppArrowPreference、AppActionButton、官方 WebView | 登录页显示发起原因和学校来源。官方直连 CAS 的三个标签可用时显示原生方式选择器，默认账号密码；WebVPN 沿用官方扫码。教务同域 HTTP 跳转仅在宿主安全层 `upgradeSameHostHttps` 改写为 HTTPS；返回取消，网络失败可重试，目标服务可用后自动关闭并通过 `showAppNotice` 明确提示登录成功 | 设置合成测试覆盖 320 窄屏、大字、方式切换、同域 HTTPS 改写、取消和成功提示；Android 单独核对网页输入与回跳 |
+| 校园账号登录 | `CampusLoginPage`、`CampusLoginContent`、`CampusPasswordForm`、`CampusSmsForm`、官方 WebView | 顶部显示发起原因和学校来源。直连 CAS 账号密码流程由 `CampusLoginContent` 保持 WebView 存活并隔离覆盖层焦点/语义/触控；`CampusPasswordForm` 默认不勾选「保存账号密码」、支持显隐切换、错误保留账号清空密码与控件诊断脱敏；遇短信二次验证时隐藏方式标签切至 `CampusSmsForm`（6 位数字、仅在官方返回时展示脱敏手机号与发送提示、`onRequestCode` 可空、取消退出）；提供「打开学校官方页面」兜底及等待态。WebVPN 沿用官方扫码；同域 HTTP 跳转由 `upgradeSameHostHttps` 改写；目标服务可用后自动关闭并由 `showAppNotice` 提示成功（已登录但保存失败时另作提示） | `campus_login_forms`、`campus_login_native`、`settings` 合成测试覆盖 320 窄屏、深浅色、2.0x 大字、高对比度、错误/过期/取消/退后台及官方回退；Android 设备/真实学校另验 |
 | 图书馆认证后查单 | 图书馆查询页、`showAppNotice`、“我的预约” | 普通查询沿用当时页面。预约中断后认证成功，打开请求日期所在周的“我的预约”；取消中断后刷新原预约列表。用户关闭登录时保留中断提示，恢复过程只读。 | `library_seat_queries` 核对查询范围及预约和取消请求次数 |
 | 录播认证后恢复 | `CampusLoginPage`、`ClassroomConnectionCard`、录播时间线 | 用户点播遇到认证时保留原课时并说明登录后继续观看。直连按轻新课堂目录就绪返回，WebVPN 沿用校方扫码。返回后重新读取原来源和课时。取消或权限失效时回到课程并显示原因。 | `classroom_name_merge`、`classroom_preparation` 与 `auth-recovery` |
 | 图书馆官方认证与回退入口（已实现） | 底部「图书馆」一级页、`LibrarySeatReader.tryReuseCampusSession`、`CampusLoginTarget.library`、`LibrarySeatPage` | 需要认证时点击「登录校园账号」先无弹窗静默复用 CAS 会话并立即拉取座位状态；仍需本人认证时打开自动关闭型 `CampusLoginPage`（`CampusLoginTarget.library` 在 `/ic-web/seatMenu` 就绪后立即返回），成功后通过 `showAppNotice` 明确提醒并只读刷新（0 次自动写重试）。顶栏及异常卡继续保留显式「打开学校预约网页」进入 `LibrarySeatPage` 回退 | 合成测试覆盖静默复用、官方页自动关闭、取消及中断零重发；Android 真机与模拟器核对 |
@@ -71,9 +71,9 @@ AppActionButton的busy/权限决定仍由调用方传onPressed。等待时禁用
 | 首次空白 | 明确引导官方导入；合成示例可选且显式标记，不写本人数据 |
 | 离线/缓存 | 目录/课表可读，展示实际成功更新时间；缓存存在不表示当前会话有效 |
 | 未匹配/暂无/未发布 | 分别说明，不能统称网络错误；无本日回放不播放相邻日期 |
-| 需要认证 | 展示官方可见页面，由本人完成；保留目标，不用动画遮盖认证，不保存凭据 |
+| 需要认证 | 展示直连原生表单或官方可见页面，由本人完成；仅主动勾选且完成全部验证后本机加密保存账密，短信验证码离开即清，不用动画遮盖认证 |
 | 网络/权限/结构错误 | 分类提示，停止无界重试，失败保留旧数据；未知状态不宣称成功 |
-| 清空/退出/恢复 | 退出学校会话、清空课表、恢复备份独立确认，说明各自影响范围 |
+| 清空/退出/恢复 | 退出学校会话、清除已保存的校园账号密码、清空课表、恢复备份独立确认；退出学校会话同步清除已保存账密与目录/进度并保留离线课表 |
 
 ## 页面与领域特例
 
