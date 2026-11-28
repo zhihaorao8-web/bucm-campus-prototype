@@ -16,6 +16,7 @@ import 'package:campus_schedule/data/classroom_library.dart';
 import 'package:campus_schedule/data/classroom_playback_progress.dart';
 import 'package:campus_schedule/platform/app_platform.dart';
 import 'package:campus_schedule/platform/campus_login_navigation.dart';
+import 'package:campus_schedule/platform/campus_native_login.dart';
 import 'package:campus_schedule/platform/school_adapter.dart';
 import 'package:campus_schedule/ui/app_icon_controls.dart';
 import 'package:campus_schedule/ui/app_icons.dart';
@@ -703,15 +704,26 @@ void main() {
         await folder!.delete(recursive: true);
       });
       var sessionClears = 0;
+      var hasSaved = true;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SchoolAdapter.channel, (call) async {
-            if (call.method == 'clearSession') sessionClears++;
+            if (call.method == 'clearSession') {
+              sessionClears++;
+              hasSaved = false;
+            }
             return null;
           });
-      addTearDown(
-        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(SchoolAdapter.channel, null),
-      );
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(CampusNativeLogin.channel, (call) async {
+            if (call.method == 'hasSaved') return hasSaved;
+            return null;
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SchoolAdapter.channel, null);
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(CampusNativeLogin.channel, null);
+      });
       await tester.pumpWidget(app(repo));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('tab-3')));
@@ -736,11 +748,36 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text('密码只在学校官方页面输入。应用不保存密码，不上传课表。学校会话失效后，需要你重新登录。'),
+        find.text(
+          '默认不保存校园账号密码。仅当你主动勾选“保存账号密码”并完成学校全部验证后，应用才会使用本机加密保存一组账密，不上传课表或凭据。',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          '退出学校会话、清除已保存的校园账号密码与清空本地课表相互独立确认；退出学校会话时会一并清除已保存账密，但不删除离线课表。',
+        ),
         findsOneWidget,
       );
       expect(find.text('学校会话'), findsOneWidget);
       expect(find.text('本地数据'), findsOneWidget);
+      final credentialsControl = find.descendant(
+        of: find.byKey(const ValueKey('privacy-clear-credentials')),
+        matching: find.byType(MiuixBasicComponent),
+      );
+      expect(
+        tester
+            .widget<AppArrowPreference>(
+              find.byKey(const ValueKey('privacy-clear-credentials')),
+            )
+            .enabled,
+        isTrue,
+      );
+      expect(
+        tester.widget<MiuixBasicComponent>(credentialsControl).enabled,
+        isTrue,
+      );
+      expect(find.text('仅清除本机加密保存的账密，保留当前学校会话与离线课表'), findsOneWidget);
 
       await reveal(tester, find.text('退出学校会话'));
       await tester.tap(find.text('退出学校会话'));
@@ -778,6 +815,16 @@ void main() {
         isTrue,
       );
       expect(sessionClears, 1);
+      expect(hasSaved, isFalse);
+      expect(
+        tester
+            .widget<AppArrowPreference>(
+              find.byKey(const ValueKey('privacy-clear-credentials')),
+            )
+            .enabled,
+        isFalse,
+      );
+      expect(find.text('当前没有已保存的校园账号密码'), findsOneWidget);
       expect(repo.value.courses.length, 1);
 
       await reveal(tester, find.text('清空本地课表'));
@@ -1195,6 +1242,15 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(CampusNativeLogin.channel, (call) async {
+            if (call.method == 'hasSaved') return false;
+            return null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(CampusNativeLogin.channel, null),
+      );
 
       // 1. Demo mode enables session exit and disables schedule deletion
       await tester.pumpWidget(app(MemoryRepository(const ScheduleData())));
@@ -1288,6 +1344,15 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(CampusNativeLogin.channel, (call) async {
+            if (call.method == 'hasSaved') return false;
+            return null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(CampusNativeLogin.channel, null),
+      );
 
       await tester.pumpWidget(
         app(MemoryRepository(ScheduleData(courses: [sample()]))),
@@ -1466,6 +1531,142 @@ void main() {
       },
     );
   }
+  testWidgets(
+    'privacy and data subpage clears saved credentials independently from session and schedule',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final folder = await tester.runAsync(
+        () => Directory.systemTemp.createTemp('synthetic-credentials-clear-'),
+      );
+      const paths = MethodChannel('plugins.flutter.io/path_provider');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      var hasSaved = false;
+      var failClear = false;
+      var credentialClears = 0;
+      var sessionClears = 0;
+
+      messenger.setMockMethodCallHandler(paths, (_) async => folder!.path);
+      messenger.setMockMethodCallHandler(CampusNativeLogin.channel, (
+        call,
+      ) async {
+        if (call.method == 'hasSaved') return hasSaved;
+        if (call.method == 'clear') {
+          if (failClear) throw PlatformException(code: 'CLEAR_FAILED');
+          credentialClears++;
+          hasSaved = false;
+        }
+        return null;
+      });
+      messenger.setMockMethodCallHandler(SchoolAdapter.channel, (call) async {
+        if (call.method == 'clearSession') {
+          sessionClears++;
+        }
+        return null;
+      });
+      addTearDown(() async {
+        messenger.setMockMethodCallHandler(paths, null);
+        messenger.setMockMethodCallHandler(CampusNativeLogin.channel, null);
+        messenger.setMockMethodCallHandler(SchoolAdapter.channel, null);
+        if (folder!.existsSync()) await folder.delete(recursive: true);
+      });
+
+      final repo = MemoryRepository(ScheduleData(courses: [sample()]));
+      Future<void> openPrivacyPage([MemoryRepository? customRepo]) async {
+        await tester.pumpWidget(app(customRepo ?? repo));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('tab-3')));
+        await tester.pumpAndSettle();
+        await reveal(tester, find.byKey(const ValueKey('privacy-data-entry')));
+        await tester.tap(find.byKey(const ValueKey('privacy-data-entry')));
+        await tester.pumpAndSettle();
+      }
+
+      // 0. Disabled when no credentials are saved.
+      await openPrivacyPage();
+      final credRow = find.byKey(const ValueKey('privacy-clear-credentials'));
+      final sessionRow = find.byKey(const ValueKey('privacy-clear-session'));
+      final scheduleRow = find.byKey(const ValueKey('privacy-clear-schedule'));
+      expect(tester.widget<AppArrowPreference>(credRow).enabled, isFalse);
+      expect(find.text('当前没有已保存的校园账号密码'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+
+      // 1. Cancel keeps saved credentials; confirm clears only credentials.
+      hasSaved = true;
+      await openPrivacyPage();
+      expect(tester.widget<AppArrowPreference>(credRow).enabled, isTrue);
+      expect(
+        tester
+            .widget<MiuixBasicComponent>(
+              find.descendant(
+                of: credRow,
+                matching: find.byType(MiuixBasicComponent),
+              ),
+            )
+            .titleColor,
+        isNull,
+      );
+      expect(find.text('仅清除本机加密保存的账密，保留当前学校会话与离线课表'), findsOneWidget);
+
+      await tester.tap(credRow);
+      await tester.pumpAndSettle();
+      expect(find.text('清除已保存的校园账号密码？'), findsOneWidget);
+      expect(find.textContaining('不会退出当前学校会话'), findsOneWidget);
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(credentialClears, 0);
+      expect(sessionClears, 0);
+      expect(repo.value.courses.length, 1);
+
+      await tester.tap(credRow);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('确认清除'));
+      await tester.pumpAndSettle();
+      expect(credentialClears, 1);
+      expect(sessionClears, 0);
+      expect(repo.value.courses.length, 1);
+      expect(find.text('已清除已保存的校园账号密码'), findsOneWidget);
+      expect(tester.widget<AppArrowPreference>(credRow).enabled, isFalse);
+      expect(find.text('当前没有已保存的校园账号密码'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+
+      // 2. Clear failure restores row and keeps saved status.
+      hasSaved = true;
+      failClear = true;
+      await openPrivacyPage();
+      expect(tester.widget<AppArrowPreference>(credRow).enabled, isTrue);
+      await tester.tap(credRow);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('确认清除'));
+      await tester.pumpAndSettle();
+      expect(find.text('操作未完成，原有数据保留，请重试'), findsOneWidget);
+      expect(hasSaved, isTrue);
+      expect(tester.widget<AppArrowPreference>(credRow).enabled, isTrue);
+      await tester.pumpWidget(const SizedBox());
+
+      // 3. Demo mode keeps session and credential clear active while disabling schedule clear.
+      hasSaved = true;
+      failClear = false;
+      await tester.pumpWidget(app(MemoryRepository(const ScheduleData())));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('先体验合成示例'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.byKey(const ValueKey('privacy-data-entry')));
+      await tester.tap(find.byKey(const ValueKey('privacy-data-entry')));
+      await tester.pumpAndSettle();
+      expect(tester.widget<AppArrowPreference>(sessionRow).enabled, isTrue);
+      expect(tester.widget<AppArrowPreference>(credRow).enabled, isTrue);
+      expect(tester.widget<AppArrowPreference>(scheduleRow).enabled, isFalse);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 }
 
 class _PendingRepository extends MemoryRepository {

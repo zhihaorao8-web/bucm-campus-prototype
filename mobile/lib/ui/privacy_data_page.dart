@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/schedule_controller.dart';
 import '../design/app_tokens.dart';
+import '../platform/campus_native_login.dart';
 import '../platform/school_adapter.dart';
 import 'app_controls.dart';
 import 'app_icon_controls.dart';
@@ -25,6 +29,49 @@ class PrivacyDataPage extends ConsumerStatefulWidget {
 
 class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   bool _busy = false;
+  bool? _hasSavedCredentials;
+  bool _checkingCredentials = true;
+
+  @override
+  void initState() {
+    super.initState();
+    CampusNativeLogin.changes.addListener(_onCredentialsChanged);
+    unawaited(_refreshSavedCredentials());
+  }
+
+  @override
+  void dispose() {
+    CampusNativeLogin.changes.removeListener(_onCredentialsChanged);
+    super.dispose();
+  }
+
+  void _onCredentialsChanged() {
+    if (mounted) unawaited(_refreshSavedCredentials());
+  }
+
+  Future<void> _refreshSavedCredentials() async {
+    final expected = CampusNativeLogin.revision;
+    try {
+      final saved = await CampusNativeLogin.hasSaved();
+      if (!mounted || expected != CampusNativeLogin.revision) return;
+      setState(() {
+        _hasSavedCredentials = saved;
+        _checkingCredentials = false;
+      });
+    } on MissingPluginException {
+      if (!mounted || expected != CampusNativeLogin.revision) return;
+      setState(() {
+        _hasSavedCredentials = false;
+        _checkingCredentials = false;
+      });
+    } catch (_) {
+      if (!mounted || expected != CampusNativeLogin.revision) return;
+      setState(() {
+        _hasSavedCredentials = null;
+        _checkingCredentials = false;
+      });
+    }
+  }
 
   Future<void> _runAction(Future<void> Function() action) async {
     if (_busy) return;
@@ -71,14 +118,40 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   Future<void> _clearSession() async {
     if (!await _confirm(
       title: '退出学校会话？',
-      detail: '将清除学校网页会话、已导入的录播目录和本机观看进度，离线课表继续保留。',
+      detail: '将清除学校网页会话、已保存的校园账号密码、已导入的录播目录和本机观看进度，离线课表继续保留。',
       confirmLabel: '确认退出',
     )) {
       return;
     }
     await _runAction(() async {
       await SchoolAdapter().clearSession();
-      if (mounted) showAppNotice(context, '已清除本机学校会话');
+      if (mounted) {
+        setState(() {
+          _hasSavedCredentials = false;
+          _checkingCredentials = false;
+        });
+        showAppNotice(context, '已清除本机学校会话');
+      }
+    });
+  }
+
+  Future<void> _clearCredentials() async {
+    if (!await _confirm(
+      title: '清除已保存的校园账号密码？',
+      detail: '将删除本机加密保存的校园账号密码，不会退出当前学校会话，也不会删除离线课表。',
+      confirmLabel: '确认清除',
+    )) {
+      return;
+    }
+    await _runAction(() async {
+      await CampusNativeLogin.clear();
+      if (mounted) {
+        setState(() {
+          _hasSavedCredentials = false;
+          _checkingCredentials = false;
+        });
+        showAppNotice(context, '已清除已保存的校园账号密码');
+      }
     });
   }
 
@@ -103,6 +176,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     final hasCourses =
         ref.watch(scheduleProvider).asData?.value.courses.isNotEmpty ?? false;
     final colors = Theme.of(context).colorScheme;
+    final canClearCredentials =
+        !_busy && !_checkingCredentials && _hasSavedCredentials != false;
     final canClearSchedule = !_busy && !widget.demo && hasCourses;
     Widget heading(String text) => Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -149,12 +224,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
                 ),
                 const SizedBox(height: AppSpace.md),
                 const Text(
-                  '密码只在学校官方页面输入。应用不保存密码，不上传课表。学校会话失效后，需要你重新登录。',
+                  '默认不保存校园账号密码。仅当你主动勾选“保存账号密码”并完成学校全部验证后，应用才会使用本机加密保存一组账密，不上传课表或凭据。',
                   style: TextStyle(fontSize: AppType.body, height: 1.5),
                 ),
                 const SizedBox(height: AppSpace.sm),
                 Text(
-                  '退出学校会话与清空本地课表相互独立，操作前都会单独确认。',
+                  '退出学校会话、清除已保存的校园账号密码与清空本地课表相互独立确认；退出学校会话时会一并清除已保存账密，但不删除离线课表。',
                   style: TextStyle(
                     fontSize: AppType.secondary,
                     height: 1.5,
@@ -170,10 +245,32 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           AppArrowPreference(
             key: const ValueKey('privacy-clear-session'),
             title: '退出学校会话',
-            summary: '保留离线课表，清除录播目录与本机观看进度',
+            summary: '保留离线课表，清除录播目录、本机观看进度与已保存账密',
             enabled: !_busy,
             startAction: const AppIcon(AppIcons.logOut),
             onClick: _clearSession,
+          ),
+          Divider(
+            height: 1,
+            thickness: 0.5,
+            indent: AppSpace.comfortable,
+            endIndent: AppSpace.comfortable,
+            color: colors.outlineVariant,
+          ),
+          AppArrowPreference(
+            key: const ValueKey('privacy-clear-credentials'),
+            title: '清除已保存的校园账号密码',
+            summary: _checkingCredentials
+                ? '正在检查本机保存状态'
+                : _hasSavedCredentials == false
+                ? '当前没有已保存的校园账号密码'
+                : '仅清除本机加密保存的账密，保留当前学校会话与离线课表',
+            enabled: canClearCredentials,
+            startAction: AppIcon(
+              AppIcons.close,
+              color: canClearCredentials ? null : colors.onSurfaceVariant,
+            ),
+            onClick: _clearCredentials,
           ),
         ]),
         heading('本地数据'),
