@@ -2,9 +2,9 @@
 
 更新：2026-11-28。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
 
-## 2026-11-28 原生校园登录阶段 3（待审核）
+## 2026-11-28 原生校园登录阶段 3（已审核通过）
 
-- **当前分支与基线**：工作分支 `zhihaorao8-web/research-login-session-auth`，阶段 2 审核基线 `60a87e7`（2026-11-28 获用户审核通过）；阶段 3 已按 3 个独立代码/测试提交推送，现停审待用户验收。
+- **当前分支与基线**：工作分支 `zhihaorao8-web/research-login-session-auth`，阶段 2 审核基线 `60a87e7`；阶段 3 已按 3 个独立代码/测试提交与规范同步（`9d25abe`）推送，并于 2026-11-28 获用户审核通过、先行保存进度，暂停于阶段 4 启动前。
 - **公开校方页面实况核查（只读内存检查 `https://cas.bucm.edu.cn/cas/login`、`login10.js?v=20251128`、`login-qrcode.js`、`qrcode.js`，未保存任何会话或图片）**：
   - `login-qrcode.js` 对 `#qrcode` 使用 Canvas+Image 绘制并于过期后叠加 `.code-gray`/`.code-fail`/`.code-refresh`（180s 后失效），`login10.js` 点击一次 `#qrcode_login` 后会解除自身绑定并在 `#password_login` 中重新初始化事件，因此未过期刷新需切过 `password_login` 再切回 `qrcode_login` 或直接点击 `.code-refresh`。
   - 手机登录（`#loginByMobile`）中 `sendMobileCode` 成功提示（`发送成功，验证码有效期5分钟，请注意查收`）与错误提示均写入 `#errormsg`，且多账号手机会向 `#accountForm` 填充 `#chooseloginid` / `div[name="numbercard"]`。
