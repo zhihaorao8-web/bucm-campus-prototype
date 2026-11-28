@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -109,7 +111,10 @@ class CampusLoginTestController extends PlatformInAppWebViewController {
   bool ready = false;
   WebUri? address;
   Object? Function(String source)? execute;
+  FutureOr<Object?> Function(String source, Map<String, dynamic> arguments)?
+  executeAsync;
   final scripts = <String>[];
+  final asyncCalls = <({String body, Map<String, dynamic> arguments})>[];
   final loads = <String>[];
 
   @override
@@ -145,8 +150,13 @@ class CampusLoginTestController extends PlatformInAppWebViewController {
   }) async {
     if (functionBody.contains('visualViewport')) return null;
     scripts.add(functionBody);
-    return CallAsyncJavaScriptResult(
-      value: execute?.call(functionBody) ?? ready,
-    );
+    asyncCalls.add((
+      body: functionBody,
+      arguments: Map<String, dynamic>.from(arguments),
+    ));
+    final value = executeAsync != null
+        ? await executeAsync!(functionBody, arguments)
+        : (execute?.call(functionBody) ?? ready);
+    return CallAsyncJavaScriptResult(value: value);
   }
 }

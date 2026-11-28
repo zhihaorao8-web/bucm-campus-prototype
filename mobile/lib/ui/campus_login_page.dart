@@ -7,11 +7,13 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../config/network_policy.dart';
 import '../design/app_tokens.dart';
 import '../platform/campus_login_navigation.dart';
+import '../platform/campus_native_login.dart';
 import '../platform/classroom_page_scripts.dart';
 import '../platform/school_adapter.dart';
 import '../platform/webview_identity.dart';
 import 'app_controls.dart';
 import 'app_icons.dart';
+import 'campus_login_forms.dart';
 
 /// Completes when the selected service is usable in the official WebView.
 /// Callers retain their own task context and receive only a success result.
@@ -41,13 +43,35 @@ class CampusLoginPage extends StatefulWidget {
   State<CampusLoginPage> createState() => _CampusLoginPageState();
 }
 
-class _CampusLoginPageState extends State<CampusLoginPage> {
+class _PasswordAttempt {
+  _PasswordAttempt(this.service, this.savedCandidate, this.credentialRevision);
+
+  final String service;
+  final CampusCredentials? savedCandidate;
+  final int credentialRevision;
+  bool authenticatedReturn = false;
+  bool passwordDispatched = false;
+  bool challenged = false;
+  bool smsDispatched = false;
+  int? submittingDocument;
+
+  CampusCredentials? get verifiedCandidate =>
+      authenticatedReturn &&
+          passwordDispatched &&
+          (!challenged || smsDispatched)
+      ? savedCandidate
+      : null;
+}
+
+class _CampusLoginPageState extends State<CampusLoginPage>
+    with WidgetsBindingObserver {
   InAppWebViewController? _web;
   Timer? _timeout;
   Timer? _poll;
   final _requestedHttpsUpgrades = <Uri>{};
   final _classroomScripts = ClassroomPageScripts();
   int _document = 0;
+  int _probeSeq = 0;
   int _httpsUpgrades = 0;
   bool _loading = true;
   bool _switching = false;
@@ -55,6 +79,21 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
   bool _completed = false;
   CampusLoginMethod? _method;
   String? _error;
+  ({
+    CampusNativeForm form,
+    String address,
+    String service,
+    String? notice,
+    bool expired,
+  })?
+  _nativeForm;
+  _PasswordAttempt? _passwordAttempt;
+  bool _nativeBusy = false;
+  bool _probingNative = false;
+  bool _manualWeb = false;
+  String? _nativeError;
+  int _clearPasswordToken = 0;
+  int _smsResetCount = 0;
 
   bool _current(InAppWebViewController web, int document) =>
       mounted &&
@@ -62,17 +101,31 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
       sameWebViewController(web, _web) &&
       document == _document;
 
+  bool get _waitingForSchool =>
+      widget.target != CampusLoginTarget.vpn &&
+      !_manualWeb &&
+      _nativeForm == null &&
+      (_probingNative || _nativeBusy || _passwordAttempt != null);
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     SchoolAdapter.sessionChanges.addListener(_sessionCleared);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     SchoolAdapter.sessionChanges.removeListener(_sessionCleared);
     _cancelTimers();
+    _passwordAttempt = null;
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Lifecycle return must never auto-resubmit an in-progress attempt.
   }
 
   void _cancelTimers() {
@@ -88,6 +141,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
   void _fail(InAppWebViewController web, String message) {
     if (!mounted || !sameWebViewController(web, _web) || _completed) return;
     _cancelTimers();
+    _probeSeq++;
     setState(() {
       _web = null;
       _document++;
@@ -95,6 +149,11 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
       _requestedHttpsUpgrades.clear();
       _loading = false;
       _method = null;
+      _nativeForm = null;
+      _passwordAttempt = null;
+      _nativeBusy = false;
+      _probingNative = false;
+      _nativeError = null;
       _switching = false;
       _retryDefaultSelect = false;
       _error = message;
@@ -112,6 +171,14 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
         _fail(web, message);
       }
     });
+  }
+
+  void _scheduleSubmitCheck(InAppWebViewController web, int document) {
+    _poll?.cancel();
+    _poll = Timer(
+      CampusLoginPolicy.readinessPoll,
+      () => unawaited(_probeNativeForm(web, document, afterSubmit: true)),
+    );
   }
 
   bool _isReplacedHttpNavigation(String? address) => _requestedHttpsUpgrades
@@ -178,9 +245,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
       return;
     }
     if (ready && ModalRoute.of(context)?.isCurrent == true) {
-      _completed = true;
-      _cancelTimers();
-      Navigator.of(context).pop(true);
+      await _finishLogin();
       return;
     }
     _poll?.cancel();
@@ -190,11 +255,345 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
     );
   }
 
+  Future<void> _finishLogin() async {
+    final sessionRevision = SchoolAdapter.sessionChanges.value;
+    final attempt = _passwordAttempt;
+    final candidate = attempt?.verifiedCandidate;
+    _completed = true;
+    _cancelTimers();
+    _passwordAttempt = null;
+    if (candidate != null) {
+      try {
+        final saved = await CampusNativeLogin.save(
+          candidate,
+          revision: attempt!.credentialRevision,
+        );
+        if (!saved &&
+            mounted &&
+            sessionRevision == SchoolAdapter.sessionChanges.value) {
+          showAppNotice(context, '已登录，校园账号密码未保存。');
+        }
+      } catch (_) {
+        if (mounted && sessionRevision == SchoolAdapter.sessionChanges.value) {
+          showAppNotice(context, '已登录，未能在本机保存校园账号密码。');
+        }
+      }
+    }
+    if (!mounted) return;
+    if (sessionRevision != SchoolAdapter.sessionChanges.value) {
+      setState(() {
+        _completed = false;
+        _web = null;
+        _document++;
+        _httpsUpgrades = 0;
+        _requestedHttpsUpgrades.clear();
+        _loading = false;
+        _method = null;
+        _nativeForm = null;
+        _nativeBusy = false;
+        _probingNative = false;
+        _nativeError = null;
+        _switching = false;
+        _retryDefaultSelect = false;
+        _error = '学校会话已清除，请重新登录。';
+      });
+      return;
+    }
+    if (ModalRoute.of(context)?.isCurrent == true) {
+      Navigator.of(context).pop(true);
+    }
+  }
+
+  void _cancelLogin() {
+    _cancelTimers();
+    _passwordAttempt = null;
+    if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+      Navigator.of(context).pop(false);
+    }
+  }
+
+  void _observeServiceReturn(String? address) {
+    final attempt = _passwordAttempt;
+    if (attempt != null &&
+        CampusNativeLogin.isServiceReturn(address, attempt.service)) {
+      attempt.authenticatedReturn = true;
+    }
+  }
+
+  Future<void> _probeNativeForm(
+    InAppWebViewController web,
+    int document, {
+    bool afterSubmit = false,
+  }) async {
+    if (_manualWeb ||
+        !_current(web, document) ||
+        (!afterSubmit &&
+            _nativeBusy &&
+            _passwordAttempt?.submittingDocument == document)) {
+      return;
+    }
+    final seq = ++_probeSeq;
+    if (!afterSubmit && _nativeForm == null && !_probingNative) {
+      setState(() => _probingNative = true);
+    }
+    try {
+      final address = (await web.getUrl())?.toString();
+      if (address == null || !_current(web, document) || _manualWeb) return;
+      final attempt = _passwordAttempt;
+      final passwordService = CampusNativeLogin.serviceFor(
+        address,
+        widget.target,
+      );
+      final service =
+          passwordService ??
+          (attempt != null && attempt.passwordDispatched
+              ? CampusNativeLogin.smsServiceFor(
+                  address,
+                  widget.target,
+                  attempt.service,
+                )
+              : null);
+      if (service == null) {
+        if (afterSubmit) {
+          _scheduleSubmitCheck(web, document);
+          return;
+        }
+        if (attempt != null) _openOfficialForm();
+        return;
+      }
+      final result = await CampusNativeLogin.perform(
+        web,
+        address: address,
+        service: service,
+      ).timeout(CampusLoginPolicy.readinessPoll);
+      if (!_current(web, document) || _manualWeb) return;
+      final probe = CampusNativeLogin.parseProbe(result);
+      if (probe == null) {
+        if (afterSubmit) {
+          _scheduleSubmitCheck(web, document);
+          return;
+        }
+        if (attempt != null) _openOfficialForm();
+        return;
+      }
+
+      if (probe.form == CampusNativeForm.password) {
+        if (passwordService != service ||
+            (_method != CampusLoginMethod.password && attempt == null)) {
+          if (afterSubmit) {
+            _scheduleSubmitCheck(web, document);
+            return;
+          }
+          if (attempt != null) _openOfficialForm();
+          return;
+        }
+        if (afterSubmit && probe.errorKind == CampusNativeErrorKind.none) {
+          _scheduleSubmitCheck(web, document);
+          return;
+        }
+        final attemptedHere = attempt != null && attempt.service == service;
+        if (afterSubmit) _cancelTimers();
+        setState(() {
+          _probingNative = false;
+          _nativeForm = (
+            form: CampusNativeForm.password,
+            address: address,
+            service: service,
+            notice: null,
+            expired: false,
+          );
+          _nativeBusy = false;
+          if (attemptedHere) {
+            _method = CampusLoginMethod.password;
+            _passwordAttempt = null;
+            if (probe.errorKind == CampusNativeErrorKind.invalidPassword) {
+              _nativeError = '账号或密码错误，请修改密码后重试。';
+              _clearPasswordToken++;
+            } else if (attempt.challenged) {
+              _nativeError = '短信验证已过期或失效，请重新登录。';
+              _clearPasswordToken++;
+            } else {
+              _nativeError = '学校未完成账号验证，请核对后重试。';
+            }
+          } else if (probe.errorKind == CampusNativeErrorKind.invalidPassword) {
+            _nativeError = '账号或密码错误，请修改密码后重试。';
+          }
+        });
+        return;
+      }
+
+      // SMS challenge form.
+      if (attempt == null ||
+          attempt.service != service ||
+          !attempt.passwordDispatched) {
+        if (afterSubmit) {
+          _scheduleSubmitCheck(web, document);
+          return;
+        }
+        if (attempt != null) _openOfficialForm();
+        return;
+      }
+      if (afterSubmit &&
+          attempt.smsDispatched &&
+          probe.errorKind == CampusNativeErrorKind.none) {
+        _scheduleSubmitCheck(web, document);
+        return;
+      }
+      if (afterSubmit) _cancelTimers();
+      attempt.challenged = true;
+      final notice = switch ((probe.maskedPhone, probe.smsSent)) {
+        (final phone?, true) => '验证码已发送至 $phone',
+        (final phone?, false) => '验证手机号：$phone',
+        (null, true) => '学校已发送短信验证码，请查收。',
+        (null, false) => null,
+      };
+      var expired = false;
+      String? errorMessage;
+      switch (probe.errorKind) {
+        case CampusNativeErrorKind.smsExpired:
+          expired = true;
+          errorMessage = '短信验证码或本次验证已过期，请取消后重新登录。';
+        case CampusNativeErrorKind.smsRateLimited:
+          errorMessage = '短信验证次数受限或操作过于频繁，请稍后再试。';
+        case CampusNativeErrorKind.smsSendFailed:
+          errorMessage = '学校未能发送短信验证码，请稍后重试或打开学校官方页面。';
+        case CampusNativeErrorKind.invalidSmsCode:
+          errorMessage = '短信验证码错误，请核对后重试。';
+        case CampusNativeErrorKind.generic:
+        case CampusNativeErrorKind.invalidPassword:
+          errorMessage = '学校未通过短信验证，请核对验证码后重试。';
+        case CampusNativeErrorKind.none:
+          if (attempt.smsDispatched) {
+            errorMessage = '学校未通过短信验证，请核对验证码后重试。';
+          }
+      }
+      setState(() {
+        _probingNative = false;
+        _nativeForm = (
+          form: CampusNativeForm.sms,
+          address: address,
+          service: service,
+          notice: notice,
+          expired: expired,
+        );
+        _nativeBusy = false;
+        _nativeError = errorMessage;
+        if (expired) {
+          _passwordAttempt = null;
+        }
+        if (attempt.smsDispatched) {
+          attempt.smsDispatched = false;
+          _smsResetCount++;
+        }
+      });
+    } catch (_) {
+      if (afterSubmit && _current(web, document)) {
+        _scheduleSubmitCheck(web, document);
+      } else if (_current(web, document) && _nativeForm == null) {
+        _openOfficialForm();
+      }
+    } finally {
+      if (mounted && seq == _probeSeq && _probingNative) {
+        setState(() => _probingNative = false);
+      }
+    }
+  }
+
+  Future<void> _submitNative({
+    CampusCredentials? credentials,
+    bool remember = false,
+    String? code,
+  }) async {
+    final web = _web;
+    final form = _nativeForm;
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (web == null ||
+        form == null ||
+        _nativeBusy ||
+        _completed ||
+        ModalRoute.of(context)?.isCurrent != true ||
+        (lifecycle != null && lifecycle != AppLifecycleState.resumed)) {
+      return;
+    }
+    if (form.form == CampusNativeForm.sms && form.expired) {
+      setState(() {
+        _nativeError = '短信验证码或本次验证已过期，请取消后重新登录。';
+      });
+      return;
+    }
+    final document = _document;
+    final attempt =
+        credentials != null && form.form == CampusNativeForm.password
+        ? _PasswordAttempt(
+            form.service,
+            remember ? credentials : null,
+            CampusNativeLogin.revision,
+          )
+        : _passwordAttempt;
+    if (attempt == null) return;
+    attempt.submittingDocument = document;
+    _passwordAttempt = attempt;
+    setState(() {
+      _nativeBusy = true;
+      _nativeError = null;
+    });
+    bool dispatched = false;
+    try {
+      dispatched =
+          await CampusNativeLogin.perform(
+            web,
+            address: form.address,
+            service: form.service,
+            credentials: credentials,
+            code: code,
+          ).timeout(CampusLoginPolicy.readinessPoll) ==
+          true;
+    } catch (_) {
+      // The official page is the safe recovery path for an unknown result.
+    }
+    if (!mounted || !identical(attempt, _passwordAttempt)) return;
+    if (!dispatched) {
+      _openOfficialForm();
+      return;
+    }
+    if (credentials != null) {
+      attempt.passwordDispatched = true;
+    } else {
+      attempt.smsDispatched = true;
+    }
+    if (_current(web, document)) {
+      _waitForPage(web, '学校暂未确认登录，请重新尝试。');
+      _scheduleSubmitCheck(web, document);
+    }
+  }
+
+  void _openOfficialForm() {
+    _probeSeq++;
+    setState(() {
+      _manualWeb = true;
+      _passwordAttempt = null;
+      _nativeForm = null;
+      _nativeBusy = false;
+      _probingNative = false;
+      _nativeError = null;
+    });
+  }
+
   Future<void> _select(CampusLoginMethod method) async {
     final web = _web;
     if (web == null || _switching || _completed) return;
     final document = _document;
-    setState(() => _switching = true);
+    setState(() {
+      _switching = true;
+      if (method != CampusLoginMethod.password) {
+        _probeSeq++;
+        _passwordAttempt = null;
+        _nativeForm = null;
+        _nativeBusy = false;
+        _probingNative = false;
+        _nativeError = null;
+      }
+    });
     bool selected;
     try {
       selected =
@@ -214,6 +613,8 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
     });
     if (shouldRetry) {
       unawaited(_select(CampusLoginMethod.password));
+    } else if (selected && method == CampusLoginMethod.password) {
+      unawaited(_probeNativeForm(web, document));
     }
   }
 
@@ -227,7 +628,9 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
     setState(() => _loading = false);
     final address = url.toString();
     if (widget.target != CampusLoginTarget.vpn && campusCasForm(address)) {
-      if (_method == null) {
+      if (_passwordAttempt != null || _method == CampusLoginMethod.password) {
+        unawaited(_probeNativeForm(web, _document));
+      } else if (_method == null) {
         if (_switching && complete) {
           _retryDefaultSelect = true;
         } else {
@@ -235,10 +638,43 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
         }
       }
     } else if (widget.target.isDestination(address)) {
+      _observeServiceReturn(address);
       final document = ++_document;
       _waitForPage(web, '学校服务暂未就绪，请检查网络后重试。');
       unawaited(_inspectPage(web, document));
     }
+  }
+
+  Widget? _buildNativeForm() {
+    if (widget.target == CampusLoginTarget.vpn || _manualWeb) return null;
+    final form = _nativeForm;
+    if (form == null) return null;
+    return switch (form.form) {
+      CampusNativeForm.password => CampusPasswordForm(
+        key: const ValueKey('campus-login-password-form'),
+        busy: _nativeBusy,
+        error: _nativeError,
+        clearPasswordToken: _clearPasswordToken,
+        onSubmit: (account, password, remember) => unawaited(
+          _submitNative(
+            credentials: CampusCredentials(
+              account: account,
+              password: password,
+            ),
+            remember: remember,
+          ),
+        ),
+      ),
+      CampusNativeForm.sms => CampusSmsForm(
+        key: ValueKey('campus-login-sms-form-$_smsResetCount'),
+        busy: _nativeBusy,
+        error: _nativeError,
+        notice: form.notice,
+        onRequestCode: null,
+        onSubmit: (code) => unawaited(_submitNative(code: code)),
+        onCancel: _cancelLogin,
+      ),
+    };
   }
 
   Widget _buildWeb() => InAppWebView(
@@ -270,6 +706,9 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
       if (!_current(web, _document)) return NavigationActionPolicy.CANCEL;
       final raw = action.request.url?.toString();
       if (widget.target.allows(raw)) {
+        if (action.isForMainFrame && action.hasGesture != true) {
+          _observeServiceReturn(raw);
+        }
         return NavigationActionPolicy.ALLOW;
       }
       if (action.isForMainFrame && action.hasGesture != true) {
@@ -292,11 +731,28 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
     },
     onLoadStart: (web, url) {
       if (!_checkDocument(web, url)) return;
+      final address = url?.toString();
+      _observeServiceReturn(address);
       _document++;
+      _probeSeq++;
       _poll?.cancel();
       _waitForPage(web, '学校页面加载超时，请检查网络后重试。');
+      final preserveForm =
+          _passwordAttempt != null &&
+          _nativeForm != null &&
+          !_manualWeb &&
+          !widget.target.isDestination(address);
       setState(() {
         _loading = true;
+        if (preserveForm) {
+          _nativeBusy = true;
+          _probingNative = false;
+        } else {
+          _nativeForm = null;
+          _nativeBusy = false;
+          _probingNative = false;
+        }
+        _nativeError = null;
         _method = null;
         _switching = false;
         _retryDefaultSelect = false;
@@ -361,7 +817,8 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
                           '学校官方页面 · ${widget.target.label}',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
-                        if (_method != null)
+                        if (_method != null &&
+                            _nativeForm?.form != CampusNativeForm.sms)
                           Wrap(
                             spacing: AppSpace.sm,
                             children: [
@@ -369,7 +826,7 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
                                 ChoiceChip(
                                   selected: method == _method,
                                   label: Text(method.label),
-                                  onSelected: _switching
+                                  onSelected: _switching || _nativeBusy
                                       ? null
                                       : (_) => _select(method),
                                 ),
@@ -384,7 +841,16 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
                 ),
                 Expanded(
                   child: _error == null
-                      ? _buildWeb()
+                      ? CampusLoginContent(
+                          webView: _buildWeb(),
+                          nativeForm: _buildNativeForm(),
+                          waitingForSchool: _waitingForSchool,
+                          onOpenOfficialPage:
+                              widget.target == CampusLoginTarget.vpn ||
+                                  _manualWeb
+                              ? null
+                              : _openOfficialForm,
+                        )
                       : Center(
                           child: SingleChildScrollView(
                             padding: const EdgeInsets.all(AppSpace.lg),
@@ -395,12 +861,21 @@ class _CampusLoginPageState extends State<CampusLoginPage> {
                                 AppActionButton(
                                   label: '重试',
                                   icon: AppIcons.refresh,
-                                  onPressed: () => setState(() {
-                                    _error = null;
-                                    _loading = true;
-                                    _httpsUpgrades = 0;
-                                    _retryDefaultSelect = false;
-                                  }),
+                                  onPressed: () {
+                                    _probeSeq++;
+                                    setState(() {
+                                      _error = null;
+                                      _loading = true;
+                                      _httpsUpgrades = 0;
+                                      _retryDefaultSelect = false;
+                                      _manualWeb = false;
+                                      _nativeForm = null;
+                                      _passwordAttempt = null;
+                                      _nativeBusy = false;
+                                      _probingNative = false;
+                                      _nativeError = null;
+                                    });
+                                  },
                                 ),
                               ],
                             ),

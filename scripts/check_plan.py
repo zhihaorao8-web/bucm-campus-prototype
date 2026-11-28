@@ -7,7 +7,7 @@ import re
 MODULES = ('docs', 'schedule', 'storage', 'classroom', 'player', 'ui', 'adapter', 'tooling')
 FLUTTER_TESTS = {
     'adapter': ('schedule', 'classroom_policy', 'library_seat_navigation', 'library_seat_queries',
-                'campus_login_contract'),
+                'campus_login_contract', 'campus_login_native'),
     'schedule': ('schedule', 'schedule_difference', 'schedule_freshness', 'schedule_search',
                  'today_focus', 'week_grid', 'week_stack', 'weekday_tabs', 'course_colors'),
     'storage': ('atomic_file', 'schedule_recovery', 'classroom_library',
@@ -23,7 +23,8 @@ FLUTTER_TESTS = {
                'classroom_small_window', 'classroom_playback_progress'),
     'ui': ('ui', 'settings', 'appearance', 'quiet_design', 'liquid_glass', 'atmosphere', 'artistic_title',
            'app_icons', 'navigation_motion', 'schedule_motion', 'course_interaction',
-           'classroom_ui_polish', 'quote_service', 'library_seat_queries', 'campus_login_forms'),
+           'classroom_ui_polish', 'quote_service', 'library_seat_queries', 'campus_login_forms',
+           'campus_login_native'),
 }
 DIRECT_TESTS = ('test/classroom_api_reader_test.dart', 'test/classroom_direct_import_test.dart')
 DEBUG_FLOWS = {
@@ -39,7 +40,7 @@ DEBUG_FLOWS = {
     'auth-recovery': {
         'host': ('classroom',), 'tests': ('classroom_access', 'classroom_read_progress',
             'classroom_connection', 'classroom_recovery_page', 'classroom_coordinator', 'classroom_api_reader',
-            'classroom_name_merge', 'classroom_preparation', 'campus_login_contract'),
+            'classroom_name_merge', 'classroom_preparation', 'campus_login_contract', 'campus_login_native'),
         'direct': True,
     },
     'playback-resume': {

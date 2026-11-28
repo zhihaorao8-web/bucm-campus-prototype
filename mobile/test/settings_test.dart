@@ -72,7 +72,10 @@ void main() {
     expect(target.loginEntry, target.entry);
     expect(teaching.allows('https://cas.bucm.edu.cn/cas/login'), isTrue);
     expect(teaching.isDestination('https://jw.bucm.edu.cn/'), isTrue);
-    expect(teaching.isDestination('https://cas.bucm.edu.cn/cas/login'), isFalse);
+    expect(
+      teaching.isDestination('https://cas.bucm.edu.cn/cas/login'),
+      isFalse,
+    );
     expect(teaching.allows('http://jw.bucm.edu.cn/'), isFalse);
     expect(teaching.allows('https://i.bucm.edu.cn/tp_nup/'), isFalse);
     expect(
@@ -80,7 +83,9 @@ void main() {
       'https://jw.bucm.edu.cn/jsxsd/',
     );
     expect(
-      teaching.upgradeSameHostHttps('http://jw.bucm.edu.cn:80/a?x=1').toString(),
+      teaching
+          .upgradeSameHostHttps('http://jw.bucm.edu.cn:80/a?x=1')
+          .toString(),
       'https://jw.bucm.edu.cn/a?x=1',
     );
     for (final blockedUpgrade in [
@@ -100,7 +105,9 @@ void main() {
       isNull,
     );
     expect(
-      CampusLoginTarget.library.upgradeSameHostHttps('http://kjyy.bucm.edu.cn/'),
+      CampusLoginTarget.library.upgradeSameHostHttps(
+        'http://kjyy.bucm.edu.cn/',
+      ),
       isNull,
     );
     expect(
@@ -139,69 +146,71 @@ void main() {
   testWidgets(
     'settings login keeps the official page until teaching service is ready',
     (tester) async {
-    final platform = CampusLoginTestPlatform();
-    final previous = InAppWebViewPlatform.instance;
-    InAppWebViewPlatform.instance = platform;
-    if (previous != null) {
-      addTearDown(() => InAppWebViewPlatform.instance = previous);
-    }
-    tester.view.physicalSize = const Size(320, 720);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(
-      app(MemoryRepository(const ScheduleData()), dark: true, scale: 2),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('tab-3')));
-    await tester.pumpAndSettle();
-    final login = find.text('登录校园账号');
-    await reveal(tester, login);
-    await tester.tap(login);
-    await tester.pump();
-    final view = platform.views.single;
-    expect(
-      view.params.initialUrlRequest?.url.toString(),
-      SchoolEndpoints.teachingCasLogin,
-    );
-    const cas = 'https://cas.bucm.edu.cn/cas/login';
-    view.visit(cas);
-    await tester.pumpAndSettle();
-    expect(find.text('校园账号登录'), findsOneWidget);
-    expect(find.text('账号密码'), findsOneWidget);
-    expect(view.controller.scripts.single, contains('a#password_login'));
-    await tester.tap(find.widgetWithText(ChoiceChip, '手机号'));
-    await tester.pumpAndSettle();
-    expect(
-      view.controller.scripts.last,
-      contains("querySelector('a#loginByMobile').click()"),
-    );
-    const redirected = 'http://jw.bucm.edu.cn/jsxsd/';
-    const upgraded = 'https://jw.bucm.edu.cn/jsxsd/';
-    expect(await view.navigate(redirected), NavigationActionPolicy.CANCEL);
-    expect(view.controller.loads, [upgraded]);
-    final scriptsBeforeRedirect = view.controller.scripts.length;
-    view.params.onLoadStart?.call(view.web, WebUri(redirected));
-    view.failLoad(redirected);
-    view.params.onLoadStop?.call(view.web, WebUri(redirected));
-    await tester.pumpAndSettle();
-    expect(find.text('重试'), findsNothing);
-    expect(view.controller.scripts, hasLength(scriptsBeforeRedirect));
+      final platform = CampusLoginTestPlatform();
+      final previous = InAppWebViewPlatform.instance;
+      InAppWebViewPlatform.instance = platform;
+      if (previous != null) {
+        addTearDown(() => InAppWebViewPlatform.instance = previous);
+      }
+      tester.view.physicalSize = const Size(320, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        app(MemoryRepository(const ScheduleData()), dark: true, scale: 2),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-3')));
+      await tester.pumpAndSettle();
+      final login = find.text('登录校园账号');
+      await reveal(tester, login);
+      await tester.tap(login);
+      await tester.pump();
+      final view = platform.views.single;
+      expect(
+        view.params.initialUrlRequest?.url.toString(),
+        SchoolEndpoints.teachingCasLogin,
+      );
+      const cas = 'https://cas.bucm.edu.cn/cas/login';
+      view.visit(cas);
+      await tester.pumpAndSettle();
+      expect(find.text('校园账号登录'), findsOneWidget);
+      expect(find.text('账号密码'), findsOneWidget);
+      expect(view.controller.scripts.single, contains('a#password_login'));
+      await tester.tap(find.widgetWithText(ChoiceChip, '手机号'));
+      await tester.pumpAndSettle();
+      expect(
+        view.controller.scripts.last,
+        contains("querySelector('a#loginByMobile').click()"),
+      );
+      const redirected = 'http://jw.bucm.edu.cn/jsxsd/';
+      const upgraded = 'https://jw.bucm.edu.cn/jsxsd/';
+      expect(await view.navigate(redirected), NavigationActionPolicy.CANCEL);
+      expect(view.controller.loads, [upgraded]);
+      final scriptsBeforeRedirect = view.controller.scripts.length;
+      view.params.onLoadStart?.call(view.web, WebUri(redirected));
+      view.failLoad(redirected);
+      view.params.onLoadStop?.call(view.web, WebUri(redirected));
+      await tester.pumpAndSettle();
+      expect(find.text('重试'), findsNothing);
+      expect(view.controller.scripts, hasLength(scriptsBeforeRedirect));
 
-    view.visit(upgraded);
-    await tester.pumpAndSettle();
-    expect(find.text('校园账号登录'), findsOneWidget);
-    view.controller.ready = true;
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle();
-    expect(find.text('校园账号登录成功，教务系统已可访问'), findsOneWidget);
-    expect(
-      tester.widget<SnackBar>(find.byType(SnackBar)).behavior,
-      SnackBarBehavior.floating,
-    );
-    expect(find.byType(CampusLoginPage), findsNothing);
-    expect(tester.takeException(), isNull);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+      view.visit(upgraded);
+      await tester.pumpAndSettle();
+      expect(find.text('校园账号登录'), findsOneWidget);
+      view.controller.ready = true;
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(find.text('校园账号登录成功，教务系统已可访问'), findsOneWidget);
+      expect(
+        tester.widget<SnackBar>(find.byType(SnackBar)).behavior,
+        SnackBarBehavior.floating,
+      );
+      expect(find.byType(CampusLoginPage), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
 
   testWidgets('campus login retries a timeout and exits on cancellation', (
     tester,
@@ -405,7 +414,10 @@ void main() {
       first.visit(cas, loaded: false);
       first.params.onLoadStop?.call(first.web, WebUri(cas));
       await tester.pumpAndSettle();
-      expect(first.controller.scripts, hasLength(2));
+      expect(
+        first.controller.scripts.where((s) => s.contains('a#password_login')),
+        hasLength(2),
+      );
       expect(find.widgetWithText(ChoiceChip, '账号密码'), findsOneWidget);
 
       first.failLoad(cas);
@@ -719,7 +731,10 @@ void main() {
       await reveal(tester, find.byKey(const ValueKey('privacy-data-entry')));
       await tester.tap(find.byKey(const ValueKey('privacy-data-entry')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('settings-route-隐私与数据')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('settings-route-隐私与数据')),
+        findsOneWidget,
+      );
       expect(
         find.text('密码只在学校官方页面输入。应用不保存密码，不上传课表。学校会话失效后，需要你重新登录。'),
         findsOneWidget,
@@ -1064,7 +1079,9 @@ void main() {
       final accountCard = find.byKey(const ValueKey('campus-account-card'));
       final syncCard = find.byKey(const ValueKey('schedule-sync-card'));
       final loginRow = find.byKey(const ValueKey('settings-campus-login'));
-      final scheduleCta = find.byKey(const ValueKey('settings-import-schedule'));
+      final scheduleCta = find.byKey(
+        const ValueKey('settings-import-schedule'),
+      );
       final recordingsRow = find.byKey(
         const ValueKey('settings-import-recordings'),
       );
@@ -1208,8 +1225,9 @@ void main() {
           matching: find.byType(MiuixBasicComponent),
         ),
       );
-      final errorColor =
-          Theme.of(tester.element(scheduleRow)).colorScheme.error;
+      final errorColor = Theme.of(
+        tester.element(scheduleRow),
+      ).colorScheme.error;
       expect(sessionMiuix.titleColor, isNull);
       expect(scheduleMiuix.titleColor?.color, errorColor);
       await tester.pumpWidget(const SizedBox());
@@ -1228,8 +1246,9 @@ void main() {
 
       expect(tester.widget<AppArrowPreference>(sessionRow).enabled, isTrue);
       expect(tester.widget<AppArrowPreference>(scheduleRow).enabled, isTrue);
-      final activeError =
-          Theme.of(tester.element(scheduleRow)).colorScheme.error;
+      final activeError = Theme.of(
+        tester.element(scheduleRow),
+      ).colorScheme.error;
       expect(
         tester
             .widget<AppIcon>(
@@ -1270,7 +1289,9 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(app(MemoryRepository(ScheduleData(courses: [sample()]))));
+      await tester.pumpWidget(
+        app(MemoryRepository(ScheduleData(courses: [sample()]))),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('tab-3')));
       await tester.pumpAndSettle();
@@ -1311,7 +1332,10 @@ void main() {
 
       for (final (trigger, routeKey) in [
         (find.text('外观设置'), 'settings-route-外观设置'),
-        (find.byKey(const ValueKey('privacy-data-entry')), 'settings-route-隐私与数据'),
+        (
+          find.byKey(const ValueKey('privacy-data-entry')),
+          'settings-route-隐私与数据',
+        ),
         (projectEntry, 'settings-route-项目信息'),
       ]) {
         await tester.tap(trigger);
@@ -1329,8 +1353,20 @@ void main() {
   for (final scenario in [
     (name: 'light-1.5x-glass', dark: false, scale: 1.5, blur: true, hc: false),
     (name: 'dark-2.0x-glass', dark: true, scale: 2.0, blur: true, hc: false),
-    (name: 'light-1.5x-no-blur', dark: false, scale: 1.5, blur: false, hc: false),
-    (name: 'dark-2.0x-high-contrast', dark: true, scale: 2.0, blur: true, hc: true),
+    (
+      name: 'light-1.5x-no-blur',
+      dark: false,
+      scale: 1.5,
+      blur: false,
+      hc: false,
+    ),
+    (
+      name: 'dark-2.0x-high-contrast',
+      dark: true,
+      scale: 2.0,
+      blur: true,
+      hc: true,
+    ),
   ]) {
     testWidgets(
       'settings stage 3 narrow 320dp responsive, reachability and degradation: ${scenario.name}',
@@ -1354,11 +1390,8 @@ void main() {
               ),
               currentAppearanceProvider.overrideWithValue(settings),
               appInfoProvider.overrideWith(
-                (ref) async => const AppPlatformInfo(
-                  version: 'test',
-                  build: '7',
-                  sdk: 36,
-                ),
+                (ref) async =>
+                    const AppPlatformInfo(version: 'test', build: '7', sdk: 36),
               ),
             ],
             child: MaterialApp(
@@ -1414,7 +1447,9 @@ void main() {
 
         final projectEntry = find.byKey(const ValueKey('project-info-entry'));
         await reveal(tester, projectEntry);
-        final headerRect = tester.getRect(find.byKey(const ValueKey('topbar-3')));
+        final headerRect = tester.getRect(
+          find.byKey(const ValueKey('topbar-3')),
+        );
         final dockRect = tester.getRect(find.byType(GlassNavigation));
         final projectRect = tester.getRect(projectEntry);
         expect(projectRect.top, greaterThanOrEqualTo(headerRect.bottom - .5));
@@ -1422,7 +1457,10 @@ void main() {
 
         await tester.tap(projectEntry);
         await tester.pumpAndSettle();
-        expect(find.byKey(const ValueKey('settings-route-项目信息')), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('settings-route-项目信息')),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       },
