@@ -23,7 +23,7 @@ FLUTTER_TESTS = {
                'classroom_small_window', 'classroom_playback_progress'),
     'ui': ('ui', 'settings', 'appearance', 'quiet_design', 'liquid_glass', 'atmosphere', 'artistic_title',
            'app_icons', 'navigation_motion', 'schedule_motion', 'course_interaction',
-           'classroom_ui_polish', 'quote_service', 'library_seat_queries'),
+           'classroom_ui_polish', 'quote_service', 'library_seat_queries', 'campus_login_forms'),
 }
 DIRECT_TESTS = ('test/classroom_api_reader_test.dart', 'test/classroom_direct_import_test.dart')
 DEBUG_FLOWS = {
