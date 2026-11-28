@@ -422,6 +422,15 @@ class _CampusLoginPageState extends State<CampusLoginPage>
         return;
       }
 
+      if (probe.form != CampusNativeForm.sms) {
+        if (afterSubmit) {
+          _scheduleSubmitCheck(web, document);
+          return;
+        }
+        if (attempt != null) _openOfficialForm();
+        return;
+      }
+
       // SMS challenge form.
       if (attempt == null ||
           attempt.service != service ||
@@ -461,6 +470,8 @@ class _CampusLoginPageState extends State<CampusLoginPage>
           errorMessage = '短信验证码错误，请核对后重试。';
         case CampusNativeErrorKind.generic:
         case CampusNativeErrorKind.invalidPassword:
+        case CampusNativeErrorKind.invalidPhone:
+        case CampusNativeErrorKind.invalidCaptcha:
           errorMessage = '学校未通过短信验证，请核对验证码后重试。';
         case CampusNativeErrorKind.none:
           if (attempt.smsDispatched) {
@@ -674,6 +685,7 @@ class _CampusLoginPageState extends State<CampusLoginPage>
         onSubmit: (code) => unawaited(_submitNative(code: code)),
         onCancel: _cancelLogin,
       ),
+      CampusNativeForm.mobile || CampusNativeForm.qr => null,
     };
   }
 

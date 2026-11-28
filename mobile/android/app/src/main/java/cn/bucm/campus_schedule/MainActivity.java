@@ -1,5 +1,8 @@
 package cn.bucm.campus_schedule;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.webkit.CookieManager;
 import android.webkit.WebStorage;
 import androidx.annotation.NonNull;
@@ -15,9 +18,12 @@ import cn.bucm.campusprobe.*;
 
 /** Visible Flutter WebView owns authentication. This adapter never returns cookies. */
 public class MainActivity extends FlutterActivity {
+    private static final int REQUEST_CODE_SAVE_QR = 4102;
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final AtomicLong credentialGeneration=new AtomicLong(0);
     private ClassroomPlayback playback;
+    private byte[] pendingQrBytes;
+    private MethodChannel.Result pendingQrReply;
     @Override public void configureFlutterEngine(@NonNull FlutterEngine engine) {
         super.configureFlutterEngine(engine);
         android.webkit.WebView.setWebContentsDebuggingEnabled(false);
@@ -91,6 +97,47 @@ public class MainActivity extends FlutterActivity {
                         boolean saved = credentials.hasSaved();
                         runOnUiThread(() -> reply.success(saved));
                     });
+                    default -> reply.notImplemented();
+                }
+            });
+        new MethodChannel(engine.getDartExecutor().getBinaryMessenger(), "cn.bucm.campus/login_actions")
+            .setMethodCallHandler((call, reply) -> {
+                switch (call.method) {
+                    case "saveQrImage" -> {
+                        Object rawBytes = call.argument("bytes");
+                        byte[] bytes = rawBytes instanceof byte[] ? (byte[]) rawBytes : null;
+                        try {
+                            CampusLoginActions.validatePng(bytes);
+                        } catch (IllegalArgumentException ignored) {
+                            reply.error("QR_INVALID", "当前二维码无效，请刷新后重试", null);
+                            return;
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                                || checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                        == PackageManager.PERMISSION_GRANTED) {
+                            saveQrToGallery(bytes, reply);
+                        } else if (pendingQrReply != null) {
+                            reply.error("QR_SAVE_BUSY", "正在保存二维码，请稍候", null);
+                        } else {
+                            pendingQrBytes = bytes;
+                            pendingQrReply = reply;
+                            requestPermissions(
+                                new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                REQUEST_CODE_SAVE_QR
+                            );
+                        }
+                    }
+                    case "availableScanClients" ->
+                        reply.success(CampusLoginActions.availableScanClients(getPackageManager()));
+                    case "launchScanClient" -> {
+                        Object rawClient = call.argument("client");
+                        String client = rawClient instanceof String ? (String) rawClient : null;
+                        try {
+                            reply.success(CampusLoginActions.launchScanClient(this, client));
+                        } catch (IllegalArgumentException ignored) {
+                            reply.error("UNTRUSTED_CLIENT", "不支持拉起该应用", null);
+                        }
+                    }
                     default -> reply.notImplemented();
                 }
             });
@@ -190,6 +237,46 @@ public class MainActivity extends FlutterActivity {
         }
         return out;
     }
+    private void saveQrToGallery(byte[] bytes, MethodChannel.Result reply) {
+        worker.execute(() -> {
+            try {
+                CampusLoginActions.savePng(this, bytes);
+                runOnUiThread(() -> reply.success(true));
+            } catch (Exception ignored) {
+                runOnUiThread(() -> reply.error("QR_SAVE_FAILED", "无法保存二维码到系统相册", null));
+            }
+        });
+    }
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            @NonNull String[] permissions,
+            @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQUEST_CODE_SAVE_QR) {
+            return;
+        }
+        final byte[] bytes = pendingQrBytes;
+        final MethodChannel.Result reply = pendingQrReply;
+        pendingQrBytes = null;
+        pendingQrReply = null;
+        if (reply == null) {
+            return;
+        }
+        boolean granted = grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        == PackageManager.PERMISSION_GRANTED;
+        if (!granted || bytes == null) {
+            reply.error(
+                "QR_PERMISSION_DENIED",
+                "未获得相册写入权限，无法保存二维码；也可使用另一台设备直接扫码。",
+                null
+            );
+            return;
+        }
+        saveQrToGallery(bytes, reply);
+    }
     @Override protected void onPause(){if(playback!=null)playback.pause();super.onPause();}
-    @Override protected void onDestroy(){if(playback!=null)playback.destroy();worker.shutdown();super.onDestroy();}
+    @Override protected void onDestroy(){pendingQrBytes=null;pendingQrReply=null;if(playback!=null)playback.destroy();worker.shutdown();super.onDestroy();}
 }

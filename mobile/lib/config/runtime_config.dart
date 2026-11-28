@@ -17,6 +17,7 @@ abstract final class AppChannels {
   static const school = 'cn.bucm.campus/school';
   static const playback = 'cn.bucm.campus/playback';
   static const credentials = 'cn.bucm.campus/credentials';
+  static const loginActions = 'cn.bucm.campus/login_actions';
 }
 
 abstract final class AppFeatures {
