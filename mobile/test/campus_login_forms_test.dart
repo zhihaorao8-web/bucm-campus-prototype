@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:campus_schedule/design/app_tokens.dart';
+import 'package:campus_schedule/platform/campus_native_login.dart';
 import 'package:campus_schedule/ui/app_controls.dart';
 import 'package:campus_schedule/ui/app_theme.dart';
 import 'package:campus_schedule/ui/campus_login_forms.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -10,7 +14,65 @@ import 'package:flutter_test/flutter_test.dart';
 const _syntheticAccount = '20260001';
 const _syntheticPassword = 'synthetic-pass';
 const _syntheticSmsCode = '101010';
+const _syntheticPhone = '13800000000';
+const _syntheticCaptcha = 'AB12';
 const _syntheticMaskedPhone = '138****0000';
+
+Uint8List _syntheticPng({int red = 24, int green = 24, int blue = 24}) {
+  const size = 64;
+  final scanlines = <int>[];
+  for (var y = 0; y < size; y++) {
+    scanlines.add(0);
+    for (var x = 0; x < size; x++) {
+      scanlines.add(red);
+      scanlines.add(green);
+      scanlines.add(blue);
+    }
+  }
+  final ihdr = <int>[0, 0, 0, size, 0, 0, 0, size, 8, 2, 0, 0, 0];
+  final idat = zlib.encode(scanlines);
+  int crc32(List<int> bytes) {
+    var crc = 0xFFFFFFFF;
+    for (final byte in bytes) {
+      crc ^= byte;
+      for (var i = 0; i < 8; i++) {
+        crc = (crc & 1) != 0 ? (crc >>> 1) ^ 0xEDB88320 : (crc >>> 1);
+      }
+    }
+    return crc ^ 0xFFFFFFFF;
+  }
+
+  List<int> u32(int v) => [
+    (v >> 24) & 0xFF,
+    (v >> 16) & 0xFF,
+    (v >> 8) & 0xFF,
+    v & 0xFF,
+  ];
+
+  List<int> chunk(String type, List<int> data) {
+    final typeBytes = type.codeUnits;
+    return [
+      ...u32(data.length),
+      ...typeBytes,
+      ...data,
+      ...u32(crc32([...typeBytes, ...data])),
+    ];
+  }
+
+  return Uint8List.fromList([
+    0x89,
+    0x50,
+    0x4E,
+    0x47,
+    0x0D,
+    0x0A,
+    0x1A,
+    0x0A,
+    ...chunk('IHDR', ihdr),
+    ...chunk('IDAT', idat),
+    ...chunk('IEND', const []),
+  ]);
+}
 
 Widget _wrapForm(
   Widget child, {
@@ -832,6 +894,275 @@ void main() {
         find.byKey(const ValueKey('campus-login-open-official')),
         findsNothing,
       );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'CampusQrForm covers loading, ready white contrast, explicit save, expired refresh, and client launch states',
+    (tester) async {
+      _setNarrowViewport(tester);
+      final qrBytes = _syntheticPng(red: 12, green: 34, blue: 56);
+      var saves = 0;
+      var refreshes = 0;
+      final launched = <CampusScanClient>[];
+
+      // 1. Loading disables save and shows placeholder.
+      await tester.pumpWidget(
+        _wrapForm(
+          CampusQrForm(
+            state: CampusQrState.loading,
+            saving: false,
+            refreshing: false,
+            availableClients: const {
+              CampusScanClient.wework,
+              CampusScanClient.wechat,
+            },
+            onSave: () => saves++,
+            onRefresh: () => refreshes++,
+            onLaunchClient: launched.add,
+          ),
+          brightness: Brightness.dark,
+          textScale: 2.0,
+          highContrast: true,
+        ),
+      );
+      await tester.pump();
+      expect(find.byKey(const ValueKey('campus-qr-loading')), findsOneWidget);
+      expect(find.byKey(const ValueKey('campus-qr-image')), findsNothing);
+      final disabledSave = tester.widget<FilledButton>(
+        find.descendant(
+          of: find.byKey(const ValueKey('campus-qr-save')),
+          matching: find.byType(FilledButton),
+        ),
+      );
+      expect(disabledSave.onPressed, isNull);
+      expect(saves, 0);
+
+      // 2. Ready keeps white surface in dark mode and exports only on tap.
+      await tester.pumpWidget(
+        _wrapForm(
+          CampusQrForm(
+            state: CampusQrState.ready,
+            qrBytes: qrBytes,
+            saving: false,
+            refreshing: false,
+            notice: '二维码已保存到系统相册',
+            availableClients: const {
+              CampusScanClient.wework,
+              CampusScanClient.wechat,
+            },
+            onSave: () => saves++,
+            onRefresh: () => refreshes++,
+            onLaunchClient: launched.add,
+          ),
+          brightness: Brightness.dark,
+          textScale: 2.0,
+          highContrast: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(saves, 0);
+      final imageFinder = find.byKey(const ValueKey('campus-qr-image'));
+      expect(imageFinder, findsOneWidget);
+      final qrSurface = tester.widget<Material>(
+        find.ancestor(of: imageFinder, matching: find.byType(Material)).first,
+      );
+      expect(qrSurface.color, Colors.white);
+
+      await tester.ensureVisible(find.byKey(const ValueKey('campus-qr-save')));
+      await tester.tap(find.byKey(const ValueKey('campus-qr-save')));
+      await tester.pump();
+      expect(saves, 1);
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-qr-launch-wework')),
+      );
+      await tester.tap(find.byKey(const ValueKey('campus-qr-launch-wework')));
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-qr-launch-wechat')),
+      );
+      await tester.tap(find.byKey(const ValueKey('campus-qr-launch-wechat')));
+      await tester.pump();
+      expect(launched, [CampusScanClient.wework, CampusScanClient.wechat]);
+
+      // 3. Expired + no local client + save error banner fit 320dp dark 2.0x.
+      await tester.pumpWidget(
+        _wrapForm(
+          CampusQrForm(
+            state: CampusQrState.expired,
+            saving: false,
+            refreshing: false,
+            error: '无法保存二维码到系统相册',
+            availableClients: const {},
+            onSave: () => saves++,
+            onRefresh: () => refreshes++,
+            onLaunchClient: launched.add,
+          ),
+          brightness: Brightness.dark,
+          textScale: 2.0,
+          highContrast: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('campus-qr-expired')), findsOneWidget);
+      expect(find.byKey(const ValueKey('campus-qr-error')), findsOneWidget);
+      expect(find.byKey(const ValueKey('campus-qr-no-client')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('campus-qr-launch-wework')),
+        findsNothing,
+      );
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-qr-expired-refresh')),
+      );
+      await tester.tap(find.byKey(const ValueKey('campus-qr-expired-refresh')));
+      await tester.pump();
+      expect(refreshes, 1);
+      expect(saves, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'CampusMobileForm validates inputs, redacts controllers, respects cooldown, and never auto-sends SMS',
+    (tester) async {
+      _setNarrowViewport(tester, keyboardInset: 240);
+      final captchaBytes = _syntheticPng(red: 90, green: 20, blue: 140);
+      var refreshes = 0;
+      final smsRequests = <(String, String)>[];
+      final submissions = <(String, String)>[];
+
+      Widget buildForm({
+        bool busy = false,
+        bool sendingSms = false,
+        bool captchaLoading = false,
+        int cooldown = 0,
+        bool canSendSms = true,
+        bool smsSent = false,
+        int clearCaptchaToken = 0,
+        String? error,
+      }) => _wrapForm(
+        CampusMobileForm(
+          busy: busy,
+          sendingSms: sendingSms,
+          captchaLoading: captchaLoading,
+          captchaBytes: captchaBytes,
+          cooldownSeconds: cooldown,
+          canSendSms: canSendSms,
+          smsSent: smsSent,
+          clearCaptchaToken: clearCaptchaToken,
+          error: error,
+          onRefreshCaptcha: () => refreshes++,
+          onRequestSms: (phone, captcha) => smsRequests.add((phone, captcha)),
+          onSubmit: (phone, code) => submissions.add((phone, code)),
+        ),
+        brightness: Brightness.dark,
+        textScale: 2.0,
+        highContrast: true,
+      );
+
+      await tester.pumpWidget(buildForm());
+      await tester.pumpAndSettle();
+      expect(find.text('保存账号密码'), findsNothing);
+      expect(smsRequests, isEmpty);
+
+      // Invalid phone + empty captcha block SMS request.
+      await tester.enterText(
+        find.byKey(const ValueKey('campus-mobile-phone-field')),
+        '12345',
+      );
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-mobile-send-sms')),
+      );
+      await tester.tap(find.byKey(const ValueKey('campus-mobile-send-sms')));
+      await tester.pumpAndSettle();
+      expect(find.text('请输入有效的 11 位手机号'), findsOneWidget);
+      expect(find.text('请输入图形验证码'), findsOneWidget);
+      expect(smsRequests, isEmpty);
+
+      // Enter valid phone + captcha and tap refresh image + send button.
+      await tester.enterText(
+        find.byKey(const ValueKey('campus-mobile-phone-field')),
+        _syntheticPhone,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('campus-mobile-captcha-field')),
+        _syntheticCaptcha,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('campus-mobile-sms-field')),
+        _syntheticSmsCode,
+      );
+      await tester.pump();
+
+      final diagnostics = tester
+          .element(find.byType(CampusMobileForm))
+          .toStringDeep();
+      expect(diagnostics, isNot(contains(_syntheticPhone)));
+      expect(diagnostics, isNot(contains(_syntheticCaptcha)));
+      expect(diagnostics, isNot(contains(_syntheticSmsCode)));
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-mobile-captcha-image')),
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('campus-mobile-captcha-image')),
+      );
+      await tester.pump();
+      expect(refreshes, 1);
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-mobile-send-sms')),
+      );
+      await tester.tap(find.byKey(const ValueKey('campus-mobile-send-sms')));
+      await tester.pump();
+      expect(smsRequests, [(_syntheticPhone, _syntheticCaptcha)]);
+
+      // Cooldown disables resend button cleanly and clearCaptchaToken wipes captcha only.
+      await tester.pumpWidget(
+        buildForm(
+          cooldown: 45,
+          canSendSms: false,
+          smsSent: true,
+          clearCaptchaToken: 1,
+          error: '图形验证码错误，已刷新，请重新输入。',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('45秒后重新获取'), findsOneWidget);
+      final disabledSend = tester.widget<OutlinedButton>(
+        find.descendant(
+          of: find.byKey(const ValueKey('campus-mobile-send-sms')),
+          matching: find.byType(OutlinedButton),
+        ),
+      );
+      expect(disabledSend.onPressed, isNull);
+      expect(
+        tester
+            .widget<TextField>(
+              find.byKey(const ValueKey('campus-mobile-phone-field')),
+            )
+            .controller!
+            .text,
+        _syntheticPhone,
+      );
+      expect(
+        tester
+            .widget<TextField>(
+              find.byKey(const ValueKey('campus-mobile-captcha-field')),
+            )
+            .controller!
+            .text,
+        isEmpty,
+      );
+
+      // Submit valid phone + 6-digit SMS code.
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-mobile-submit')),
+      );
+      await tester.tap(find.byKey(const ValueKey('campus-mobile-submit')));
+      await tester.pump();
+      expect(submissions, [(_syntheticPhone, _syntheticSmsCode)]);
       expect(tester.takeException(), isNull);
     },
   );
