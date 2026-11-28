@@ -52,7 +52,7 @@ python scripts/check.py --module docs --module tooling
 |---|---|
 | schedule-import | Java XLS/DOM导航→课程/时间模型→差异/更新时间→存储恢复；不操作Android或真实导出 |
 | classroom-import | 元数据/完整名称→全部来源分页→任务/整组保存；含API及DOM桥，自动跑开启直取专项 |
-| auth-recovery | 访问探测→认证等待/门户/超时→取消/迟到回调→恢复导入或重新核对原课时与播放权限；自动含直取时序，全部为合成页面 |
+| auth-recovery | 访问探测、认证等待/门户/超时、取消/迟到回调、恢复导入或重新核对原课时与播放权限。包含直取时序及 `campus_login_contract_test.dart` 的录播、图书馆账号密码与短信接续合成模型 |
 | playback-resume | 原生准备/移交→路由→续播选择/保存/清理及控制；仅Java传输/JS准备与Dart模拟，不实际解码或访问学校 |
 | storage-recovery | 原子暂存/提交/失败→课表备份→目录旧文件清理→进度/外观；仅合成临时文件 |
 

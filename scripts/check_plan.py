@@ -6,7 +6,8 @@ import re
 
 MODULES = ('docs', 'schedule', 'storage', 'classroom', 'player', 'ui', 'adapter', 'tooling')
 FLUTTER_TESTS = {
-    'adapter': ('schedule', 'classroom_policy', 'library_seat_navigation', 'library_seat_queries'),
+    'adapter': ('schedule', 'classroom_policy', 'library_seat_navigation', 'library_seat_queries',
+                'campus_login_contract'),
     'schedule': ('schedule', 'schedule_difference', 'schedule_freshness', 'schedule_search',
                  'today_focus', 'week_grid', 'week_stack', 'weekday_tabs', 'course_colors'),
     'storage': ('atomic_file', 'schedule_recovery', 'classroom_library',
@@ -38,7 +39,7 @@ DEBUG_FLOWS = {
     'auth-recovery': {
         'host': ('classroom',), 'tests': ('classroom_access', 'classroom_read_progress',
             'classroom_connection', 'classroom_recovery_page', 'classroom_coordinator', 'classroom_api_reader',
-            'classroom_name_merge', 'classroom_preparation'),
+            'classroom_name_merge', 'classroom_preparation', 'campus_login_contract'),
         'direct': True,
     },
     'playback-resume': {
