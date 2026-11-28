@@ -563,8 +563,8 @@ if (qrBox && shown(qrBox) && services.length === 1 &&
   if (action !== null && action !== 'refreshQr') return null;
   if (action === 'refreshQr') {
     const refreshBtn = qrBox.querySelector('.code-refresh');
-    const pwTab = document.querySelector('a#password_login');
-    const qrTab = document.querySelector('a#qrcode_login');
+    const pwTab = document.getElementById('password_login');
+    const qrTab = document.getElementById('qrcode_login');
     if (refreshBtn instanceof HTMLElement && shown(refreshBtn)) {
       refreshBtn.click();
     } else if (pwTab instanceof HTMLElement && qrTab instanceof HTMLElement &&

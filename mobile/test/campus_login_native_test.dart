@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:campus_schedule/config/network_policy.dart';
@@ -23,11 +24,73 @@ const _syntheticPassword = 'synthetic-pass';
 const _syntheticNewPassword = 'synthetic-new-pass';
 const _syntheticSmsCode = '101010';
 const _syntheticAltSmsCode = '654321';
+const _syntheticPhone = '13800000000';
+const _syntheticCaptcha = 'AB12';
+const _syntheticCaptchaRetry = 'CD34';
 const _syntheticMaskedPhone = '138****0000';
 const _teachingService = 'https://jw.bucm.edu.cn/';
 const _teachingCas =
     'https://cas.bucm.edu.cn/cas/login?service=https%3A%2F%2Fjw.bucm.edu.cn%2F';
 const _teachingReturn = 'https://jw.bucm.edu.cn/?ticket=ST-synthetic-123';
+
+Uint8List _syntheticPngBytes({int red = 12, int green = 34, int blue = 56}) {
+  const size = 64;
+  final scanlines = <int>[];
+  for (var y = 0; y < size; y++) {
+    scanlines.add(0);
+    for (var x = 0; x < size; x++) {
+      scanlines.add(red);
+      scanlines.add(green);
+      scanlines.add(blue);
+    }
+  }
+  final ihdr = <int>[0, 0, 0, size, 0, 0, 0, size, 8, 2, 0, 0, 0];
+  final idat = zlib.encode(scanlines);
+  int crc32(List<int> bytes) {
+    var crc = 0xFFFFFFFF;
+    for (final byte in bytes) {
+      crc ^= byte;
+      for (var i = 0; i < 8; i++) {
+        crc = (crc & 1) != 0 ? (crc >>> 1) ^ 0xEDB88320 : (crc >>> 1);
+      }
+    }
+    return crc ^ 0xFFFFFFFF;
+  }
+
+  List<int> u32(int v) => [
+    (v >> 24) & 0xFF,
+    (v >> 16) & 0xFF,
+    (v >> 8) & 0xFF,
+    v & 0xFF,
+  ];
+
+  List<int> chunk(String type, List<int> data) {
+    final typeBytes = type.codeUnits;
+    return [
+      ...u32(data.length),
+      ...typeBytes,
+      ...data,
+      ...u32(crc32([...typeBytes, ...data])),
+    ];
+  }
+
+  return Uint8List.fromList([
+    0x89,
+    0x50,
+    0x4E,
+    0x47,
+    0x0D,
+    0x0A,
+    0x1A,
+    0x0A,
+    ...chunk('IHDR', ihdr),
+    ...chunk('IDAT', idat),
+    ...chunk('IEND', const []),
+  ]);
+}
+
+String _syntheticPngDataUrl({int red = 12, int green = 34, int blue = 56}) =>
+    'data:image/png;base64,${base64Encode(_syntheticPngBytes(red: red, green: green, blue: blue))}';
 
 CampusLoginTestPlatform _installWebPlatform() {
   final platform = CampusLoginTestPlatform();
@@ -48,13 +111,18 @@ class _RecordedChannelCall {
 
 ({
   List<_RecordedChannelCall> credentialCalls,
+  List<_RecordedChannelCall> actionCalls,
   List<String> schoolCalls,
   void Function(Future<Object?> Function(MethodCall call)? handler) setHandler,
+  void Function(Future<Object?> Function(MethodCall call)? handler)
+  setActionsHandler,
 })
 _installChannelMocks() {
   final credentialCalls = <_RecordedChannelCall>[];
+  final actionCalls = <_RecordedChannelCall>[];
   final schoolCalls = <String>[];
   Future<Object?> Function(MethodCall call)? customCredentialHandler;
+  Future<Object?> Function(MethodCall call)? customActionsHandler;
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
@@ -69,6 +137,20 @@ _installChannelMocks() {
     }
     return call.method == 'hasSaved' ? false : null;
   });
+  messenger.setMockMethodCallHandler(CampusNativeLogin.actionsChannel, (
+    call,
+  ) async {
+    actionCalls.add(_RecordedChannelCall(call.method, call.arguments));
+    if (customActionsHandler != null) {
+      return customActionsHandler!(call);
+    }
+    return switch (call.method) {
+      'availableScanClients' => const {'wework': true, 'wechat': true},
+      'saveQrImage' => true,
+      'launchScanClient' => 'launched',
+      _ => null,
+    };
+  });
   messenger.setMockMethodCallHandler(SchoolAdapter.channel, (call) async {
     schoolCalls.add(call.method);
     return null;
@@ -76,14 +158,17 @@ _installChannelMocks() {
   addTearDown(() {
     messenger.setMockMethodCallHandler(paths, null);
     messenger.setMockMethodCallHandler(CampusNativeLogin.channel, null);
+    messenger.setMockMethodCallHandler(CampusNativeLogin.actionsChannel, null);
     messenger.setMockMethodCallHandler(SchoolAdapter.channel, null);
     if (folder.existsSync()) folder.deleteSync(recursive: true);
   });
 
   return (
     credentialCalls: credentialCalls,
+    actionCalls: actionCalls,
     schoolCalls: schoolCalls,
     setHandler: (handler) => customCredentialHandler = handler,
+    setActionsHandler: (handler) => customActionsHandler = handler,
   );
 }
 
@@ -936,6 +1021,615 @@ void main() {
       await tester.pumpAndSettle();
       expect(outcomes, [true]);
       expect(mocks.credentialCalls, isEmpty);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
+  test(
+    'parseProbe and decodePngDataUrl validate Stage 3 QR/mobile contracts',
+    () {
+      final qrDataUrl = _syntheticPngDataUrl(red: 10, green: 20, blue: 30);
+      final captchaDataUrl = _syntheticPngDataUrl(red: 70, green: 80, blue: 90);
+
+      expect(CampusNativeLogin.decodePngDataUrl(qrDataUrl), isNotNull);
+      expect(
+        CampusNativeLogin.decodePngDataUrl('data:image/jpeg;base64,/9j/4AAQ'),
+        isNull,
+      );
+      expect(
+        CampusNativeLogin.decodePngDataUrl(
+          'data:image/png;base64,${base64Encode(List<int>.filled(80, 1))}',
+        ),
+        isNull,
+      );
+
+      final readyQr = CampusNativeLogin.parseProbe({
+        'form': 'qr',
+        'qrState': 'ready',
+        'qrDataUrl': qrDataUrl,
+      });
+      expect(readyQr, isNotNull);
+      expect(readyQr!.form, CampusNativeForm.qr);
+      expect(readyQr.qrState, CampusQrState.ready);
+      expect(readyQr.qrBytes, isNotNull);
+      expect(readyQr.toString(), isNot(contains(qrDataUrl)));
+
+      final invalidReadyQr = CampusNativeLogin.parseProbe({
+        'form': 'qr',
+        'qrState': 'ready',
+        'qrDataUrl': 'not-a-png',
+      });
+      expect(invalidReadyQr!.qrState, CampusQrState.loading);
+      expect(invalidReadyQr.qrBytes, isNull);
+
+      final expiredQr = CampusNativeLogin.parseProbe({
+        'form': 'qr',
+        'qrState': 'expired',
+        'qrDataUrl': qrDataUrl,
+      });
+      expect(expiredQr!.qrState, CampusQrState.expired);
+      expect(expiredQr.qrBytes, isNull);
+
+      final mobileProbe = CampusNativeLogin.parseProbe({
+        'form': 'mobile',
+        'error': 'invalidCaptcha',
+        'smsSent': false,
+        'cooldownSeconds': 999,
+        'canSendSms': false,
+        'captchaDataUrl': captchaDataUrl,
+        'requiresAccountChoice': true,
+      });
+      expect(mobileProbe, isNotNull);
+      expect(mobileProbe!.form, CampusNativeForm.mobile);
+      expect(mobileProbe.errorKind, CampusNativeErrorKind.invalidCaptcha);
+      expect(mobileProbe.smsCooldownSeconds, 300);
+      expect(mobileProbe.canSendSms, isFalse);
+      expect(mobileProbe.captchaBytes, isNotNull);
+      expect(mobileProbe.requiresAccountChoice, isTrue);
+    },
+  );
+
+  testWidgets(
+    'QR login displays image, saves only on explicit tap, keeps WebView alive on launch, and clears on completion',
+    (tester) async {
+      final platform = _installWebPlatform();
+      final mocks = _installChannelMocks();
+      final outcomes = <bool>[];
+      final view = await _openPage(tester, platform, outcomes);
+      final qrDataUrl = _syntheticPngDataUrl(red: 15, green: 25, blue: 35);
+      final expectedBytes = CampusNativeLogin.decodePngDataUrl(qrDataUrl)!;
+      var activeTab = 'password';
+
+      view.controller.execute = (source) {
+        if (source.contains("querySelector('a#qrcode_login').click()")) {
+          activeTab = 'qr';
+          return true;
+        }
+        if (source.contains("querySelector('a#password_login').click()")) {
+          activeTab = 'password';
+          return true;
+        }
+        return view.controller.ready;
+      };
+      view.controller.executeAsync = (_, args) {
+        if (activeTab == 'qr') {
+          return {'form': 'qr', 'qrState': 'ready', 'qrDataUrl': qrDataUrl};
+        }
+        return {'form': 'password', 'error': 'none'};
+      };
+
+      view.visit(_teachingCas);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ChoiceChip, '企业微信扫码'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('campus-qr-image')), findsOneWidget);
+      expect(
+        mocks.actionCalls.where((call) => call.method == 'saveQrImage'),
+        isEmpty,
+      );
+      expect(platform.views, hasLength(1));
+
+      await tester.ensureVisible(find.byKey(const ValueKey('campus-qr-save')));
+      await tester.tap(find.byKey(const ValueKey('campus-qr-save')));
+      await tester.pumpAndSettle();
+      final saves = mocks.actionCalls
+          .where((call) => call.method == 'saveQrImage')
+          .toList();
+      expect(saves, hasLength(1));
+      expect((saves.single.arguments as Map)['bytes'], expectedBytes);
+      expect(find.text('二维码已保存到系统相册，请在企业微信或微信扫一扫中从相册选择。'), findsOneWidget);
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-qr-launch-wework')),
+      );
+      await tester.tap(find.byKey(const ValueKey('campus-qr-launch-wework')));
+      await tester.pumpAndSettle();
+      expect(
+        mocks.actionCalls
+            .where((call) => call.method == 'launchScanClient')
+            .map((call) => (call.arguments as Map)['client']),
+        ['wework'],
+      );
+      expect(find.textContaining('已打开企业微信'), findsOneWidget);
+
+      addTearDown(() {
+        if (WidgetsBinding.instance.lifecycleState ==
+            AppLifecycleState.paused) {
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.hidden,
+          );
+        }
+        if (WidgetsBinding.instance.lifecycleState ==
+            AppLifecycleState.hidden) {
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.inactive,
+          );
+        }
+        if (WidgetsBinding.instance.lifecycleState !=
+            AppLifecycleState.resumed) {
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.resumed,
+          );
+        }
+      });
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(platform.views, hasLength(1));
+
+      view.controller.ready = true;
+      view.visit(_teachingReturn);
+      await tester.pumpAndSettle();
+      expect(outcomes, [true]);
+      expect(mocks.credentialCalls, isEmpty);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
+  testWidgets(
+    'QR login handles save failures, missing clients, expiry refresh, and clearing on switch/cancel',
+    (tester) async {
+      final platform = _installWebPlatform();
+      final mocks = _installChannelMocks();
+      mocks.setActionsHandler((call) async {
+        return switch (call.method) {
+          'availableScanClients' => const {'wework': false, 'wechat': true},
+          'saveQrImage' => throw PlatformException(code: 'QR_SAVE_FAILED'),
+          'launchScanClient' => 'not_installed',
+          _ => null,
+        };
+      });
+      final outcomes = <bool>[];
+      final view = await _openPage(tester, platform, outcomes);
+      final qrDataUrlA = _syntheticPngDataUrl(red: 11, green: 22, blue: 33);
+      final qrDataUrlB = _syntheticPngDataUrl(red: 44, green: 55, blue: 66);
+      final expectedBytesB = CampusNativeLogin.decodePngDataUrl(qrDataUrlB)!;
+      var activeTab = 'password';
+      var qrState = 'ready';
+      var currentUrl = qrDataUrlA;
+
+      view.controller.execute = (source) {
+        if (source.contains("querySelector('a#qrcode_login').click()")) {
+          activeTab = 'qr';
+          return true;
+        }
+        if (source.contains("querySelector('a#password_login').click()")) {
+          activeTab = 'password';
+          return true;
+        }
+        return view.controller.ready;
+      };
+      view.controller.executeAsync = (_, args) {
+        if (activeTab == 'qr') {
+          if (args['action'] == 'refreshQr') {
+            qrState = 'ready';
+            currentUrl = qrDataUrlB;
+          }
+          return {
+            'form': 'qr',
+            'qrState': qrState,
+            if (qrState == 'ready') 'qrDataUrl': currentUrl,
+          };
+        }
+        return {'form': 'password', 'error': 'none'};
+      };
+
+      view.visit(_teachingCas);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ChoiceChip, '企业微信扫码'));
+      await tester.pumpAndSettle();
+
+      // Unavailable WeCom button omitted; WeChat launch reports not installed.
+      expect(
+        find.byKey(const ValueKey('campus-qr-launch-wework')),
+        findsNothing,
+      );
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-qr-launch-wechat')),
+      );
+      await tester.tap(find.byKey(const ValueKey('campus-qr-launch-wechat')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('当前设备未安装微信'), findsOneWidget);
+
+      // Save failure shows error banner cleanly.
+      await tester.ensureVisible(find.byKey(const ValueKey('campus-qr-save')));
+      await tester.tap(find.byKey(const ValueKey('campus-qr-save')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('campus-qr-error')), findsOneWidget);
+      expect(find.textContaining('无法保存二维码到系统相册'), findsOneWidget);
+
+      // Expiry poll hides image, disables save, and refresh replaces with new QR.
+      qrState = 'expired';
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('campus-qr-image')), findsNothing);
+      expect(find.byKey(const ValueKey('campus-qr-expired')), findsOneWidget);
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-qr-expired-refresh')),
+      );
+      await tester.tap(find.byKey(const ValueKey('campus-qr-expired-refresh')));
+      await tester.pumpAndSettle();
+      final refreshedImage = tester.widget<Image>(
+        find.byKey(const ValueKey('campus-qr-image')),
+      );
+      expect((refreshedImage.image as MemoryImage).bytes, expectedBytesB);
+
+      // Switching away to password clears QR form cleanly and cancel leaves zero pending timers.
+      await tester.tap(find.widgetWithText(ChoiceChip, '账号密码'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('campus-login-qr-form')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('campus-login-password-form')),
+        findsOneWidget,
+      );
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(outcomes, [false]);
+      expect(mocks.credentialCalls, isEmpty);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
+  testWidgets(
+    'mobile login refreshes captcha, reports errors, blocks auto-resend on resume, and completes with zero saves',
+    (tester) async {
+      final platform = _installWebPlatform();
+      final mocks = _installChannelMocks();
+      final outcomes = <bool>[];
+      final view = await _openPage(tester, platform, outcomes);
+      final captchaUrlA = _syntheticPngDataUrl(red: 25, green: 45, blue: 65);
+      final captchaUrlB = _syntheticPngDataUrl(red: 95, green: 35, blue: 15);
+      final expectedBytesB = CampusNativeLogin.decodePngDataUrl(captchaUrlB)!;
+      var activeTab = 'password';
+      var currentCaptcha = captchaUrlA;
+      var mobileError = 'none';
+      var smsSent = false;
+      var cooldownSeconds = 0;
+      var canSendSms = true;
+      var smsSendCalls = 0;
+      var submitCalls = 0;
+
+      view.controller.execute = (source) {
+        if (source.contains("querySelector('a#loginByMobile').click()")) {
+          activeTab = 'mobile';
+          return true;
+        }
+        if (source.contains("querySelector('a#password_login').click()")) {
+          activeTab = 'password';
+          return true;
+        }
+        return view.controller.ready;
+      };
+      view.controller.executeAsync = (_, args) {
+        if (activeTab != 'mobile') {
+          return {'form': 'password', 'error': 'none'};
+        }
+        final action = args['action'];
+        if (action == 'refreshCaptcha') {
+          currentCaptcha = captchaUrlB;
+          mobileError = 'none';
+        } else if (action == 'sendMobileSms') {
+          smsSendCalls++;
+          if (args['captcha'] == _syntheticCaptcha) {
+            mobileError = 'invalidCaptcha';
+            currentCaptcha = captchaUrlB;
+          } else {
+            expect(args['phone'], _syntheticPhone);
+            expect(args['captcha'], _syntheticCaptchaRetry);
+            mobileError = 'none';
+            smsSent = true;
+            cooldownSeconds = 60;
+            canSendSms = false;
+          }
+          return true;
+        } else if (action == 'submitMobile') {
+          submitCalls++;
+          expect(args['phone'], _syntheticPhone);
+          expect(args['mobileCode'], _syntheticSmsCode);
+          mobileError = 'none';
+          return true;
+        }
+        return {
+          'form': 'mobile',
+          'error': mobileError,
+          'smsSent': smsSent,
+          'cooldownSeconds': cooldownSeconds,
+          'canSendSms': canSendSms,
+          'captchaDataUrl': currentCaptcha,
+          'requiresAccountChoice': false,
+        };
+      };
+
+      view.visit(_teachingCas);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ChoiceChip, '手机号'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('campus-login-mobile-form')),
+        findsOneWidget,
+      );
+      expect(find.text('保存账号密码'), findsNothing);
+      expect(smsSendCalls, 0);
+
+      // Explicit captcha refresh updates displayed captcha bytes.
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-mobile-captcha-refresh')),
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('campus-mobile-captcha-refresh')),
+      );
+      await tester.pumpAndSettle();
+      final refreshedCaptcha = tester.widget<Image>(
+        find.descendant(
+          of: find.byKey(const ValueKey('campus-mobile-captcha-image')),
+          matching: find.byType(Image),
+        ),
+      );
+      expect((refreshedCaptcha.image as MemoryImage).bytes, expectedBytesB);
+
+      // Graphic captcha error preserves phone, clears captcha, and shows error.
+      await tester.enterText(
+        find.byKey(const ValueKey('campus-mobile-phone-field')),
+        _syntheticPhone,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('campus-mobile-captcha-field')),
+        _syntheticCaptcha,
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-mobile-send-sms')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('campus-mobile-send-sms')));
+      await tester.pump();
+      await tester.pump(CampusLoginPolicy.readinessPoll);
+      await tester.pumpAndSettle();
+      expect(smsSendCalls, 1);
+      expect(find.text('图形验证码错误，请重新输入。'), findsOneWidget);
+      expect(
+        tester
+            .widget<TextField>(
+              find.byKey(const ValueKey('campus-mobile-phone-field')),
+            )
+            .controller!
+            .text,
+        _syntheticPhone,
+      );
+      expect(
+        tester
+            .widget<TextField>(
+              find.byKey(const ValueKey('campus-mobile-captcha-field')),
+            )
+            .controller!
+            .text,
+        isEmpty,
+      );
+
+      // Valid SMS send enters cooldown and resume from background never auto-resends.
+      await tester.enterText(
+        find.byKey(const ValueKey('campus-mobile-captcha-field')),
+        _syntheticCaptchaRetry,
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-mobile-send-sms')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('campus-mobile-send-sms')));
+      await tester.pump();
+      await tester.pump(CampusLoginPolicy.readinessPoll);
+      await tester.pumpAndSettle();
+      expect(smsSendCalls, 2);
+      expect(find.text('短信验证码已发送，请注意查收。'), findsOneWidget);
+      expect(find.text('60秒后重新获取'), findsOneWidget);
+
+      addTearDown(() {
+        if (WidgetsBinding.instance.lifecycleState ==
+            AppLifecycleState.paused) {
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.hidden,
+          );
+        }
+        if (WidgetsBinding.instance.lifecycleState ==
+            AppLifecycleState.hidden) {
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.inactive,
+          );
+        }
+        if (WidgetsBinding.instance.lifecycleState !=
+            AppLifecycleState.resumed) {
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.resumed,
+          );
+        }
+      });
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(smsSendCalls, 2);
+
+      // Submit 6-digit SMS code and finish cleanly with zero credential saves.
+      await tester.enterText(
+        find.byKey(const ValueKey('campus-mobile-sms-field')),
+        _syntheticSmsCode,
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-mobile-submit')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('campus-mobile-submit')));
+      await tester.pump();
+      expect(submitCalls, 1);
+
+      view.controller.ready = true;
+      view.visit(_teachingReturn);
+      await tester.pumpAndSettle();
+      expect(outcomes, [true]);
+      expect(mocks.credentialCalls, isEmpty);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
+  testWidgets(
+    'mobile multi-account chooser uncovers official WebView and password SMS remains independent',
+    (tester) async {
+      final platform = _installWebPlatform();
+      final mocks = _installChannelMocks();
+      final outcomes = <bool>[];
+      final view = await _openPage(tester, platform, outcomes);
+      var activeTab = 'password';
+      var phase = 'password';
+      var requiresChoice = false;
+
+      view.controller.execute = (source) {
+        if (source.contains("querySelector('a#loginByMobile').click()")) {
+          activeTab = 'mobile';
+          return true;
+        }
+        if (source.contains("querySelector('a#password_login').click()")) {
+          activeTab = 'password';
+          return true;
+        }
+        return view.controller.ready;
+      };
+      view.controller.executeAsync = (_, args) {
+        if (activeTab == 'mobile') {
+          if (args['action'] == 'submitMobile') {
+            requiresChoice = true;
+            return true;
+          }
+          return {
+            'form': 'mobile',
+            'error': 'none',
+            'smsSent': false,
+            'cooldownSeconds': 0,
+            'canSendSms': true,
+            'captchaDataUrl': _syntheticPngDataUrl(),
+            'requiresAccountChoice': requiresChoice,
+          };
+        }
+        if (args['account'] != null) {
+          phase = 'sms';
+          return true;
+        }
+        if (args['code'] != null) {
+          return true;
+        }
+        if (phase == 'sms') {
+          return {
+            'form': 'sms',
+            'error': 'none',
+            'maskedPhone': _syntheticMaskedPhone,
+            'smsSent': true,
+          };
+        }
+        return {'form': 'password', 'error': 'none'};
+      };
+
+      view.visit(_teachingCas);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ChoiceChip, '手机号'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const ValueKey('campus-mobile-phone-field')),
+        _syntheticPhone,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('campus-mobile-sms-field')),
+        _syntheticSmsCode,
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('campus-mobile-submit')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('campus-mobile-submit')));
+      await tester.pump();
+      await tester.pump(CampusLoginPolicy.readinessPoll);
+      await tester.pumpAndSettle();
+
+      // Official WebView uncovered for multi-account selection.
+      expect(
+        find.byKey(const ValueKey('campus-login-mobile-form')),
+        findsNothing,
+      );
+      expect(find.text('该手机号绑定了多个校园账号，请在官方页面选择账号完成登录。'), findsOneWidget);
+
+      // Re-opening retains completely independent password + #PM1 secondary SMS flow.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('打开登录'));
+      await tester.pump();
+      final second = platform.views.last;
+      activeTab = 'password';
+      phase = 'password';
+      second.controller.execute = (source) {
+        if (source.contains("querySelector('a#loginByMobile').click()")) {
+          activeTab = 'mobile';
+          return true;
+        }
+        if (source.contains("querySelector('a#password_login').click()")) {
+          activeTab = 'password';
+          return true;
+        }
+        return second.controller.ready;
+      };
+      second.controller.executeAsync = view.controller.executeAsync;
+
+      second.visit(_teachingCas);
+      await tester.pumpAndSettle();
+      await _submitPassword(tester, remember: true);
+      second.visit(_teachingCas);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('campus-login-sms-form-0')),
+        findsOneWidget,
+      );
+      await _submitSms(tester, code: _syntheticSmsCode);
+      second.controller.ready = true;
+      second.visit(_teachingReturn);
+      await tester.pumpAndSettle();
+
+      expect(outcomes, [false, true]);
+      expect(
+        mocks.credentialCalls.where((c) => c.method == 'save'),
+        hasLength(1),
+      );
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );

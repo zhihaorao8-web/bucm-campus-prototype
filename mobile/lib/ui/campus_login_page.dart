@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../config/network_policy.dart';
@@ -63,11 +64,15 @@ class _PasswordAttempt {
       : null;
 }
 
+enum _MobilePendingAction { none, sendSms, submitLogin }
+
 class _CampusLoginPageState extends State<CampusLoginPage>
     with WidgetsBindingObserver {
   InAppWebViewController? _web;
   Timer? _timeout;
   Timer? _poll;
+  Timer? _qrPoll;
+  Timer? _mobilePoll;
   final _requestedHttpsUpgrades = <Uri>{};
   final _classroomScripts = ClassroomPageScripts();
   int _document = 0;
@@ -94,6 +99,26 @@ class _CampusLoginPageState extends State<CampusLoginPage>
   String? _nativeError;
   int _clearPasswordToken = 0;
   int _smsResetCount = 0;
+  CampusQrState _qrState = CampusQrState.loading;
+  Uint8List? _qrBytes;
+  bool _qrSaving = false;
+  bool _qrRefreshing = false;
+  String? _qrNotice;
+  String? _qrError;
+  Set<CampusScanClient>? _availableScanClients;
+  bool _clientsQueried = false;
+  int _qrLoadingPolls = 0;
+  Uint8List? _captchaBytes;
+  bool _captchaLoading = false;
+  bool _mobileSmsSending = false;
+  int _mobileCooldownSeconds = 0;
+  bool _mobileCanSendSms = true;
+  bool _mobileSmsSent = false;
+  _MobilePendingAction _mobileAction = _MobilePendingAction.none;
+  String? _mobileNotice;
+  String? _mobileError;
+  int _clearCaptchaToken = 0;
+  int _mobileWaitPolls = 0;
 
   bool _current(InAppWebViewController web, int document) =>
       mounted &&
@@ -120,17 +145,61 @@ class _CampusLoginPageState extends State<CampusLoginPage>
     SchoolAdapter.sessionChanges.removeListener(_sessionCleared);
     _cancelTimers();
     _passwordAttempt = null;
+    _clearQrState();
+    _clearMobileState();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Lifecycle return must never auto-resubmit an in-progress attempt.
+    // Lifecycle return must never auto-resubmit credentials or auto-send SMS.
+    if (state == AppLifecycleState.paused) {
+      _qrPoll?.cancel();
+      _mobilePoll?.cancel();
+      return;
+    }
+    if (state == AppLifecycleState.resumed) {
+      final web = _web;
+      if (web != null &&
+          !_completed &&
+          _error == null &&
+          !_manualWeb &&
+          widget.target != CampusLoginTarget.vpn) {
+        unawaited(_recheckAfterResume(web, _document));
+      }
+    }
   }
 
   void _cancelTimers() {
     _timeout?.cancel();
     _poll?.cancel();
+    _qrPoll?.cancel();
+    _mobilePoll?.cancel();
+  }
+
+  void _clearQrState() {
+    _qrPoll?.cancel();
+    _qrState = CampusQrState.loading;
+    _qrBytes = null;
+    _qrSaving = false;
+    _qrRefreshing = false;
+    _qrNotice = null;
+    _qrError = null;
+    _qrLoadingPolls = 0;
+  }
+
+  void _clearMobileState() {
+    _mobilePoll?.cancel();
+    _captchaBytes = null;
+    _captchaLoading = false;
+    _mobileSmsSending = false;
+    _mobileCooldownSeconds = 0;
+    _mobileCanSendSms = true;
+    _mobileSmsSent = false;
+    _mobileAction = _MobilePendingAction.none;
+    _mobileNotice = null;
+    _mobileError = null;
+    _mobileWaitPolls = 0;
   }
 
   void _sessionCleared() {
@@ -154,6 +223,8 @@ class _CampusLoginPageState extends State<CampusLoginPage>
       _nativeBusy = false;
       _probingNative = false;
       _nativeError = null;
+      _clearQrState();
+      _clearMobileState();
       _switching = false;
       _retryDefaultSelect = false;
       _error = message;
@@ -262,6 +333,8 @@ class _CampusLoginPageState extends State<CampusLoginPage>
     _completed = true;
     _cancelTimers();
     _passwordAttempt = null;
+    _clearQrState();
+    _clearMobileState();
     if (candidate != null) {
       try {
         final saved = await CampusNativeLogin.save(
@@ -293,6 +366,8 @@ class _CampusLoginPageState extends State<CampusLoginPage>
         _nativeBusy = false;
         _probingNative = false;
         _nativeError = null;
+        _clearQrState();
+        _clearMobileState();
         _switching = false;
         _retryDefaultSelect = false;
         _error = '学校会话已清除，请重新登录。';
@@ -307,6 +382,8 @@ class _CampusLoginPageState extends State<CampusLoginPage>
   void _cancelLogin() {
     _cancelTimers();
     _passwordAttempt = null;
+    _clearQrState();
+    _clearMobileState();
     if (mounted && ModalRoute.of(context)?.isCurrent == true) {
       Navigator.of(context).pop(false);
     }
@@ -366,7 +443,7 @@ class _CampusLoginPageState extends State<CampusLoginPage>
         address: address,
         service: service,
       ).timeout(CampusLoginPolicy.readinessPoll);
-      if (!_current(web, document) || _manualWeb) return;
+      if (seq != _probeSeq || !_current(web, document) || _manualWeb) return;
       final probe = CampusNativeLogin.parseProbe(result);
       if (probe == null) {
         if (afterSubmit) {
@@ -419,6 +496,200 @@ class _CampusLoginPageState extends State<CampusLoginPage>
             _nativeError = '账号或密码错误，请修改密码后重试。';
           }
         });
+        return;
+      }
+
+      if (probe.form == CampusNativeForm.qr) {
+        if (passwordService != service ||
+            _method != CampusLoginMethod.qr ||
+            attempt != null) {
+          if (attempt != null) _openOfficialForm();
+          return;
+        }
+        _qrPoll?.cancel();
+        var shouldPollSoon = false;
+        var shouldWatchExpiry = false;
+        String? nextError;
+        if (probe.qrState == CampusQrState.loading) {
+          if (++_qrLoadingPolls < 12) {
+            shouldPollSoon = true;
+          } else {
+            nextError = '暂未获取到二维码，请点击刷新或打开学校官方页面。';
+          }
+        } else if (probe.qrState == CampusQrState.ready) {
+          _qrLoadingPolls = 0;
+          shouldWatchExpiry = true;
+        } else {
+          _qrLoadingPolls = 0;
+        }
+        setState(() {
+          _probingNative = false;
+          _nativeBusy = false;
+          _nativeError = null;
+          _qrRefreshing = false;
+          _qrState = probe.qrState;
+          _qrBytes = probe.qrState == CampusQrState.ready
+              ? probe.qrBytes
+              : null;
+          if (probe.qrState == CampusQrState.expired) {
+            _qrNotice = null;
+            _qrError = null;
+          } else if (nextError != null) {
+            _qrError = nextError;
+          }
+          _nativeForm = (
+            form: CampusNativeForm.qr,
+            address: address,
+            service: service,
+            notice: null,
+            expired: probe.qrState == CampusQrState.expired,
+          );
+        });
+        if (shouldPollSoon) {
+          _qrPoll = Timer(
+            CampusLoginPolicy.readinessPoll,
+            () => unawaited(_probeNativeForm(web, document)),
+          );
+        } else if (shouldWatchExpiry) {
+          _qrPoll = Timer(
+            const Duration(seconds: 2),
+            () => unawaited(_probeNativeForm(web, document)),
+          );
+        }
+        return;
+      }
+
+      if (probe.form == CampusNativeForm.mobile) {
+        if (passwordService != service ||
+            _method != CampusLoginMethod.mobile ||
+            attempt != null) {
+          if (afterSubmit) {
+            _scheduleSubmitCheck(web, document);
+            return;
+          }
+          if (attempt != null) _openOfficialForm();
+          return;
+        }
+        if (probe.requiresAccountChoice) {
+          _openOfficialForm();
+          if (mounted) {
+            showAppNotice(context, '该手机号绑定了多个校园账号，请在官方页面选择账号完成登录。');
+          }
+          return;
+        }
+        _mobilePoll?.cancel();
+        var nextAction = _mobileAction;
+        var nextSmsSending = _mobileSmsSending;
+        var nextBusy = _nativeBusy;
+        var nextNotice = _mobileNotice;
+        var nextError = _mobileError;
+        var clearCaptcha = false;
+        var nextCaptchaLoading = _captchaLoading;
+        Timer? followUp;
+
+        if (nextAction == _MobilePendingAction.sendSms) {
+          if (probe.errorKind != CampusNativeErrorKind.none) {
+            nextAction = _MobilePendingAction.none;
+            nextSmsSending = false;
+            _mobileWaitPolls = 0;
+            clearCaptcha = true;
+            nextNotice = null;
+            nextError = _mobileErrorMessage(probe.errorKind, forSmsSend: true);
+          } else if (probe.smsSent ||
+              probe.smsCooldownSeconds > 0 ||
+              !probe.canSendSms) {
+            nextAction = _MobilePendingAction.none;
+            nextSmsSending = false;
+            _mobileWaitPolls = 0;
+            nextError = null;
+            nextNotice = '短信验证码已发送，请注意查收。';
+          } else if (++_mobileWaitPolls < 20) {
+            followUp = Timer(
+              CampusLoginPolicy.readinessPoll,
+              () => unawaited(_probeNativeForm(web, document)),
+            );
+          } else {
+            nextAction = _MobilePendingAction.none;
+            nextSmsSending = false;
+            _mobileWaitPolls = 0;
+            nextNotice = null;
+            nextError = '学校暂未返回短信发送结果，请重试或打开学校官方页面。';
+          }
+        } else if (nextAction == _MobilePendingAction.submitLogin) {
+          if (probe.errorKind != CampusNativeErrorKind.none) {
+            _cancelTimers();
+            nextAction = _MobilePendingAction.none;
+            nextBusy = false;
+            _mobileWaitPolls = 0;
+            nextNotice = null;
+            nextError = _mobileErrorMessage(probe.errorKind, forSmsSend: false);
+          } else if (afterSubmit) {
+            followUp = Timer(
+              CampusLoginPolicy.readinessPoll,
+              () =>
+                  unawaited(_probeNativeForm(web, document, afterSubmit: true)),
+            );
+          }
+        }
+
+        if (probe.captchaBytes != null) {
+          nextCaptchaLoading = false;
+          if (nextAction == _MobilePendingAction.none) {
+            _mobileWaitPolls = 0;
+          }
+        } else if (clearCaptcha ||
+            (nextAction == _MobilePendingAction.none &&
+                _captchaBytes == null &&
+                !nextSmsSending)) {
+          if (++_mobileWaitPolls < 12) {
+            nextCaptchaLoading = true;
+            followUp ??= Timer(
+              CampusLoginPolicy.readinessPoll,
+              () => unawaited(_probeNativeForm(web, document)),
+            );
+          } else {
+            nextCaptchaLoading = false;
+          }
+        }
+        if (nextAction == _MobilePendingAction.none &&
+            probe.smsCooldownSeconds > 0) {
+          followUp ??= Timer(
+            const Duration(seconds: 1),
+            () => unawaited(_probeNativeForm(web, document)),
+          );
+        }
+
+        setState(() {
+          _probingNative = false;
+          _nativeBusy = nextBusy;
+          _nativeError = null;
+          _mobileAction = nextAction;
+          _mobileSmsSending = nextSmsSending;
+          _mobileNotice = nextNotice;
+          _mobileError = nextError;
+          _captchaLoading = nextCaptchaLoading;
+          if (probe.captchaBytes != null) {
+            _captchaBytes = probe.captchaBytes;
+          }
+          _mobileCooldownSeconds = probe.smsCooldownSeconds;
+          _mobileCanSendSms = probe.canSendSms;
+          if (probe.smsSent || probe.smsCooldownSeconds > 0) {
+            _mobileSmsSent = true;
+          }
+          if (clearCaptcha) {
+            _clearCaptchaToken++;
+          }
+          _nativeForm = (
+            form: CampusNativeForm.mobile,
+            address: address,
+            service: service,
+            notice: null,
+            expired: false,
+          );
+        });
+        if (followUp != null) {
+          _mobilePoll = followUp;
+        }
         return;
       }
 
@@ -578,7 +849,370 @@ class _CampusLoginPageState extends State<CampusLoginPage>
     }
   }
 
+  String _mobileErrorMessage(
+    CampusNativeErrorKind kind, {
+    required bool forSmsSend,
+  }) => switch (kind) {
+    CampusNativeErrorKind.invalidPhone => '手机号格式错误或未在学校登记。',
+    CampusNativeErrorKind.invalidCaptcha => '图形验证码错误，请重新输入。',
+    CampusNativeErrorKind.invalidSmsCode =>
+      forSmsSend ? '图形验证码错误，已刷新，请重新输入。' : '短信验证码错误，请核对后重试。',
+    CampusNativeErrorKind.smsRateLimited => '短信发送过于频繁或次数已达上限，请稍后再试。',
+    CampusNativeErrorKind.smsSendFailed => '学校未能发送短信验证码，请稍后重试。',
+    CampusNativeErrorKind.smsExpired => '短信验证码已过期，请重新获取。',
+    CampusNativeErrorKind.generic ||
+    CampusNativeErrorKind.invalidPassword ||
+    CampusNativeErrorKind.none =>
+      forSmsSend ? '未能发送短信验证码，请核对后重试。' : '学校未完成手机登录，请核对后重试。',
+  };
+
+  Future<void> _recheckAfterResume(
+    InAppWebViewController web,
+    int document,
+  ) async {
+    if (!_current(web, document) ||
+        _manualWeb ||
+        widget.target == CampusLoginTarget.vpn) {
+      return;
+    }
+    final address = (await web.getUrl())?.toString();
+    if (address == null || !_current(web, document) || _manualWeb) return;
+    if (widget.target.isDestination(address)) {
+      _observeServiceReturn(address);
+      final nextDocument = ++_document;
+      _waitForPage(web, '学校服务暂未就绪，请检查网络后重试。');
+      unawaited(_inspectPage(web, nextDocument));
+      return;
+    }
+    if (campusCasForm(address) &&
+        (_method == CampusLoginMethod.qr ||
+            _method == CampusLoginMethod.mobile)) {
+      unawaited(_probeNativeForm(web, document));
+    }
+  }
+
+  Future<void> _loadScanClients() async {
+    final clients = await CampusNativeLogin.availableScanClients();
+    if (mounted) {
+      setState(() => _availableScanClients = clients);
+    }
+  }
+
+  Future<void> _saveQr() async {
+    final form = _nativeForm;
+    final bytes = _qrBytes;
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (form == null ||
+        form.form != CampusNativeForm.qr ||
+        _qrState != CampusQrState.ready ||
+        bytes == null ||
+        _qrSaving ||
+        _qrRefreshing ||
+        _completed ||
+        ModalRoute.of(context)?.isCurrent != true ||
+        (lifecycle != null && lifecycle != AppLifecycleState.resumed)) {
+      return;
+    }
+    setState(() {
+      _qrSaving = true;
+      _qrError = null;
+      _qrNotice = null;
+    });
+    try {
+      await CampusNativeLogin.saveQrImage(bytes);
+      if (!mounted || _completed || _method != CampusLoginMethod.qr) return;
+      setState(() {
+        _qrSaving = false;
+        _qrNotice = '二维码已保存到系统相册，请在企业微信或微信扫一扫中从相册选择。';
+      });
+    } on PlatformException catch (error) {
+      if (!mounted || _completed || _method != CampusLoginMethod.qr) return;
+      setState(() {
+        _qrSaving = false;
+        _qrError =
+            error.code == 'QR_PERMISSION_DENIED' &&
+                (error.message?.isNotEmpty ?? false)
+            ? error.message!
+            : '无法保存二维码到系统相册，请重试或使用另一台设备扫码。';
+      });
+    } catch (_) {
+      if (!mounted || _completed || _method != CampusLoginMethod.qr) return;
+      setState(() {
+        _qrSaving = false;
+        _qrError = '无法保存二维码到系统相册，请重试或使用另一台设备扫码。';
+      });
+    }
+  }
+
+  Future<void> _refreshQr() async {
+    final web = _web;
+    final form = _nativeForm;
+    if (web == null ||
+        form == null ||
+        form.form != CampusNativeForm.qr ||
+        _qrSaving ||
+        _qrRefreshing ||
+        _completed) {
+      return;
+    }
+    final document = _document;
+    final seq = ++_probeSeq;
+    _qrPoll?.cancel();
+    setState(() {
+      _qrRefreshing = true;
+      _qrBytes = null;
+      _qrState = CampusQrState.loading;
+      _qrNotice = null;
+      _qrError = null;
+      _qrLoadingPolls = 0;
+    });
+    CampusNativeProbe? probe;
+    try {
+      final raw = await CampusNativeLogin.perform(
+        web,
+        address: form.address,
+        service: form.service,
+        action: 'refreshQr',
+      ).timeout(CampusLoginPolicy.readinessPoll);
+      probe = CampusNativeLogin.parseProbe(raw);
+    } catch (_) {
+      probe = null;
+    }
+    if (seq != _probeSeq ||
+        !_current(web, document) ||
+        _manualWeb ||
+        _method != CampusLoginMethod.qr) {
+      return;
+    }
+    if (probe != null && probe.form == CampusNativeForm.qr) {
+      final resolved = probe;
+      setState(() {
+        _qrRefreshing = false;
+        _qrState = resolved.qrState;
+        _qrBytes = resolved.qrState == CampusQrState.ready
+            ? resolved.qrBytes
+            : null;
+        _nativeForm = (
+          form: CampusNativeForm.qr,
+          address: form.address,
+          service: form.service,
+          notice: null,
+          expired: resolved.qrState == CampusQrState.expired,
+        );
+      });
+      if (resolved.qrState == CampusQrState.loading) {
+        _qrPoll = Timer(
+          CampusLoginPolicy.readinessPoll,
+          () => unawaited(_probeNativeForm(web, document)),
+        );
+      } else if (resolved.qrState == CampusQrState.ready) {
+        _qrPoll = Timer(
+          const Duration(seconds: 2),
+          () => unawaited(_probeNativeForm(web, document)),
+        );
+      }
+      return;
+    }
+    setState(() {
+      _qrRefreshing = false;
+      _qrError = '未能刷新二维码，请重试或打开学校官方页面。';
+    });
+  }
+
+  Future<void> _launchScanClient(CampusScanClient client) async {
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (_qrSaving ||
+        _completed ||
+        ModalRoute.of(context)?.isCurrent != true ||
+        (lifecycle != null && lifecycle != AppLifecycleState.resumed)) {
+      return;
+    }
+    final result = await CampusNativeLogin.launchScanClient(client);
+    if (!mounted || _completed || _method != CampusLoginMethod.qr) return;
+    setState(() {
+      switch (result) {
+        case CampusScanLaunchResult.launched:
+          _qrError = null;
+          _qrNotice = '已打开${client.label}，请在扫一扫中从相册选择刚保存的二维码，完成后返回本页。';
+        case CampusScanLaunchResult.notInstalled:
+          _qrError = '当前设备未安装${client.label}，可先保存二维码或使用另一台设备扫码。';
+        case CampusScanLaunchResult.failed:
+          _qrError = '未能打开${client.label}，请手动打开并从相册选择二维码，或用另一台设备扫码。';
+      }
+    });
+  }
+
+  Future<void> _refreshMobileCaptcha() async {
+    final web = _web;
+    final form = _nativeForm;
+    if (web == null ||
+        form == null ||
+        form.form != CampusNativeForm.mobile ||
+        _nativeBusy ||
+        _mobileSmsSending ||
+        _captchaLoading ||
+        _completed) {
+      return;
+    }
+    final document = _document;
+    final seq = ++_probeSeq;
+    setState(() {
+      _captchaLoading = true;
+      _mobileError = null;
+    });
+    try {
+      final raw = await CampusNativeLogin.perform(
+        web,
+        address: form.address,
+        service: form.service,
+        action: 'refreshCaptcha',
+      ).timeout(const Duration(seconds: 6));
+      if (seq != _probeSeq ||
+          !_current(web, document) ||
+          _manualWeb ||
+          _method != CampusLoginMethod.mobile) {
+        return;
+      }
+      final probe = CampusNativeLogin.parseProbe(raw);
+      setState(() {
+        _captchaLoading = false;
+        if (probe != null && probe.form == CampusNativeForm.mobile) {
+          if (probe.captchaBytes != null) {
+            _captchaBytes = probe.captchaBytes;
+          } else {
+            _mobileError = '暂未获取到新图形验证码，请重试。';
+          }
+        } else {
+          _mobileError = '未能刷新图形验证码，请重试。';
+        }
+      });
+    } catch (_) {
+      if (mounted && seq == _probeSeq && _method == CampusLoginMethod.mobile) {
+        setState(() {
+          _captchaLoading = false;
+          _mobileError = '未能刷新图形验证码，请重试。';
+        });
+      }
+    }
+  }
+
+  Future<void> _requestMobileSms(String phone, String captcha) async {
+    final web = _web;
+    final form = _nativeForm;
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (web == null ||
+        form == null ||
+        form.form != CampusNativeForm.mobile ||
+        _nativeBusy ||
+        _mobileSmsSending ||
+        !_mobileCanSendSms ||
+        _mobileCooldownSeconds > 0 ||
+        _completed ||
+        ModalRoute.of(context)?.isCurrent != true ||
+        (lifecycle != null && lifecycle != AppLifecycleState.resumed)) {
+      return;
+    }
+    final document = _document;
+    final seq = ++_probeSeq;
+    _mobilePoll?.cancel();
+    setState(() {
+      _mobileSmsSending = true;
+      _mobileAction = _MobilePendingAction.sendSms;
+      _mobileWaitPolls = 0;
+      _mobileError = null;
+      _mobileNotice = null;
+    });
+    var dispatched = false;
+    try {
+      dispatched =
+          await CampusNativeLogin.perform(
+            web,
+            address: form.address,
+            service: form.service,
+            action: 'sendMobileSms',
+            phone: phone,
+            captcha: captcha,
+          ).timeout(CampusLoginPolicy.readinessPoll) ==
+          true;
+    } catch (_) {
+      dispatched = false;
+    }
+    if (seq != _probeSeq ||
+        !_current(web, document) ||
+        _manualWeb ||
+        _method != CampusLoginMethod.mobile) {
+      return;
+    }
+    if (!dispatched) {
+      setState(() {
+        _mobileSmsSending = false;
+        _mobileAction = _MobilePendingAction.none;
+        _mobileError = '未能发起短信发送，请核对后重试或打开学校官方页面。';
+      });
+      return;
+    }
+    _mobilePoll = Timer(
+      CampusLoginPolicy.readinessPoll,
+      () => unawaited(_probeNativeForm(web, document)),
+    );
+  }
+
+  Future<void> _submitMobile(String phone, String smsCode) async {
+    final web = _web;
+    final form = _nativeForm;
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (web == null ||
+        form == null ||
+        form.form != CampusNativeForm.mobile ||
+        _nativeBusy ||
+        _mobileSmsSending ||
+        _completed ||
+        ModalRoute.of(context)?.isCurrent != true ||
+        (lifecycle != null && lifecycle != AppLifecycleState.resumed)) {
+      return;
+    }
+    final document = _document;
+    final seq = ++_probeSeq;
+    _mobilePoll?.cancel();
+    _passwordAttempt = null;
+    setState(() {
+      _nativeBusy = true;
+      _mobileAction = _MobilePendingAction.submitLogin;
+      _mobileWaitPolls = 0;
+      _mobileError = null;
+      _mobileNotice = null;
+    });
+    var dispatched = false;
+    try {
+      dispatched =
+          await CampusNativeLogin.perform(
+            web,
+            address: form.address,
+            service: form.service,
+            action: 'submitMobile',
+            phone: phone,
+            mobileCode: smsCode,
+          ).timeout(CampusLoginPolicy.readinessPoll) ==
+          true;
+    } catch (_) {
+      dispatched = false;
+    }
+    if (seq != _probeSeq ||
+        !_current(web, document) ||
+        _manualWeb ||
+        _method != CampusLoginMethod.mobile) {
+      return;
+    }
+    if (!dispatched) {
+      _openOfficialForm();
+      return;
+    }
+    _waitForPage(web, '学校暂未确认登录，请重新尝试。');
+    _scheduleSubmitCheck(web, document);
+  }
+
   void _openOfficialForm() {
+    _cancelTimers();
     _probeSeq++;
     setState(() {
       _manualWeb = true;
@@ -587,23 +1221,27 @@ class _CampusLoginPageState extends State<CampusLoginPage>
       _nativeBusy = false;
       _probingNative = false;
       _nativeError = null;
+      _clearQrState();
+      _clearMobileState();
     });
   }
 
   Future<void> _select(CampusLoginMethod method) async {
     final web = _web;
     if (web == null || _switching || _completed) return;
+    if (method == _method && (_manualWeb || _nativeForm != null)) return;
     final document = _document;
+    _cancelTimers();
+    _probeSeq++;
     setState(() {
       _switching = true;
-      if (method != CampusLoginMethod.password) {
-        _probeSeq++;
-        _passwordAttempt = null;
-        _nativeForm = null;
-        _nativeBusy = false;
-        _probingNative = false;
-        _nativeError = null;
-      }
+      _passwordAttempt = null;
+      _nativeForm = null;
+      _nativeBusy = false;
+      _probingNative = false;
+      _nativeError = null;
+      _clearQrState();
+      _clearMobileState();
     });
     bool selected;
     try {
@@ -624,7 +1262,11 @@ class _CampusLoginPageState extends State<CampusLoginPage>
     });
     if (shouldRetry) {
       unawaited(_select(CampusLoginMethod.password));
-    } else if (selected && method == CampusLoginMethod.password) {
+    } else if (selected && !_manualWeb) {
+      if (method == CampusLoginMethod.qr && !_clientsQueried) {
+        _clientsQueried = true;
+        unawaited(_loadScanClients());
+      }
       unawaited(_probeNativeForm(web, document));
     }
   }
@@ -639,9 +1281,11 @@ class _CampusLoginPageState extends State<CampusLoginPage>
     setState(() => _loading = false);
     final address = url.toString();
     if (widget.target != CampusLoginTarget.vpn && campusCasForm(address)) {
-      if (_passwordAttempt != null || _method == CampusLoginMethod.password) {
-        unawaited(_probeNativeForm(web, _document));
-      } else if (_method == null) {
+      if (_passwordAttempt != null || _method != null) {
+        if (!_manualWeb) {
+          unawaited(_probeNativeForm(web, _document));
+        }
+      } else {
         if (_switching && complete) {
           _retryDefaultSelect = true;
         } else {
@@ -685,7 +1329,36 @@ class _CampusLoginPageState extends State<CampusLoginPage>
         onSubmit: (code) => unawaited(_submitNative(code: code)),
         onCancel: _cancelLogin,
       ),
-      CampusNativeForm.mobile || CampusNativeForm.qr => null,
+      CampusNativeForm.qr => CampusQrForm(
+        key: const ValueKey('campus-login-qr-form'),
+        state: _qrState,
+        qrBytes: _qrBytes,
+        saving: _qrSaving,
+        refreshing: _qrRefreshing,
+        notice: _qrNotice,
+        error: _qrError,
+        availableClients: _availableScanClients,
+        onSave: () => unawaited(_saveQr()),
+        onRefresh: () => unawaited(_refreshQr()),
+        onLaunchClient: (client) => unawaited(_launchScanClient(client)),
+      ),
+      CampusNativeForm.mobile => CampusMobileForm(
+        key: const ValueKey('campus-login-mobile-form'),
+        busy: _nativeBusy,
+        sendingSms: _mobileSmsSending,
+        captchaLoading: _captchaLoading,
+        captchaBytes: _captchaBytes,
+        cooldownSeconds: _mobileCooldownSeconds,
+        canSendSms: _mobileCanSendSms,
+        smsSent: _mobileSmsSent,
+        clearCaptchaToken: _clearCaptchaToken,
+        notice: _mobileNotice,
+        error: _mobileError,
+        onRefreshCaptcha: () => unawaited(_refreshMobileCaptcha()),
+        onRequestSms: (phone, captcha) =>
+            unawaited(_requestMobileSms(phone, captcha)),
+        onSubmit: (phone, code) => unawaited(_submitMobile(phone, code)),
+      ),
     };
   }
 
@@ -763,6 +1436,8 @@ class _CampusLoginPageState extends State<CampusLoginPage>
           _nativeForm = null;
           _nativeBusy = false;
           _probingNative = false;
+          _clearQrState();
+          _clearMobileState();
         }
         _nativeError = null;
         _method = null;
@@ -838,14 +1513,20 @@ class _CampusLoginPageState extends State<CampusLoginPage>
                                 ChoiceChip(
                                   selected: method == _method,
                                   label: Text(method.label),
-                                  onSelected: _switching || _nativeBusy
+                                  onSelected:
+                                      _switching ||
+                                          _nativeBusy ||
+                                          _mobileSmsSending ||
+                                          _qrSaving ||
+                                          _qrRefreshing
                                       ? null
                                       : (_) => _select(method),
                                 ),
                             ],
                           ),
-                        if (_method == CampusLoginMethod.qr ||
-                            widget.target == CampusLoginTarget.vpn)
+                        if (widget.target == CampusLoginTarget.vpn ||
+                            (_method == CampusLoginMethod.qr &&
+                                _nativeForm?.form != CampusNativeForm.qr))
                           const Text('用另一台设备的企业微信扫描官方页面二维码。'),
                       ],
                     ),
@@ -874,6 +1555,7 @@ class _CampusLoginPageState extends State<CampusLoginPage>
                                   label: '重试',
                                   icon: AppIcons.refresh,
                                   onPressed: () {
+                                    _cancelTimers();
                                     _probeSeq++;
                                     setState(() {
                                       _error = null;
@@ -886,6 +1568,8 @@ class _CampusLoginPageState extends State<CampusLoginPage>
                                       _nativeBusy = false;
                                       _probingNative = false;
                                       _nativeError = null;
+                                      _clearQrState();
+                                      _clearMobileState();
                                     });
                                   },
                                 ),
