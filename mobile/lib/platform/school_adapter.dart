@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../domain/schedule.dart';
+import 'campus_native_login.dart';
 import 'classroom_session_cache.dart';
 import 'test_diagnostics.dart';
 import '../data/classroom_library.dart';
@@ -93,7 +94,9 @@ class SchoolAdapter {
     await Future.wait<void>([
       ClassroomLibrary.shared.clear(),
       ClassroomPlaybackProgressStore.shared.clear(),
-      channel.invokeMethod<void>('clearSession'),
+      CampusNativeLogin.clearWithSession(
+        () => channel.invokeMethod<void>('clearSession'),
+      ),
     ]);
   }
 }

@@ -10,15 +10,18 @@ import org.json.*;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 import cn.bucm.campusprobe.*;
 
 /** Visible Flutter WebView owns authentication. This adapter never returns cookies. */
 public class MainActivity extends FlutterActivity {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
+    private final AtomicLong credentialGeneration=new AtomicLong(0);
     private ClassroomPlayback playback;
     @Override public void configureFlutterEngine(@NonNull FlutterEngine engine) {
         super.configureFlutterEngine(engine);
         android.webkit.WebView.setWebContentsDebuggingEnabled(false);
+        CampusCredentialStore credentials = new CampusCredentialStore(this);
         try { playback=new ClassroomPlayback(this,engine); }
         catch(java.io.IOException error) { throw new IllegalStateException("Missing public player adapter asset"); }
         // Read-only app/theme metadata, separate from school authentication.
@@ -45,13 +48,74 @@ public class MainActivity extends FlutterActivity {
                     catch(android.content.ActivityNotFoundException error){reply.error("NO_BROWSER","未找到可用浏览器，可复制地址",null);}
                 } else reply.notImplemented();
             });
+        new MethodChannel(engine.getDartExecutor().getBinaryMessenger(), "cn.bucm.campus/credentials")
+            .setMethodCallHandler((call, reply) -> {
+                switch (call.method) {
+                    case "save" -> {
+                        final long generation = credentialGeneration.get();
+                        final String account = call.argument("account");
+                        final String password = call.argument("password");
+                        worker.execute(() -> {
+                            if (generation != credentialGeneration.get()) {
+                                runOnUiThread(() -> reply.error("CREDENTIAL_STALE", "登录状态已变更，未保存校园账号密码", null));
+                                return;
+                            }
+                            try {
+                                credentials.save(account, password);
+                                if (generation != credentialGeneration.get()) {
+                                    try {
+                                        credentials.clear();
+                                    } catch (Exception ignored) {
+                                    }
+                                    runOnUiThread(() -> reply.error("CREDENTIAL_STALE", "登录状态已变更，未保存校园账号密码", null));
+                                    return;
+                                }
+                                runOnUiThread(() -> reply.success(null));
+                            } catch (Exception ignored) {
+                                runOnUiThread(() -> reply.error("CREDENTIAL_SAVE", "无法保存校园账号密码", null));
+                            }
+                        });
+                    }
+                    case "clear" -> {
+                        credentialGeneration.incrementAndGet();
+                        worker.execute(() -> {
+                            try {
+                                credentials.clear();
+                                runOnUiThread(() -> reply.success(null));
+                            } catch (Exception ignored) {
+                                runOnUiThread(() -> reply.error("CREDENTIAL_CLEAR", "无法清除保存的校园账号密码", null));
+                            }
+                        });
+                    }
+                    case "hasSaved" -> worker.execute(() -> {
+                        boolean saved = credentials.hasSaved();
+                        runOnUiThread(() -> reply.success(saved));
+                    });
+                    default -> reply.notImplemented();
+                }
+            });
         new MethodChannel(engine.getDartExecutor().getBinaryMessenger(),"cn.bucm.campus/school")
             .setMethodCallHandler((call,reply)->{
                 if(call.method.equals("clearSession")) {
+                    credentialGeneration.incrementAndGet();
                     if(playback!=null)playback.clear();
-                    CookieManager.getInstance().removeAllCookies(done->{
-                        CookieManager.getInstance().flush();WebStorage.getInstance().deleteAllData();reply.success(null);
-                    });return;
+                    worker.execute(() -> {
+                        boolean cleared;
+                        try {
+                            credentials.clear();
+                            cleared = true;
+                        } catch (Exception ignored) {
+                            cleared = false;
+                        }
+                        boolean credentialsCleared = cleared;
+                        runOnUiThread(() -> CookieManager.getInstance().removeAllCookies(done -> {
+                            CookieManager.getInstance().flush();
+                            WebStorage.getInstance().deleteAllData();
+                            if (credentialsCleared) reply.success(null);
+                            else reply.error("CREDENTIAL_CLEAR", "无法清除保存的校园账号密码", null);
+                        }));
+                    });
+                    return;
                 }
                 final String method=call.method;
                 final Map<String,Object> args=call.arguments();
