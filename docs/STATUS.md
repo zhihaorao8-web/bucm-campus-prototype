@@ -2,6 +2,18 @@
 
 更新：2026-11-28。当前任务见[开发进度](DEVELOPMENT_PLAN.md)，业务规则见[PROJECT_BRIEF](PROJECT_BRIEF.md)。下方按日期保留的实施记录只说明当时状态；“待审核/未合入/未发布”等历史用语不覆盖本概览。
 
+## 2026-11-28 原生校园登录阶段 2（进行中）
+
+- **当前分支与基线**：工作分支 `zhihaorao8-web/research-login-session-auth`，阶段 1 审核基线为 `57bb8f6`，阶段 2 首个分项已提交推送为 `962b173`（`feat(ui): add native campus login forms, container and widget tests`）。
+- **已交付并验证（`962b173`）**：新增 [campus_login_forms.dart](../mobile/lib/ui/campus_login_forms.dart)（`CampusPasswordForm`、`CampusSmsForm`、`CampusLoginContent`）、[campus_login_forms_test.dart](../mobile/test/campus_login_forms_test.dart)（11 项合成组件测试）并在 [check_plan.py](../scripts/check_plan.py) `ui` 集合登记 `campus_login_forms`。遵循校方正式短信挑战仅提供登录按钮、无独立发送/重发入口的实测确认，`CampusSmsForm.onRequestCode` 保持可空（接入时传 `null`）。
+- **已运行检查（`962b173`）**：
+  - `dart format mobile/lib/ui/campus_login_forms.dart mobile/test/campus_login_forms_test.dart`：退出码 0。
+  - `flutter analyze --no-pub lib/ui/campus_login_forms.dart test/campus_login_forms_test.dart`：`No issues found!`（0 问题）。
+  - `flutter test --no-pub test/campus_login_forms_test.dart`：11/11 全部通过（覆盖默认不勾选、主动勾选与参数、空/空白拦截、`busy` 防重、密码显隐与 `clearPasswordToken`、诊断脱敏、控制器释放、6 位短信过滤与显式验证/取消、`onRequestCode` 可空、`CampusLoginContent` WebView 保活与焦点/语义/触控隔离、320dp 深色 2.0x 大字高对比度与键盘视口）。
+  - `python scripts/check.py --module tooling`：37 项工具用例及图标、合成示例检查全部通过（`report-f58531547f0944e882e74bcc48e1e38a.json`）；`git diff --check` 退出码 0。
+- **保留的工作区未提交在研文件**：[CampusCredentialStore.java](../mobile/android/app/src/main/java/cn/bucm/campus_schedule/CampusCredentialStore.java)、[MainActivity.java](../mobile/android/app/src/main/java/cn/bucm/campus_schedule/MainActivity.java)、[campus_native_login.dart](../mobile/lib/platform/campus_native_login.dart)、[campus_login_page.dart](../mobile/lib/ui/campus_login_page.dart)。以上 4 个文件按原样保留在本地工作区，未纳入本次文档进度提交；其中整包 `flutter analyze --no-pub` 此前在半集成的 `campus_login_page.dart` 上有 2 条未使用告警（`_nativeError`、`_submitNative`），这 4 个文件均尚未完成加固、Java 编译、集成测试与提交。
+- **阶段 2 后续待完成项**：加固 `CampusCredentialStore` 与 `MainActivity`（密钥失效重建/安全读取/清除、`clearSession` 与保存代次防竞态）、完成 `CampusLoginPage` 与 `PrivacyDataPage` 独立凭据清理入口接入、补充 `campus_login_native_test.dart` 并更新 `settings_test.dart` 与 `check_plan.py`、执行全包 `flutter analyze` / `--module tooling --module ui --module adapter` / `--flow auth-recovery` / `gradlew :app:compileDebugJavaWithJavac`，并同步 `AGENTS.md`、`PROJECT_BRIEF.md`、`DESIGN.md` 与 `ARCHITECTURE.md`。Android 真机/模拟器 Keystore 与本人授权校方页面实测仍为独立待验项。
+
 ## 2026-11-28 原生校园登录阶段 1
 
 - 用户审核通过原生登录开发方案。新增测试用的 Dart 登录流程模型，复用生产代码中的 `campusCasForm` 和 `CampusLoginTarget.isDestination`。模型使用合成账号、表单和短信挑战接续录播或图书馆业务，未接入实际 WebView 或用户数据存储。十项新增用例覆盖有效会话零凭据读取、同一次登录中的短信验证、业务就绪和单次恢复、错误来源及提交目标、子框架、重复请求、同地址重新导航、切换方式、退后台和取消。
